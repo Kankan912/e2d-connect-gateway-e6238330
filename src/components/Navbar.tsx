@@ -51,7 +51,7 @@ const Navbar = () => {
               variant="default"
               size="lg"
               className="bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary shadow-lg hover:shadow-glow transition-all duration-300"
-              onClick={() => window.open("https://lovable.dev/projects/403b8901-aa9b-44e8-8af7-a7b15ab6114d", "_blank")}
+              onClick={() => window.location.href = "/portal"}
             >
               <LogIn className="w-4 h-4 mr-2" />
               Portail Membre
@@ -90,7 +90,7 @@ const Navbar = () => {
               className="w-full bg-gradient-to-r from-secondary to-secondary/90 mt-4"
               onClick={() => {
                 setIsOpen(false);
-                window.open("https://lovable.dev/projects/403b8901-aa9b-44e8-8af7-a7b15ab6114d", "_blank");
+                window.location.href = "/portal";
               }}
             >
               <LogIn className="w-4 h-4 mr-2" />

@@ -1,4 +1,5 @@
 import { Facebook, Mail, Heart } from "lucide-react";
+import logoE2D from "@/assets/logo-e2d.png";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -14,7 +15,7 @@ const Footer = () => {
       { label: "Galerie", href: "#galerie" },
       { label: "Partenaires", href: "#partenaires" },
       { label: "Contact", href: "#contact" },
-      { label: "Portail Membre", href: "https://lovable.dev/projects/403b8901-aa9b-44e8-8af7-a7b15ab6114d" }
+      { label: "Portail Membre", href: "/portal" }
     ]
   };
 
@@ -25,9 +26,7 @@ const Footer = () => {
           {/* Brand Section */}
           <div className="lg:col-span-2">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center text-white font-bold text-xl">
-                E2D
-              </div>
+              <img src={logoE2D} alt="Logo E2D" className="h-12 w-auto" />
               <span className="font-bold text-xl">Association Sportive E2D</span>
             </div>
             <p className="text-primary-foreground/80 mb-6 max-w-md">
@@ -59,10 +58,8 @@ const Footer = () => {
               <ul className="space-y-2">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <a
+                     <a
                       href={link.href}
-                      target={link.href.startsWith("http") ? "_blank" : undefined}
-                      rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
                       className="text-primary-foreground/80 hover:text-secondary transition-colors duration-200"
                     >
                       {link.label}
