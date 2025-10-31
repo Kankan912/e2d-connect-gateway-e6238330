@@ -9,47 +9,47 @@ All colors MUST be HSL.
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 210 40% 15%;
+    --foreground: 196 40% 20%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 40% 15%;
+    --card-foreground: 196 40% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 40% 15%;
+    --popover-foreground: 196 40% 20%;
 
-    /* Bleu foncé E2D */
-    --primary: 211 55% 24%;
+    /* Bleu E2D - Couleur principale du logo */
+    --primary: 196 100% 39%;
     --primary-foreground: 0 0% 100%;
 
-    /* Orange dynamique E2D */
-    --secondary: 24 100% 50%;
+    /* Turquoise/Cyan E2D - Couleur secondaire du logo */
+    --secondary: 188 54% 57%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 20% 96%;
-    --muted-foreground: 210 15% 45%;
+    --muted: 196 20% 96%;
+    --muted-foreground: 196 15% 45%;
 
-    --accent: 24 100% 50%;
+    --accent: 188 54% 57%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 20% 90%;
-    --input: 210 20% 90%;
-    --ring: 211 55% 24%;
+    --border: 196 20% 90%;
+    --input: 196 20% 90%;
+    --ring: 196 100% 39%;
 
     --radius: 0.75rem;
     
-    /* Gradients sportifs */
-    --gradient-hero: linear-gradient(135deg, hsl(211 55% 24%) 0%, hsl(211 65% 35%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(24 100% 50%) 0%, hsl(30 100% 55%) 100%);
-    --gradient-overlay: linear-gradient(180deg, rgba(30, 58, 95, 0.9) 0%, rgba(30, 58, 95, 0.7) 100%);
+    /* Gradients E2D */
+    --gradient-hero: linear-gradient(135deg, hsl(196 100% 39%) 0%, hsl(188 54% 57%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(188 54% 57%) 0%, hsl(188 64% 67%) 100%);
+    --gradient-overlay: linear-gradient(180deg, rgba(0, 130, 200, 0.9) 0%, rgba(0, 130, 200, 0.7) 100%);
     
     /* Shadows */
-    --shadow-soft: 0 4px 20px rgba(30, 58, 95, 0.1);
-    --shadow-medium: 0 8px 30px rgba(30, 58, 95, 0.15);
-    --shadow-strong: 0 12px 40px rgba(30, 58, 95, 0.2);
-    --shadow-glow: 0 0 30px rgba(255, 111, 0, 0.3);
+    --shadow-soft: 0 4px 20px rgba(0, 130, 200, 0.1);
+    --shadow-medium: 0 8px 30px rgba(0, 130, 200, 0.15);
+    --shadow-strong: 0 12px 40px rgba(0, 130, 200, 0.2);
+    --shadow-glow: 0 0 30px rgba(94, 189, 200, 0.3);
     
     /* Transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -73,33 +73,33 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 210 50% 8%;
+    --background: 196 50% 8%;
     --foreground: 0 0% 98%;
 
-    --card: 210 45% 12%;
+    --card: 196 45% 12%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 210 45% 12%;
+    --popover: 196 45% 12%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 211 55% 35%;
+    --primary: 196 100% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 24 100% 50%;
+    --secondary: 188 54% 57%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 15%;
-    --muted-foreground: 210 20% 65%;
+    --muted: 196 40% 15%;
+    --muted-foreground: 196 20% 65%;
 
-    --accent: 24 100% 50%;
+    --accent: 188 54% 57%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 62.8% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 40% 20%;
-    --input: 210 40% 20%;
-    --ring: 24 100% 50%;
+    --border: 196 40% 20%;
+    --input: 196 40% 20%;
+    --ring: 188 54% 57%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;

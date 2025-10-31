@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Menu, X, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import logoE2D from "@/assets/logo-e2d.png";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,10 +21,12 @@ const Navbar = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
-          <a href="#accueil" className="flex items-center space-x-3">
-            <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-primary-foreground font-bold text-xl lg:text-2xl">
-              E2D
-            </div>
+          <a href="#accueil" className="flex items-center space-x-3 group">
+            <img 
+              src={logoE2D} 
+              alt="Logo E2D" 
+              className="h-12 lg:h-16 w-auto transition-transform duration-300 group-hover:scale-105"
+            />
             <span className="font-bold text-lg lg:text-xl text-foreground hidden sm:inline-block">
               Association E2D
             </span>
