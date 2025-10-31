@@ -58,6 +58,68 @@ export type Database = {
           },
         ]
       }
+      adhesions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          membre_id: string | null
+          message: string | null
+          montant_paye: number
+          nom: string
+          payment_id: string | null
+          payment_method: string
+          payment_status: string
+          prenom: string
+          processed: boolean
+          telephone: string
+          type_adhesion: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          membre_id?: string | null
+          message?: string | null
+          montant_paye: number
+          nom: string
+          payment_id?: string | null
+          payment_method: string
+          payment_status?: string
+          prenom: string
+          processed?: boolean
+          telephone: string
+          type_adhesion: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          membre_id?: string | null
+          message?: string | null
+          montant_paye?: number
+          nom?: string
+          payment_id?: string | null
+          payment_method?: string
+          payment_status?: string
+          prenom?: string
+          processed?: boolean
+          telephone?: string
+          type_adhesion?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adhesions_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       aides: {
         Row: {
           beneficiaire_id: string
@@ -317,6 +379,78 @@ export type Database = {
           montant_defaut?: number | null
           nom?: string
           obligatoire?: boolean | null
+        }
+        Relationships: []
+      }
+      donations: {
+        Row: {
+          amount: number
+          bank_transfer_reference: string | null
+          created_at: string
+          currency: string
+          donor_email: string
+          donor_message: string | null
+          donor_name: string
+          donor_phone: string | null
+          fiscal_receipt_sent: boolean
+          fiscal_receipt_url: string | null
+          helloasso_payment_id: string | null
+          id: string
+          is_recurring: boolean
+          payment_method: string
+          payment_status: string
+          paypal_transaction_id: string | null
+          recurring_frequency: string | null
+          stripe_customer_id: string | null
+          stripe_payment_id: string | null
+          transaction_metadata: Json | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bank_transfer_reference?: string | null
+          created_at?: string
+          currency?: string
+          donor_email: string
+          donor_message?: string | null
+          donor_name: string
+          donor_phone?: string | null
+          fiscal_receipt_sent?: boolean
+          fiscal_receipt_url?: string | null
+          helloasso_payment_id?: string | null
+          id?: string
+          is_recurring?: boolean
+          payment_method: string
+          payment_status?: string
+          paypal_transaction_id?: string | null
+          recurring_frequency?: string | null
+          stripe_customer_id?: string | null
+          stripe_payment_id?: string | null
+          transaction_metadata?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bank_transfer_reference?: string | null
+          created_at?: string
+          currency?: string
+          donor_email?: string
+          donor_message?: string | null
+          donor_name?: string
+          donor_phone?: string | null
+          fiscal_receipt_sent?: boolean
+          fiscal_receipt_url?: string | null
+          helloasso_payment_id?: string | null
+          id?: string
+          is_recurring?: boolean
+          payment_method?: string
+          payment_status?: string
+          paypal_transaction_id?: string | null
+          recurring_frequency?: string | null
+          stripe_customer_id?: string | null
+          stripe_payment_id?: string | null
+          transaction_metadata?: Json | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1077,6 +1211,44 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_configs: {
+        Row: {
+          config_data: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          provider: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config_data?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          provider: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config_data?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_configs_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       phoenix_adherents: {
         Row: {
           adhesion_payee: boolean | null
@@ -1775,6 +1947,65 @@ export type Database = {
           sujet?: string
         }
         Relationships: []
+      }
+      recurring_donations: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          donation_id: string
+          donor_email: string
+          frequency: string
+          id: string
+          last_payment_date: string | null
+          next_payment_date: string | null
+          paypal_subscription_id: string | null
+          status: string
+          stripe_subscription_id: string | null
+          total_payments: number
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          donation_id: string
+          donor_email: string
+          frequency: string
+          id?: string
+          last_payment_date?: string | null
+          next_payment_date?: string | null
+          paypal_subscription_id?: string | null
+          status?: string
+          stripe_subscription_id?: string | null
+          total_payments?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          donation_id?: string
+          donor_email?: string
+          frequency?: string
+          id?: string
+          last_payment_date?: string | null
+          next_payment_date?: string | null
+          paypal_subscription_id?: string | null
+          status?: string
+          stripe_subscription_id?: string | null
+          total_payments?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_donations_donation_id_fkey"
+            columns: ["donation_id"]
+            isOneToOne: false
+            referencedRelation: "donations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reunion_beneficiaires: {
         Row: {
