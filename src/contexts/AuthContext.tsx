@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
       setProfile(profileData);
@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (roleError) throw roleError;
       setUserRole(roleData?.role || null);
