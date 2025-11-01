@@ -16,6 +16,10 @@ const Footer = () => {
       { label: "Partenaires", href: "#partenaires" },
       { label: "Contact", href: "#contact" },
       { label: "Portail Membre", href: "/portal" }
+    ],
+    "Soutenir": [
+      { label: "Faire un don", href: "/don" },
+      { label: "Devenir membre", href: "/adhesion" }
     ]
   };
 

@@ -149,7 +149,7 @@ const Contact = () => {
                 <Button 
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => window.open("https://lovable.dev/projects/403b8901-aa9b-44e8-8af7-a7b15ab6114d", "_blank")}
+                  onClick={() => window.location.href = "/portal"}
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Accès Portail Membre E2D Connect
@@ -157,15 +157,16 @@ const Contact = () => {
                 <Button 
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => document.getElementById('apropos')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={() => window.location.href = "/adhesion"}
                 >
                   Formulaire d'Adhésion
                 </Button>
                 <Button 
                   variant="outline"
                   className="w-full justify-start"
+                  onClick={() => window.location.href = "/don"}
                 >
-                  Faire un Don (HelloAsso)
+                  Faire un Don
                 </Button>
               </div>
             </div>
