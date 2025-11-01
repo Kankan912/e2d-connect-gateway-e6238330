@@ -2334,6 +2334,291 @@ export type Database = {
         }
         Relationships: []
       }
+      site_about: {
+        Row: {
+          actif: boolean
+          created_at: string
+          histoire_contenu: string
+          histoire_titre: string
+          id: string
+          sous_titre: string
+          titre: string
+          updated_at: string
+          valeurs: Json
+        }
+        Insert: {
+          actif?: boolean
+          created_at?: string
+          histoire_contenu: string
+          histoire_titre?: string
+          id?: string
+          sous_titre?: string
+          titre?: string
+          updated_at?: string
+          valeurs?: Json
+        }
+        Update: {
+          actif?: boolean
+          created_at?: string
+          histoire_contenu?: string
+          histoire_titre?: string
+          id?: string
+          sous_titre?: string
+          titre?: string
+          updated_at?: string
+          valeurs?: Json
+        }
+        Relationships: []
+      }
+      site_activities: {
+        Row: {
+          actif: boolean
+          created_at: string
+          description: string
+          features: Json
+          icon: string
+          id: string
+          ordre: number
+          titre: string
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          created_at?: string
+          description: string
+          features?: Json
+          icon: string
+          id?: string
+          ordre?: number
+          titre: string
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          created_at?: string
+          description?: string
+          features?: Json
+          icon?: string
+          id?: string
+          ordre?: number
+          titre?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      site_config: {
+        Row: {
+          categorie: string
+          cle: string
+          created_at: string
+          description: string | null
+          id: string
+          type: string
+          updated_at: string
+          valeur: string
+        }
+        Insert: {
+          categorie?: string
+          cle: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          type?: string
+          updated_at?: string
+          valeur: string
+        }
+        Update: {
+          categorie?: string
+          cle?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          type?: string
+          updated_at?: string
+          valeur?: string
+        }
+        Relationships: []
+      }
+      site_events: {
+        Row: {
+          actif: boolean
+          created_at: string
+          date: string
+          description: string | null
+          heure: string | null
+          id: string
+          image_url: string | null
+          lieu: string
+          ordre: number
+          titre: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          created_at?: string
+          date: string
+          description?: string | null
+          heure?: string | null
+          id?: string
+          image_url?: string | null
+          lieu: string
+          ordre?: number
+          titre: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          created_at?: string
+          date?: string
+          description?: string | null
+          heure?: string | null
+          id?: string
+          image_url?: string | null
+          lieu?: string
+          ordre?: number
+          titre?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      site_gallery: {
+        Row: {
+          actif: boolean
+          categorie: string
+          created_at: string
+          id: string
+          image_url: string | null
+          ordre: number
+          titre: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          actif?: boolean
+          categorie: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          ordre?: number
+          titre: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          actif?: boolean
+          categorie?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          ordre?: number
+          titre?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      site_hero: {
+        Row: {
+          actif: boolean
+          badge_text: string
+          bouton_1_lien: string
+          bouton_1_texte: string
+          bouton_2_lien: string
+          bouton_2_texte: string
+          created_at: string
+          id: string
+          image_url: string
+          sous_titre: string
+          stat_1_label: string
+          stat_1_nombre: number
+          stat_2_label: string
+          stat_2_nombre: number
+          stat_3_label: string
+          stat_3_nombre: number
+          titre: string
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          badge_text?: string
+          bouton_1_lien?: string
+          bouton_1_texte?: string
+          bouton_2_lien?: string
+          bouton_2_texte?: string
+          created_at?: string
+          id?: string
+          image_url: string
+          sous_titre: string
+          stat_1_label?: string
+          stat_1_nombre?: number
+          stat_2_label?: string
+          stat_2_nombre?: number
+          stat_3_label?: string
+          stat_3_nombre?: number
+          titre: string
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          badge_text?: string
+          bouton_1_lien?: string
+          bouton_1_texte?: string
+          bouton_2_lien?: string
+          bouton_2_texte?: string
+          created_at?: string
+          id?: string
+          image_url?: string
+          sous_titre?: string
+          stat_1_label?: string
+          stat_1_nombre?: number
+          stat_2_label?: string
+          stat_2_nombre?: number
+          stat_3_label?: string
+          stat_3_nombre?: number
+          titre?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      site_partners: {
+        Row: {
+          actif: boolean
+          created_at: string
+          description: string | null
+          id: string
+          logo_url: string
+          nom: string
+          ordre: number
+          site_web: string | null
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo_url: string
+          nom: string
+          ordre?: number
+          site_web?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo_url?: string
+          nom?: string
+          ordre?: number
+          site_web?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       smtp_config: {
         Row: {
           actif: boolean | null
