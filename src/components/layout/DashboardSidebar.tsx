@@ -10,6 +10,10 @@ import {
   Settings,
   Users,
   BarChart3,
+  Palette,
+  Calendar,
+  Camera,
+  Handshake,
 } from "lucide-react";
 import {
   Sidebar,
@@ -38,6 +42,15 @@ const adminItems = [
   { title: "Configuration Paiements", url: "/dashboard/admin/payment-config", icon: Settings },
   { title: "Gestion Membres", url: "/dashboard/admin/membres", icon: Users },
   { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3 },
+];
+
+const siteItems = [
+  { title: "Hero", url: "/dashboard/admin/site/hero", icon: Palette },
+  { title: "Activités", url: "/dashboard/admin/site/activities", icon: Heart },
+  { title: "Événements", url: "/dashboard/admin/site/events", icon: Calendar },
+  { title: "Galerie", url: "/dashboard/admin/site/gallery", icon: Camera },
+  { title: "Partenaires", url: "/dashboard/admin/site/partners", icon: Handshake },
+  { title: "Configuration", url: "/dashboard/admin/site/config", icon: Settings },
 ];
 
 export function DashboardSidebar() {
@@ -94,6 +107,26 @@ export function DashboardSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Site Web</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {siteItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <NavLink to={item.url} className="flex items-center gap-3">

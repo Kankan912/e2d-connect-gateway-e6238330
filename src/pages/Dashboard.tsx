@@ -7,6 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Loader2, User, Shield } from "lucide-react";
 import DonationsAdmin from "./admin/DonationsAdmin";
+import HeroAdmin from "./admin/site/HeroAdmin";
+import ActivitiesAdmin from "./admin/site/ActivitiesAdmin";
+import EventsAdmin from "./admin/site/EventsAdmin";
+import GalleryAdmin from "./admin/site/GalleryAdmin";
+import PartnersAdmin from "./admin/site/PartnersAdmin";
+import ConfigAdmin from "./admin/site/ConfigAdmin";
 
 const DashboardHome = () => {
   const navigate = useNavigate();
@@ -159,6 +165,56 @@ const Dashboard = () => {
           element={
             <AdminRoute>
               <div>Statistiques (à venir)</div>
+            </AdminRoute>
+          }
+        />
+        
+        {/* Routes CMS Site Web */}
+        <Route
+          path="/admin/site/hero"
+          element={
+            <AdminRoute allowedRoles={["admin"]}>
+              <HeroAdmin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/site/activities"
+          element={
+            <AdminRoute allowedRoles={["admin"]}>
+              <ActivitiesAdmin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/site/events"
+          element={
+            <AdminRoute allowedRoles={["admin"]}>
+              <EventsAdmin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/site/gallery"
+          element={
+            <AdminRoute allowedRoles={["admin"]}>
+              <GalleryAdmin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/site/partners"
+          element={
+            <AdminRoute allowedRoles={["admin"]}>
+              <PartnersAdmin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/site/config"
+          element={
+            <AdminRoute allowedRoles={["admin"]}>
+              <ConfigAdmin />
             </AdminRoute>
           }
         />
