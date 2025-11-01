@@ -3,9 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useSiteConfig } from "@/hooks/useSiteContent";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Contact = () => {
   const { toast } = useToast();
+  const { data: config, isLoading } = useSiteConfig();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,32 +18,49 @@ const Contact = () => {
     });
   };
 
+  const getConfigValue = (key: string) => {
+    return config?.find(c => c.cle === key)?.valeur || '';
+  };
+
   const contactInfo = [
     {
       icon: Mail,
       title: "Email",
-      value: "alexr.fotso@gmail.com",
-      href: "mailto:alexr.fotso@gmail.com"
+      value: getConfigValue('site_email'),
+      href: `mailto:${getConfigValue('site_email')}`
     },
     {
       icon: Phone,
       title: "Téléphone",
-      value: "+33 (0)X XX XX XX XX",
-      href: "tel:+33XXXXXXXXX"
+      value: getConfigValue('site_telephone'),
+      href: `tel:${getConfigValue('site_telephone').replace(/\s/g, '')}`
     },
     {
       icon: MapPin,
       title: "Localisation",
-      value: "Communauté Locale",
+      value: getConfigValue('site_adresse'),
       href: "#"
     },
     {
       icon: Facebook,
       title: "Facebook",
-      value: "@phoenixkmra",
-      href: "https://www.facebook.com/phoenixkmra/"
+      value: "Phoenix KMRA",
+      href: getConfigValue('facebook_url')
     }
   ];
+
+  if (isLoading) {
+    return (
+      <section id="contact" className="py-20 lg:py-32 bg-background">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <Skeleton className="h-10 w-64 mx-auto mb-4" />
+            <Skeleton className="h-6 w-96 mx-auto" />
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="contact" className="py-20 lg:py-32 bg-background">
