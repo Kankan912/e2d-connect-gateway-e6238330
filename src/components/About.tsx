@@ -1,28 +1,32 @@
 import { Target, Users, Heart, Award } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSiteAbout } from "@/hooks/useSiteContent";
 
 const About = () => {
-  const values = [
-    {
-      icon: Target,
-      title: "Notre Mission",
-      description: "Promouvoir le sport comme vecteur de cohésion sociale et de développement personnel au sein de notre communauté."
-    },
-    {
-      icon: Users,
-      title: "L'Esprit d'Équipe",
-      description: "Cultiver un environnement où chacun peut s'épanouir, progresser et tisser des liens d'amitié durables."
-    },
-    {
-      icon: Heart,
-      title: "La Solidarité",
-      description: "Soutenir nos membres dans leurs projets personnels et sportifs, créer une vraie famille au-delà du terrain."
-    },
-    {
-      icon: Award,
-      title: "L'Excellence",
-      description: "Viser l'excellence sportive tout en préservant les valeurs de fair-play, de respect et d'entraide."
-    }
-  ];
+  const { data: about, isLoading } = useSiteAbout();
+
+  const iconMap: Record<string, any> = {
+    Target,
+    Users,
+    Heart,
+    Award
+  };
+
+  if (isLoading) {
+    return (
+      <section id="apropos" className="py-20 lg:py-32 bg-muted/30">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <Skeleton className="h-8 w-48 mx-auto mb-4" />
+            <Skeleton className="h-12 w-96 mx-auto mb-6" />
+            <Skeleton className="h-6 w-full" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const valeurs = Array.isArray(about?.valeurs) ? about.valeurs : [];
 
   return (
     <section id="apropos" className="py-20 lg:py-32 bg-muted/30">
@@ -33,31 +37,22 @@ const About = () => {
             À Propos de Nous
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            Plus qu'une Association Sportive
+            {about?.titre || "Plus qu'une Association Sportive"}
           </h2>
           <p className="text-lg text-muted-foreground">
-            E2D est née de la passion commune pour le football et de la volonté de créer 
-            un espace où le sport rime avec fraternité, développement et engagement communautaire.
+            {about?.sous_titre || "E2D est née de la passion commune pour le football et de la volonté de créer un espace où le sport rime avec fraternité, développement et engagement communautaire."}
           </p>
         </div>
 
         {/* Story Section */}
         <div className="max-w-4xl mx-auto mb-20">
           <div className="bg-card rounded-2xl p-8 lg:p-12 shadow-soft border border-border">
-            <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-6">Notre Histoire</h3>
-            <div className="prose prose-lg max-w-none text-muted-foreground space-y-4">
-              <p>
-                Fondée il y a plus de 10 ans par un groupe de passionnés de football, l'Association 
-                Sportive E2D s'est rapidement imposée comme un acteur majeur du sport local.
-              </p>
-              <p>
-                Ce qui a commencé comme de simples rencontres entre amis s'est transformé en une 
-                véritable communauté où chacun trouve sa place, qu'il soit joueur débutant ou confirmé.
-              </p>
-              <p>
-                Aujourd'hui, E2D c'est plus de 150 membres actifs, des équipes compétitives, 
-                des entraînements réguliers, et surtout une famille soudée par les valeurs du sport 
-                et de l'entraide.
+            <h3 className="text-2xl lg:text-3xl font-bold text-foreground mb-6">
+              {about?.histoire_titre || "Notre Histoire"}
+            </h3>
+            <div className="prose prose-lg max-w-none text-muted-foreground">
+              <p className="whitespace-pre-line">
+                {about?.histoire_contenu || "Fondée il y a plus de 10 ans par un groupe de passionnés de football, l'Association Sportive E2D s'est rapidement imposée comme un acteur majeur du sport local.\n\nCe qui a commencé comme de simples rencontres entre amis s'est transformé en une véritable communauté où chacun trouve sa place, qu'il soit joueur débutant ou confirmé.\n\nAujourd'hui, E2D c'est plus de 150 membres actifs, des équipes compétitives, des entraînements réguliers, et surtout une famille soudée par les valeurs du sport et de l'entraide."}
               </p>
             </div>
           </div>
@@ -65,8 +60,8 @@ const About = () => {
 
         {/* Values Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {values.map((value, index) => {
-            const Icon = value.icon;
+          {valeurs.map((value: any, index: number) => {
+            const Icon = iconMap[value.icon] || Target;
             return (
               <div 
                 key={index}

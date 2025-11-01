@@ -1,34 +1,27 @@
-import { Image, Play } from "lucide-react";
-import heroImage from "@/assets/hero-sports.jpg";
-import teamImage from "@/assets/team-celebration.jpg";
+import { Image as ImageIcon, Play } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSiteGallery } from "@/hooks/useSiteContent";
 
 const Gallery = () => {
-  const galleryItems = [
-    {
-      type: "image",
-      src: heroImage,
-      title: "Match de Championnat",
-      category: "Compétition"
-    },
-    {
-      type: "image",
-      src: teamImage,
-      title: "Célébration d'Équipe",
-      category: "Moments Forts"
-    },
-    {
-      type: "placeholder",
-      icon: Play,
-      title: "Highlights du Tournoi",
-      category: "Vidéo"
-    },
-    {
-      type: "placeholder",
-      icon: Image,
-      title: "Training Phoenix",
-      category: "Entraînement"
-    }
-  ];
+  const { data: galleryItems, isLoading } = useSiteGallery();
+
+  if (isLoading) {
+    return (
+      <section id="galerie" className="py-20 lg:py-32 bg-background">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <Skeleton className="h-8 w-48 mx-auto mb-4" />
+            <Skeleton className="h-12 w-96 mx-auto" />
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="aspect-square" />
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="galerie" className="py-20 lg:py-32 bg-background">
@@ -48,35 +41,57 @@ const Gallery = () => {
 
         {/* Gallery Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {galleryItems.map((item, index) => (
-            <div 
-              key={index}
-              className="group relative aspect-square rounded-xl overflow-hidden shadow-soft hover:shadow-strong transition-all duration-300 cursor-pointer"
-            >
-              {item.type === "image" ? (
-                <>
-                  <img 
-                    src={item.src}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </>
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                  {item.icon && <item.icon className="w-16 h-16 text-muted-foreground/30" />}
+          {galleryItems?.map((item: any) => {
+            const isVideo = item.categorie?.toLowerCase() === "vidéo" || item.video_url;
+            const mediaUrl = item.image_url || item.video_url;
+            
+            return (
+              <div 
+                key={item.id}
+                className="group relative aspect-square rounded-xl overflow-hidden shadow-soft hover:shadow-strong transition-all duration-300 cursor-pointer"
+              >
+                {mediaUrl ? (
+                  <>
+                    {isVideo ? (
+                      <div className="w-full h-full relative">
+                        <img 
+                          src={mediaUrl}
+                          alt={item.titre}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Play className="w-16 h-16 text-white/80" />
+                        </div>
+                      </div>
+                    ) : (
+                      <img 
+                        src={mediaUrl}
+                        alt={item.titre}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </>
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+                    {isVideo ? (
+                      <Play className="w-16 h-16 text-muted-foreground/30" />
+                    ) : (
+                      <ImageIcon className="w-16 h-16 text-muted-foreground/30" />
+                    )}
+                  </div>
+                )}
+                
+                {/* Overlay Info */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                  <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-secondary text-white mb-2">
+                    {item.categorie}
+                  </span>
+                  <h3 className="text-white font-semibold">{item.titre}</h3>
                 </div>
-              )}
-              
-              {/* Overlay Info */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-secondary text-white mb-2">
-                  {item.category}
-                </span>
-                <h3 className="text-white font-semibold">{item.title}</h3>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* CTA */}

@@ -1,37 +1,33 @@
 import { Calendar, MapPin, Clock } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSiteEvents } from "@/hooks/useSiteContent";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import teamImage from "@/assets/team-celebration.jpg";
 
 const Events = () => {
-  const upcomingEvents = [
-    {
-      date: "15 Nov 2025",
-      time: "15:00",
-      title: "Match de Championnat E2D",
-      location: "Stade Municipal",
-      type: "Compétition"
-    },
-    {
-      date: "22 Nov 2025",
-      time: "10:00",
-      title: "Training Phoenix",
-      location: "Terrain d'entraînement",
-      type: "Entraînement"
-    },
-    {
-      date: "29 Nov 2025",
-      time: "14:00",
-      title: "Match Jaune vs Rouge",
-      location: "Stade Municipal",
-      type: "Match Amical"
-    },
-    {
-      date: "06 Déc 2025",
-      time: "18:00",
-      title: "Soirée de Fin d'Année",
-      location: "Salle des Fêtes",
-      type: "Événement Social"
-    }
-  ];
+  const { data: events, isLoading } = useSiteEvents();
+
+  if (isLoading) {
+    return (
+      <section id="evenements" className="py-20 lg:py-32 bg-muted/30">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <Skeleton className="h-8 w-48 mx-auto mb-4" />
+            <Skeleton className="h-12 w-96 mx-auto" />
+          </div>
+          <div className="grid lg:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </div>
+            <Skeleton className="h-96" />
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="evenements" className="py-20 lg:py-32 bg-muted/30">
@@ -52,9 +48,9 @@ const Events = () => {
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Events List */}
           <div className="space-y-4">
-            {upcomingEvents.map((event, index) => (
+            {events?.map((event: any) => (
               <div 
-                key={index}
+                key={event.id}
                 className="bg-card rounded-xl p-6 border border-border shadow-soft hover:shadow-medium transition-all duration-300 hover:scale-[1.02]"
               >
                 <div className="flex items-start justify-between mb-3">
@@ -63,7 +59,7 @@ const Events = () => {
                       <Calendar className="w-6 h-6 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg text-foreground">{event.title}</h3>
+                      <h3 className="font-bold text-lg text-foreground">{event.titre}</h3>
                       <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-secondary/10 text-secondary mt-1">
                         {event.type}
                       </span>
@@ -73,13 +69,19 @@ const Events = () => {
                 <div className="space-y-2 ml-15">
                   <div className="flex items-center text-muted-foreground">
                     <Calendar className="w-4 h-4 mr-2 text-primary" />
-                    <span className="text-sm">{event.date}</span>
-                    <Clock className="w-4 h-4 ml-4 mr-2 text-primary" />
-                    <span className="text-sm">{event.time}</span>
+                    <span className="text-sm">
+                      {format(new Date(event.date), "dd MMM yyyy", { locale: fr })}
+                    </span>
+                    {event.heure && (
+                      <>
+                        <Clock className="w-4 h-4 ml-4 mr-2 text-primary" />
+                        <span className="text-sm">{event.heure.slice(0, 5)}</span>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center text-muted-foreground">
                     <MapPin className="w-4 h-4 mr-2 text-primary" />
-                    <span className="text-sm">{event.location}</span>
+                    <span className="text-sm">{event.lieu}</span>
                   </div>
                 </div>
               </div>
