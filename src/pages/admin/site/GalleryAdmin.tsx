@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Plus, Pencil, Trash2, Image as ImageIcon, Video } from "lucide-react";
 import { useSiteGallery, useCreateGalleryItem, useUpdateGalleryItem, useDeleteGalleryItem } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
+import MediaUploader from "@/components/admin/MediaUploader";
 
 export default function GalleryAdmin() {
   const { data: gallery, isLoading } = useSiteGallery();
@@ -16,7 +17,8 @@ export default function GalleryAdmin() {
   const deleteItem = useDeleteGalleryItem();
   const [open, setOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const { register, handleSubmit, reset, setValue, watch } = useForm();
+  const watchCategorie = watch("categorie", "Photo");
 
   const photos = gallery?.filter(item => item.categorie === "Photo") || [];
   const videos = gallery?.filter(item => item.categorie === "Vidéo") || [];
@@ -98,14 +100,23 @@ export default function GalleryAdmin() {
                   <Input id="ordre" type="number" defaultValue={0} {...register("ordre")} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="image_url">URL de l'image</Label>
-                <Input id="image_url" type="url" {...register("image_url")} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="video_url">URL de la vidéo</Label>
-                <Input id="video_url" type="url" {...register("video_url")} />
-              </div>
+              <MediaUploader
+                bucket="site-gallery"
+                accept={watchCategorie === "Photo" ? "image/*" : "video/*"}
+                currentUrl={watchCategorie === "Photo" ? editingItem?.image_url : editingItem?.video_url}
+                onUrlChange={(url, source) => {
+                  if (watchCategorie === "Photo") {
+                    setValue("image_url", url);
+                    setValue("video_url", null);
+                  } else {
+                    setValue("video_url", url);
+                    setValue("image_url", null);
+                  }
+                  setValue("media_source", source);
+                }}
+                label={watchCategorie === "Photo" ? "Image" : "Vidéo"}
+                maxSizeMB={watchCategorie === "Photo" ? 5 : 20}
+              />
               <div className="flex justify-end gap-4">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Annuler

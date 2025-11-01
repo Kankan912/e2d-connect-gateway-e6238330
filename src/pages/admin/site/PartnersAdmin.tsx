@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { useSitePartners, useCreatePartner, useUpdatePartner, useDeletePartner } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
+import MediaUploader from "@/components/admin/MediaUploader";
 
 export default function PartnersAdmin() {
   const { data: partners, isLoading } = useSitePartners();
@@ -80,10 +81,17 @@ export default function PartnersAdmin() {
                 <Label htmlFor="nom">Nom du partenaire</Label>
                 <Input id="nom" {...register("nom", { required: true })} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="logo_url">URL du logo</Label>
-                <Input id="logo_url" type="url" {...register("logo_url", { required: true })} />
-              </div>
+              <MediaUploader
+                bucket="site-partners"
+                accept="image/*"
+                currentUrl={editingPartner?.logo_url}
+                onUrlChange={(url, source) => {
+                  setValue("logo_url", url);
+                  setValue("media_source", source);
+                }}
+                label="Logo du partenaire"
+                maxSizeMB={5}
+              />
               <div className="space-y-2">
                 <Label htmlFor="site_web">Site web</Label>
                 <Input id="site_web" type="url" {...register("site_web")} />

@@ -12,6 +12,7 @@ import { useSiteEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from "@
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import MediaUploader from "@/components/admin/MediaUploader";
 
 export default function EventsAdmin() {
   const { data: events, isLoading } = useSiteEvents();
@@ -106,6 +107,17 @@ export default function EventsAdmin() {
                 <Label htmlFor="lieu">Lieu</Label>
                 <Input id="lieu" {...register("lieu", { required: true })} />
               </div>
+              <MediaUploader
+                bucket="site-events"
+                accept="image/*"
+                currentUrl={editingEvent?.image_url}
+                onUrlChange={(url, source) => {
+                  setValue("image_url", url);
+                  setValue("media_source", source);
+                }}
+                label="Image de l'événement"
+                maxSizeMB={5}
+              />
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" {...register("description")} />

@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { useSiteHero, useUpdateHero } from "@/hooks/useSiteContent";
+import MediaUploader from "@/components/admin/MediaUploader";
 
 export default function HeroAdmin() {
   const { data: hero, isLoading } = useSiteHero();
   const updateHero = useUpdateHero();
-  const { register, handleSubmit, reset } = useForm();
+  const { register, handleSubmit, reset, setValue } = useForm();
 
   const onSubmit = (data: any) => {
     if (hero) {
@@ -71,6 +72,18 @@ export default function HeroAdmin() {
                 rows={3}
               />
             </div>
+
+            <MediaUploader
+              bucket="site-hero"
+              accept="image/*"
+              currentUrl={hero?.image_url}
+              onUrlChange={(url, source) => {
+                setValue("image_url", url);
+                setValue("media_source", source);
+              }}
+              label="Image de fond du Hero"
+              maxSizeMB={10}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

@@ -2449,6 +2449,7 @@ export type Database = {
           id: string
           image_url: string | null
           lieu: string
+          media_source: string | null
           ordre: number
           titre: string
           type: string
@@ -2463,6 +2464,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           lieu: string
+          media_source?: string | null
           ordre?: number
           titre: string
           type: string
@@ -2477,6 +2479,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           lieu?: string
+          media_source?: string | null
           ordre?: number
           titre?: string
           type?: string
@@ -2491,6 +2494,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          media_source: string | null
           ordre: number
           titre: string
           updated_at: string
@@ -2502,6 +2506,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          media_source?: string | null
           ordre?: number
           titre: string
           updated_at?: string
@@ -2513,6 +2518,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          media_source?: string | null
           ordre?: number
           titre?: string
           updated_at?: string
@@ -2531,6 +2537,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string
+          media_source: string | null
           sous_titre: string
           stat_1_label: string
           stat_1_nombre: number
@@ -2551,6 +2558,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url: string
+          media_source?: string | null
           sous_titre: string
           stat_1_label?: string
           stat_1_nombre?: number
@@ -2571,6 +2579,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string
+          media_source?: string | null
           sous_titre?: string
           stat_1_label?: string
           stat_1_nombre?: number
@@ -2590,6 +2599,7 @@ export type Database = {
           description: string | null
           id: string
           logo_url: string
+          media_source: string | null
           nom: string
           ordre: number
           site_web: string | null
@@ -2601,6 +2611,7 @@ export type Database = {
           description?: string | null
           id?: string
           logo_url: string
+          media_source?: string | null
           nom: string
           ordre?: number
           site_web?: string | null
@@ -2612,6 +2623,7 @@ export type Database = {
           description?: string | null
           id?: string
           logo_url?: string
+          media_source?: string | null
           nom?: string
           ordre?: number
           site_web?: string | null
