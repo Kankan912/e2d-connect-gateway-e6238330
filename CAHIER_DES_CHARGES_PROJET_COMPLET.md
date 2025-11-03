@@ -1,12 +1,14 @@
 # 📋 CAHIER DES CHARGES - PROJET COMPLET
 ## Plateforme Web E2D Connect - Site Vitrine + Intégration Portail Existant
 
-**Version:** 2.0  
+**Version:** 2.1 - MISE À JOUR ✨  
 **Date:** Janvier 2025  
 **Type:** Application Web - Site Public + CMS Intégré  
 **Portail Membre Existant:** https://github.com/Kankan912/e2d-connect.git
 
 > ⚠️ **NOTE IMPORTANTE** : Le portail membre E2D Connect est déjà développé et fonctionnel. Ce cahier des charges se concentre sur la création du **Site Web Public** et son intégration avec le portail existant.
+
+> ✨ **MISE À JOUR v2.1** : Ajout de 3 fonctionnalités avancées pour améliorer l'expérience utilisateur : carousel Hero, albums galerie, et carousel événements.
 
 ---
 
@@ -186,14 +188,20 @@ Fonctionnalités déjà développées :
 
 #### 5.1.1 Page d'Accueil (`/`)
 
-**Section Hero (site_hero)**
+**Section Hero (site_hero)** ✨ MODIFIÉE
 - **Contenu dynamique** :
   - Badge texte (ex: "E2D Connect")
   - Titre principal (H1)
   - Sous-titre
-  - Image de fond (upload ou lien externe)
+  - **Carousel d'images de fond** (plusieurs images, défilement automatique configurable)
   - 2 boutons CTA configurables (texte + lien)
   - 3 statistiques avec chiffres + labels
+- **Carousel** :
+  - Upload de **plusieurs images** dans `site_hero_images`
+  - Défilement automatique activable/désactivable
+  - Intervalle configurable (par défaut 5 secondes)
+  - Flèches de navigation gauche/droite
+  - Indicateurs en bas
 - **Design** : Plein écran, overlay gradient, typographie impact
 - **CTA** : Boutons primaire/secondaire vers contact/adhésion
 
@@ -212,21 +220,33 @@ Fonctionnalités déjà développées :
 - **Layout** : Cards responsive (1-3 colonnes selon device)
 - **Filtres** : Affichage uniquement des activités actives
 
-**Section Événements (site_events)**
+**Section Événements (site_events)** ✨ MODIFIÉE
 - **Contenu** :
   - Titre, type (tournoi/match/social), date, heure, lieu
-  - Description, image
+  - Description, image (miniature)
   - Ordre configurable, statut actif/inactif
-- **Layout** : Timeline chronologique ou cards
+- **Carousel de miniatures** :
+  - Affichage des **miniatures des événements** en carousel automatique
+  - Intervalle configurable (par défaut 4 secondes) via `site_events_carousel_config`
+  - Navigation par flèches et indicateurs
+  - Nombre de miniatures affichées selon le nombre d'événements actifs
+- **Layout** : Timeline chronologique ou cards + carousel miniatures
 - **Tri** : Par date décroissante
 
-**Section Galerie (site_gallery)**
+**Section Galerie (site_gallery)** ✨ MODIFIÉE
+- **Albums/Catalogues** :
+  - Organisation par **albums** (`site_gallery_albums`)
+  - Chaque album a : nom, description, image de couverture, ordre
+  - Un album peut contenir **plusieurs images et vidéos**
 - **Contenu** :
-  - Images avec titre, catégorie
+  - Photos et vidéos organisées par album
   - Support upload direct + liens externes
-  - Ordre manuel + filtres par catégorie
-- **UI** : Lightbox, navigation clavier, lazy loading
-- **Catégories** : Tournois, Entraînements, Événements, Autre
+  - Ordre manuel par album
+- **UI** : 
+  - Vue albums (grid de couvertures)
+  - Clic sur album → affiche toutes les photos/vidéos de l'album
+  - Lightbox, navigation clavier, lazy loading
+- **Catégories** : Photos et Vidéos (distinction dans `categorie`)
 
 **Section Partenaires (site_partners)**
 - **Contenu** :
@@ -449,28 +469,40 @@ Fonctionnalités déjà développées :
 - Breadcrumb
 - Avatar user + dropdown (profil, déconnexion)
 
-#### 5.3.2 Gestion du Site Web - Hero
+#### 5.3.2 Gestion du Site Web - Hero ✨ MODIFIÉE
 
-**Formulaire** :
+**Formulaire principal** :
 - Badge texte (input)
 - Titre (input)
 - Sous-titre (textarea)
-- Image de fond :
-  - Composant `MediaUploader` (upload → bucket `site-hero` OU lien externe)
-  - Preview image
 - Bouton 1 : Texte + Lien
 - Bouton 2 : Texte + Lien
 - 3 Statistiques : Nombre + Label (6 inputs)
 - Toggle "Actif"
 
+**Section Carousel d'images** ✨ NOUVEAU :
+- **Liste des images** :
+  - Affichage grid des images uploadées
+  - Pour chaque image : preview, ordre, toggle actif, boutons éditer/supprimer
+  - Drag & drop pour réordonner
+- **Ajouter une image** :
+  - Bouton "Ajouter une image"
+  - Modal avec `MediaUploader` (upload → bucket `site-hero` OU lien externe)
+  - Preview image
+  - Champ ordre (auto-incrémenté)
+- **Configuration carousel** :
+  - Toggle "Défilement automatique"
+  - Intervalle (slider 3-10 secondes, par défaut 5s)
+  - Sauvegarde dans `site_hero.carousel_auto_play` et `carousel_interval`
+
 **Actions** :
-- Bouton "Enregistrer" (mutation → `site_hero` table)
+- Bouton "Enregistrer" (mutation → `site_hero` + `site_hero_images` tables)
 - Toast confirmation
 
 **UX** :
 - Skeleton loader pendant fetch
 - Validation temps réel
-- Preview live (optionnel)
+- Preview live du carousel (optionnel)
 
 #### 5.3.3 Gestion du Site Web - À Propos
 
@@ -504,10 +536,10 @@ Fonctionnalités déjà développées :
 - 🗑️ Supprimer (confirmation dialog)
 - ↕️ Réordonner (drag & drop)
 
-#### 5.3.5 Gestion du Site Web - Événements
+#### 5.3.5 Gestion du Site Web - Événements ✨ MODIFIÉE
 
 **Interface** :
-- Tableau : Date, Titre, Type, Lieu, Actif, Actions
+- Tableau : Date, Titre, Type, Lieu, Miniature, Actif, Actions
 - Filtres : Type (tous/tournoi/match/social), Statut (actif/inactif)
 - Bouton "Nouvel événement"
 
@@ -515,31 +547,60 @@ Fonctionnalités déjà développées :
 - Titre*, Type* (select)
 - Date*, Heure (time picker)
 - Lieu*, Description (textarea)
-- Image (MediaUploader → bucket `site-events`)
+- Image miniature* (MediaUploader → bucket `site-events`)
+  - ⚠️ Cette image sera utilisée dans le carousel de miniatures
 - Ordre, Toggle Actif
+
+**Configuration Carousel** ✨ NOUVEAU :
+- Onglet "Paramètres Carousel" (dans page Événements)
+- Toggle "Défilement automatique"
+- Intervalle (slider 2-8 secondes, par défaut 4s)
+- Toggle "Afficher navigation" (flèches)
+- Toggle "Afficher indicateurs" (dots)
+- Sauvegarde dans `site_events_carousel_config`
 
 **Tri** :
 - Par défaut : Date décroissante
 - Changeable par admin
 
-#### 5.3.6 Gestion du Site Web - Galerie
+#### 5.3.6 Gestion du Site Web - Galerie ✨ MODIFIÉE
 
-**Interface** :
-- Grid photos (3-4 colonnes)
-- Chaque photo : Image, Titre, Catégorie
-- Filtres : Catégorie
-- Bouton "Ajouter photo"
+**Nouvelle Architecture avec Albums** :
 
-**Upload** :
+**Vue principale - Liste des albums** :
+- Grid d'albums (cards avec image de couverture)
+- Pour chaque album : nom, nombre de photos/vidéos, actions
+- Bouton "Nouvel album"
+
+**Modal Création/Édition Album** ✨ NOUVEAU :
+- Nom* (input)
+- Description (textarea)
+- Image de couverture (MediaUploader → bucket `site-gallery`)
+- Ordre (input number)
+- Toggle Actif
+- Boutons : Enregistrer, Annuler
+
+**Vue Album - Contenu de l'album** :
+- Clic sur un album → affiche toutes ses photos/vidéos
+- Header : Nom album, description, nombre d'items, bouton "Ajouter photo/vidéo"
+- Grid photos/vidéos (3-4 colonnes)
+- Chaque item : Thumbnail, Titre, Catégorie (photo/vidéo)
+- Filtres : Tous/Photos/Vidéos
+
+**Upload dans un album** ✨ MODIFIÉ :
+- Sélection de l'album cible (select)
 - Drag & drop zone
-- Multi-upload (max 10 photos simultanément)
+- Multi-upload (max 10 fichiers simultanément)
 - Progress bar par fichier
 - Auto-upload vers bucket `site-gallery`
+- Catégorie auto-détectée (image → photo, vidéo → vidéo)
 
-**Modal Édition Photo** :
-- Preview image
-- Titre*, Catégorie* (select)
-- Ordre
+**Modal Édition Photo/Vidéo** :
+- Preview image/vidéo
+- Titre*, Catégorie* (photo/vidéo)
+- Album (select - changement d'album possible)
+- URL vidéo (si catégorie = vidéo)
+- Ordre dans l'album
 - Toggle Actif
 - Bouton "Supprimer" (supprime fichier bucket + record DB)
 
@@ -719,7 +780,7 @@ Fonctionnalités déjà développées :
 
 > ⚠️ **Tables existantes** : Le portail e2d-connect dispose déjà de tables pour les membres, donations, cotisations, etc. **Ne pas recréer ces tables.**
 
-#### 6.1.1 Tables Site Web (7 tables - À CRÉER)
+#### 6.1.1 Tables Site Web (10 tables - À CRÉER)
 
 **`site_hero`**
 ```sql
@@ -727,8 +788,6 @@ Fonctionnalités déjà développées :
 - titre (text, NOT NULL)
 - sous_titre (text, NOT NULL)
 - badge_text (text, default 'E2D Connect')
-- image_url (text, NOT NULL)
-- media_source (text, default 'external') -- 'upload' ou 'external'
 - bouton_1_texte (text)
 - bouton_1_lien (text)
 - bouton_2_texte (text)
@@ -739,9 +798,23 @@ Fonctionnalités déjà développées :
 - stat_2_label (text)
 - stat_3_nombre (int)
 - stat_3_label (text)
+- carousel_auto_play (boolean, default true)
+- carousel_interval (int, default 5000) -- Intervalle en ms entre chaque image
 - actif (boolean, default true)
 - created_at, updated_at (timestamptz)
 ```
+
+**`site_hero_images`** ✨ NOUVEAU
+```sql
+- id (uuid, PK)
+- hero_id (uuid, FK → site_hero.id, ON DELETE CASCADE)
+- image_url (text, NOT NULL)
+- media_source (text, default 'external') -- 'upload' ou 'external'
+- ordre (int, default 0)
+- actif (boolean, default true)
+- created_at, updated_at (timestamptz)
+```
+> Permet d'avoir **plusieurs images de fond en carousel** pour la section Hero
 
 **`site_about`**
 ```sql
@@ -784,17 +857,45 @@ Fonctionnalités déjà développées :
 - created_at, updated_at
 ```
 
-**`site_gallery`**
+**`site_events_carousel_config`** ✨ NOUVEAU
 ```sql
 - id (uuid, PK)
+- auto_play (boolean, default true)
+- interval (int, default 4000) -- Intervalle en ms entre chaque miniature
+- show_navigation (boolean, default true)
+- show_indicators (boolean, default true)
+- actif (boolean, default true)
+- created_at, updated_at (timestamptz)
+```
+> Configuration pour le **carousel des miniatures d'événements** sur la homepage
+
+**`site_gallery_albums`** ✨ NOUVEAU
+```sql
+- id (uuid, PK)
+- nom (text, NOT NULL)
+- description (text)
+- image_couverture (text) -- Image de couverture de l'album
+- media_source (text, default 'external')
+- ordre (int, default 0)
+- actif (boolean, default true)
+- created_at, updated_at (timestamptz)
+```
+> Albums/catalogues pour organiser la galerie
+
+**`site_gallery`** (MODIFIÉE)
+```sql
+- id (uuid, PK)
+- album_id (uuid, FK → site_gallery_albums.id, ON DELETE CASCADE, nullable)
 - titre (text, NOT NULL)
-- categorie (text, NOT NULL) -- 'tournois', 'entrainements', 'evenements', 'autre'
-- image_url (text, NOT NULL)
+- categorie (text, NOT NULL) -- 'photo', 'video'
+- image_url (text)
+- video_url (text)
 - media_source (text)
 - ordre (int)
 - actif (boolean)
 - created_at, updated_at
 ```
+> ⚠️ Modifié pour supporter les albums : ajout de `album_id` et `video_url`
 
 **`site_partners`**
 ```sql
@@ -1601,7 +1702,10 @@ FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 **Tâches** :
 - [ ] Fork/clone https://github.com/Kankan912/e2d-connect.git
 - [ ] Configuration `.env` (Supabase keys)
-- [ ] Migrations SQL (7 tables CMS)
+- [ ] Migrations SQL (10 tables CMS : 7 tables de base + 3 nouvelles tables)
+  - ✨ `site_hero_images` (carousel Hero)
+  - ✨ `site_gallery_albums` (albums galerie)
+  - ✨ `site_events_carousel_config` (configuration carousel événements)
 - [ ] RLS policies (lecture publique, gestion admin)
 - [ ] Buckets Storage (public read)
 - [ ] Insertion données démo
@@ -1617,11 +1721,11 @@ FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 **Tâches** :
 - [ ] Composant `Navbar.tsx` (+ bouton vers `/portal`)
-- [ ] Composant `Hero.tsx` (fetch depuis `site_hero`)
+- [ ] Composant `Hero.tsx` ✨ avec carousel d'images (fetch depuis `site_hero` + `site_hero_images`)
 - [ ] Composant `About.tsx` (fetch depuis `site_about`)
 - [ ] Composant `Activities.tsx` (fetch depuis `site_activities`)
-- [ ] Composant `Events.tsx` (fetch depuis `site_events`)
-- [ ] Composant `Gallery.tsx` (lightbox + lazy loading)
+- [ ] Composant `Events.tsx` ✨ avec carousel de miniatures (fetch depuis `site_events` + config)
+- [ ] Composant `Gallery.tsx` ✨ avec albums (lightbox + lazy loading + albums)
 - [ ] Composant `Partners.tsx` (grid logos)
 - [ ] Composant `Contact.tsx` (formulaire)
 - [ ] Composant `Footer.tsx` (fetch depuis `site_config`)
@@ -1637,11 +1741,11 @@ FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 - ⏳ Integration dans `DashboardSidebar` existante
 
 **Tâches** :
-- [ ] Page `/dashboard/admin/site/hero` (✅ existe déjà - vérifier)
+- [ ] Page `/dashboard/admin/site/hero` ✨ avec gestion carousel (existe - à modifier)
 - [ ] Page `/dashboard/admin/site/about` (⏳ à créer)
 - [ ] Page `/dashboard/admin/site/activities` (✅ existe déjà - vérifier)
-- [ ] Page `/dashboard/admin/site/events` (✅ existe déjà - vérifier)
-- [ ] Page `/dashboard/admin/site/gallery` (✅ existe déjà - vérifier)
+- [ ] Page `/dashboard/admin/site/events` ✨ avec config carousel (existe - à modifier)
+- [ ] Page `/dashboard/admin/site/gallery` ✨ avec gestion albums (existe - à modifier)
 - [ ] Page `/dashboard/admin/site/partners` (✅ existe déjà - vérifier)
 - [ ] Page `/dashboard/admin/site/config` (✅ existe déjà - vérifier)
 - [ ] Hook `useSiteContent` (mutations update/create/delete)
@@ -1690,9 +1794,9 @@ FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 | Phase | Durée | Livrables Principaux |
 |-------|-------|---------------------|
-| **Phase 1** | 1 semaine | 7 tables CMS, 4 buckets, RLS |
-| **Phase 2** | 1.5 semaines | 8 composants publics, Navbar, Footer |
-| **Phase 3** | 1 semaine | 6 pages admin CMS |
+| **Phase 1** | 1 semaine | 10 tables CMS (7 + 3 nouvelles), 4 buckets, RLS |
+| **Phase 2** | 1.5 semaines | 8 composants publics (Hero carousel, Events carousel, Gallery albums) |
+| **Phase 3** | 1 semaine | 6 pages admin CMS (Hero, Events, Gallery modifiés) |
 | **Phase 4** | 0.5 semaine | Contact form + Edge Function |
 | **Phase 5** | 0.5 semaine | Tests + Déploiement |
 | **TOTAL** | **3.5 semaines** | Site public + CMS intégré |
@@ -1772,7 +1876,9 @@ FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 #### ✅ À CRÉER / MODIFIER
 
 **Nouvelles tables** :
-- ✅ 7 tables CMS (`site_*`)
+- ✅ 10 tables CMS (`site_*`)
+  - 7 tables de base
+  - ✨ 3 nouvelles tables (Hero carousel, Gallery albums, Events carousel config)
 
 **Nouveaux composants** :
 - ✅ 8 composants publics (`Navbar`, `Hero`, `About`, etc.)
@@ -1939,7 +2045,83 @@ FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 ## 🔄 VERSIONING
 
-**v1.0** : Janvier 2025 - Cahier des charges initial  
+**v1.0** : Janvier 2025 - Cahier des charges initial
+**v2.0** : Janvier 2025 - Ajustement focus site public + intégration portail existant
+**v2.1** : Janvier 2025 - ✨ Ajout fonctionnalités avancées
+
+### Modifications v2.1 - Fonctionnalités Avancées
+
+#### 1️⃣ Hero avec Carousel d'Images ✨
+- **Avant** : Une seule image de fond statique
+- **Après** : Carousel automatique avec plusieurs images
+- **Nouvelles tables** :
+  - `site_hero_images` : Stocke plusieurs images pour le Hero
+  - Relation : `site_hero` (1) → `site_hero_images` (N)
+- **Nouvelles colonnes `site_hero`** :
+  - `carousel_auto_play` (boolean) : Activer/désactiver défilement auto
+  - `carousel_interval` (int) : Intervalle en ms entre images (défaut 5000ms)
+- **Admin CMS** :
+  - Upload multiple d'images avec drag & drop
+  - Réorganisation ordre par drag & drop
+  - Configuration défilement automatique et intervalle
+- **UX Frontend** :
+  - Flèches de navigation (prev/next)
+  - Indicateurs en bas (dots)
+  - Transition smooth entre images
+
+#### 2️⃣ Galerie avec Albums/Catalogues ✨
+- **Avant** : Liste plate d'images, impossible d'organiser par albums
+- **Après** : Architecture hiérarchique Albums → Photos/Vidéos
+- **Nouvelles tables** :
+  - `site_gallery_albums` : Albums avec nom, description, image couverture
+  - Modification `site_gallery` : Ajout colonne `album_id` (FK)
+- **Admin CMS** :
+  - Création/édition d'albums
+  - Upload multiple d'images par album
+  - Image de couverture pour chaque album
+  - Réorganisation images dans un album
+  - Changement d'album pour une image
+- **UX Frontend** :
+  - Vue albums (grid de couvertures)
+  - Clic sur album → affiche toutes les photos/vidéos
+  - Lightbox pour navigation dans l'album
+  - Breadcrumb : Galerie > Nom Album > Photo
+
+#### 3️⃣ Événements avec Carousel de Miniatures ✨
+- **Avant** : Liste statique d'événements
+- **Après** : Carousel automatique des miniatures d'événements
+- **Nouvelles tables** :
+  - `site_events_carousel_config` : Configuration du carousel
+    - `auto_play`, `interval`, `show_navigation`, `show_indicators`
+- **Admin CMS** :
+  - Onglet "Paramètres Carousel" dans page Événements
+  - Configuration défilement automatique et intervalle (2-8s)
+  - Toggle affichage navigation/indicateurs
+- **UX Frontend** :
+  - Section dédiée "Prochains Événements" avec carousel
+  - Miniatures défilent automatiquement selon fréquence définie
+  - Flèches navigation + indicateurs
+  - Clic sur miniature → détails événement
+
+#### 📊 Récapitulatif Technique
+
+| Élément | v2.0 | v2.1 |
+|---------|------|------|
+| **Tables CMS** | 7 tables | 10 tables (+3) |
+| **Buckets Storage** | 4 buckets | 4 buckets (inchangé) |
+| **Pages Admin** | 6 pages | 6 pages (3 modifiées) |
+| **Composants Frontend** | 8 composants | 8 composants (3 modifiés) |
+| **Fonctionnalités UX** | Standard | Carousels + Albums |
+
+#### 🎯 Impact Planning
+
+- **Durée totale** : Inchangée (3.5 semaines)
+- **Phase 1** : +0.5 jour (3 tables supplémentaires)
+- **Phase 2** : +0.5 jour (intégration carousels)
+- **Phase 3** : +1 jour (modifications admin Hero, Events, Gallery)
+
+**Nouvelle estimation** : ~4 semaines (au lieu de 3.5)
+
 **Prochaines évolutions** :
 - Multilingue (FR/EN)
 - Application mobile (React Native)
