@@ -1,9 +1,12 @@
 # 📋 CAHIER DES CHARGES - PROJET COMPLET
-## Plateforme Web E2D Connect - Site Vitrine + Portail Membre + Backoffice Admin
+## Plateforme Web E2D Connect - Site Vitrine + Intégration Portail Existant
 
-**Version:** 1.0  
+**Version:** 2.0  
 **Date:** Janvier 2025  
-**Type:** Application Web Full-Stack avec CMS Intégré
+**Type:** Application Web - Site Public + CMS Intégré  
+**Portail Membre Existant:** https://github.com/Kankan912/e2d-connect.git
+
+> ⚠️ **NOTE IMPORTANTE** : Le portail membre E2D Connect est déjà développé et fonctionnel. Ce cahier des charges se concentre sur la création du **Site Web Public** et son intégration avec le portail existant.
 
 ---
 
@@ -41,19 +44,36 @@ L'association gère :
 
 ### 1.2 Problématique
 
-Actuellement, l'association manque d'outils numériques pour :
-- Présenter ses activités au grand public
-- Gérer les adhésions et les dons en ligne
-- Offrir un espace membre sécurisé
-- Administrer le contenu du site sans compétences techniques
-- Centraliser la gestion financière (dons, cotisations, épargnes)
+Actuellement, l'association dispose d'un portail membre fonctionnel mais manque :
+- D'une vitrine publique pour présenter ses activités au grand public
+- D'un CMS pour administrer le contenu du site sans compétences techniques
+- D'une intégration transparente entre le site public et le portail membre existant
 
 ### 1.3 Solution Proposée
 
-Développer une **plateforme web complète** comprenant :
-1. **Site Web Public** : Vitrine institutionnelle dynamique
-2. **Portail Membre** : Espace personnel authentifié pour les adhérents
-3. **Backoffice Admin** : CMS complet + gestion membres + gestion financière
+Développer un **site web public** comprenant :
+1. **Site Web Public** : Vitrine institutionnelle dynamique (8 sections CMS)
+2. **CMS Admin** : Interface d'administration intégrée au portail existant
+3. **Intégration Portail** : Connexion seamless avec le portail membre existant
+
+### 1.4 Portail Membre Existant (Hors Périmètre)
+
+**Repository GitHub** : https://github.com/Kankan912/e2d-connect.git
+
+**Fonctionnalités déjà développées** :
+- ✅ Authentification (Email/Password, Google OAuth)
+- ✅ Dashboard membre (profil, dons, cotisations)
+- ✅ Dashboard admin (finances, membres, statistiques)
+- ✅ Système de rôles (`admin`, `tresorier`, `membre`)
+- ✅ Gestion des dons et adhésions
+- ✅ Routes protégées avec RLS
+- ✅ Base de données complète (tables `membres`, `donations`, `cotisations`, etc.)
+
+**Tables existantes à réutiliser** :
+- `profiles`, `user_roles`, `membres`
+- `donations`, `recurring_donations`, `adhesions`
+- `cotisations`, `epargnes`, `exercices`
+- `payment_configs`
 
 ---
 
@@ -130,27 +150,33 @@ Développer une **plateforme web complète** comprenant :
                     └───────────────────┘
 ```
 
-### 4.1 Trois Modules Principaux
+### 4.1 Modules du Projet
 
-#### Module 1 : Site Web Public
+#### ✅ Module 1 : Site Web Public (NOUVEAU - À DÉVELOPPER)
 - URL : `/` (homepage)
 - 8 sections dynamiques gérées par CMS
-- 2 pages secondaires : `/don`, `/adhesion`
+- 2 pages secondaires : `/don`, `/adhesion` (déjà existantes)
+- Navigation avec bouton "Portail Membre"
 - SEO optimisé, responsive design
 
-#### Module 2 : Portail Membre
-- URL : `/portal` (après connexion)
-- Dashboard personnel
+#### ❌ Module 2 : Portail Membre (EXISTANT - HORS PÉRIMÈTRE)
+**Repository** : https://github.com/Kankan912/e2d-connect.git
+
+Fonctionnalités déjà développées :
+- URL : `/portal` (page de connexion)
+- Dashboard personnel (`/dashboard`)
 - Historique dons/cotisations
 - Profil modifiable
 - Téléchargement reçus fiscaux
+- Routes admin (`/dashboard/admin/*`)
 
-#### Module 3 : Backoffice Admin
-- URL : `/dashboard/*` (protégé par rôle admin)
-- CMS pour gérer le site web
-- Gestion membres (CRUD, rôles)
-- Gestion financière (dons, adhésions, stats)
-- Configuration globale
+**⚠️ Ne pas modifier** : `AuthContext`, `DashboardSidebar`, `AdminRoute`, tables existantes
+
+#### ✅ Module 3 : CMS Admin (NOUVEAU - À INTÉGRER)
+- URL : `/dashboard/admin/site/*` (à créer dans le portail existant)
+- 6 pages CMS : Hero, À Propos, Activités, Événements, Galerie, Partenaires, Configuration
+- Sécurité : Routes protégées par `AdminRoute` (rôles : admin, tresorier)
+- Réutilise `MediaUploader`, `StatCard`, hooks existants
 
 ---
 
@@ -317,86 +343,75 @@ Développer une **plateforme web complète** comprenant :
 
 ---
 
-### 5.2 PORTAIL MEMBRE
+### 5.2 PORTAIL MEMBRE (EXISTANT - HORS PÉRIMÈTRE)
 
-#### 5.2.1 Authentification (`/portal`)
+> ⚠️ **Le portail membre est déjà développé et opérationnel.** Cette section décrit les fonctionnalités existantes que le site web public doit intégrer.
 
-**Méthodes de connexion** :
-- Email + Password (Supabase Auth)
-- Google OAuth (social login)
-- Lien magique par email (optionnel)
+**Repository** : https://github.com/Kankan912/e2d-connect.git
 
-**Écrans** :
-- Login (email/password + bouton Google)
-- Inscription (nom, prénom, email, password)
-- Mot de passe oublié (reset link)
-- Vérification email
+#### 5.2.1 Authentification (`/portal`) - ✅ Déjà implémentée
 
-**Sécurité** :
-- Hash bcrypt passwords
-- Rate limiting (max 5 tentatives/5min)
-- JWT tokens (access + refresh)
-- RLS sur toutes les tables
+**Méthodes disponibles** :
+- ✅ Email + Password (Supabase Auth)
+- ✅ Inscription avec formulaire complet
+- ✅ Récupération mot de passe
 
-#### 5.2.2 Dashboard Membre
+**Composants existants** :
+- `src/pages/Portal.tsx` : Page de connexion/inscription
+- `src/contexts/AuthContext.tsx` : Gestion état authentification
+- `src/components/auth/AdminRoute.tsx` : Protection routes admin
 
-**Aperçu** :
-- Message de bienvenue personnalisé
-- Résumé contributions (total dons, total cotisations)
-- Statut adhésion (actif/expiré, date limite)
-- Prochains événements (3 prochains)
+#### 5.2.2 Dashboard Membre - ✅ Déjà implémenté
 
-**Cards** :
-- Mes Dons (total + dernier don)
-- Mes Cotisations (taux paiement E2D/Phoenix)
-- Mon Profil (complétude %)
-- Actions rapides (faire un don, mettre à jour profil)
+**Route** : `/dashboard`
 
-#### 5.2.3 Mon Profil
+**Fonctionnalités opérationnelles** :
+- ✅ Message de bienvenue personnalisé
+- ✅ Navigation sidebar dynamique selon rôle
+- ✅ Accès Mon Profil, Mes Dons, Mes Cotisations
+- ✅ Routes admin protégées
 
-**Informations modifiables** :
-- Photo de profil (upload vers `membre-photos` bucket)
-- Nom, Prénom
-- Email (avec re-vérification)
-- Téléphone
-- Équipe E2D (dropdown)
-- Équipe Phoenix (Jaune/Rouge)
-- Fonction (optionnel)
+**Composants existants** :
+- `src/pages/Dashboard.tsx`
+- `src/components/layout/DashboardLayout.tsx`
+- `src/components/layout/DashboardSidebar.tsx`
+- `src/components/layout/DashboardHeader.tsx`
 
-**Actions** :
-- Bouton "Enregistrer" (mutation avec toast)
-- Bouton "Changer mot de passe" (modal)
+#### 5.2.3 Fonctionnalités Membres - ✅ Déjà implémentées
 
-#### 5.2.4 Mes Dons
+**Routes disponibles** :
+- ✅ `/dashboard/profile` : Profil modifiable
+- ✅ `/dashboard/my-donations` : Historique dons
+- ✅ `/dashboard/my-cotisations` : Cotisations E2D/Phoenix
 
-**Liste des dons** :
-- Tableau : Date, Montant, Devise, Statut, Méthode paiement
-- Filtres : Date (plage), Statut (tous/completed/pending), Méthode
-- Tri : Par date décroissante (défaut)
+**Routes Admin disponibles** :
+- ✅ `/dashboard/admin/donations` : Gestion dons
+- ✅ `/dashboard/admin/adhesions` : Validation adhésions
+- ✅ `/dashboard/admin/payment-config` : Configuration paiements
+- ✅ `/dashboard/admin/membres` : Gestion membres
+- ✅ `/dashboard/admin/stats` : Statistiques
 
-**Actions par ligne** :
-- Télécharger reçu fiscal (si disponible)
-- Voir détails (modal avec transaction_metadata)
+#### 5.2.4 Intégration Site Web ↔ Portail
 
-**Statistiques** :
-- Total donné (année en cours)
-- Total historique
-- Graphique évolution mensuelle (Recharts)
+**À implémenter dans le Site Public** :
 
-#### 5.2.5 Mes Cotisations
+1. **Navbar publique** :
+   ```tsx
+   <Button asChild variant="outline">
+     <Link to="/portal">
+       <LogIn className="mr-2 h-4 w-4" />
+       Portail Membre
+     </Link>
+   </Button>
+   ```
 
-**Onglets** :
-- Cotisations E2D
-- Cotisations Phoenix
+2. **Post-adhésion** :
+   - Email avec lien vers `/portal`
+   - Message : "Connectez-vous pour accéder à votre espace membre"
 
-**Pour chaque onglet** :
-- Tableau : Année, Montant, Date paiement, Statut
-- Badge statut (payé/impayé/partiel)
-- Upload justificatif (si payé manuellement)
-
-**Alertes** :
-- Notification si cotisation impayée proche échéance
-- Bouton "Payer maintenant" (redirection `/don` avec pré-remplissage)
+3. **Post-don** :
+   - Si authentifié : visible dans `/dashboard/my-donations`
+   - Si anonyme : email confirmation uniquement
 
 ---
 
@@ -702,7 +717,9 @@ Développer une **plateforme web complète** comprenant :
 
 ### 6.1 BASE DE DONNÉES (SUPABASE POSTGRESQL)
 
-#### 6.1.1 Tables Site Web (7 tables)
+> ⚠️ **Tables existantes** : Le portail e2d-connect dispose déjà de tables pour les membres, donations, cotisations, etc. **Ne pas recréer ces tables.**
+
+#### 6.1.1 Tables Site Web (7 tables - À CRÉER)
 
 **`site_hero`**
 ```sql
@@ -808,9 +825,11 @@ Développer une **plateforme web complète** comprenant :
 - `contact_address`, `contact_email`, `contact_phone`
 - `facebook_url`, `instagram_url`, `twitter_url`
 
-#### 6.1.2 Tables Finances (8 tables)
+#### 6.1.2 Tables Finances - ✅ EXISTANTES (NE PAS RECRÉER)
 
-**`donations`**
+> ⚠️ **Ces tables existent déjà dans le portail e2d-connect**. Elles seront réutilisées pour les formulaires `/don` et `/adhesion`.
+
+**`donations`** - ✅ Existante
 ```sql
 - id (uuid, PK)
 - donor_name (text, NOT NULL)
@@ -847,7 +866,7 @@ Développer une **plateforme web complète** comprenant :
 - created_at, updated_at
 ```
 
-**`adhesions`**
+**`adhesions`** - ✅ Existante
 ```sql
 - id (uuid, PK)
 - nom (text, NOT NULL)
@@ -1565,168 +1584,260 @@ FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 ## 11. PLANNING ET PHASES
 
-**Durée totale estimée** : 7 semaines (1 développeur full-time)
+**Durée totale estimée** : 3.5 semaines (1 développeur full-time)
 
-### PHASE 1 : Infrastructure & Auth (1 semaine)
+> ⚠️ **Planning ajusté** : Le portail membre étant déjà développé, le planning se concentre sur le site public et le CMS admin uniquement.
 
-**Livrables** :
-- Setup projet Vite + React + TypeScript
-- Configuration Tailwind + shadcn/ui
-- Création projet Supabase
-- Migrations initiales (tables users, profiles, user_roles)
-- Supabase Auth (Email/Password + Google)
-- Layout de base (Navbar, Footer)
-- Pages Login, Register, Reset Password
-
-**Tâches** :
-- [ ] Initialiser repo Git
-- [ ] Setup Vite + dependencies
-- [ ] Créer projet Supabase
-- [ ] Configurer Auth providers
-- [ ] Créer migrations auth
-- [ ] Implémenter AuthContext
-- [ ] Composants Login/Register
-- [ ] Protected routes (AdminRoute)
-
-### PHASE 2 : Site Web Public + CMS (2 semaines)
-
-**Semaine 1 : Frontend Public**
+### PHASE 1 : Infrastructure CMS (1 semaine)
 
 **Livrables** :
-- Page d'accueil complète (8 sections)
-- Navbar responsive
-- Footer
-- Formulaire contact (envoi email)
+- ✅ Clone repository e2d-connect existant
+- ✅ Configuration environnement local
+- ⏳ Migrations 7 tables CMS (`site_hero`, `site_about`, `site_activities`, `site_events`, `site_gallery`, `site_partners`, `site_config`)
+- ⏳ Création 4 buckets Storage (`site-hero`, `site-gallery`, `site-partners`, `site-events`)
+- ⏳ RLS policies pour tables CMS
+- ⏳ Seed data (exemples sections)
 
 **Tâches** :
-- [ ] Migrations tables `site_*` (7 tables)
-- [ ] Créer buckets Storage (4 buckets)
-- [ ] Composant Hero (dynamique)
-- [ ] Composant About
-- [ ] Composant Activities
-- [ ] Composant Events
-- [ ] Composant Gallery (lightbox)
-- [ ] Composant Partners
-- [ ] Composant Contact (form + validation)
-- [ ] Edge Function `send-email`
+- [ ] Fork/clone https://github.com/Kankan912/e2d-connect.git
+- [ ] Configuration `.env` (Supabase keys)
+- [ ] Migrations SQL (7 tables CMS)
+- [ ] RLS policies (lecture publique, gestion admin)
+- [ ] Buckets Storage (public read)
+- [ ] Insertion données démo
 
-**Semaine 2 : CMS Admin**
+### PHASE 2 : Frontend Site Public (1.5 semaines)
 
 **Livrables** :
-- Dashboard admin (layout + sidebar)
-- Pages admin site web (6 pages)
-- Composant MediaUploader
-- CRUD complet sections
+- ⏳ Page d'accueil complète (8 sections dynamiques)
+- ⏳ Navbar publique avec bouton "Portail Membre"
+- ⏳ Footer dynamique (config depuis `site_config`)
+- ⏳ Responsive design (mobile, tablette, desktop)
+- ⏳ Hooks `useSiteContent` pour fetch CMS data
 
 **Tâches** :
-- [ ] Layout DashboardLayout + Sidebar
-- [ ] Page HeroAdmin (form + MediaUploader)
-- [ ] Page AboutAdmin
-- [ ] Page ActivitiesAdmin (table + modal)
-- [ ] Page EventsAdmin
-- [ ] Page GalleryAdmin (grid + upload)
-- [ ] Page PartnersAdmin
-- [ ] Page ConfigAdmin (onglets)
-- [ ] Hooks `useSiteContent` (fetch + mutations)
-- [ ] Utils `storage-utils.ts`, `media-utils.ts`
+- [ ] Composant `Navbar.tsx` (+ bouton vers `/portal`)
+- [ ] Composant `Hero.tsx` (fetch depuis `site_hero`)
+- [ ] Composant `About.tsx` (fetch depuis `site_about`)
+- [ ] Composant `Activities.tsx` (fetch depuis `site_activities`)
+- [ ] Composant `Events.tsx` (fetch depuis `site_events`)
+- [ ] Composant `Gallery.tsx` (lightbox + lazy loading)
+- [ ] Composant `Partners.tsx` (grid logos)
+- [ ] Composant `Contact.tsx` (formulaire)
+- [ ] Composant `Footer.tsx` (fetch depuis `site_config`)
+- [ ] Hook `useSiteHero`, `useSiteAbout`, etc.
+- [ ] Page `Index.tsx` (assemble tous les composants)
 
-### PHASE 3 : Système Dons & Adhésions (2 semaines)
-
-**Semaine 1 : Frontend Don/Adhésion**
+### PHASE 3 : CMS Admin (1 semaine)
 
 **Livrables** :
-- Page `/don` complète
-- Page `/adhesion` complète
-- Intégration Stripe frontend
-- Intégration PayPal frontend
+- ⏳ 6 pages admin CMS dans `/dashboard/admin/site/*`
+- ⏳ Composant `MediaUploader` (upload + liens externes)
+- ⏳ CRUD complet pour toutes sections
+- ⏳ Integration dans `DashboardSidebar` existante
 
 **Tâches** :
-- [ ] Migrations tables `donations`, `adhesions`, `payment_configs`
-- [ ] Page Don (form + montants présets)
-- [ ] DonationAmountSelector component
-- [ ] PaymentMethodTabs component
-- [ ] Intégration Stripe Elements
-- [ ] Intégration PayPal Button
-- [ ] BankTransferInfo component
-- [ ] DonationSuccessModal
-- [ ] Page Adhesion (form + validation)
-- [ ] Schemas Zod (`donation-schemas.ts`)
+- [ ] Page `/dashboard/admin/site/hero` (✅ existe déjà - vérifier)
+- [ ] Page `/dashboard/admin/site/about` (⏳ à créer)
+- [ ] Page `/dashboard/admin/site/activities` (✅ existe déjà - vérifier)
+- [ ] Page `/dashboard/admin/site/events` (✅ existe déjà - vérifier)
+- [ ] Page `/dashboard/admin/site/gallery` (✅ existe déjà - vérifier)
+- [ ] Page `/dashboard/admin/site/partners` (✅ existe déjà - vérifier)
+- [ ] Page `/dashboard/admin/site/config` (✅ existe déjà - vérifier)
+- [ ] Hook `useSiteContent` (mutations update/create/delete)
+- [ ] Utils `media-utils.ts`, `storage-utils.ts`
+- [ ] Ajouter "Site Web" dans `DashboardSidebar`
 
-**Semaine 2 : Backend Paiements**
+### PHASE 4 : Formulaire Contact (0.5 semaine)
 
 **Livrables** :
-- Edge Functions paiements
-- Webhooks Stripe
-- Configuration paiements admin
+- ⏳ Edge Function `send-email` (via Resend)
+- ⏳ Table `contact_messages` (log messages)
+- ⏳ Page admin `/dashboard/admin/messages` (optionnel)
+- ⏳ Email notifications
 
 **Tâches** :
-- [ ] Edge Function `get-payment-config`
-- [ ] Edge Function `create-stripe-checkout`
-- [ ] Edge Function `stripe-webhook`
-- [ ] Edge Function `process-adhesion`
-- [ ] Page PaymentConfigAdmin
-- [ ] Envoi email reçu fiscal
-- [ ] Tests paiements (sandbox)
+- [ ] Migration table `contact_messages`
+- [ ] Edge Function `send-email` (Resend API)
+- [ ] Configuration Resend API key (secrets)
+- [ ] Formulaire Contact avec validation Zod
+- [ ] Toast confirmation envoi
+- [ ] Page MessagesAdmin (optionnel)
 
-### PHASE 4 : Portail Membre (1 semaine)
+### PHASE 5 : Intégration, Tests & Déploiement (0.5 semaine)
 
 **Livrables** :
-- Dashboard membre
-- Mon Profil
-- Mes Dons
-- Mes Cotisations
+- ⏳ Tests navigation Site ↔ Portail
+- ⏳ Tests workflows adhésion/don
+- ⏳ Tests responsive (mobile, tablette, desktop)
+- ⏳ SEO optimisations (meta tags, sitemap)
+- ⏳ Documentation mise à jour
 
 **Tâches** :
-- [ ] Migration table `cotisations`, `cotisations_types`
-- [ ] Page Portal Dashboard
-- [ ] Page Mon Profil (édition + upload photo)
-- [ ] Page Mes Dons (table + filtres)
-- [ ] Page Mes Cotisations (onglets E2D/Phoenix)
-- [ ] Hooks `useDonations`, `useMemberProfile`
-- [ ] Composant StatCard
-- [ ] Génération reçus fiscaux (PDF)
-
-### PHASE 5 : Backoffice Admin Complet (1 semaine)
-
-**Livrables** :
-- Gestion membres
-- Statistiques financières
-- Validation adhésions
-
-**Tâches** :
-- [ ] Migration tables `activites_membres`
-- [ ] Page Gestion Membres (table + modal)
-- [ ] Page Détails Membre
-- [ ] Page DonationsAdmin (stats + liste)
-- [ ] Page AdhesionsAdmin (validation)
-- [ ] Edge Function `donations-stats`
-- [ ] Graphiques Recharts (évolution dons)
-- [ ] Export CSV donations
-
-### PHASE 6 : Tests, Optimisations & Déploiement (1 semaine)
-
-**Livrables** :
-- Application production-ready
-- Documentation complète
-- Déploiement
-
-**Tâches** :
-- [ ] Tests E2E (Playwright)
-- [ ] Optimisation performances (lazy loading, code splitting)
-- [ ] SEO (meta tags, sitemap)
+- [ ] Tests intégration Site → `/portal` (bouton Navbar)
+- [ ] Tests intégration Portail → `/` (optionnel : lien sidebar)
+- [ ] Tests workflow adhésion : `/adhesion` → Email → `/portal`
+- [ ] Tests workflow don : `/don` → Confirmation → Dashboard (si auth)
+- [ ] Optimisation performances (lazy loading images)
+- [ ] SEO : meta tags, title, description, Open Graph
 - [ ] Accessibilité (a11y audit)
-- [ ] Security audit (RLS, secrets)
-- [ ] Rédaction documentation
-- [ ] Configuration domaine production
-- [ ] Déploiement Supabase + Frontend
-- [ ] Tests post-déploiement
-- [ ] Formation admin
+- [ ] Documentation README.md (setup, intégration)
+- [ ] Déploiement (merge vers `main`)
+
+---
+
+### 📊 RÉCAPITULATIF PLANNING
+
+| Phase | Durée | Livrables Principaux |
+|-------|-------|---------------------|
+| **Phase 1** | 1 semaine | 7 tables CMS, 4 buckets, RLS |
+| **Phase 2** | 1.5 semaines | 8 composants publics, Navbar, Footer |
+| **Phase 3** | 1 semaine | 6 pages admin CMS |
+| **Phase 4** | 0.5 semaine | Contact form + Edge Function |
+| **Phase 5** | 0.5 semaine | Tests + Déploiement |
+| **TOTAL** | **3.5 semaines** | Site public + CMS intégré |
 
 ---
 
 ## 12. CONTRAINTES ET PRÉREQUIS
 
 ### 12.1 Budget
+
+**Coût mensuel estimé** : 25-50 € (inchangé)
+
+- **Supabase** : Plan gratuit (500 Mo DB, 1 Go Storage, 2M Edge Functions req/mois)
+  - Upgrade Pro (~25€/mois) si trafic élevé
+- **Resend** : Plan gratuit (100 emails/jour) ou ~10€/mois (illimité)
+- **Lovable Cloud / Vercel** : Plan gratuit (hobby) ou ~20€/mois (pro)
+- **Domaine** : ~15€/an
+
+> ⚠️ **Économie** : Le portail existant partage déjà l'infrastructure Supabase, réduisant les coûts additionnels.
+
+### 12.2 Compétences Requises
+
+**Frontend** :
+- ✅ React 18 + TypeScript (déjà présent dans e2d-connect)
+- ✅ Tailwind CSS + shadcn/ui (déjà configuré)
+- ✅ React Query (déjà utilisé)
+- ✅ React Hook Form + Zod (déjà utilisé)
+
+**Backend** :
+- ✅ Supabase (PostgreSQL, Storage, Auth, Edge Functions) - déjà configuré
+- ⏳ SQL (migrations, RLS policies) - nouvelles tables CMS
+- ⏳ Deno (Edge Functions) - 1 nouvelle fonction (`send-email`)
+
+**Intégrations** :
+- ✅ Stripe, PayPal, HelloAsso (déjà intégrés dans portail)
+- ⏳ Resend (nouvelle intégration email)
+
+**DevOps** :
+- ✅ Git / GitHub (repository existant)
+- ✅ CI/CD (déjà configuré pour portail)
+
+### 12.3 Prérequis Techniques
+
+**Avant démarrage** :
+- ✅ Compte GitHub avec accès à https://github.com/Kankan912/e2d-connect.git
+- ✅ Projet Supabase existant (même instance que portail)
+- ✅ Comptes providers paiement (Stripe, PayPal, HelloAsso) - déjà configurés
+- ⏳ Compte Resend (gratuit ou payant)
+- ✅ Node.js 18+ + npm/pnpm
+
+**Accès requis** :
+- Accès **admin** au repository e2d-connect (pour créer branches/PR)
+- Accès **propriétaire** au projet Supabase (pour migrations)
+- Clés API providers (déjà disponibles dans `payment_configs`)
+
+### 12.4 Contraintes & Points d'Attention Critiques
+
+#### ⚠️ NE PAS MODIFIER (Portail Existant)
+
+**Tables à NE PAS toucher** :
+- ❌ `profiles`, `user_roles`, `membres`
+- ❌ `donations`, `recurring_donations`, `adhesions`
+- ❌ `cotisations`, `cotisations_types`, `epargnes`
+- ❌ `payment_configs`, `exercices`, `activites_membres`
+
+**Composants/Hooks à NE PAS modifier** :
+- ❌ `src/contexts/AuthContext.tsx`
+- ❌ `src/components/layout/DashboardLayout.tsx`
+- ❌ `src/components/layout/DashboardHeader.tsx`
+- ❌ `src/components/auth/AdminRoute.tsx`
+- ❌ `src/hooks/useDonations.ts`
+- ⚠️ `src/components/layout/DashboardSidebar.tsx` (modifier uniquement pour ajouter lien "Site Web")
+
+**Routes à NE PAS toucher** :
+- ❌ `/portal`, `/dashboard`, `/dashboard/admin/*` (sauf `/dashboard/admin/site/*`)
+
+#### ✅ À CRÉER / MODIFIER
+
+**Nouvelles tables** :
+- ✅ 7 tables CMS (`site_*`)
+
+**Nouveaux composants** :
+- ✅ 8 composants publics (`Navbar`, `Hero`, `About`, etc.)
+- ✅ 1 page admin supplémentaire (`AboutAdmin`)
+
+**Modifications autorisées** :
+- ✅ `DashboardSidebar.tsx` : Ajouter section "Site Web" avec items CMS
+- ✅ `App.tsx` / `Router` : Ajouter routes publiques (`/`, `/don`, `/adhesion`)
+
+#### 🔐 Sécurité
+
+**RLS Policies** :
+- ✅ Toutes nouvelles tables doivent avoir RLS activé
+- ✅ Réutiliser fonction `has_role(user_id, role)` existante
+- ✅ Lecture publique (`anon`) pour tables `site_*`
+- ✅ Écriture admin uniquement (`has_role(auth.uid(), 'admin')`)
+
+**Secrets** :
+- ✅ Ne jamais commiter clés API
+- ✅ Utiliser Supabase Secrets pour Edge Functions
+- ✅ Variables `.env.local` pour développement
+
+#### 🎨 UX / Design
+
+**Cohérence visuelle** :
+- ✅ Réutiliser design system existant (Tailwind config)
+- ✅ Palette couleurs identique portail
+- ✅ Composants shadcn/ui déjà installés
+
+**Navigation Site → Portail** :
+- ✅ Bouton "Portail Membre" bien visible (top right Navbar)
+- ✅ Si user authentifié : bouton devient "Mon Tableau de Bord"
+- ✅ Transition seamless (pas de rechargement page)
+
+**Workflow Adhésion** :
+- ✅ `/adhesion` → Paiement → Email confirmation → "Connectez-vous sur `/portal`"
+- ✅ Edge Function `process-adhesion` déjà existante (ne pas recréer)
+
+### 12.5 Conformité RGPD
+
+**Données personnelles** :
+- ✅ Consentement explicite (checkbox CGU)
+- ✅ Droit d'accès, rectification, suppression (via profil membre)
+- ✅ Données chiffrées en transit (HTTPS) et repos (Supabase)
+- ✅ RLS empêche accès non autorisé
+
+**Cookies** :
+- ✅ JWT tokens (httpOnly, secure)
+- ✅ Banner consentement cookies (optionnel selon trafic)
+
+### 12.6 Performance & SEO
+
+**Objectifs Lighthouse** :
+- Performance : > 90
+- Accessibility : > 90
+- Best Practices : > 95
+- SEO : > 95
+
+**Optimisations** :
+- ✅ Lazy loading images (`loading="lazy"`)
+- ✅ Code splitting (React.lazy)
+- ✅ CDN Supabase Storage (images)
+- ✅ Meta tags dynamiques (title, description, Open Graph)
+- ✅ Sitemap.xml
+- ✅ Robots.txt
 
 **Hébergement** :
 - Supabase : Plan Free (0€) ou Pro (25$/mois) selon volume
