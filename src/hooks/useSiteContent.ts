@@ -433,3 +433,231 @@ export const useUpdateConfig = () => {
     },
   });
 };
+
+// =================== HERO IMAGES ===================
+export const useSiteHeroImages = (heroId?: string) => {
+  return useQuery({
+    queryKey: ["site-hero-images", heroId],
+    queryFn: async () => {
+      if (!heroId) return [];
+      const { data, error } = await supabase
+        .from("site_hero_images")
+        .select("*")
+        .eq("hero_id", heroId)
+        .eq("actif", true)
+        .order("ordre", { ascending: true });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!heroId,
+  });
+};
+
+export const useCreateHeroImage = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase
+        .from("site_hero_images")
+        .insert(data);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["site-hero-images"] });
+      toast.success("Image ajoutée");
+    },
+    onError: () => {
+      toast.error("Erreur lors de l'ajout");
+    },
+  });
+};
+
+export const useUpdateHeroImage = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase
+        .from("site_hero_images")
+        .update(data)
+        .eq("id", data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["site-hero-images"] });
+      toast.success("Image mise à jour");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la mise à jour");
+    },
+  });
+};
+
+export const useDeleteHeroImage = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("site_hero_images")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["site-hero-images"] });
+      toast.success("Image supprimée");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la suppression");
+    },
+  });
+};
+
+// =================== GALLERY ALBUMS ===================
+export const useSiteGalleryAlbums = () => {
+  return useQuery({
+    queryKey: ["site-gallery-albums"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_gallery_albums")
+        .select("*")
+        .eq("actif", true)
+        .order("ordre", { ascending: true });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useCreateGalleryAlbum = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase
+        .from("site_gallery_albums")
+        .insert(data);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["site-gallery-albums"] });
+      toast.success("Album créé");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la création");
+    },
+  });
+};
+
+export const useUpdateGalleryAlbum = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase
+        .from("site_gallery_albums")
+        .update(data)
+        .eq("id", data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["site-gallery-albums"] });
+      queryClient.invalidateQueries({ queryKey: ["site-gallery"] });
+      toast.success("Album mis à jour");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la mise à jour");
+    },
+  });
+};
+
+export const useDeleteGalleryAlbum = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("site_gallery_albums")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["site-gallery-albums"] });
+      queryClient.invalidateQueries({ queryKey: ["site-gallery"] });
+      toast.success("Album supprimé");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la suppression");
+    },
+  });
+};
+
+// Hook to get gallery items by album
+export const useSiteGalleryByAlbum = (albumId?: string) => {
+  return useQuery({
+    queryKey: ["site-gallery", "album", albumId],
+    queryFn: async () => {
+      if (!albumId) return [];
+      const { data, error } = await supabase
+        .from("site_gallery")
+        .select("*")
+        .eq("album_id", albumId)
+        .eq("actif", true)
+        .order("ordre", { ascending: true });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!albumId,
+  });
+};
+
+// =================== EVENTS CAROUSEL CONFIG ===================
+export const useSiteEventsCarouselConfig = () => {
+  return useQuery({
+    queryKey: ["site-events-carousel-config"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_events_carousel_config")
+        .select("*")
+        .eq("actif", true)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
+};
+
+export const useUpdateEventsCarouselConfig = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase
+        .from("site_events_carousel_config")
+        .update(data)
+        .eq("id", data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["site-events-carousel-config"] });
+      toast.success("Configuration carousel mise à jour");
+    },
+    onError: () => {
+      toast.error("Erreur lors de la mise à jour");
+    },
+  });
+};

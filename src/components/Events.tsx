@@ -1,12 +1,24 @@
-import { Calendar, MapPin, Clock } from "lucide-react";
+import { Calendar, Clock, MapPin, ChevronRight } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSiteEvents } from "@/hooks/useSiteContent";
+import { useSiteEvents, useSiteEventsCarouselConfig } from "@/hooks/useSiteContent";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useRef } from "react";
 import teamImage from "@/assets/team-celebration.jpg";
 
 const Events = () => {
   const { data: events, isLoading } = useSiteEvents();
+  const { data: carouselConfig } = useSiteEventsCarouselConfig();
+  
+  const plugin = useRef(
+    Autoplay({ 
+      delay: carouselConfig?.interval || 5000, 
+      stopOnInteraction: true 
+    })
+  );
 
   if (isLoading) {
     return (
@@ -17,11 +29,7 @@ const Events = () => {
             <Skeleton className="h-12 w-96 mx-auto" />
           </div>
           <div className="grid lg:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-32" />
-              ))}
-            </div>
+            <Skeleton className="h-96" />
             <Skeleton className="h-96" />
           </div>
         </div>
@@ -34,88 +42,150 @@ const Events = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-secondary/10 text-secondary text-sm font-semibold mb-4">
-            Événements
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-4">
+            <Calendar className="w-4 h-4 mr-2" />
+            Événements à Venir
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-6">
-            Ne Manquez Aucun Moment Fort
+            Ne Manquez Aucun Événement
           </h2>
           <p className="text-lg text-muted-foreground">
-            Calendrier complet de nos matchs, entraînements et événements communautaires à venir.
+            Participez à nos prochaines rencontres sportives et moments de convivialité.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+        {/* Events Grid */}
+        <div className="grid lg:grid-cols-2 gap-8 items-stretch">
           {/* Events List */}
           <div className="space-y-4">
-            {events?.map((event: any) => (
-              <div 
-                key={event.id}
-                className="bg-card rounded-xl p-6 border border-border shadow-soft hover:shadow-medium transition-all duration-300 hover:scale-[1.02]"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-primary" />
+            {events && events.length > 0 ? (
+              events.slice(0, 4).map((event: any) => (
+                <Card key={event.id} className="group hover:shadow-strong transition-all duration-300 border-border">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-shrink-0 w-16 h-16 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
+                        <div className="text-2xl font-bold text-primary">
+                          {format(new Date(event.date), "dd")}
+                        </div>
+                        <div className="text-xs text-primary uppercase">
+                          {format(new Date(event.date), "MMM", { locale: fr })}
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-secondary/20 text-secondary mb-2">
+                          {event.type}
+                        </span>
+                        <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                          {event.titre}
+                        </h3>
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          {event.heure && (
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4" />
+                              <span>{event.heure}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4" />
+                            <span>{event.lieu}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
                     </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-foreground">{event.titre}</h3>
-                      <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-secondary/10 text-secondary mt-1">
-                        {event.type}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2 ml-15">
-                  <div className="flex items-center text-muted-foreground">
-                    <Calendar className="w-4 h-4 mr-2 text-primary" />
-                    <span className="text-sm">
-                      {format(new Date(event.date), "dd MMM yyyy", { locale: fr })}
-                    </span>
-                    {event.heure && (
-                      <>
-                        <Clock className="w-4 h-4 ml-4 mr-2 text-primary" />
-                        <span className="text-sm">{event.heure.slice(0, 5)}</span>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center text-muted-foreground">
-                    <MapPin className="w-4 h-4 mr-2 text-primary" />
-                    <span className="text-sm">{event.lieu}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground py-12">
+                Aucun événement prévu pour le moment.
+              </p>
+            )}
           </div>
 
-          {/* Image Side */}
-          <div className="relative">
-            <div className="relative rounded-2xl overflow-hidden shadow-strong">
-              <img 
-                src={teamImage}
-                alt="Équipe E2D célébrant"
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/60 to-transparent" />
-            </div>
-            
-            {/* Stats Overlay */}
-            <div className="absolute -bottom-6 left-6 right-6 bg-card rounded-xl p-6 shadow-strong border border-border">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-2xl font-bold text-foreground">25+</div>
-                  <div className="text-xs text-muted-foreground">Matchs/An</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-foreground">48</div>
-                  <div className="text-xs text-muted-foreground">Entraînements</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold text-foreground">12</div>
-                  <div className="text-xs text-muted-foreground">Événements</div>
+          {/* Events Carousel with Images */}
+          <div className="relative rounded-2xl overflow-hidden shadow-strong h-full min-h-[500px]">
+            {events && events.length > 0 && events.some((e: any) => e.image_url) ? (
+              <Carousel
+                plugins={carouselConfig?.auto_play ? [plugin.current] : []}
+                className="w-full h-full"
+                opts={{
+                  loop: true,
+                }}
+              >
+                <CarouselContent className="ml-0 h-full">
+                  {events
+                    .filter((event: any) => event.image_url)
+                    .map((event: any) => (
+                      <CarouselItem key={event.id} className="pl-0 h-full min-h-[500px]">
+                        <div className="relative w-full h-full">
+                          <img
+                            src={event.image_url}
+                            alt={event.titre}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent" />
+                          
+                          {/* Event Info Overlay */}
+                          <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+                            <div className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-secondary mb-3">
+                              {event.type}
+                            </div>
+                            <h3 className="text-2xl font-bold mb-2">{event.titre}</h3>
+                            <div className="flex items-center gap-4 text-sm">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>{format(new Date(event.date), "dd MMMM yyyy", { locale: fr })}</span>
+                              </div>
+                              {event.heure && (
+                                <div className="flex items-center gap-2">
+                                  <Clock className="w-4 h-4" />
+                                  <span>{event.heure}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </CarouselItem>
+                    ))}
+                </CarouselContent>
+                {carouselConfig?.show_arrows !== false && (
+                  <>
+                    <CarouselPrevious className="left-4 bg-white/10 text-white hover:bg-white/20 border-none" />
+                    <CarouselNext className="right-4 bg-white/10 text-white hover:bg-white/20 border-none" />
+                  </>
+                )}
+              </Carousel>
+            ) : (
+              <div className="w-full h-full">
+                <img
+                  src={teamImage}
+                  alt="Team Celebration"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent" />
+                
+                {/* Stats Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-8">
+                  <div className="grid grid-cols-3 gap-6 text-white text-center">
+                    <div>
+                      <div className="text-3xl font-bold">25+</div>
+                      <div className="text-sm text-white/80">Matchs</div>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-bold">12+</div>
+                      <div className="text-sm text-white/80">Entraînements</div>
+                    </div>
+                    <div>
+                      <div className="text-3xl font-bold">8+</div>
+                      <div className="text-sm text-white/80">Événements</div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,11 +1,22 @@
 import { ArrowRight, Heart, Users, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSiteHero } from "@/hooks/useSiteContent";
+import { useSiteHero, useSiteHeroImages } from "@/hooks/useSiteContent";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
+import { useRef } from "react";
 import heroImage from "@/assets/hero-sports.jpg";
 
 const Hero = () => {
   const { data: hero, isLoading } = useSiteHero();
+  const { data: heroImages = [] } = useSiteHeroImages(hero?.id);
+  
+  const plugin = useRef(
+    Autoplay({ 
+      delay: hero?.carousel_interval || 5000, 
+      stopOnInteraction: true 
+    })
+  );
 
   if (isLoading) {
     return (
@@ -22,20 +33,53 @@ const Hero = () => {
     );
   }
 
+  // Use carousel images if available, otherwise fallback to single hero image
+  const hasMultipleImages = heroImages.length > 0;
   const backgroundImage = hero?.image_url || heroImage;
 
   return (
     <section id="accueil" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16 lg:pt-20">
-      {/* Background Image with Overlay */}
-      <div 
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: `url(${backgroundImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/85 to-primary/75" />
+      {/* Background Images Carousel or Single Image */}
+      <div className="absolute inset-0 z-0">
+        {hasMultipleImages ? (
+          <Carousel
+            plugins={hero?.carousel_auto_play ? [plugin.current] : []}
+            className="w-full h-full"
+            opts={{
+              loop: true,
+            }}
+          >
+            <CarouselContent className="ml-0 h-full">
+              {heroImages.map((image: any) => (
+                <CarouselItem key={image.id} className="pl-0 h-screen">
+                  <div
+                    className="w-full h-full"
+                    style={{
+                      backgroundImage: `url(${image.image_url})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/85 to-primary/75" />
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="left-4 bg-white/10 text-white hover:bg-white/20 border-none" />
+            <CarouselNext className="right-4 bg-white/10 text-white hover:bg-white/20 border-none" />
+          </Carousel>
+        ) : (
+          <div
+            className="w-full h-full"
+            style={{
+              backgroundImage: `url(${backgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/85 to-primary/75" />
+          </div>
+        )}
       </div>
 
       {/* Content */}

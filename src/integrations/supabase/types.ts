@@ -204,6 +204,51 @@ export type Database = {
         }
         Relationships: []
       }
+      alertes_budgetaires: {
+        Row: {
+          categorie: string
+          created_at: string | null
+          description: string | null
+          id: string
+          niveau: string
+          recommandation: string | null
+          resolu: boolean | null
+          resolu_le: string | null
+          seuil: number | null
+          titre: string
+          updated_at: string | null
+          valeur_actuelle: number | null
+        }
+        Insert: {
+          categorie: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          niveau: string
+          recommandation?: string | null
+          resolu?: boolean | null
+          resolu_le?: string | null
+          seuil?: number | null
+          titre: string
+          updated_at?: string | null
+          valeur_actuelle?: number | null
+        }
+        Update: {
+          categorie?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          niveau?: string
+          recommandation?: string | null
+          resolu?: boolean | null
+          resolu_le?: string | null
+          seuil?: number | null
+          titre?: string
+          updated_at?: string | null
+          valeur_actuelle?: number | null
+        }
+        Relationships: []
+      }
       beneficiaires_config: {
         Row: {
           actif: boolean
@@ -240,6 +285,252 @@ export type Database = {
         }
         Relationships: []
       }
+      cms_events: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          event_date: string
+          event_time: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          is_featured: boolean | null
+          location: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          event_date: string
+          event_time?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          location?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          event_date?: string
+          event_time?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          location?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      cms_gallery: {
+        Row: {
+          album_name: string
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string
+          is_active: boolean | null
+          order_index: number | null
+          thumbnail_url: string | null
+          title: string | null
+        }
+        Insert: {
+          album_name: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url: string
+          is_active?: boolean | null
+          order_index?: number | null
+          thumbnail_url?: string | null
+          title?: string | null
+        }
+        Update: {
+          album_name?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string
+          is_active?: boolean | null
+          order_index?: number | null
+          thumbnail_url?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
+      cms_hero_slides: {
+        Row: {
+          background_image: string
+          created_at: string | null
+          cta_link: string | null
+          cta_text: string | null
+          id: string
+          is_active: boolean | null
+          order_index: number | null
+          subtitle: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          background_image: string
+          created_at?: string | null
+          cta_link?: string | null
+          cta_text?: string | null
+          id?: string
+          is_active?: boolean | null
+          order_index?: number | null
+          subtitle?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          background_image?: string
+          created_at?: string | null
+          cta_link?: string | null
+          cta_text?: string | null
+          id?: string
+          is_active?: boolean | null
+          order_index?: number | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      cms_pages: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          meta_description: string | null
+          meta_keywords: string | null
+          page_key: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          meta_description?: string | null
+          meta_keywords?: string | null
+          page_key: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          meta_description?: string | null
+          meta_keywords?: string | null
+          page_key?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      cms_partners: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string
+          name: string
+          order_index: number | null
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url: string
+          name: string
+          order_index?: number | null
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string
+          name?: string
+          order_index?: number | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      cms_sections: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          order_index: number | null
+          page_key: string
+          subtitle: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          order_index?: number | null
+          page_key: string
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          order_index?: number | null
+          page_key?: string
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      cms_settings: {
+        Row: {
+          description: string | null
+          key: string
+          label: string | null
+          updated_at: string | null
+          value: string | null
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          label?: string | null
+          updated_at?: string | null
+          value?: string | null
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          label?: string | null
+          updated_at?: string | null
+          value?: string | null
+        }
+        Relationships: []
+      }
       configurations: {
         Row: {
           cle: string
@@ -271,6 +562,7 @@ export type Database = {
         Row: {
           created_at: string | null
           date_paiement: string | null
+          exercice_id: string | null
           id: string
           justificatif_url: string | null
           membre_id: string | null
@@ -283,6 +575,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           date_paiement?: string | null
+          exercice_id?: string | null
           id?: string
           justificatif_url?: string | null
           membre_id?: string | null
@@ -295,6 +588,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           date_paiement?: string | null
+          exercice_id?: string | null
           id?: string
           justificatif_url?: string | null
           membre_id?: string | null
@@ -305,6 +599,13 @@ export type Database = {
           type_cotisation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "cotisations_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cotisations_membre_id_fkey"
             columns: ["membre_id"]
@@ -321,6 +622,61 @@ export type Database = {
           },
           {
             foreignKeyName: "cotisations_type_cotisation_id_fkey"
+            columns: ["type_cotisation_id"]
+            isOneToOne: false
+            referencedRelation: "cotisations_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cotisations_membres: {
+        Row: {
+          actif: boolean
+          created_at: string
+          exercice_id: string
+          id: string
+          membre_id: string
+          montant_personnalise: number
+          type_cotisation_id: string
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          created_at?: string
+          exercice_id: string
+          id?: string
+          membre_id: string
+          montant_personnalise?: number
+          type_cotisation_id: string
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          created_at?: string
+          exercice_id?: string
+          id?: string
+          membre_id?: string
+          montant_personnalise?: number
+          type_cotisation_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotisations_membres_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotisations_membres_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotisations_membres_type_cotisation_id_fkey"
             columns: ["type_cotisation_id"]
             isOneToOne: false
             referencedRelation: "cotisations_types"
@@ -379,6 +735,42 @@ export type Database = {
           montant_defaut?: number | null
           nom?: string
           obligatoire?: boolean | null
+        }
+        Relationships: []
+      }
+      demandes_adhesion: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          motivation: string | null
+          nom: string
+          prenom: string
+          statut: string | null
+          telephone: string | null
+          type_adhesion: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          motivation?: string | null
+          nom: string
+          prenom: string
+          statut?: string | null
+          telephone?: string | null
+          type_adhesion: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          motivation?: string | null
+          nom?: string
+          prenom?: string
+          statut?: string | null
+          telephone?: string | null
+          type_adhesion?: string
         }
         Relationships: []
       }
@@ -538,6 +930,51 @@ export type Database = {
           nom?: string
           plafond_fond_caisse?: number | null
           statut?: string
+        }
+        Relationships: []
+      }
+      exports_programmes: {
+        Row: {
+          actif: boolean | null
+          configuration: Json | null
+          created_at: string | null
+          dernier_export: string | null
+          format: string
+          frequence: string
+          id: string
+          jour_execution: number | null
+          nom: string
+          prochain_export: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          configuration?: Json | null
+          created_at?: string | null
+          dernier_export?: string | null
+          format: string
+          frequence: string
+          id?: string
+          jour_execution?: number | null
+          nom: string
+          prochain_export?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          configuration?: Json | null
+          created_at?: string | null
+          dernier_export?: string | null
+          format?: string
+          frequence?: string
+          id?: string
+          jour_execution?: number | null
+          nom?: string
+          prochain_export?: string | null
+          type?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -972,6 +1409,39 @@ export type Database = {
           },
         ]
       }
+      messages_contact: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          message: string
+          nom: string
+          objet: string
+          statut: string | null
+          telephone: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          message: string
+          nom: string
+          objet: string
+          statut?: string | null
+          telephone?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          message?: string
+          nom?: string
+          objet?: string
+          statut?: string | null
+          telephone?: string | null
+        }
+        Relationships: []
+      }
       notifications_campagnes: {
         Row: {
           created_at: string
@@ -1248,6 +1718,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      permissions_audit: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: unknown
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       phoenix_adherents: {
         Row: {
@@ -1775,6 +2284,7 @@ export type Database = {
           created_at: string
           date_pret: string
           echeance: string
+          exercice_id: string | null
           id: string
           justificatif_url: string | null
           membre_id: string
@@ -1783,6 +2293,7 @@ export type Database = {
           montant_total_du: number | null
           notes: string | null
           reconductions: number | null
+          reunion_id: string | null
           statut: string
           taux_interet: number | null
           updated_at: string
@@ -1792,6 +2303,7 @@ export type Database = {
           created_at?: string
           date_pret?: string
           echeance: string
+          exercice_id?: string | null
           id?: string
           justificatif_url?: string | null
           membre_id: string
@@ -1800,6 +2312,7 @@ export type Database = {
           montant_total_du?: number | null
           notes?: string | null
           reconductions?: number | null
+          reunion_id?: string | null
           statut?: string
           taux_interet?: number | null
           updated_at?: string
@@ -1809,6 +2322,7 @@ export type Database = {
           created_at?: string
           date_pret?: string
           echeance?: string
+          exercice_id?: string | null
           id?: string
           justificatif_url?: string | null
           membre_id?: string
@@ -1817,6 +2331,7 @@ export type Database = {
           montant_total_du?: number | null
           notes?: string | null
           reconductions?: number | null
+          reunion_id?: string | null
           statut?: string
           taux_interet?: number | null
           updated_at?: string
@@ -1834,6 +2349,20 @@ export type Database = {
             columns: ["avaliste_id"]
             isOneToOne: false
             referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prets_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prets_reunion_id_fkey"
+            columns: ["reunion_id"]
+            isOneToOne: false
+            referencedRelation: "reunions"
             referencedColumns: ["id"]
           },
         ]
@@ -2487,9 +3016,43 @@ export type Database = {
         }
         Relationships: []
       }
+      site_events_carousel_config: {
+        Row: {
+          actif: boolean | null
+          auto_play: boolean | null
+          created_at: string | null
+          id: string
+          interval: number | null
+          show_arrows: boolean | null
+          show_indicators: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          auto_play?: boolean | null
+          created_at?: string | null
+          id?: string
+          interval?: number | null
+          show_arrows?: boolean | null
+          show_indicators?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          auto_play?: boolean | null
+          created_at?: string | null
+          id?: string
+          interval?: number | null
+          show_arrows?: boolean | null
+          show_indicators?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       site_gallery: {
         Row: {
           actif: boolean
+          album_id: string | null
           categorie: string
           created_at: string
           id: string
@@ -2502,6 +3065,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          album_id?: string | null
           categorie: string
           created_at?: string
           id?: string
@@ -2514,6 +3078,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          album_id?: string | null
           categorie?: string
           created_at?: string
           id?: string
@@ -2523,6 +3088,47 @@ export type Database = {
           titre?: string
           updated_at?: string
           video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_gallery_album_id_fkey"
+            columns: ["album_id"]
+            isOneToOne: false
+            referencedRelation: "site_gallery_albums"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_gallery_albums: {
+        Row: {
+          actif: boolean | null
+          cover_image_url: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          ordre: number
+          titre: string
+          updated_at: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          ordre?: number
+          titre: string
+          updated_at?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          ordre?: number
+          titre?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -2534,6 +3140,8 @@ export type Database = {
           bouton_1_texte: string
           bouton_2_lien: string
           bouton_2_texte: string
+          carousel_auto_play: boolean | null
+          carousel_interval: number | null
           created_at: string
           id: string
           image_url: string
@@ -2555,6 +3163,8 @@ export type Database = {
           bouton_1_texte?: string
           bouton_2_lien?: string
           bouton_2_texte?: string
+          carousel_auto_play?: boolean | null
+          carousel_interval?: number | null
           created_at?: string
           id?: string
           image_url: string
@@ -2576,6 +3186,8 @@ export type Database = {
           bouton_1_texte?: string
           bouton_2_lien?: string
           bouton_2_texte?: string
+          carousel_auto_play?: boolean | null
+          carousel_interval?: number | null
           created_at?: string
           id?: string
           image_url?: string
@@ -2591,6 +3203,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      site_hero_images: {
+        Row: {
+          actif: boolean | null
+          created_at: string | null
+          hero_id: string
+          id: string
+          image_url: string
+          ordre: number
+          updated_at: string | null
+        }
+        Insert: {
+          actif?: boolean | null
+          created_at?: string | null
+          hero_id: string
+          id?: string
+          image_url: string
+          ordre?: number
+          updated_at?: string | null
+        }
+        Update: {
+          actif?: boolean | null
+          created_at?: string | null
+          hero_id?: string
+          id?: string
+          image_url?: string
+          ordre?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_hero_images_hero_id_fkey"
+            columns: ["hero_id"]
+            isOneToOne: false
+            referencedRelation: "site_hero"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_partners: {
         Row: {
@@ -3119,6 +3769,14 @@ export type Database = {
         Returns: number
       }
       get_current_user_role: { Args: never; Returns: string }
+      get_montant_cotisation_membre: {
+        Args: {
+          _exercice_id: string
+          _membre_id: string
+          _type_cotisation_id: string
+        }
+        Returns: number
+      }
       get_pret_status: {
         Args: { echeance: string; montant_paye: number; montant_total: number }
         Returns: string
