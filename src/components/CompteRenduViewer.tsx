@@ -21,7 +21,7 @@ interface Reunion {
 interface CompteRenduViewerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  reunion: Reunion;
+  reunion: Reunion | null;
   onEdit?: () => void;
 }
 
@@ -30,8 +30,9 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
   // Récupérer les points du compte-rendu
   const { data: comptesRendus, isLoading } = useQuery({
-    queryKey: ['comptes-rendus', reunion.id],
+    queryKey: ['comptes-rendus', reunion?.id],
     queryFn: async () => {
+      if (!reunion?.id) return [];
       const { data, error } = await supabase
         .from('rapports_seances')
         .select('*')
@@ -41,13 +42,14 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       if (error) throw error;
       return data;
     },
-    enabled: open
+    enabled: open && !!reunion?.id
   });
 
   // Récupérer les présences
   const { data: presences } = useQuery({
-    queryKey: ['reunion-presences', reunion.id],
+    queryKey: ['reunion-presences', reunion?.id],
     queryFn: async () => {
+      if (!reunion?.id) return [];
       const { data, error } = await supabase
         .from('reunion_presences')
         .select(`
@@ -63,10 +65,11 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       if (error) throw error;
       return data;
     },
-    enabled: open
+    enabled: open && !!reunion?.id
   });
 
   const handleDownloadPDF = async () => {
+    if (!reunion?.id) return;
     setDownloading(true);
     try {
       // Logique d'export PDF à implémenter
@@ -80,6 +83,10 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
   const pointsCRCount = comptesRendus?.length || 0;
   const presentsCount = presences?.length || 0;
+
+  if (!reunion) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
