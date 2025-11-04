@@ -20,6 +20,19 @@ import GalleryAdmin from "./admin/site/GalleryAdmin";
 import PartnersAdmin from "./admin/site/PartnersAdmin";
 import ConfigAdmin from "./admin/site/ConfigAdmin";
 
+// Tontine Pages
+import EpargnesAdmin from "./admin/tontine/EpargnesAdmin";
+import TontineConfigAdmin from "./admin/tontine/TontineConfigAdmin";
+
+// Reunions Pages
+import ReunionsAdmin from "./admin/reunions/ReunionsAdmin";
+import PresencesAdmin from "./admin/reunions/PresencesAdmin";
+
+// Sport Pages
+import E2DMatchsAdmin from "./admin/sport/E2DMatchsAdmin";
+import PhoenixConfigAdmin from "./admin/sport/PhoenixConfigAdmin";
+import EntrainementsAdmin from "./admin/sport/EntrainementsAdmin";
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -101,6 +114,68 @@ const Dashboard = () => {
                 <h1 className="text-2xl font-bold">Statistiques</h1>
                 <p className="text-muted-foreground mt-2">À venir...</p>
               </div>
+            </AdminRoute>
+          }
+        />
+        
+        {/* Routes Tontine */}
+        <Route
+          path="/admin/tontine/epargnes"
+          element={
+            <AdminRoute allowedRoles={["admin", "tresorier"]}>
+              <EpargnesAdmin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/tontine/config"
+          element={
+            <AdminRoute allowedRoles={["admin", "tresorier"]}>
+              <TontineConfigAdmin />
+            </AdminRoute>
+          }
+        />
+        
+        {/* Routes Réunions */}
+        <Route
+          path="/admin/reunions"
+          element={
+            <AdminRoute allowedRoles={["admin", "secretaire_general"]}>
+              <ReunionsAdmin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/presences"
+          element={
+            <AdminRoute allowedRoles={["admin", "secretaire_general"]}>
+              <PresencesAdmin />
+            </AdminRoute>
+          }
+        />
+        
+        {/* Routes Sport */}
+        <Route
+          path="/admin/sport/e2d"
+          element={
+            <AdminRoute allowedRoles={["admin", "responsable_sportif"]}>
+              <E2DMatchsAdmin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/sport/phoenix"
+          element={
+            <AdminRoute allowedRoles={["admin", "responsable_sportif"]}>
+              <PhoenixConfigAdmin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/sport/entrainements"
+          element={
+            <AdminRoute allowedRoles={["admin", "responsable_sportif"]}>
+              <EntrainementsAdmin />
             </AdminRoute>
           }
         />
