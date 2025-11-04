@@ -51,7 +51,7 @@ const Navbar = () => {
               variant="default"
               size="lg"
               className="bg-gradient-to-r from-secondary to-secondary/90 hover:from-secondary/90 hover:to-secondary shadow-lg hover:shadow-glow transition-all duration-300"
-              onClick={() => window.location.href = "/portal"}
+              onClick={() => window.location.href = "/auth"}
             >
               <LogIn className="w-4 h-4 mr-2" />
               Portail Membre
@@ -90,7 +90,7 @@ const Navbar = () => {
               className="w-full bg-gradient-to-r from-secondary to-secondary/90 mt-4"
               onClick={() => {
                 setIsOpen(false);
-                window.location.href = "/portal";
+                window.location.href = "/auth";
               }}
             >
               <LogIn className="w-4 h-4 mr-2" />

@@ -40,6 +40,9 @@ const adminItems = [
   { title: "Gestion des Dons", url: "/dashboard/admin/donations", icon: DollarSign },
   { title: "Gestion des Adhésions", url: "/dashboard/admin/adhesions", icon: UserPlus },
   { title: "Configuration Paiements", url: "/dashboard/admin/payment-config", icon: Settings },
+];
+
+const gestionItems = [
   { title: "Gestion Membres", url: "/dashboard/admin/membres", icon: Users },
   { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3 },
 ];
@@ -84,7 +87,7 @@ export function DashboardSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>Mon Espace</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {memberItems.map((item) => (
@@ -103,7 +106,7 @@ export function DashboardSidebar() {
 
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupLabel>Finances</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {adminItems.map((item) => (
@@ -121,7 +124,27 @@ export function DashboardSidebar() {
           </SidebarGroup>
         )}
 
-        {isAdmin && (
+        {userRole === "admin" && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Gestion</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {gestionItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {userRole === "admin" && (
           <SidebarGroup>
             <SidebarGroupLabel>Site Web</SidebarGroupLabel>
             <SidebarGroupContent>

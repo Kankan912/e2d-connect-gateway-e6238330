@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
-import Portal from "./pages/Portal";
+import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Don from "./pages/Don";
 import Adhesion from "./pages/Adhesion";
@@ -22,7 +22,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/portal" element={<Portal />} />
+            <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard/*" element={<Dashboard />} />
             <Route path="/don" element={<Don />} />
             <Route path="/adhesion" element={<Adhesion />} />
