@@ -20,18 +20,13 @@ import GalleryAdmin from "./admin/site/GalleryAdmin";
 import PartnersAdmin from "./admin/site/PartnersAdmin";
 import ConfigAdmin from "./admin/site/ConfigAdmin";
 
-// Tontine Pages
-import EpargnesAdmin from "./admin/tontine/EpargnesAdmin";
-import TontineConfigAdmin from "./admin/tontine/TontineConfigAdmin";
-
-// Reunions Pages
-import ReunionsAdmin from "./admin/reunions/ReunionsAdmin";
-import PresencesAdmin from "./admin/reunions/PresencesAdmin";
-
-// Sport Pages
-import E2DMatchsAdmin from "./admin/sport/E2DMatchsAdmin";
-import PhoenixConfigAdmin from "./admin/sport/PhoenixConfigAdmin";
-import EntrainementsAdmin from "./admin/sport/EntrainementsAdmin";
+// Pages originales restaurées depuis GitHub
+import Reunions from "./Reunions";
+import Epargnes from "./Epargnes";
+import GestionPresences from "./GestionPresences";
+import Sport from "./Sport";
+import SportE2D from "./SportE2D";
+import SportPhoenix from "./SportPhoenix";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -123,15 +118,7 @@ const Dashboard = () => {
           path="/admin/tontine/epargnes"
           element={
             <AdminRoute allowedRoles={["admin", "tresorier"]}>
-              <EpargnesAdmin />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/tontine/config"
-          element={
-            <AdminRoute allowedRoles={["admin", "tresorier"]}>
-              <TontineConfigAdmin />
+              <Epargnes />
             </AdminRoute>
           }
         />
@@ -141,7 +128,7 @@ const Dashboard = () => {
           path="/admin/reunions"
           element={
             <AdminRoute allowedRoles={["admin", "secretaire_general"]}>
-              <ReunionsAdmin />
+              <Reunions />
             </AdminRoute>
           }
         />
@@ -149,17 +136,25 @@ const Dashboard = () => {
           path="/admin/presences"
           element={
             <AdminRoute allowedRoles={["admin", "secretaire_general"]}>
-              <PresencesAdmin />
+              <GestionPresences />
             </AdminRoute>
           }
         />
         
         {/* Routes Sport */}
         <Route
+          path="/admin/sport"
+          element={
+            <AdminRoute allowedRoles={["admin", "responsable_sportif"]}>
+              <Sport />
+            </AdminRoute>
+          }
+        />
+        <Route
           path="/admin/sport/e2d"
           element={
             <AdminRoute allowedRoles={["admin", "responsable_sportif"]}>
-              <E2DMatchsAdmin />
+              <SportE2D />
             </AdminRoute>
           }
         />
@@ -167,15 +162,7 @@ const Dashboard = () => {
           path="/admin/sport/phoenix"
           element={
             <AdminRoute allowedRoles={["admin", "responsable_sportif"]}>
-              <PhoenixConfigAdmin />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/sport/entrainements"
-          element={
-            <AdminRoute allowedRoles={["admin", "responsable_sportif"]}>
-              <EntrainementsAdmin />
+              <SportPhoenix />
             </AdminRoute>
           }
         />
