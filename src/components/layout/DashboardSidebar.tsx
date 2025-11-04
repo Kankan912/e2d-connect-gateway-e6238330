@@ -14,6 +14,11 @@ import {
   Calendar,
   Camera,
   Handshake,
+  PiggyBank,
+  CheckSquare,
+  Trophy,
+  Flame,
+  Dumbbell,
 } from "lucide-react";
 import {
   Sidebar,
@@ -45,6 +50,22 @@ const adminItems = [
 const gestionItems = [
   { title: "Gestion Membres", url: "/dashboard/admin/membres", icon: Users },
   { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3 },
+];
+
+const tontineItems = [
+  { title: "Épargnes", url: "/dashboard/admin/tontine/epargnes", icon: PiggyBank },
+  { title: "Configuration", url: "/dashboard/admin/tontine/config", icon: Settings },
+];
+
+const reunionItems = [
+  { title: "Réunions", url: "/dashboard/admin/reunions", icon: Calendar },
+  { title: "Présences", url: "/dashboard/admin/presences", icon: CheckSquare },
+];
+
+const sportItems = [
+  { title: "Matchs E2D", url: "/dashboard/admin/sport/e2d", icon: Trophy },
+  { title: "Phoenix", url: "/dashboard/admin/sport/phoenix", icon: Flame },
+  { title: "Entraînements", url: "/dashboard/admin/sport/entrainements", icon: Dumbbell },
 ];
 
 const siteItems = [
@@ -110,6 +131,66 @@ export function DashboardSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Tontine</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {tontineItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {(userRole === "admin" || userRole === "secretaire") && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Réunions</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {reunionItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {(userRole === "admin" || userRole === "responsable_sportif") && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Sport</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {sportItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <NavLink to={item.url} className="flex items-center gap-3">
