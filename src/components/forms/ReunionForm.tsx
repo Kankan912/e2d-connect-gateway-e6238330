@@ -14,9 +14,11 @@ const reunionSchema = z.object({
   date_reunion: z.string().min(1, 'Date requise'),
   lieu_membre_id: z.string().optional(),
   lieu_description: z.string().optional(),
+  beneficiaire_id: z.string().optional(),
   type_reunion: z.enum(['tontine', 'bureau', 'generale', 'extraordinaire']),
   sujet: z.string().min(3, 'Sujet requis (min 3 caractères)'),
   ordre_du_jour: z.string().optional(),
+  compte_rendu_url: z.string().optional(),
 });
 
 type ReunionFormData = z.infer<typeof reunionSchema>;
@@ -29,7 +31,7 @@ interface ReunionFormProps {
 export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps) {
   const createReunion = useCreateReunion();
   const updateReunion = useUpdateReunion();
-  const { data: membres } = useMembers();
+  const { members: membres } = useMembers();
 
   const form = useForm<ReunionFormData>({
     resolver: zodResolver(reunionSchema),
@@ -58,10 +60,22 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
 
   const onSubmit = async (data: ReunionFormData) => {
     try {
+      // Cast explicite pour satisfaire TypeScript
+      const reunionData = {
+        date_reunion: data.date_reunion,
+        lieu_membre_id: data.lieu_membre_id || null,
+        lieu_description: data.lieu_description || null,
+        beneficiaire_id: data.beneficiaire_id || null,
+        type_reunion: data.type_reunion,
+        sujet: data.sujet,
+        ordre_du_jour: data.ordre_du_jour || null,
+        compte_rendu_url: data.compte_rendu_url || null,
+      };
+
       if (initialData?.id) {
-        await updateReunion.mutateAsync({ id: initialData.id, ...data });
+        await updateReunion.mutateAsync({ id: initialData.id, ...reunionData });
       } else {
-        await createReunion.mutateAsync(data);
+        await createReunion.mutateAsync(reunionData as any);
       }
       onSuccess();
     } catch (error) {

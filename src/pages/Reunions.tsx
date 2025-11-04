@@ -540,8 +540,7 @@ export default function Reunions() {
           reunionId={selectedReunion.id}
           reunionData={{
             sujet: selectedReunion.sujet || '',
-            date_reunion: selectedReunion.date_reunion,
-            beneficiaires: []
+            date_reunion: selectedReunion.date_reunion
           }}
         />
       )}
