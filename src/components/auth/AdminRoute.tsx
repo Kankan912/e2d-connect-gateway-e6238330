@@ -8,8 +8,18 @@ interface AdminRouteProps {
   allowedRoles?: string[];
 }
 
-export const AdminRoute = ({ children, allowedRoles = ["admin", "tresorier"] }: AdminRouteProps) => {
+export const AdminRoute = ({ children, allowedRoles = ["administrateur", "tresorier"] }: AdminRouteProps) => {
   const { userRole, loading } = useAuth();
+
+  // Mapper les anciens noms de rôles vers les nouveaux (pour compatibilité)
+  const roleMapping: Record<string, string> = {
+    'admin': 'administrateur',
+    'secretaire': 'secretaire_general',
+    'membre': 'membre_actif',
+  };
+
+  // Normaliser les rôles autorisés
+  const normalizedRoles = allowedRoles.map(role => roleMapping[role] || role);
 
   if (loading) {
     return (
@@ -19,7 +29,7 @@ export const AdminRoute = ({ children, allowedRoles = ["admin", "tresorier"] }: 
     );
   }
 
-  if (!userRole || !allowedRoles.includes(userRole)) {
+  if (!userRole || !normalizedRoles.includes(userRole)) {
     return <Navigate to="/dashboard" replace />;
   }
 

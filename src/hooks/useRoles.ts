@@ -45,7 +45,8 @@ export const useRoles = () => {
           .from('user_roles')
           .select(`
             *,
-            profiles:profiles(nom, prenom, id)
+            roles:role_id(id, name, description),
+            profiles:user_id(id, nom, prenom)
           `)
           .order('created_at', { ascending: false });
         
@@ -132,13 +133,13 @@ export const useRoles = () => {
 
   // Assigner un rôle à un utilisateur
   const assignRole = useMutation({
-    mutationFn: async ({ userId, role }: { 
+    mutationFn: async ({ userId, roleId }: { 
       userId: string; 
-      role: 'admin' | 'membre' | 'responsable_sportif' | 'secretaire' | 'tresorier';
+      roleId: string;
     }) => {
       const { data, error } = await supabase
         .from('user_roles')
-        .insert([{ user_id: userId, role }])
+        .insert([{ user_id: userId, role_id: roleId }])
         .select()
         .single();
       if (error) throw error;

@@ -80,17 +80,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (profileError) throw profileError;
       setProfile(profileData);
 
-      // Fetch role
+      // Fetch role (avec jointure sur la table roles)
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
-        .select('role')
+        .select('roles:role_id(name)')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (roleError) throw roleError;
-      setUserRole(roleData?.role || null);
+      setUserRole(roleData?.roles?.name || null);
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {

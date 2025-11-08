@@ -10,27 +10,19 @@ export const usePermissions = () => {
     queryFn: async () => {
       if (!user?.id) return [];
       
-      // Récupérer les rôles de l'utilisateur
+      // Récupérer les rôles de l'utilisateur via role_id
       const { data: userRoles } = await supabase
         .from('user_roles')
-        .select('role')
+        .select('role_id')
         .eq('user_id', user.id);
       
       if (!userRoles?.length) return [];
       
-      // Récupérer les permissions pour ces rôles via la table roles
-      const { data: roleIds } = await supabase
-        .from('roles')
-        .select('id')
-        .in('name', userRoles.map(r => r.role));
-      
-      if (!roleIds?.length) return [];
-      
-      // Récupérer toutes les permissions accordées
+      // Récupérer toutes les permissions accordées pour ces rôles
       const { data: rolePermissions } = await supabase
         .from('role_permissions')
         .select('*')
-        .in('role_id', roleIds.map(r => r.id))
+        .in('role_id', userRoles.map(r => r.role_id))
         .eq('granted', true);
       
       return rolePermissions || [];
