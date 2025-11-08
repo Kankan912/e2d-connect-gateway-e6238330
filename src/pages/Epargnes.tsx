@@ -10,13 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 import LogoHeader from "@/components/LogoHeader";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import BackButton from "@/components/BackButton";
 import { ExportService } from '@/lib/exportService';
+import { useAllEpargnes, useCreateEpargne, useUpdateEpargne, useDeleteEpargne } from "@/hooks/useEpargnes";
 
 interface Epargne {
   id: string;
@@ -54,11 +54,14 @@ interface Exercice {
 }
 
 export default function Epargnes() {
-  const [epargnes, setEpargnes] = useState<Epargne[]>([]);
+  const { data: epargnes = [], isLoading: loading } = useAllEpargnes();
+  const createEpargne = useCreateEpargne();
+  const updateEpargne = useUpdateEpargne();
+  const deleteEpargne = useDeleteEpargne();
+  
   const [membres, setMembres] = useState<Membre[]>([]);
   const [reunions, setReunions] = useState<Reunion[]>([]);
   const [exercices, setExercices] = useState<Exercice[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedEpargne, setSelectedEpargne] = useState<Epargne | null>(null);
   const [filtresTemporaires, setFiltresTemporaires] = useState({
@@ -109,47 +112,10 @@ export default function Epargnes() {
   }, [filtresTemporaires.exerciceId, exercices]);
 
   useEffect(() => {
-    fetchEpargnes();
     fetchMembres();
     fetchReunions();
     fetchExercices();
   }, []);
-
-  const fetchEpargnes = async () => {
-    try {
-      // Charger toutes les épargnes
-      const { data: epargnesToutes, error: epargnesToutesError } = await supabase
-        .from('epargnes')
-        .select('*')
-        .order('date_depot', { ascending: false });
-
-      if (epargnesToutesError) throw epargnesToutesError;
-
-      // Charger séparément les membres
-      const membreIds = [...new Set(epargnesToutes?.map(e => e.membre_id) || [])];
-      const { data: membresData } = await supabase
-        .from('membres')
-        .select('id, nom, prenom')
-        .in('id', membreIds);
-
-      // Joindre manuellement
-      const epargnesToutesWithMembers = (epargnesToutes || []).map(epargne => ({
-        ...epargne,
-        membres: membresData?.find(m => m.id === epargne.membre_id) || { nom: '', prenom: '' }
-      }));
-
-      setEpargnes(epargnesToutesWithMembers);
-    } catch (error) {
-      console.error("Erreur lors du chargement des épargnes:", error);
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de charger les épargnes",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchMembres = async () => {
     try {
@@ -195,13 +161,6 @@ export default function Epargnes() {
     }
   };
 
-  // Mises à jour temps réel
-  useRealtimeUpdates({
-    table: 'epargnes',
-    onUpdate: fetchEpargnes,
-    enabled: true
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -214,41 +173,32 @@ export default function Epargnes() {
       return;
     }
 
-    try {
-      const epargneData = {
-        membre_id: formData.membre_id,
-        montant: parseFloat(formData.montant),
-        reunion_id: formData.reunion_id || null,
-        exercice_id: formData.exercice_id || null,
-        notes: formData.notes || null,
-        statut: 'actif'
-      };
+    const epargneData = {
+      membre_id: formData.membre_id,
+      montant: parseFloat(formData.montant),
+      date_depot: new Date().toISOString().split('T')[0],
+      reunion_id: formData.reunion_id || null,
+      exercice_id: formData.exercice_id || null,
+      notes: formData.notes || null,
+    };
 
-      const { error } = selectedEpargne
-        ? await supabase
-            .from('epargnes')
-            .update(epargneData)
-            .eq('id', selectedEpargne.id)
-        : await supabase
-            .from('epargnes')
-            .insert([epargneData]);
-
-      if (error) throw error;
-
-      toast({
-        title: "Succès",
-        description: selectedEpargne ? "Épargne modifiée avec succès" : "Épargne ajoutée avec succès",
-      });
-
-      setShowAddDialog(false);
-      setSelectedEpargne(null);
-      setFormData({ membre_id: "", montant: "", reunion_id: "", exercice_id: "", notes: "" });
-      fetchEpargnes();
-    } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible d'enregistrer l'épargne",
-        variant: "destructive",
+    if (selectedEpargne) {
+      updateEpargne.mutate(
+        { id: selectedEpargne.id, ...epargneData },
+        {
+          onSuccess: () => {
+            setShowAddDialog(false);
+            setSelectedEpargne(null);
+            setFormData({ membre_id: "", montant: "", reunion_id: "", exercice_id: "", notes: "" });
+          }
+        }
+      );
+    } else {
+      createEpargne.mutate(epargneData, {
+        onSuccess: () => {
+          setShowAddDialog(false);
+          setFormData({ membre_id: "", montant: "", reunion_id: "", exercice_id: "", notes: "" });
+        }
       });
     }
   };
@@ -265,29 +215,9 @@ export default function Epargnes() {
     setShowAddDialog(true);
   };
 
-  const handleDelete = async (epargneId: string) => {
+  const handleDelete = (epargneId: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette épargne ?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('epargnes')
-        .delete()
-        .eq('id', epargneId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Succès",
-        description: "Épargne supprimée avec succès",
-      });
-      fetchEpargnes();
-    } catch (error: any) {
-      toast({
-        title: "Erreur",
-        description: error.message || "Impossible de supprimer l'épargne",
-        variant: "destructive",
-      });
-    }
+    deleteEpargne.mutate(epargneId);
   };
 
   const totalEpargnes = epargnes.reduce((sum, epargne) => sum + epargne.montant, 0);
@@ -378,7 +308,7 @@ export default function Epargnes() {
               format: 'pdf',
               title: 'Liste des Épargnes',
               data: epargnes.map(e => ({
-                Membre: `${e.membres?.prenom} ${e.membres?.nom}`,
+                Membre: `${e.membre?.prenom} ${e.membre?.nom}`,
                 Montant: `${e.montant} FCFA`,
                 Date: new Date(e.date_depot).toLocaleDateString(),
                 Statut: e.statut
@@ -787,7 +717,7 @@ export default function Epargnes() {
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <CardTitle className="text-lg">
-                      {epargne.membres?.prenom} {epargne.membres?.nom}
+                      {epargne.membre?.prenom} {epargne.membre?.nom}
                     </CardTitle>
                     <CardDescription>
                       Dépôt du {format(new Date(epargne.date_depot), "dd MMMM yyyy", { locale: fr })}

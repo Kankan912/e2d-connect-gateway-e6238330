@@ -222,7 +222,7 @@ export default function SportPhoenix() {
 
       {/* Interface principale avec onglets */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="overview" className="flex items-center gap-1">
             <Trophy className="w-4 h-4" />
             Aperçu

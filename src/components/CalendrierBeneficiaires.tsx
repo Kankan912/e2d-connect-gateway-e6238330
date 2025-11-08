@@ -25,7 +25,26 @@ export default function CalendrierBeneficiaires() {
   });
 
   // Table beneficiaires à créer
-  const beneficiaires: any[] = [];
+  const { data: epargneBeneficiaires = [] } = useQuery({
+    queryKey: ['epargnes-beneficiaires'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('epargnes')
+        .select(`
+          *,
+          reunion:reunions(date_reunion, sujet),
+          membre:membres(nom, prenom)
+        `)
+        .not('reunion_id', 'is', null)
+        .order('date_depot', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const beneficiaires = epargneBeneficiaires;
 
   const reunionDates = reunions?.map(r => new Date(r.date_reunion)) || [];
 
@@ -71,7 +90,7 @@ export default function CalendrierBeneficiaires() {
                             {beneficiaire.membre?.nom} {beneficiaire.membre?.prenom}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {format(new Date(beneficiaire.date_benefice), 'dd MMMM yyyy', { locale: fr })}
+                            {format(new Date(beneficiaire.date_depot), 'dd MMMM yyyy', { locale: fr })}
                           </p>
                         </div>
                         <Badge variant={beneficiaire.statut === 'recu' ? 'default' : 'secondary'}>

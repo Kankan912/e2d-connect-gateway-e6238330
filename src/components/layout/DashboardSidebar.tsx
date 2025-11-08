@@ -19,6 +19,7 @@ import {
   Trophy,
   Flame,
   Dumbbell,
+  Gauge,
 } from "lucide-react";
 import {
   Sidebar,
@@ -63,6 +64,7 @@ const reunionItems = [
 ];
 
 const sportItems = [
+  { title: "Vue d'Ensemble", url: "/dashboard/admin/sport", icon: Gauge },
   { title: "Matchs E2D", url: "/dashboard/admin/sport/e2d", icon: Trophy },
   { title: "Phoenix", url: "/dashboard/admin/sport/phoenix", icon: Flame },
   { title: "Entraînements", url: "/dashboard/admin/sport/entrainements", icon: Dumbbell },
