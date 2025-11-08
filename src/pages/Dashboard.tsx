@@ -13,6 +13,7 @@ import MyCotisations from "./dashboard/MyCotisations";
 
 // Admin Pages
 import DonationsAdmin from "./admin/DonationsAdmin";
+import RolesAdmin from "./admin/RolesAdmin";
 import HeroAdmin from "./admin/site/HeroAdmin";
 import ActivitiesAdmin from "./admin/site/ActivitiesAdmin";
 import EventsAdmin from "./admin/site/EventsAdmin";
@@ -98,6 +99,14 @@ const Dashboard = () => {
                 <h1 className="text-2xl font-bold">Gestion des Membres</h1>
                 <p className="text-muted-foreground mt-2">À venir...</p>
               </div>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/roles"
+          element={
+            <AdminRoute allowedRoles={["admin"]}>
+              <RolesAdmin />
             </AdminRoute>
           }
         />

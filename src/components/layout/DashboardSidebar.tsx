@@ -20,6 +20,7 @@ import {
   Flame,
   Dumbbell,
   Gauge,
+  Shield,
 } from "lucide-react";
 import {
   Sidebar,
@@ -50,6 +51,7 @@ const adminItems = [
 
 const gestionItems = [
   { title: "Gestion Membres", url: "/dashboard/admin/membres", icon: Users },
+  { title: "Rôles & Permissions", url: "/dashboard/admin/roles", icon: Shield },
   { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3 },
 ];
 
