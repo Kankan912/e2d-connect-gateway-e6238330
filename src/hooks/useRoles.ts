@@ -46,7 +46,7 @@ export const useRoles = () => {
           .select(`
             *,
             roles:role_id(id, name, description),
-            profiles:user_id(id, nom, prenom)
+            profiles:user_id(id, nom, prenom, telephone, avatar_url)
           `)
           .order('created_at', { ascending: false });
         
