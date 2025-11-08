@@ -22,7 +22,7 @@ export default function SportAnalyticsAvancees() {
     queryKey: ['analytics-phoenix'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('phoenix_matchs')
+        .from('sport_phoenix_matchs')
         .select('*')
         .order('date_match', { ascending: true });
       
@@ -34,19 +34,19 @@ export default function SportAnalyticsAvancees() {
   // Préparer les données pour les graphiques
   const performanceData = matchsE2D?.slice(-10).map((match, index) => ({
     match: `M${index + 1}`,
-    buts: match.buts_marques,
-    encaisses: match.buts_encaisses,
+    buts: match.score_e2d,
+    encaisses: match.score_adverse,
   })) || [];
 
   const resultsData = [
-    { name: 'Victoires', value: matchsE2D?.filter(m => m.buts_marques > m.buts_encaisses).length || 0, color: '#22c55e' },
-    { name: 'Nuls', value: matchsE2D?.filter(m => m.buts_marques === m.buts_encaisses).length || 0, color: '#f59e0b' },
-    { name: 'Défaites', value: matchsE2D?.filter(m => m.buts_marques < m.buts_encaisses).length || 0, color: '#ef4444' },
+    { name: 'Victoires', value: matchsE2D?.filter(m => m.score_e2d > m.score_adverse).length || 0, color: '#22c55e' },
+    { name: 'Nuls', value: matchsE2D?.filter(m => m.score_e2d === m.score_adverse).length || 0, color: '#f59e0b' },
+    { name: 'Défaites', value: matchsE2D?.filter(m => m.score_e2d < m.score_adverse).length || 0, color: '#ef4444' },
   ];
 
   const evolutionData = matchsE2D?.slice(-10).map((match, index) => ({
     match: `M${index + 1}`,
-    performance: match.buts_marques - match.buts_encaisses,
+    performance: match.score_e2d - match.score_adverse,
   })) || [];
 
   return (

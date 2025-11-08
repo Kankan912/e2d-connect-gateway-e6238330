@@ -61,17 +61,13 @@ export default function PhoenixEntrainementsManager() {
                     </div>
                   )}
                   
-                  {entrainement.objectif && (
-                    <p className="text-sm mt-2">{entrainement.objectif}</p>
-                  )}
-                  
                   {entrainement.notes && (
                     <p className="text-sm text-muted-foreground mt-2">{entrainement.notes}</p>
                   )}
                 </div>
                 
-                <Badge variant={entrainement.type === 'interne' ? 'default' : 'secondary'}>
-                  {entrainement.type}
+                <Badge variant={entrainement.type_entrainement === 'interne' ? 'default' : 'secondary'}>
+                  {entrainement.type_entrainement}
                 </Badge>
               </div>
             </CardContent>

@@ -29,7 +29,7 @@ export default function PhoenixCotisationsAnnuelles() {
       const { data, error } = await supabase
         .from('membres')
         .select('*')
-        .eq('equipe_phoenix', true)
+        .eq('est_adherent_phoenix', true)
         .eq('statut', 'actif');
       
       if (error) throw error;

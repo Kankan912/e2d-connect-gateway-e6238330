@@ -21,7 +21,7 @@ export default function SportStatistiquesGlobales() {
     queryKey: ['stats-phoenix-matchs'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('phoenix_matchs')
+        .from('sport_phoenix_matchs')
         .select('*');
       
       if (error) throw error;
@@ -35,7 +35,7 @@ export default function SportStatistiquesGlobales() {
       const { data, error } = await supabase
         .from('membres')
         .select('*')
-        .eq('equipe_e2d', true);
+        .eq('equipe_e2d', 'true');
       
       if (error) throw error;
       return data;
@@ -48,7 +48,7 @@ export default function SportStatistiquesGlobales() {
       const { data, error } = await supabase
         .from('membres')
         .select('*')
-        .eq('equipe_phoenix', true);
+        .eq('est_adherent_phoenix', true);
       
       if (error) throw error;
       return data;
@@ -59,11 +59,11 @@ export default function SportStatistiquesGlobales() {
   const totalParticipants = (membresE2D?.length || 0) + (adherentsPhoenix?.length || 0);
   
   const victoiresE2D = matchsE2D?.filter(m => 
-    m.buts_marques > m.buts_encaisses
+    m.score_e2d > m.score_adverse
   ).length || 0;
   
   const victoiresPhoenix = matchsPhoenix?.filter(m => 
-    m.buts_marques > m.buts_encaisses
+    m.score_phoenix > m.score_adverse
   ).length || 0;
 
   const totalVictoires = victoiresE2D + victoiresPhoenix;
@@ -121,7 +121,7 @@ export default function SportStatistiquesGlobales() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Buts marqués</span>
               <span className="font-bold">
-                {matchsE2D?.reduce((sum, m) => sum + (m.buts_marques || 0), 0) || 0}
+                {matchsE2D?.reduce((sum, m) => sum + (m.score_e2d || 0), 0) || 0}
               </span>
             </div>
           </CardContent>
@@ -147,7 +147,7 @@ export default function SportStatistiquesGlobales() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Buts marqués</span>
               <span className="font-bold">
-                {matchsPhoenix?.reduce((sum, m) => sum + (m.buts_marques || 0), 0) || 0}
+                {matchsPhoenix?.reduce((sum, m) => sum + (m.score_phoenix || 0), 0) || 0}
               </span>
             </div>
           </CardContent>

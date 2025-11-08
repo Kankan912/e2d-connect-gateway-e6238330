@@ -14,7 +14,7 @@ export default function PhoenixCompositionsManager() {
     queryKey: ['phoenix-matchs-compositions'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('phoenix_matchs')
+        .from('sport_phoenix_matchs')
         .select('*')
         .order('date_match', { ascending: false })
         .limit(10);
@@ -30,7 +30,7 @@ export default function PhoenixCompositionsManager() {
       const { data, error } = await supabase
         .from('membres')
         .select('*')
-        .eq('equipe_phoenix', true)
+        .eq('est_adherent_phoenix', true)
         .eq('statut', 'actif')
         .order('nom');
       
@@ -57,7 +57,7 @@ export default function PhoenixCompositionsManager() {
             <SelectContent>
               {matchs?.map((match) => (
                 <SelectItem key={match.id} value={match.id}>
-                  {match.adversaire} - {new Date(match.date_match).toLocaleDateString('fr-FR')}
+                  {match.equipe_adverse} - {new Date(match.date_match).toLocaleDateString('fr-FR')}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -85,7 +85,7 @@ export default function PhoenixCompositionsManager() {
                       <span className="text-sm">
                         {joueur.nom} {joueur.prenom}
                       </span>
-                      <Badge variant="outline">{joueur.poste || 'Non défini'}</Badge>
+                      <Badge variant="outline">{joueur.equipe_jaune_rouge || 'Non défini'}</Badge>
                     </div>
                   ))}
                 </div>
@@ -111,7 +111,7 @@ export default function PhoenixCompositionsManager() {
                       <span className="text-sm">
                         {joueur.nom} {joueur.prenom}
                       </span>
-                      <Badge variant="secondary">{joueur.poste || 'Non défini'}</Badge>
+                      <Badge variant="secondary">{joueur.equipe_jaune_rouge || 'Non défini'}</Badge>
                     </div>
                   ))}
                 </div>

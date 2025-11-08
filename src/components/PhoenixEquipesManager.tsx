@@ -13,7 +13,7 @@ export default function PhoenixEquipesManager() {
       const { data, error } = await supabase
         .from('membres')
         .select('*')
-        .eq('equipe_phoenix', true)
+        .eq('est_adherent_phoenix', true)
         .eq('statut', 'actif')
         .order('nom');
       
@@ -22,8 +22,8 @@ export default function PhoenixEquipesManager() {
     }
   });
 
-  const equipeJaune = adherents?.filter(a => a.equipe_couleur === 'jaune') || [];
-  const equipeRouge = adherents?.filter(a => a.equipe_couleur === 'rouge') || [];
+  const equipeJaune = adherents?.filter(a => a.equipe_jaune_rouge === 'jaune') || [];
+  const equipeRouge = adherents?.filter(a => a.equipe_jaune_rouge === 'rouge') || [];
 
   const EquipeCard = ({ equipe, couleur }: { equipe: any[], couleur: 'jaune' | 'rouge' }) => (
     <Card>

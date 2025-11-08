@@ -27,7 +27,7 @@ export default function SportDashboardTempsReel() {
     queryKey: ['dernier-match-phoenix'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('phoenix_matchs')
+        .from('sport_phoenix_matchs')
         .select('*')
         .order('date_match', { ascending: false })
         .limit(1)
@@ -59,9 +59,9 @@ export default function SportDashboardTempsReel() {
     queryFn: async () => {
       const [e2dCount, phoenixCount, membresE2D, adherentsPhoenix] = await Promise.all([
         supabase.from('sport_e2d_matchs').select('*', { count: 'exact', head: true }),
-        supabase.from('phoenix_matchs').select('*', { count: 'exact', head: true }),
-        supabase.from('membres').select('*', { count: 'exact', head: true }).eq('equipe_e2d', true),
-        supabase.from('membres').select('*', { count: 'exact', head: true }).eq('equipe_phoenix', true),
+        supabase.from('sport_phoenix_matchs').select('*', { count: 'exact', head: true }),
+        supabase.from('membres').select('*', { count: 'exact', head: true }).eq('equipe_e2d', 'true'),
+        supabase.from('membres').select('*', { count: 'exact', head: true }).eq('est_adherent_phoenix', true),
       ]);
 
       return {
@@ -114,7 +114,7 @@ export default function SportDashboardTempsReel() {
                 <div className="flex items-center justify-between">
                   <span className="font-medium">E2D</span>
                   <div className="text-2xl font-bold">
-                    {dernierMatchE2D.buts_marques} - {dernierMatchE2D.buts_encaisses}
+                    {dernierMatchE2D.score_e2d} - {dernierMatchE2D.score_adverse}
                   </div>
                   <span className="font-medium">{dernierMatchE2D.equipe_adverse}</span>
                 </div>
@@ -123,12 +123,12 @@ export default function SportDashboardTempsReel() {
                   {format(new Date(dernierMatchE2D.date_match), 'dd MMMM yyyy', { locale: fr })}
                 </div>
                 <Badge variant={
-                  dernierMatchE2D.buts_marques > dernierMatchE2D.buts_encaisses ? 'default' :
-                  dernierMatchE2D.buts_marques < dernierMatchE2D.buts_encaisses ? 'destructive' :
+                  dernierMatchE2D.score_e2d > dernierMatchE2D.score_adverse ? 'default' :
+                  dernierMatchE2D.score_e2d < dernierMatchE2D.score_adverse ? 'destructive' :
                   'secondary'
                 }>
-                  {dernierMatchE2D.buts_marques > dernierMatchE2D.buts_encaisses ? 'Victoire' :
-                   dernierMatchE2D.buts_marques < dernierMatchE2D.buts_encaisses ? 'Défaite' :
+                  {dernierMatchE2D.score_e2d > dernierMatchE2D.score_adverse ? 'Victoire' :
+                   dernierMatchE2D.score_e2d < dernierMatchE2D.score_adverse ? 'Défaite' :
                    'Match nul'}
                 </Badge>
               </div>
@@ -151,21 +151,21 @@ export default function SportDashboardTempsReel() {
                 <div className="flex items-center justify-between">
                   <span className="font-medium">Phoenix</span>
                   <div className="text-2xl font-bold">
-                    {dernierMatchPhoenix.buts_marques} - {dernierMatchPhoenix.buts_encaisses}
+                    {dernierMatchPhoenix.score_phoenix} - {dernierMatchPhoenix.score_adverse}
                   </div>
-                  <span className="font-medium">{dernierMatchPhoenix.adversaire}</span>
+                  <span className="font-medium">{dernierMatchPhoenix.equipe_adverse}</span>
                 </div>
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                   <Clock className="h-3 w-3" />
                   {format(new Date(dernierMatchPhoenix.date_match), 'dd MMMM yyyy', { locale: fr })}
                 </div>
                 <Badge variant={
-                  dernierMatchPhoenix.buts_marques > dernierMatchPhoenix.buts_encaisses ? 'default' :
-                  dernierMatchPhoenix.buts_marques < dernierMatchPhoenix.buts_encaisses ? 'destructive' :
+                  dernierMatchPhoenix.score_phoenix > dernierMatchPhoenix.score_adverse ? 'default' :
+                  dernierMatchPhoenix.score_phoenix < dernierMatchPhoenix.score_adverse ? 'destructive' :
                   'secondary'
                 }>
-                  {dernierMatchPhoenix.buts_marques > dernierMatchPhoenix.buts_encaisses ? 'Victoire' :
-                   dernierMatchPhoenix.buts_marques < dernierMatchPhoenix.buts_encaisses ? 'Défaite' :
+                  {dernierMatchPhoenix.score_phoenix > dernierMatchPhoenix.score_adverse ? 'Victoire' :
+                   dernierMatchPhoenix.score_phoenix < dernierMatchPhoenix.score_adverse ? 'Défaite' :
                    'Match nul'}
                 </Badge>
               </div>
@@ -187,7 +187,7 @@ export default function SportDashboardTempsReel() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">{prochainEntrainement.objectif || 'Entraînement'}</p>
+                <p className="font-medium">Entraînement Phoenix</p>
                 <p className="text-sm text-muted-foreground">
                   {format(new Date(prochainEntrainement.date_entrainement), 'dd MMMM yyyy', { locale: fr })}
                   {prochainEntrainement.heure_debut && ` à ${prochainEntrainement.heure_debut}`}

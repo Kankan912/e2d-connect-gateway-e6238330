@@ -15,7 +15,7 @@ export default function PhoenixClassements() {
       const { data, error } = await supabase
         .from('membres')
         .select('*')
-        .eq('equipe_phoenix', true)
+        .eq('est_adherent_phoenix', true)
         .eq('statut', 'actif')
         .order('nom');
       
@@ -55,14 +55,11 @@ export default function PhoenixClassements() {
                   <TableCell>
                     <div>
                       <p className="font-medium">{joueur.nom} {joueur.prenom}</p>
-                      {joueur.poste && (
-                        <p className="text-sm text-muted-foreground">{joueur.poste}</p>
-                      )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={joueur.equipe_couleur === 'jaune' ? 'default' : 'destructive'}>
-                      {joueur.equipe_couleur || 'Non assigné'}
+                    <Badge variant={joueur.equipe_jaune_rouge === 'jaune' ? 'default' : 'destructive'}>
+                      {joueur.equipe_jaune_rouge || 'Non assigné'}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">-</TableCell>

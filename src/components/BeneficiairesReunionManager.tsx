@@ -8,12 +8,24 @@ import { useToast } from "@/hooks/use-toast";
 import { Gift } from "lucide-react";
 
 interface BeneficiairesReunionManagerProps {
-  reunionId: string;
+  reunionId?: string;
 }
 
 export default function BeneficiairesReunionManager({ reunionId }: BeneficiairesReunionManagerProps) {
   const [selectedMembreId, setSelectedMembreId] = useState<string>("");
   const { toast } = useToast();
+
+  if (!reunionId) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-muted-foreground text-center">
+            Sélectionnez une réunion pour gérer ses bénéficiaires
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const { data: membres } = useQuery({
     queryKey: ['membres-actifs'],

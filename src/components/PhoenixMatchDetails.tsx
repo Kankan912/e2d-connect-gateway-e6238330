@@ -5,14 +5,24 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
 interface PhoenixMatchDetailsProps {
-  match: any;
+  match?: any;
 }
 
 export default function PhoenixMatchDetails({ match }: PhoenixMatchDetailsProps) {
-  if (!match) return null;
+  if (!match) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-muted-foreground text-center">
+            Sélectionnez un match pour voir ses détails
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
-  const resultat = match.buts_marques > match.buts_encaisses ? 'Victoire' 
-    : match.buts_marques < match.buts_encaisses ? 'Défaite' 
+  const resultat = match.score_phoenix > match.score_adverse ? 'Victoire' 
+    : match.score_phoenix < match.score_adverse ? 'Défaite' 
     : 'Match nul';
 
   return (
@@ -33,10 +43,10 @@ export default function PhoenixMatchDetails({ match }: PhoenixMatchDetailsProps)
         <CardContent className="space-y-4">
           <div className="flex items-center justify-center text-4xl font-bold gap-4">
             <span>Phoenix</span>
-            <span className="text-primary">{match.buts_marques}</span>
+            <span className="text-primary">{match.score_phoenix}</span>
             <span className="text-muted-foreground">-</span>
-            <span className="text-primary">{match.buts_encaisses}</span>
-            <span>{match.adversaire}</span>
+            <span className="text-primary">{match.score_adverse}</span>
+            <span>{match.equipe_adverse}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mt-6">
