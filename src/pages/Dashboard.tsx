@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { AdminRoute } from "@/components/auth/AdminRoute";
+import { PermissionRoute } from "@/components/auth/PermissionRoute";
 import { Loader2 } from "lucide-react";
 
 // Dashboard Pages
@@ -64,61 +64,61 @@ const Dashboard = () => {
         <Route
           path="/admin/donations"
           element={
-            <AdminRoute>
+            <PermissionRoute resource="donations" permission="read">
               <DonationsAdmin />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/adhesions"
           element={
-            <AdminRoute>
+            <PermissionRoute resource="adhesions" permission="read">
               <div className="p-6">
                 <h1 className="text-2xl font-bold">Gestion des Adhésions</h1>
                 <p className="text-muted-foreground mt-2">À venir...</p>
               </div>
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/payment-config"
           element={
-            <AdminRoute>
+            <PermissionRoute resource="config" permission="write">
               <div className="p-6">
                 <h1 className="text-2xl font-bold">Configuration des Paiements</h1>
                 <p className="text-muted-foreground mt-2">À venir...</p>
               </div>
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/membres"
           element={
-            <AdminRoute allowedRoles={["admin"]}>
+            <PermissionRoute resource="membres" permission="read">
               <div className="p-6">
                 <h1 className="text-2xl font-bold">Gestion des Membres</h1>
                 <p className="text-muted-foreground mt-2">À venir...</p>
               </div>
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/roles"
           element={
-            <AdminRoute allowedRoles={["admin"]}>
+            <PermissionRoute resource="roles" permission="write">
               <RolesAdmin />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/stats"
           element={
-            <AdminRoute>
+            <PermissionRoute resource="stats" permission="read">
               <div className="p-6">
                 <h1 className="text-2xl font-bold">Statistiques</h1>
                 <p className="text-muted-foreground mt-2">À venir...</p>
               </div>
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         
@@ -126,9 +126,9 @@ const Dashboard = () => {
         <Route
           path="/admin/tontine/epargnes"
           element={
-            <AdminRoute allowedRoles={["admin", "tresorier"]}>
+            <PermissionRoute resource="epargnes" permission="read">
               <Epargnes />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         
@@ -136,17 +136,17 @@ const Dashboard = () => {
         <Route
           path="/admin/reunions"
           element={
-            <AdminRoute allowedRoles={["admin", "secretaire_general"]}>
+            <PermissionRoute resource="reunions" permission="read">
               <Reunions />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/presences"
           element={
-            <AdminRoute allowedRoles={["admin", "secretaire_general"]}>
+            <PermissionRoute resource="presences" permission="read">
               <GestionPresences />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         
@@ -154,25 +154,25 @@ const Dashboard = () => {
         <Route
           path="/admin/sport"
           element={
-            <AdminRoute allowedRoles={["admin", "responsable_sportif"]}>
+            <PermissionRoute resource="sport_e2d" permission="read">
               <Sport />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/sport/e2d"
           element={
-            <AdminRoute allowedRoles={["admin", "responsable_sportif"]}>
+            <PermissionRoute resource="sport_e2d" permission="read">
               <SportE2D />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/sport/phoenix"
           element={
-            <AdminRoute allowedRoles={["admin", "responsable_sportif"]}>
+            <PermissionRoute resource="sport_phoenix" permission="read">
               <SportPhoenix />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         
@@ -180,49 +180,49 @@ const Dashboard = () => {
         <Route
           path="/admin/site/hero"
           element={
-            <AdminRoute allowedRoles={["admin"]}>
+            <PermissionRoute resource="site" permission="write">
               <HeroAdmin />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/site/activities"
           element={
-            <AdminRoute allowedRoles={["admin"]}>
+            <PermissionRoute resource="site" permission="write">
               <ActivitiesAdmin />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/site/events"
           element={
-            <AdminRoute allowedRoles={["admin"]}>
+            <PermissionRoute resource="site" permission="write">
               <EventsAdmin />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/site/gallery"
           element={
-            <AdminRoute allowedRoles={["admin"]}>
+            <PermissionRoute resource="site" permission="write">
               <GalleryAdmin />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/site/partners"
           element={
-            <AdminRoute allowedRoles={["admin"]}>
+            <PermissionRoute resource="site" permission="write">
               <PartnersAdmin />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
         <Route
           path="/admin/site/config"
           element={
-            <AdminRoute allowedRoles={["admin"]}>
+            <PermissionRoute resource="site" permission="write">
               <ConfigAdmin />
-            </AdminRoute>
+            </PermissionRoute>
           }
         />
       </Routes>

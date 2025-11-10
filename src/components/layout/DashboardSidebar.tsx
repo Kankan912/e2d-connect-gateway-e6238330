@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   Home,
   User,
@@ -44,45 +44,45 @@ const memberItems = [
 ];
 
 const adminItems = [
-  { title: "Gestion des Dons", url: "/dashboard/admin/donations", icon: DollarSign },
-  { title: "Gestion des Adhésions", url: "/dashboard/admin/adhesions", icon: UserPlus },
-  { title: "Configuration Paiements", url: "/dashboard/admin/payment-config", icon: Settings },
+  { title: "Gestion des Dons", url: "/dashboard/admin/donations", icon: DollarSign, resource: "donations" },
+  { title: "Gestion des Adhésions", url: "/dashboard/admin/adhesions", icon: UserPlus, resource: "adhesions" },
+  { title: "Configuration Paiements", url: "/dashboard/admin/payment-config", icon: Settings, resource: "config" },
 ];
 
 const gestionItems = [
-  { title: "Gestion Membres", url: "/dashboard/admin/membres", icon: Users },
-  { title: "Rôles & Permissions", url: "/dashboard/admin/roles", icon: Shield },
-  { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3 },
+  { title: "Gestion Membres", url: "/dashboard/admin/membres", icon: Users, resource: "membres" },
+  { title: "Rôles & Permissions", url: "/dashboard/admin/roles", icon: Shield, resource: "roles" },
+  { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3, resource: "stats" },
 ];
 
 const tontineItems = [
-  { title: "Épargnes", url: "/dashboard/admin/tontine/epargnes", icon: PiggyBank },
-  { title: "Configuration", url: "/dashboard/admin/tontine/config", icon: Settings },
+  { title: "Épargnes", url: "/dashboard/admin/tontine/epargnes", icon: PiggyBank, resource: "epargnes" },
+  { title: "Configuration", url: "/dashboard/admin/tontine/config", icon: Settings, resource: "config" },
 ];
 
 const reunionItems = [
-  { title: "Réunions", url: "/dashboard/admin/reunions", icon: Calendar },
-  { title: "Présences", url: "/dashboard/admin/presences", icon: CheckSquare },
+  { title: "Réunions", url: "/dashboard/admin/reunions", icon: Calendar, resource: "reunions" },
+  { title: "Présences", url: "/dashboard/admin/presences", icon: CheckSquare, resource: "presences" },
 ];
 
 const sportItems = [
-  { title: "Vue d'Ensemble", url: "/dashboard/admin/sport", icon: Gauge },
-  { title: "Matchs E2D", url: "/dashboard/admin/sport/e2d", icon: Trophy },
-  { title: "Phoenix", url: "/dashboard/admin/sport/phoenix", icon: Flame },
-  { title: "Entraînements", url: "/dashboard/admin/sport/entrainements", icon: Dumbbell },
+  { title: "Vue d'Ensemble", url: "/dashboard/admin/sport", icon: Gauge, resource: "sport_e2d" },
+  { title: "Matchs E2D", url: "/dashboard/admin/sport/e2d", icon: Trophy, resource: "sport_e2d" },
+  { title: "Phoenix", url: "/dashboard/admin/sport/phoenix", icon: Flame, resource: "sport_phoenix" },
+  { title: "Entraînements", url: "/dashboard/admin/sport/entrainements", icon: Dumbbell, resource: "sport_entrainements" },
 ];
 
 const siteItems = [
-  { title: "Hero", url: "/dashboard/admin/site/hero", icon: Palette },
-  { title: "Activités", url: "/dashboard/admin/site/activities", icon: Heart },
-  { title: "Événements", url: "/dashboard/admin/site/events", icon: Calendar },
-  { title: "Galerie", url: "/dashboard/admin/site/gallery", icon: Camera },
-  { title: "Partenaires", url: "/dashboard/admin/site/partners", icon: Handshake },
-  { title: "Configuration", url: "/dashboard/admin/site/config", icon: Settings },
+  { title: "Hero", url: "/dashboard/admin/site/hero", icon: Palette, resource: "site" },
+  { title: "Activités", url: "/dashboard/admin/site/activities", icon: Heart, resource: "site" },
+  { title: "Événements", url: "/dashboard/admin/site/events", icon: Calendar, resource: "site" },
+  { title: "Galerie", url: "/dashboard/admin/site/gallery", icon: Camera, resource: "site" },
+  { title: "Partenaires", url: "/dashboard/admin/site/partners", icon: Handshake, resource: "site" },
+  { title: "Configuration", url: "/dashboard/admin/site/config", icon: Settings, resource: "site" },
 ];
 
 export function DashboardSidebar() {
-  const { userRole } = useAuth();
+  const { hasPermission } = usePermissions();
   const { open } = useSidebar();
   const location = useLocation();
 
@@ -93,7 +93,33 @@ export function DashboardSidebar() {
     return location.pathname.startsWith(path);
   };
 
-  const isAdmin = userRole === "admin" || userRole === "tresorier";
+  // Filtrer les items selon les permissions
+  const visibleAdminItems = adminItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
+  const visibleGestionItems = gestionItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
+  const visibleTontineItems = tontineItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
+  const visibleReunionItems = reunionItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
+  const visibleSportItems = sportItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
+  const visibleSiteItems = siteItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
+
+  // Vérifier si les sections doivent être affichées
+  const hasFinancesAccess = visibleAdminItems.length > 0;
+  const hasGestionAccess = visibleGestionItems.length > 0;
+  const hasTontineAccess = visibleTontineItems.length > 0;
+  const hasReunionsAccess = visibleReunionItems.length > 0;
+  const hasSportAccess = visibleSportItems.length > 0;
+  const hasSiteAccess = visibleSiteItems.length > 0;
 
   return (
     <Sidebar className={open ? "w-64" : "w-14"} collapsible="icon">
@@ -129,12 +155,12 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {isAdmin && (
+        {hasFinancesAccess && (
           <SidebarGroup>
             <SidebarGroupLabel>Finances</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {adminItems.map((item) => (
+                {visibleAdminItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <NavLink to={item.url} className="flex items-center gap-3">
@@ -149,12 +175,12 @@ export function DashboardSidebar() {
           </SidebarGroup>
         )}
 
-        {isAdmin && (
+        {hasTontineAccess && (
           <SidebarGroup>
             <SidebarGroupLabel>Tontine</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {tontineItems.map((item) => (
+                {visibleTontineItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <NavLink to={item.url} className="flex items-center gap-3">
@@ -169,12 +195,12 @@ export function DashboardSidebar() {
           </SidebarGroup>
         )}
 
-        {(userRole === "admin" || userRole === "secretaire") && (
+        {hasReunionsAccess && (
           <SidebarGroup>
             <SidebarGroupLabel>Réunions</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {reunionItems.map((item) => (
+                {visibleReunionItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <NavLink to={item.url} className="flex items-center gap-3">
@@ -189,12 +215,12 @@ export function DashboardSidebar() {
           </SidebarGroup>
         )}
 
-        {(userRole === "admin" || userRole === "responsable_sportif") && (
+        {hasSportAccess && (
           <SidebarGroup>
             <SidebarGroupLabel>Sport</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {sportItems.map((item) => (
+                {visibleSportItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <NavLink to={item.url} className="flex items-center gap-3">
@@ -209,12 +235,12 @@ export function DashboardSidebar() {
           </SidebarGroup>
         )}
 
-        {userRole === "admin" && (
+        {hasGestionAccess && (
           <SidebarGroup>
             <SidebarGroupLabel>Gestion</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {gestionItems.map((item) => (
+                {visibleGestionItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <NavLink to={item.url} className="flex items-center gap-3">
@@ -229,12 +255,12 @@ export function DashboardSidebar() {
           </SidebarGroup>
         )}
 
-        {userRole === "admin" && (
+        {hasSiteAccess && (
           <SidebarGroup>
             <SidebarGroupLabel>Site Web</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {siteItems.map((item) => (
+                {visibleSiteItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <NavLink to={item.url} className="flex items-center gap-3">
