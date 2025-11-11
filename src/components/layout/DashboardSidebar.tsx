@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Home,
   User,
@@ -34,6 +35,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
 import logoE2D from "@/assets/logo-e2d.png";
 
 const memberItems = [
@@ -83,6 +85,7 @@ const siteItems = [
 
 export function DashboardSidebar() {
   const { hasPermission } = usePermissions();
+  const { userRole } = useAuth();
   const { open } = useSidebar();
   const location = useLocation();
 
@@ -123,16 +126,27 @@ export function DashboardSidebar() {
 
   return (
     <Sidebar className={open ? "w-64" : "w-14"} collapsible="icon">
-      <div className="p-4 border-b border-sidebar-border">
+      <div className="p-4 border-b border-sidebar-border space-y-3">
         <div className="flex items-center gap-3">
           <img src={logoE2D} alt="E2D" className="h-8 w-8 object-contain" />
           {open && (
-            <div>
+            <div className="flex-1">
               <h2 className="font-bold text-sidebar-foreground">E2D Connect</h2>
               <p className="text-xs text-muted-foreground">Portail Membre</p>
             </div>
           )}
         </div>
+        {open && userRole && (
+          <Badge variant="outline" className="w-full justify-center text-xs">
+            {userRole === 'administrateur' && '👑 Super Admin'}
+            {userRole === 'tresorier' && '💰 Trésorier'}
+            {userRole === 'secretaire_general' && '📝 Secrétaire Général'}
+            {userRole === 'responsable_sportif' && '⚽ Resp. Sportif'}
+            {userRole === 'censeur' && '⚖️ Censeur'}
+            {userRole === 'commissaire_comptes' && '🔍 Commissaire'}
+            {!['administrateur', 'tresorier', 'secretaire_general', 'responsable_sportif', 'censeur', 'commissaire_comptes'].includes(userRole) && `📋 ${userRole}`}
+          </Badge>
+        )}
         <SidebarTrigger className="absolute top-4 right-2" />
       </div>
 

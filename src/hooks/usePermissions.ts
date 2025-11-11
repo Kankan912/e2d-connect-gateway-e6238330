@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -28,6 +28,10 @@ export const usePermissions = () => {
       return rolePermissions || [];
     },
     enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,      // 5 minutes
+    gcTime: 1000 * 60 * 10,        // 10 minutes
+    refetchOnMount: true,          // Refetch à chaque montage
+    refetchOnWindowFocus: false,   // Pas de refetch au focus
   });
 
   const hasPermission = (resource: string, permission: string) => {
@@ -52,5 +56,16 @@ export const usePermissions = () => {
     hasAnyPermission, 
     canAccessResource,
     isLoading 
+  };
+};
+
+export const useRefreshPermissions = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return () => {
+    queryClient.invalidateQueries({ 
+      queryKey: ['user-permissions', user?.id] 
+    });
   };
 };
