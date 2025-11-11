@@ -28,10 +28,10 @@ export const usePermissions = () => {
       return rolePermissions || [];
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5,      // 5 minutes
-    gcTime: 1000 * 60 * 10,        // 10 minutes
-    refetchOnMount: true,          // Refetch à chaque montage
-    refetchOnWindowFocus: false,   // Pas de refetch au focus
+    staleTime: 1000 * 60 * 5,      // 5 minutes - les données restent fraîches
+    gcTime: 1000 * 60 * 10,        // 10 minutes - garde en cache
+    refetchOnMount: true,          // Refetch à chaque montage du composant
+    refetchOnWindowFocus: false,   // Pas de refetch automatique au focus
   });
 
   const hasPermission = (resource: string, permission: string) => {
