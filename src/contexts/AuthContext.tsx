@@ -72,6 +72,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('🔍 [AuthContext] Fetching profile for user:', userId);
+      
       // Invalider le cache des permissions pour forcer un rafraîchissement
       queryClient.invalidateQueries({ 
         queryKey: ['user-permissions', userId] 
@@ -85,21 +87,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .maybeSingle();
 
       if (profileError) throw profileError;
+      console.log('✅ [AuthContext] Profile loaded:', profileData?.nom, profileData?.prenom);
       setProfile(profileData);
 
-      // Fetch role (avec jointure sur la table roles)
+      // Fetch role (avec jointure sur la table roles) - Syntaxe corrigée
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
-        .select('roles:role_id(name)')
+        .select('role_id, roles(name)')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (roleError) throw roleError;
+      if (roleError) {
+        console.error('❌ [AuthContext] Role fetch error:', roleError);
+        throw roleError;
+      }
+      
+      console.log('✅ [AuthContext] Role data received:', roleData);
+      console.log('✅ [AuthContext] Role name extracted:', roleData?.roles?.name);
+      
       setUserRole(roleData?.roles?.name || null);
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('❌ [AuthContext] Error fetching user data:', error);
     } finally {
       setLoading(false);
     }
