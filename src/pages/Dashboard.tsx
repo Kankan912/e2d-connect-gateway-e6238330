@@ -112,6 +112,14 @@ const Dashboard = () => {
           }
         />
         <Route
+          path="/admin/permissions"
+          element={
+            <PermissionRoute resource="configuration" permission="read">
+              <PermissionsAdmin />
+            </PermissionRoute>
+          }
+        />
+        <Route
           path="/admin/stats"
           element={
             <PermissionRoute resource="stats" permission="read">
