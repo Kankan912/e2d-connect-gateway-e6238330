@@ -32,7 +32,8 @@ const DashboardHome = () => {
     },
   ];
 
-  const isAdmin = userRole === "admin" || userRole === "tresorier";
+  const isAdmin = userRole === "administrateur";
+  const hasAdminAccess = userRole === "administrateur" || userRole === "tresorier";
 
   return (
     <div className="space-y-6">
@@ -52,7 +53,15 @@ const DashboardHome = () => {
             <Settings className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold capitalize">{userRole || "Membre"}</div>
+            <div className="text-2xl font-bold">
+              {userRole === 'administrateur' && '👑 Super Administrateur'}
+              {userRole === 'tresorier' && '💰 Trésorier'}
+              {userRole === 'secretaire_general' && '📝 Secrétaire Général'}
+              {userRole === 'responsable_sportif' && '⚽ Responsable Sportif'}
+              {userRole === 'censeur' && '⚖️ Censeur'}
+              {userRole === 'commissaire_comptes' && '🔍 Commissaire aux Comptes'}
+              {!userRole && '👤 Membre'}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">
               Votre niveau d'accès actuel
             </p>
@@ -112,17 +121,33 @@ const DashboardHome = () => {
         </div>
       </div>
 
-      {isAdmin && (
+      {hasAdminAccess && (
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader>
-            <CardTitle>Accès Administrateur</CardTitle>
+            <CardTitle>
+              {isAdmin ? '👑 Accès Super Administrateur' : '💰 Accès Administration'}
+            </CardTitle>
             <CardDescription>
-              Vous avez accès aux fonctionnalités d'administration
+              {isAdmin 
+                ? 'Vous avez un accès complet à toutes les fonctionnalités' 
+                : 'Vous avez accès aux fonctionnalités d\'administration financière'
+              }
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button onClick={() => navigate("/dashboard/admin/donations")}>
-              Accéder à l'administration
+          <CardContent className="space-y-2">
+            <Button 
+              onClick={() => navigate("/dashboard/admin/permissions")} 
+              className="w-full"
+              variant={isAdmin ? "default" : "outline"}
+            >
+              {isAdmin ? 'Gérer les Permissions' : 'Voir mes Permissions'}
+            </Button>
+            <Button 
+              onClick={() => navigate("/dashboard/admin/donations")} 
+              className="w-full"
+              variant="outline"
+            >
+              Gérer les Dons
             </Button>
           </CardContent>
         </Card>

@@ -14,6 +14,7 @@ const RESOURCES = [
   { id: 'sport_e2d', label: 'Sport E2D' },
   { id: 'sport_phoenix', label: 'Sport Phoenix' },
   { id: 'donations', label: 'Dons' },
+  { id: 'site', label: 'Site Web (CMS)' },
   { id: 'configuration', label: 'Configuration' },
 ];
 

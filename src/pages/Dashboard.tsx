@@ -14,6 +14,7 @@ import MyCotisations from "./dashboard/MyCotisations";
 // Admin Pages
 import DonationsAdmin from "./admin/DonationsAdmin";
 import RolesAdmin from "./admin/RolesAdmin";
+import PermissionsAdmin from "./admin/PermissionsAdmin";
 import HeroAdmin from "./admin/site/HeroAdmin";
 import ActivitiesAdmin from "./admin/site/ActivitiesAdmin";
 import EventsAdmin from "./admin/site/EventsAdmin";
@@ -107,6 +108,14 @@ const Dashboard = () => {
           element={
             <PermissionRoute resource="roles" permission="write">
               <RolesAdmin />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/permissions"
+          element={
+            <PermissionRoute resource="configuration" permission="read">
+              <PermissionsAdmin />
             </PermissionRoute>
           }
         />
