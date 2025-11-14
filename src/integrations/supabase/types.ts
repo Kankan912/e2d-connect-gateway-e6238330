@@ -3809,6 +3809,7 @@ export type Database = {
             Returns: boolean
           }
         | { Args: { role_name: string }; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role:
