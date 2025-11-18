@@ -29,9 +29,6 @@ import GestionPresences from "./GestionPresences";
 import Sport from "./Sport";
 import SportE2D from "./SportE2D";
 import SportPhoenix from "./SportPhoenix";
-import Beneficiaires from "./admin/Beneficiaires";
-import TontineConfig from "./admin/TontineConfig";
-import MembresAdmin from "./admin/MembresAdmin";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -99,7 +96,10 @@ const Dashboard = () => {
           path="/admin/membres"
           element={
             <PermissionRoute resource="membres" permission="read">
-              <MembresAdmin />
+              <div className="p-6">
+                <h1 className="text-2xl font-bold">Gestion des Membres</h1>
+                <p className="text-muted-foreground mt-2">À venir...</p>
+              </div>
             </PermissionRoute>
           }
         />

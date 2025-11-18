@@ -22,7 +22,6 @@ import {
   Dumbbell,
   Gauge,
   Shield,
-  Gift,
 } from "lucide-react";
 import {
   Sidebar,
@@ -60,7 +59,6 @@ const gestionItems = [
 
 const tontineItems = [
   { title: "Épargnes", url: "/dashboard/admin/tontine/epargnes", icon: PiggyBank, resource: "epargnes" },
-  { title: "Bénéficiaires", url: "/dashboard/admin/tontine/beneficiaires", icon: Gift, resource: "epargnes" },
   { title: "Configuration", url: "/dashboard/admin/tontine/config", icon: Settings, resource: "config" },
 ];
 
