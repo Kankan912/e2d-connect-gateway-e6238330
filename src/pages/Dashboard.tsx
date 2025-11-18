@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -29,6 +29,14 @@ import GestionPresences from "./GestionPresences";
 import Sport from "./Sport";
 import SportE2D from "./SportE2D";
 import SportPhoenix from "./SportPhoenix";
+
+// Lazy loaded pages
+const Beneficiaires = lazy(() => import("./admin/Beneficiaires"));
+const TontineConfig = lazy(() => import("./admin/TontineConfig"));
+const MembresAdmin = lazy(() => import("./admin/MembresAdmin"));
+const AdhesionsAdmin = lazy(() => import("./admin/AdhesionsAdmin"));
+const PaymentConfigAdmin = lazy(() => import("./admin/PaymentConfigAdmin"));
+const StatsAdmin = lazy(() => import("./admin/StatsAdmin"));
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -74,10 +82,9 @@ const Dashboard = () => {
           path="/admin/adhesions"
           element={
             <PermissionRoute resource="adhesions" permission="read">
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Gestion des Adhésions</h1>
-                <p className="text-muted-foreground mt-2">À venir...</p>
-              </div>
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <AdhesionsAdmin />
+              </Suspense>
             </PermissionRoute>
           }
         />
@@ -85,10 +92,9 @@ const Dashboard = () => {
           path="/admin/payment-config"
           element={
             <PermissionRoute resource="config" permission="write">
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Configuration des Paiements</h1>
-                <p className="text-muted-foreground mt-2">À venir...</p>
-              </div>
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <PaymentConfigAdmin />
+              </Suspense>
             </PermissionRoute>
           }
         />
@@ -96,10 +102,9 @@ const Dashboard = () => {
           path="/admin/membres"
           element={
             <PermissionRoute resource="membres" permission="read">
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Gestion des Membres</h1>
-                <p className="text-muted-foreground mt-2">À venir...</p>
-              </div>
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <MembresAdmin />
+              </Suspense>
             </PermissionRoute>
           }
         />
@@ -123,10 +128,9 @@ const Dashboard = () => {
           path="/admin/stats"
           element={
             <PermissionRoute resource="stats" permission="read">
-              <div className="p-6">
-                <h1 className="text-2xl font-bold">Statistiques</h1>
-                <p className="text-muted-foreground mt-2">À venir...</p>
-              </div>
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <StatsAdmin />
+              </Suspense>
             </PermissionRoute>
           }
         />
@@ -137,6 +141,26 @@ const Dashboard = () => {
           element={
             <PermissionRoute resource="epargnes" permission="read">
               <Epargnes />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/tontine/beneficiaires"
+          element={
+            <PermissionRoute resource="epargnes" permission="read">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <Beneficiaires />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/tontine/config"
+          element={
+            <PermissionRoute resource="config" permission="write">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <TontineConfig />
+              </Suspense>
             </PermissionRoute>
           }
         />

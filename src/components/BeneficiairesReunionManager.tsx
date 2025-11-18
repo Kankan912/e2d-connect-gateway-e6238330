@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Gift } from "lucide-react";
+import { Gift, Check, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { calculateSoldeNetBeneficiaire } from "@/lib/beneficiairesCalculs";
 
 interface BeneficiairesReunionManagerProps {
   reunionId?: string;
@@ -13,7 +16,9 @@ interface BeneficiairesReunionManagerProps {
 
 export default function BeneficiairesReunionManager({ reunionId }: BeneficiairesReunionManagerProps) {
   const [selectedMembreId, setSelectedMembreId] = useState<string>("");
+  const [montantBenefice, setMontantBenefice] = useState<string>("");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   if (!reunionId) {
     return (
@@ -41,48 +46,171 @@ export default function BeneficiairesReunionManager({ reunionId }: Beneficiaires
     }
   });
 
-  const beneficiaire = null;
+  const { data: beneficiaires = [] } = useQuery({
+    queryKey: ['reunion-beneficiaires', reunionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reunion_beneficiaires')
+        .select(`
+          *,
+          membres:membre_id(nom, prenom)
+        `)
+        .eq('reunion_id', reunionId);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!reunionId
+  });
 
   const assignerBeneficiaire = useMutation({
-    mutationFn: async (membreId: string) => {
-      toast({ title: "Fonctionnalité à venir", description: "Table beneficiaires à créer" });
-      return null;
+    mutationFn: async ({ membreId, montant }: { membreId: string; montant: number }) => {
+      const { data, error } = await supabase
+        .from('reunion_beneficiaires')
+        .insert({
+          reunion_id: reunionId,
+          membre_id: membreId,
+          montant_benefice: montant,
+          statut: 'impaye',
+          date_benefice_prevue: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Succès",
+        description: "Bénéficiaire assigné avec succès"
+      });
+      queryClient.invalidateQueries({ queryKey: ['reunion-beneficiaires', reunionId] });
+      setSelectedMembreId("");
+      setMontantBenefice("");
+    },
+    onError: (error) => {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'assigner le bénéficiaire",
+        variant: "destructive"
+      });
     }
   });
+
+  const supprimerBeneficiaire = useMutation({
+    mutationFn: async (beneficiaireId: string) => {
+      const { error } = await supabase
+        .from('reunion_beneficiaires')
+        .delete()
+        .eq('id', beneficiaireId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Bénéficiaire retiré" });
+      queryClient.invalidateQueries({ queryKey: ['reunion-beneficiaires', reunionId] });
+    }
+  });
+
+  const handleAssigner = () => {
+    if (!selectedMembreId || !montantBenefice) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un membre et saisir un montant",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    assignerBeneficiaire.mutate({
+      membreId: selectedMembreId,
+      montant: parseFloat(montantBenefice)
+    });
+  };
 
   return (
     <Card className="mt-4">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Gift className="h-5 w-5" />
-          Gestion du Bénéficiaire
+          Gestion des Bénéficiaires
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Fonctionnalité en développement - Table beneficiaires à créer
-          </p>
-          <div className="flex gap-2">
-            <Select value={selectedMembreId} onValueChange={setSelectedMembreId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un membre" />
-              </SelectTrigger>
-              <SelectContent>
-                {membres?.map((membre) => (
-                  <SelectItem key={membre.id} value={membre.id}>
-                    {membre.nom} {membre.prenom}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={() => assignerBeneficiaire.mutate(selectedMembreId)}
-              disabled={!selectedMembreId || assignerBeneficiaire.isPending}
-            >
-              Assigner
-            </Button>
+        <div className="space-y-6">
+          {/* Formulaire d'ajout */}
+          <div className="space-y-4 p-4 border rounded-lg">
+            <h3 className="font-semibold">Assigner un nouveau bénéficiaire</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Select value={selectedMembreId} onValueChange={setSelectedMembreId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un membre" />
+                </SelectTrigger>
+                <SelectContent>
+                  {membres?.map((membre) => (
+                    <SelectItem key={membre.id} value={membre.id}>
+                      {membre.nom} {membre.prenom}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <input
+                type="number"
+                placeholder="Montant (€)"
+                value={montantBenefice}
+                onChange={(e) => setMontantBenefice(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <Button
+                onClick={handleAssigner}
+                disabled={!selectedMembreId || !montantBenefice || assignerBeneficiaire.isPending}
+              >
+                {assignerBeneficiaire.isPending ? 'Assignation...' : 'Assigner'}
+              </Button>
+            </div>
           </div>
+
+          {/* Liste des bénéficiaires */}
+          {beneficiaires.length > 0 ? (
+            <div className="space-y-3">
+              <h3 className="font-semibold">Bénéficiaires assignés ({beneficiaires.length})</h3>
+              {beneficiaires.map((benef: any) => (
+                <div
+                  key={benef.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {benef.membres?.nom} {benef.membres?.prenom}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Montant: {benef.montant_benefice.toLocaleString()} €
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={benef.statut === 'paye' ? 'default' : 'secondary'}>
+                      {benef.statut === 'paye' ? <><Check className="w-3 h-3 mr-1" />Payé</> : 'Impayé'}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => supprimerBeneficiaire.mutate(benef.id)}
+                    >
+                      Retirer
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Aucun bénéficiaire assigné à cette réunion
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </CardContent>
     </Card>
