@@ -37,6 +37,13 @@ const MembresAdmin = lazy(() => import("./admin/MembresAdmin"));
 const AdhesionsAdmin = lazy(() => import("./admin/AdhesionsAdmin"));
 const PaymentConfigAdmin = lazy(() => import("./admin/PaymentConfigAdmin"));
 const StatsAdmin = lazy(() => import("./admin/StatsAdmin"));
+const SportEntrainements = lazy(() => import("./admin/SportEntrainements"));
+const SportSanctions = lazy(() => import("./admin/SportSanctions"));
+const PretsAdmin = lazy(() => import("./admin/PretsAdmin"));
+const NotificationsAdmin = lazy(() => import("./admin/NotificationsAdmin"));
+const ExportsAdmin = lazy(() => import("./admin/ExportsAdmin"));
+const MatchGalaConfig = lazy(() => import("./admin/MatchGalaConfig"));
+const SportEquipes = lazy(() => import("./SportEquipes"));
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -205,6 +212,82 @@ const Dashboard = () => {
           element={
             <PermissionRoute resource="sport_phoenix" permission="read">
               <SportPhoenix />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/sport/equipes"
+          element={
+            <PermissionRoute resource="sport_phoenix" permission="read">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <SportEquipes />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/sport/entrainements"
+          element={
+            <PermissionRoute resource="sport_phoenix" permission="read">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <SportEntrainements />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/sport/sanctions"
+          element={
+            <PermissionRoute resource="sport_phoenix" permission="read">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <SportSanctions />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/sport/match-gala"
+          element={
+            <PermissionRoute resource="sport_phoenix" permission="read">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <MatchGalaConfig />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        
+        {/* Routes Finances Avancées */}
+        <Route
+          path="/admin/finances/prets"
+          element={
+            <PermissionRoute resource="prets" permission="read">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <PretsAdmin />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        
+        {/* Routes Communication */}
+        <Route
+          path="/admin/communication/notifications"
+          element={
+            <PermissionRoute resource="notifications" permission="read">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <NotificationsAdmin />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        
+        {/* Routes Configuration */}
+        <Route
+          path="/admin/config/exports"
+          element={
+            <PermissionRoute resource="config" permission="write">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <ExportsAdmin />
+              </Suspense>
             </PermissionRoute>
           }
         />

@@ -23,6 +23,9 @@ import {
   Gauge,
   Shield,
   Gift,
+  Bell,
+  Download,
+  HandCoins,
 } from "lucide-react";
 import {
   Sidebar,
@@ -73,7 +76,22 @@ const sportItems = [
   { title: "Vue d'Ensemble", url: "/dashboard/admin/sport", icon: Gauge, resource: "sport_e2d" },
   { title: "Matchs E2D", url: "/dashboard/admin/sport/e2d", icon: Trophy, resource: "sport_e2d" },
   { title: "Phoenix", url: "/dashboard/admin/sport/phoenix", icon: Flame, resource: "sport_phoenix" },
-  { title: "Entraînements", url: "/dashboard/admin/sport/entrainements", icon: Dumbbell, resource: "sport_entrainements" },
+  { title: "Équipes", url: "/dashboard/admin/sport/equipes", icon: Users, resource: "sport_phoenix" },
+  { title: "Entraînements", url: "/dashboard/admin/sport/entrainements", icon: Dumbbell, resource: "sport_phoenix" },
+  { title: "Sanctions", url: "/dashboard/admin/sport/sanctions", icon: Shield, resource: "sport_phoenix" },
+  { title: "Match Gala", url: "/dashboard/admin/sport/match-gala", icon: Trophy, resource: "sport_phoenix" },
+];
+
+const financeAvanceeItems = [
+  { title: "Prêts", url: "/dashboard/admin/finances/prets", icon: HandCoins, resource: "prets" },
+];
+
+const communicationItems = [
+  { title: "Notifications", url: "/dashboard/admin/communication/notifications", icon: Bell, resource: "notifications" },
+];
+
+const configItems = [
+  { title: "Exports Programmés", url: "/dashboard/admin/config/exports", icon: Download, resource: "config" },
 ];
 
 const siteItems = [
@@ -114,16 +132,28 @@ export function DashboardSidebar() {
   const visibleSportItems = sportItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
+  const visibleFinanceAvanceeItems = financeAvanceeItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
+  const visibleCommunicationItems = communicationItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
+  const visibleConfigItems = configItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
   const visibleSiteItems = siteItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
 
   // Vérifier si les sections doivent être affichées
   const hasFinancesAccess = visibleAdminItems.length > 0;
-  const hasGestionAccess = visibleGestionItems.length > 0;
   const hasTontineAccess = visibleTontineItems.length > 0;
   const hasReunionsAccess = visibleReunionItems.length > 0;
   const hasSportAccess = visibleSportItems.length > 0;
+  const hasFinanceAvanceeAccess = visibleFinanceAvanceeItems.length > 0;
+  const hasCommunicationAccess = visibleCommunicationItems.length > 0;
+  const hasConfigAccess = visibleConfigItems.length > 0;
+  const hasGestionAccess = visibleGestionItems.length > 0;
   const hasSiteAccess = visibleSiteItems.length > 0;
 
   return (
@@ -237,6 +267,66 @@ export function DashboardSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {visibleSportItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {hasFinanceAvanceeAccess && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Finances Avancées</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleFinanceAvanceeItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {hasCommunicationAccess && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Communication</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleCommunicationItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url} className="flex items-center gap-3">
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {hasConfigAccess && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Configuration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleConfigItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive(item.url)}>
                       <NavLink to={item.url} className="flex items-center gap-3">
