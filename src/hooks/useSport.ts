@@ -47,10 +47,13 @@ export const useCreateE2DMatch = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (match: Omit<E2DMatch, "id" | "created_at" | "statut" | "score_e2d" | "score_adverse">) => {
+    mutationFn: async (match: Omit<E2DMatch, "id" | "created_at" | "statut">) => {
       const { data, error } = await supabase
         .from("sport_e2d_matchs")
-        .insert([match])
+        .insert([{
+          ...match,
+          statut: 'termine'
+        }])
         .select()
         .single();
 

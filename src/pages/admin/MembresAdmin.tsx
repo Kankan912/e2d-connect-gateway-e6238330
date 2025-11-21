@@ -1,24 +1,102 @@
 import { useState } from "react";
-import { Users, Plus, Edit, Trash2, Search, Download, Upload } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Search, Download } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useMembers } from "@/hooks/useMembers";
+import { useMembers, Member } from "@/hooks/useMembers";
 import BackButton from "@/components/BackButton";
 import { useToast } from "@/hooks/use-toast";
+import MemberForm from "@/components/forms/MemberForm";
+import { ExportService } from "@/lib/exportService";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function MembresAdmin() {
-  const { members: membres = [], isLoading } = useMembers();
+  const { members: membres = [], isLoading, createMember, updateMember, deleteMember } = useMembers();
   const [searchTerm, setSearchTerm] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const filteredMembres = membres.filter((membre) =>
     `${membre.nom} ${membre.prenom}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleExport = () => {
-    toast({ title: "Export en cours...", description: "Fonctionnalité à venir" });
+  const handleExport = async () => {
+    await ExportService.export({
+      format: 'excel',
+      title: 'Liste des Membres',
+      data: membres.map(m => ({
+        Nom: m.nom,
+        Prénom: m.prenom,
+        Téléphone: m.telephone,
+        Email: m.email || '',
+        Statut: m.statut,
+        E2D: m.est_membre_e2d ? 'Oui' : 'Non',
+        Phoenix: m.est_adherent_phoenix ? 'Oui' : 'Non',
+      })),
+      columns: [
+        { header: 'Nom', dataKey: 'Nom' },
+        { header: 'Prénom', dataKey: 'Prénom' },
+        { header: 'Téléphone', dataKey: 'Téléphone' },
+        { header: 'Email', dataKey: 'Email' },
+        { header: 'Statut', dataKey: 'Statut' },
+        { header: 'E2D', dataKey: 'E2D' },
+        { header: 'Phoenix', dataKey: 'Phoenix' },
+      ],
+      metadata: { author: 'E2D Admin', dateGeneration: new Date(), association: 'E2D' }
+    });
+  };
+
+  const handleEdit = (membre: Member) => {
+    setSelectedMember(membre);
+    setShowForm(true);
+  };
+
+  const handleCreate = () => {
+    setSelectedMember(null);
+    setShowForm(true);
+  };
+
+  const handleFormSubmit = (data: any) => {
+    if (selectedMember) {
+      updateMember.mutate(
+        { id: selectedMember.id, data },
+        {
+          onSuccess: () => {
+            setShowForm(false);
+            setSelectedMember(null);
+          },
+        }
+      );
+    } else {
+      createMember.mutate(
+        { ...data, date_inscription: new Date().toISOString().split('T')[0] },
+        {
+          onSuccess: () => {
+            setShowForm(false);
+          },
+        }
+      );
+    }
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteMember.mutate(deleteId, {
+        onSuccess: () => setDeleteId(null),
+      });
+    }
   };
 
   return (
@@ -39,7 +117,7 @@ export default function MembresAdmin() {
             <Download className="w-4 h-4 mr-2" />
             Exporter
           </Button>
-          <Button>
+          <Button onClick={handleCreate}>
             <Plus className="w-4 h-4 mr-2" />
             Nouveau Membre
           </Button>
@@ -141,10 +219,10 @@ export default function MembresAdmin() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => handleEdit(membre)}>
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button size="sm" variant="destructive">
+                    <Button size="sm" variant="destructive" onClick={() => setDeleteId(membre.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -154,6 +232,29 @@ export default function MembresAdmin() {
           )}
         </CardContent>
       </Card>
+
+      <MemberForm
+        open={showForm}
+        onOpenChange={setShowForm}
+        member={selectedMember}
+        onSubmit={handleFormSubmit}
+        isLoading={createMember.isPending || updateMember.isPending}
+      />
+
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer la suppression</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer ce membre ? Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Supprimer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
