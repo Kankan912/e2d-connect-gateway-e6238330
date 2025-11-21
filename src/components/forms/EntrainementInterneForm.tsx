@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const entrainementSchema = z.object({
   date_entrainement: z.string().min(1, "Date requise"),
@@ -24,14 +26,53 @@ interface EntrainementInterneFormProps {
 }
 
 export default function EntrainementInterneForm({ open, onOpenChange, onSuccess }: EntrainementInterneFormProps) {
+  const { toast } = useToast();
   const form = useForm<EntrainementFormData>({
     resolver: zodResolver(entrainementSchema),
     defaultValues: { date_entrainement: "", lieu: "", objectif: "", notes: "", duree_minutes: 90 },
   });
 
   const onSubmit = async (data: EntrainementFormData) => {
-    console.log("Entraînement:", data);
-    onSuccess();
+    try {
+      const [dateStr, timeStr] = data.date_entrainement.split('T');
+      const dureeEnMinutes = data.duree_minutes;
+      const heureDebut = timeStr || '00:00';
+      
+      // Calculer heure de fin
+      const [heures, minutes] = heureDebut.split(':').map(Number);
+      const totalMinutes = heures * 60 + minutes + dureeEnMinutes;
+      const heureFinHeures = Math.floor(totalMinutes / 60);
+      const heureFinMinutes = totalMinutes % 60;
+      const heureFin = `${String(heureFinHeures).padStart(2, '0')}:${String(heureFinMinutes).padStart(2, '0')}`;
+
+      const { error } = await supabase
+        .from('phoenix_entrainements_internes')
+        .insert([{
+          date_entrainement: dateStr,
+          heure_debut: heureDebut,
+          heure_fin: heureFin,
+          lieu: data.lieu,
+          notes: data.notes || null,
+          statut: 'planifie'
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Succès",
+        description: "Entraînement interne enregistré avec succès",
+      });
+      
+      form.reset();
+      onSuccess();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'enregistrer l'entraînement",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

@@ -299,7 +299,7 @@ export default function Epargnes() {
           />
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => navigate('/epargnes/benefices')} variant="outline">
+          <Button onClick={() => navigate('/dashboard/admin/beneficiaires')} variant="outline">
             <Calculator className="w-4 h-4 mr-2" />
             Voir les Bénéficiaires
           </Button>

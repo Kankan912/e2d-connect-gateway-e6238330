@@ -49,6 +49,8 @@ export default function E2DMatchForm({ open, onOpenChange, onSuccess }: E2DMatch
       lieu: data.lieu || "domicile",
       type_match: data.type_match || "amical",
       heure_match: data.heure_match || null,
+      score_e2d: data.score_e2d,
+      score_adverse: data.score_adverse,
       logo_equipe_adverse: null,
       nom_complet_equipe_adverse: null,
       notes: null,
