@@ -6,27 +6,46 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, XCircle } from "lucide-react";
 
 export default function TableauBordJauneRouge() {
-  const { data: adherents } = useQuery({
-    queryKey: ['phoenix-cartons'],
+  // Récupérer les statistiques réelles depuis match_statistics
+  const { data: cartonsData = [] } = useQuery({
+    queryKey: ['phoenix-cartons-stats'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Récupérer tous les adhérents Phoenix actifs
+      const { data: membres, error: membresError } = await supabase
         .from('membres')
-        .select('*')
+        .select('id, nom, prenom, equipe_jaune_rouge')
         .eq('est_adherent_phoenix', true)
         .eq('statut', 'actif')
         .order('nom');
       
-      if (error) throw error;
-      return data;
+      if (membresError) throw membresError;
+
+      // Pour chaque membre, compter ses cartons depuis match_statistics
+      const membresAvecCartons = await Promise.all(
+        membres.map(async (membre) => {
+          // Récupérer les stats où player_name correspond au nom du membre
+          const playerName = `${membre.nom} ${membre.prenom}`;
+          const { data: stats, error: statsError } = await supabase
+            .from('match_statistics')
+            .select('yellow_cards, red_cards')
+            .eq('player_name', playerName);
+
+          if (statsError) throw statsError;
+
+          const cartonsJaunes = stats.reduce((sum, s) => sum + (s.yellow_cards || 0), 0);
+          const cartonsRouges = stats.reduce((sum, s) => sum + (s.red_cards || 0), 0);
+
+          return {
+            ...membre,
+            cartonsJaunes,
+            cartonsRouges
+          };
+        })
+      );
+
+      return membresAvecCartons;
     }
   });
-
-  // Simuler des données de cartons (à remplacer par de vraies données)
-  const cartonsData = adherents?.map(adherent => ({
-    ...adherent,
-    cartonsJaunes: Math.floor(Math.random() * 5),
-    cartonsRouges: Math.floor(Math.random() * 2),
-  })) || [];
 
   const totalJaunes = cartonsData.reduce((sum, a) => sum + a.cartonsJaunes, 0);
   const totalRouges = cartonsData.reduce((sum, a) => sum + a.cartonsRouges, 0);

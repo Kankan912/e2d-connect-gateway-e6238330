@@ -1,13 +1,35 @@
 import { Bell, Plus } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import BackButton from "@/components/BackButton";
+import NotificationCampagneForm from "@/components/forms/NotificationCampagneForm";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function NotificationsAdmin() {
+  const [formOpen, setFormOpen] = useState(false);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const { data: currentMembre } = useQuery({
+    queryKey: ['current-membre', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('membres')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id
+  });
+
   const { data: campagnes, isLoading } = useQuery({
     queryKey: ["notifications-campagnes"],
     queryFn: async () => {
@@ -23,6 +45,17 @@ export default function NotificationsAdmin() {
     },
   });
 
+  const createCampagne = useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase.from('notifications_campagnes').insert(data);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications-campagnes'] });
+      setFormOpen(false);
+    }
+  });
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <BackButton />
@@ -31,7 +64,7 @@ export default function NotificationsAdmin() {
           <Bell className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold">Notifications & Campagnes</h1>
         </div>
-        <Button>
+        <Button onClick={() => setFormOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Nouvelle Campagne
         </Button>
@@ -127,6 +160,15 @@ export default function NotificationsAdmin() {
           )}
         </CardContent>
       </Card>
+
+      {currentMembre && (
+        <NotificationCampagneForm
+          open={formOpen}
+          onClose={() => setFormOpen(false)}
+          onSubmit={(data) => createCampagne.mutate(data)}
+          createdBy={currentMembre.id}
+        />
+      )}
     </div>
   );
 }

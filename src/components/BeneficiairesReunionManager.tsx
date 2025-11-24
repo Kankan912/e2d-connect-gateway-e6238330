@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Gift, Check, AlertCircle } from "lucide-react";
+import { Gift, Check, AlertCircle, Calculator } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { calculateSoldeNetBeneficiaire } from "@/lib/beneficiairesCalculs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface BeneficiairesReunionManagerProps {
   reunionId?: string;
@@ -17,6 +19,7 @@ interface BeneficiairesReunionManagerProps {
 export default function BeneficiairesReunionManager({ reunionId }: BeneficiairesReunionManagerProps) {
   const [selectedMembreId, setSelectedMembreId] = useState<string>("");
   const [montantBenefice, setMontantBenefice] = useState<string>("");
+  const [calculatedAmount, setCalculatedAmount] = useState<number | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -113,6 +116,53 @@ export default function BeneficiairesReunionManager({ reunionId }: Beneficiaires
     }
   });
 
+  const marquerPaye = useMutation({
+    mutationFn: async (beneficiaireId: string) => {
+      const { error } = await supabase
+        .from('reunion_beneficiaires')
+        .update({ statut: 'paye', date_paiement: new Date().toISOString() })
+        .eq('id', beneficiaireId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Paiement enregistré" });
+      queryClient.invalidateQueries({ queryKey: ['reunion-beneficiaires', reunionId] });
+    }
+  });
+
+  const calculerMontantAuto = async () => {
+    if (!selectedMembreId || !reunionId) {
+      toast({ title: "Sélectionnez un membre", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Pour le calcul, on utilise l'exercice actif par défaut
+      const { data: exerciceActif } = await supabase
+        .from('exercices')
+        .select('id')
+        .eq('statut', 'actif')
+        .single();
+
+      if (!exerciceActif) {
+        toast({ title: "Aucun exercice actif trouvé", variant: "destructive" });
+        return;
+      }
+
+      const soldeNet = await calculateSoldeNetBeneficiaire(selectedMembreId, exerciceActif.id);
+      setCalculatedAmount(soldeNet.soldeNet);
+      setMontantBenefice(soldeNet.soldeNet.toFixed(2));
+      toast({
+        title: "Calcul effectué",
+        description: `Montant net après déductions: ${soldeNet.soldeNet.toFixed(2)} €`
+      });
+    } catch (error) {
+      console.error('Erreur calcul:', error);
+      toast({ title: "Erreur lors du calcul", variant: "destructive" });
+    }
+  };
+
   const handleAssigner = () => {
     if (!selectedMembreId || !montantBenefice) {
       toast({
@@ -142,31 +192,61 @@ export default function BeneficiairesReunionManager({ reunionId }: Beneficiaires
           {/* Formulaire d'ajout */}
           <div className="space-y-4 p-4 border rounded-lg">
             <h3 className="font-semibold">Assigner un nouveau bénéficiaire</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Select value={selectedMembreId} onValueChange={setSelectedMembreId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un membre" />
-                </SelectTrigger>
-                <SelectContent>
-                  {membres?.map((membre) => (
-                    <SelectItem key={membre.id} value={membre.id}>
-                      {membre.nom} {membre.prenom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <input
-                type="number"
-                placeholder="Montant (€)"
-                value={montantBenefice}
-                onChange={(e) => setMontantBenefice(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
+            <div className="space-y-3">
+              <div>
+                <Label>Membre</Label>
+                <Select value={selectedMembreId} onValueChange={setSelectedMembreId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un membre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {membres?.map((membre) => (
+                      <SelectItem key={membre.id} value={membre.id}>
+                        {membre.nom} {membre.prenom}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Label>Montant (€)</Label>
+                  <Input
+                    type="number"
+                    placeholder="Montant"
+                    value={montantBenefice}
+                    onChange={(e) => setMontantBenefice(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={calculerMontantAuto}
+                    disabled={!selectedMembreId}
+                  >
+                    <Calculator className="h-4 w-4 mr-2" />
+                    Calculer
+                  </Button>
+                </div>
+              </div>
+
+              {calculatedAmount !== null && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Montant calculé après déductions: <strong>{calculatedAmount.toFixed(2)} €</strong>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <Button
                 onClick={handleAssigner}
                 disabled={!selectedMembreId || !montantBenefice || assignerBeneficiaire.isPending}
+                className="w-full"
               >
-                {assignerBeneficiaire.isPending ? 'Assignation...' : 'Assigner'}
+                {assignerBeneficiaire.isPending ? 'Assignation...' : 'Assigner le bénéficiaire'}
               </Button>
             </div>
           </div>
@@ -192,6 +272,15 @@ export default function BeneficiairesReunionManager({ reunionId }: Beneficiaires
                     <Badge variant={benef.statut === 'paye' ? 'default' : 'secondary'}>
                       {benef.statut === 'paye' ? <><Check className="w-3 h-3 mr-1" />Payé</> : 'Impayé'}
                     </Badge>
+                    {benef.statut !== 'paye' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => marquerPaye.mutate(benef.id)}
+                      >
+                        Marquer payé
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="destructive"
