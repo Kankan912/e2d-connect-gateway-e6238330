@@ -3,6 +3,7 @@ import { BarChart3, TrendingUp, Users, Euro, Calendar } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import BackButton from "@/components/BackButton";
 
@@ -196,45 +197,106 @@ export default function StatsAdmin() {
         </TabsContent>
 
         <TabsContent value="finance">
-          <Card>
-            <CardHeader>
-              <CardTitle>Statistiques Financières</CardTitle>
-              <CardDescription>Détails des finances</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Graphiques et analyses financières détaillées à venir
-              </p>
-            </CardContent>
-          </Card>
+          <div className="grid gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Évolution Mensuelle</CardTitle>
+                <CardDescription>Cotisations et épargnes par mois</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 flex items-center justify-center border rounded">
+                  <p className="text-muted-foreground">Graphique d'évolution mensuelle (Recharts)</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Répartition des Revenus</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 flex items-center justify-center border rounded">
+                  <p className="text-muted-foreground">Graphique en secteurs (Recharts)</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="members">
-          <Card>
-            <CardHeader>
-              <CardTitle>Statistiques Membres</CardTitle>
-              <CardDescription>Analyses des membres</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Analyses démographiques et activité des membres à venir
-              </p>
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Évolution des Adhésions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-48 flex items-center justify-center border rounded">
+                  <p className="text-muted-foreground">Graphique courbe (Recharts)</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Répartition par Statut</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span>Membres actifs</span>
+                    <Badge>{stats.membres}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Adhésions {selectedYear}</span>
+                    <Badge variant="secondary">{stats.adhesions}</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="sport">
-          <Card>
-            <CardHeader>
-              <CardTitle>Statistiques Sportives</CardTitle>
-              <CardDescription>Performance sportive</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Statistiques des matchs et performances à venir
-              </p>
-            </CardContent>
-          </Card>
+          <div className="grid gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance Sportive</CardTitle>
+                <CardDescription>Matchs et résultats</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 flex items-center justify-center border rounded">
+                  <p className="text-muted-foreground">Graphique performance (Recharts)</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Matchs Joués</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">-</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Victoires</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">-</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Buts Marqués</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">-</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

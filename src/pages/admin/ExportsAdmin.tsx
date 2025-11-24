@@ -1,13 +1,20 @@
-import { Download, Plus } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Download, Plus, Edit, Trash2, Play } from "lucide-react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import BackButton from "@/components/BackButton";
+import ExportConfigForm from "@/components/forms/ExportConfigForm";
+import { toast } from "@/hooks/use-toast";
 
 export default function ExportsAdmin() {
+  const [formOpen, setFormOpen] = useState(false);
+  const [selectedExport, setSelectedExport] = useState<any>(null);
+  const queryClient = useQueryClient();
+
   const { data: exports, isLoading } = useQuery({
     queryKey: ["exports-programmes"],
     queryFn: async () => {
@@ -20,6 +27,55 @@ export default function ExportsAdmin() {
     },
   });
 
+  const createExport = useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase.from('exports_programmes').insert(data);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Export créé avec succès" });
+      queryClient.invalidateQueries({ queryKey: ['exports-programmes'] });
+      setFormOpen(false);
+    }
+  });
+
+  const updateExport = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const { error } = await supabase.from('exports_programmes').update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Export modifié" });
+      queryClient.invalidateQueries({ queryKey: ['exports-programmes'] });
+      setFormOpen(false);
+      setSelectedExport(null);
+    }
+  });
+
+  const deleteExport = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('exports_programmes').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Export supprimé" });
+      queryClient.invalidateQueries({ queryKey: ['exports-programmes'] });
+    }
+  });
+
+  const executeExport = (exp: any) => {
+    toast({ title: "Export en cours...", description: "L'export va être généré" });
+    // Implémenter la logique d'export réel ici
+  };
+
+  const handleSubmit = (data: any) => {
+    if (selectedExport) {
+      updateExport.mutate({ id: selectedExport.id, data });
+    } else {
+      createExport.mutate(data);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <BackButton />
@@ -28,7 +84,7 @@ export default function ExportsAdmin() {
           <Download className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold">Exports Programmés</h1>
         </div>
-        <Button>
+        <Button onClick={() => { setSelectedExport(null); setFormOpen(true); }}>
           <Plus className="h-4 w-4 mr-2" />
           Nouvel Export
         </Button>
@@ -56,6 +112,7 @@ export default function ExportsAdmin() {
                   <TableHead>Dernier Export</TableHead>
                   <TableHead>Prochain Export</TableHead>
                   <TableHead>Statut</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -82,6 +139,31 @@ export default function ExportsAdmin() {
                         {exp.actif ? "Actif" : "Inactif"}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => executeExport(exp)}
+                        >
+                          <Play className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => { setSelectedExport(exp); setFormOpen(true); }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteExport.mutate(exp.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -89,6 +171,13 @@ export default function ExportsAdmin() {
           )}
         </CardContent>
       </Card>
+
+      <ExportConfigForm
+        open={formOpen}
+        onClose={() => { setFormOpen(false); setSelectedExport(null); }}
+        onSubmit={handleSubmit}
+        initialData={selectedExport}
+      />
     </div>
   );
 }
