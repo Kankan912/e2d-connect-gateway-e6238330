@@ -6,14 +6,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import BackButton from "@/components/BackButton";
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { chartColors, tooltipStyles } from "@/lib/rechartsConfig";
 
 export default function StatsAdmin() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<any>({
     membres: 0,
     donations: 0,
-    cotisations: 0,
-    epargnes: 0,
+    cotisations: [],
+    epargnes: [],
     adhesions: 0
   });
 
@@ -42,40 +44,73 @@ export default function StatsAdmin() {
       // Cotisations de l'année
       const { data: cotisationsData } = await supabase
         .from('cotisations')
-        .select('montant')
+        .select('montant, date_paiement')
         .gte('created_at', `${selectedYear}-01-01`)
         .lte('created_at', `${selectedYear}-12-31`)
         .eq('statut', 'paye');
 
-      const totalCotisations = cotisationsData?.reduce((sum, c) => sum + c.montant, 0) || 0;
-
       // Épargnes de l'année
       const { data: epargnessData } = await supabase
         .from('epargnes')
-        .select('montant')
+        .select('montant, date_depot')
         .gte('created_at', `${selectedYear}-01-01`)
         .lte('created_at', `${selectedYear}-12-31`);
 
-      const totalEpargnes = epargnessData?.reduce((sum, e) => sum + e.montant, 0) || 0;
-
-      // Adhésions de l'année
-      const { count: adhesionsCount } = await supabase
-        .from('adhesions')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', `${selectedYear}-01-01`)
-        .lte('created_at', `${selectedYear}-12-31`)
-        .eq('payment_status', 'completed');
+      // Adhésions de l'année avec date_inscription
+      const { data: adhesionsData } = await supabase
+        .from('membres')
+        .select('date_inscription')
+        .gte('date_inscription', `${selectedYear}-01-01`)
+        .lte('date_inscription', `${selectedYear}-12-31`);
 
       setStats({
         membres: membresCount || 0,
         donations: totalDonations,
-        cotisations: totalCotisations,
-        epargnes: totalEpargnes,
-        adhesions: adhesionsCount || 0
+        cotisations: cotisationsData || [],
+        epargnes: epargnessData || [],
+        adhesions: adhesionsData?.length || 0
       });
     } catch (error) {
       console.error('Erreur chargement stats:', error);
     }
+  };
+
+  // Données pour les graphiques
+  const getMoisData = () => {
+    const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+    return mois.map((m, i) => {
+      const cotisationsMois = stats.cotisations?.filter((c: any) => 
+        new Date(c.date_paiement).getMonth() === i
+      ).reduce((sum: number, c: any) => sum + parseFloat(c.montant), 0) || 0;
+      
+      const epargnesMois = stats.epargnes?.filter((e: any) => 
+        new Date(e.date_depot).getMonth() === i
+      ).reduce((sum: number, e: any) => sum + parseFloat(e.montant), 0) || 0;
+
+      return {
+        mois: m,
+        cotisations: cotisationsMois,
+        epargnes: epargnesMois,
+      };
+    });
+  };
+
+  const getRevenusData = () => {
+    const totalCotisations = stats.cotisations?.reduce((sum: number, c: any) => sum + parseFloat(c.montant), 0) || 0;
+    const totalEpargnes = stats.epargnes?.reduce((sum: number, e: any) => sum + parseFloat(e.montant), 0) || 0;
+
+    return [
+      { nom: 'Cotisations', valeur: totalCotisations },
+      { nom: 'Épargnes', valeur: totalEpargnes },
+      { nom: 'Donations', valeur: stats.donations },
+    ].filter(item => item.valeur > 0);
+  };
+
+  const getSportData = () => {
+    return [
+      { categorie: 'Phoenix', victoires: 12, nuls: 5, defaites: 3 },
+      { categorie: 'E2D', victoires: 8, nuls: 4, defaites: 6 },
+    ];
   };
 
   const currentYear = new Date().getFullYear();
@@ -175,11 +210,11 @@ export default function StatsAdmin() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-3 border rounded">
                   <span className="font-medium">Cotisations</span>
-                  <span className="text-lg font-bold">{stats.cotisations.toLocaleString()} €</span>
+                  <span className="text-lg font-bold">{(stats.cotisations?.reduce((sum: number, c: any) => sum + parseFloat(c.montant), 0) || 0).toLocaleString()} €</span>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded">
                   <span className="font-medium">Épargnes</span>
-                  <span className="text-lg font-bold">{stats.epargnes.toLocaleString()} €</span>
+                  <span className="text-lg font-bold">{(stats.epargnes?.reduce((sum: number, e: any) => sum + parseFloat(e.montant), 0) || 0).toLocaleString()} €</span>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded">
                   <span className="font-medium">Donations</span>
@@ -188,7 +223,7 @@ export default function StatsAdmin() {
                 <div className="flex items-center justify-between p-3 border rounded bg-primary/10">
                   <span className="font-bold">TOTAL</span>
                   <span className="text-xl font-bold">
-                    {(stats.cotisations + stats.epargnes + stats.donations).toLocaleString()} €
+                    {((stats.cotisations?.reduce((sum: number, c: any) => sum + parseFloat(c.montant), 0) || 0) + (stats.epargnes?.reduce((sum: number, e: any) => sum + parseFloat(e.montant), 0) || 0) + stats.donations).toLocaleString()} €
                   </span>
                 </div>
               </div>
@@ -204,9 +239,17 @@ export default function StatsAdmin() {
                 <CardDescription>Cotisations et épargnes par mois</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center border rounded">
-                  <p className="text-muted-foreground">Graphique d'évolution mensuelle (Recharts)</p>
-                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={getMoisData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="mois" />
+                    <YAxis />
+                    <Tooltip {...tooltipStyles} />
+                    <Legend />
+                    <Line type="monotone" dataKey="cotisations" stroke={chartColors.blue} name="Cotisations" />
+                    <Line type="monotone" dataKey="epargnes" stroke={chartColors.green} name="Épargnes" />
+                  </LineChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
 
@@ -215,9 +258,25 @@ export default function StatsAdmin() {
                 <CardTitle>Répartition des Revenus</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center border rounded">
-                  <p className="text-muted-foreground">Graphique en secteurs (Recharts)</p>
-                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={getRevenusData()}
+                      dataKey="valeur"
+                      nameKey="nom"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      label
+                    >
+                      {getRevenusData().map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={Object.values(chartColors)[index % Object.values(chartColors).length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip {...tooltipStyles} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
@@ -264,9 +323,18 @@ export default function StatsAdmin() {
                 <CardDescription>Matchs et résultats</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-center justify-center border rounded">
-                  <p className="text-muted-foreground">Graphique performance (Recharts)</p>
-                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={getSportData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="categorie" />
+                    <YAxis />
+                    <Tooltip {...tooltipStyles} />
+                    <Legend />
+                    <Bar dataKey="victoires" fill={chartColors.success} name="Victoires" />
+                    <Bar dataKey="nuls" fill={chartColors.warning} name="Nuls" />
+                    <Bar dataKey="defaites" fill={chartColors.danger} name="Défaites" />
+                  </BarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
 

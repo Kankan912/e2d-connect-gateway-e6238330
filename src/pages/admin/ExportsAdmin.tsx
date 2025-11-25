@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import BackButton from "@/components/BackButton";
 import ExportConfigForm from "@/components/forms/ExportConfigForm";
 import { toast } from "@/hooks/use-toast";
+import { ExportService } from "@/lib/exportService";
 
 export default function ExportsAdmin() {
   const [formOpen, setFormOpen] = useState(false);
@@ -63,9 +64,32 @@ export default function ExportsAdmin() {
     }
   });
 
-  const executeExport = (exp: any) => {
-    toast({ title: "Export en cours...", description: "L'export va être généré" });
-    // Implémenter la logique d'export réel ici
+  const executeExport = async (exp: any) => {
+    try {
+      toast({ title: "Export en cours...", description: "Génération du fichier" });
+      
+      await ExportService.export({
+        type: exp.type,
+        format: exp.format,
+        nom: exp.nom,
+        configuration: exp.configuration
+      });
+
+      // Mettre à jour la date du dernier export
+      await supabase
+        .from('exports_programmes')
+        .update({ dernier_export: new Date().toISOString() })
+        .eq('id', exp.id);
+
+      queryClient.invalidateQueries({ queryKey: ['exports-programmes'] });
+      toast({ title: "Export réussi", description: "Le fichier a été téléchargé" });
+    } catch (error) {
+      toast({ 
+        title: "Erreur lors de l'export", 
+        description: "Impossible de générer le fichier",
+        variant: "destructive" 
+      });
+    }
   };
 
   const handleSubmit = (data: any) => {

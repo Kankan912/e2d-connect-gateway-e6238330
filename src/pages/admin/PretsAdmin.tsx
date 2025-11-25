@@ -1,4 +1,4 @@
-import { DollarSign, Plus, Edit, Trash2 } from "lucide-react";
+import { DollarSign, Plus, Edit, Trash2, CreditCard } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
 import PretForm from "@/components/forms/PretForm";
+import PretsPaiementsManager from "@/components/PretsPaiementsManager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,8 @@ export default function PretsAdmin() {
   const [selectedPret, setSelectedPret] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pretToDelete, setPretToDelete] = useState<string | null>(null);
+  const [paiementsDialogOpen, setPaiementsDialogOpen] = useState(false);
+  const [pretForPaiements, setPretForPaiements] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: prets, isLoading } = useQuery({
@@ -32,7 +35,7 @@ export default function PretsAdmin() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("prets")
-        .select("*, emprunteur:membres(nom, prenom)")
+        .select("*, emprunteur:membres!emprunteur_id(nom, prenom)")
         .order("date_pret", { ascending: false});
       if (error) throw error;
       return data as any[];
@@ -189,6 +192,16 @@ export default function PretsAdmin() {
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => {
+                            setPretForPaiements(pret.id);
+                            setPaiementsDialogOpen(true);
+                          }}
+                        >
+                          <CreditCard className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => { setSelectedPret(pret); setFormOpen(true); }}
                         >
                           <Edit className="h-4 w-4" />
@@ -216,6 +229,17 @@ export default function PretsAdmin() {
         onSubmit={handleSubmit}
         initialData={selectedPret}
       />
+
+      {pretForPaiements && (
+        <PretsPaiementsManager
+          pretId={pretForPaiements}
+          open={paiementsDialogOpen}
+          onClose={() => {
+            setPaiementsDialogOpen(false);
+            setPretForPaiements(null);
+          }}
+        />
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

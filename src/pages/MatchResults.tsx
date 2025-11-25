@@ -48,16 +48,11 @@ export default function MatchResults() {
     if (!matchsFiltres) return;
     
     await ExportService.export({
+      type: 'matchs',
       format: 'pdf',
-      title: 'Résultats des Matchs E2D',
-      data: matchsFiltres.map(m => ({
-        Date: format(new Date(m.date_match), 'dd/MM/yyyy', { locale: fr }),
-        Adversaire: m.equipe_adverse || '-',
-        Score: `${m.score_e2d || 0} - ${m.score_adverse || 0}`,
-        Type: m.type_match,
-        Statut: m.statut,
-        Lieu: m.lieu || '-'
-      })),
+      nom: 'Resultats_Matchs_E2D',
+    });
+  };
       columns: [
         { header: 'Date', dataKey: 'Date' },
         { header: 'Adversaire', dataKey: 'Adversaire' },

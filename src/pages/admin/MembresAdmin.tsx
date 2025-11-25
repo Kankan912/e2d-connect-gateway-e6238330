@@ -34,15 +34,11 @@ export default function MembresAdmin() {
 
   const handleExport = async () => {
     await ExportService.export({
+      type: 'membres',
       format: 'excel',
-      title: 'Liste des Membres',
-      data: membres.map(m => ({
-        Nom: m.nom,
-        Prénom: m.prenom,
-        Téléphone: m.telephone,
-        Email: m.email || '',
-        Statut: m.statut,
-        E2D: m.est_membre_e2d ? 'Oui' : 'Non',
+      nom: 'Liste_des_Membres',
+    });
+  };
         Phoenix: m.est_adherent_phoenix ? 'Oui' : 'Non',
       })),
       columns: [
