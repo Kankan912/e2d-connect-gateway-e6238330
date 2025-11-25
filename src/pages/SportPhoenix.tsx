@@ -18,6 +18,7 @@ import PhoenixCotisationsAnnuelles from "@/components/PhoenixCotisationsAnnuelle
 import PhoenixDashboardAnnuel from "@/components/PhoenixDashboardAnnuel";
 import EntrainementInterneForm from "@/components/forms/EntrainementInterneForm";
 import TableauBordJauneRouge from "@/components/TableauBordJauneRouge";
+import PhoenixPresencesManager from "@/components/PhoenixPresencesManager";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 
 export default function SportPhoenix() {
@@ -222,7 +223,7 @@ export default function SportPhoenix() {
 
       {/* Interface principale avec onglets */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="overview" className="flex items-center gap-1">
             <Trophy className="w-4 h-4" />
             Aperçu
@@ -242,6 +243,10 @@ export default function SportPhoenix() {
           <TabsTrigger value="entrainements" className="flex items-center gap-1">
             <Activity className="w-4 h-4" />
             Entraînements
+          </TabsTrigger>
+          <TabsTrigger value="presences" className="flex items-center gap-1">
+            <Calendar className="w-4 h-4" />
+            Présences
           </TabsTrigger>
           <TabsTrigger value="classements" className="flex items-center gap-1">
             <Star className="w-4 h-4" />
@@ -356,6 +361,10 @@ export default function SportPhoenix() {
 
         <TabsContent value="entrainements" className="mt-6">
           <PhoenixEntrainementsManager />
+        </TabsContent>
+
+        <TabsContent value="presences" className="mt-6">
+          <PhoenixPresencesManager />
         </TabsContent>
 
         <TabsContent value="classements" className="mt-6">

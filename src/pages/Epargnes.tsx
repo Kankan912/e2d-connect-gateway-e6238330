@@ -305,19 +305,14 @@ export default function Epargnes() {
           </Button>
           <Button variant="outline" onClick={async () => {
             await ExportService.export({
+              type: 'epargnes',
               format: 'pdf',
-              title: 'Liste des Épargnes',
-              data: epargnes.map(e => ({
-                Membre: `${e.membre?.prenom} ${e.membre?.nom}`,
-                Montant: `${e.montant} FCFA`,
-                Date: new Date(e.date_depot).toLocaleDateString(),
-                Statut: e.statut
-              })),
-              columns: [
-                { header: 'Membre', dataKey: 'Membre' },
-                { header: 'Montant', dataKey: 'Montant' },
-                { header: 'Date', dataKey: 'Date' },
-                { header: 'Statut', dataKey: 'Statut' }
+              nom: 'Liste_des_Epargnes',
+            });
+          }}>
+            <Download className="w-4 h-4 mr-2" />
+            Exporter PDF
+          </Button>
               ],
               metadata: { author: 'E2D', dateGeneration: new Date(), association: 'Association E2D' }
             });

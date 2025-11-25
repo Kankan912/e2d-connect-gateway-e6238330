@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { chartColors, tooltipStyles } from "@/lib/rechartsConfig";
 
 export default function DonationsAdmin() {
   const [filters, setFilters] = useState({
@@ -23,6 +25,30 @@ export default function DonationsAdmin() {
 
   const { data: donations, isLoading: donationsLoading } = useDonations(filters);
   const { data: stats, isLoading: statsLoading } = useDonationStats("month");
+
+  const getDonationsChartData = () => {
+    if (!donations) return [];
+    
+    const mois = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
+    const now = new Date();
+    
+    return mois.map((m, i) => {
+      const monthStart = new Date(now.getFullYear(), i, 1);
+      const monthEnd = new Date(now.getFullYear(), i + 1, 0);
+      
+      const montantMois = donations
+        .filter(d => {
+          const date = new Date(d.created_at);
+          return date >= monthStart && date <= monthEnd;
+        })
+        .reduce((sum, d) => sum + parseFloat(d.amount.toString()), 0);
+
+      return {
+        mois: m,
+        montant: montantMois
+      };
+    });
+  };
 
   if (donationsLoading || statsLoading) {
     return (
@@ -83,12 +109,25 @@ export default function DonationsAdmin() {
           <Card>
             <CardHeader>
               <CardTitle>Évolution des dons</CardTitle>
-              <CardDescription>Graphique des 12 derniers mois</CardDescription>
+              <CardDescription>Montants reçus sur 12 mois</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-80 flex items-center justify-center text-muted-foreground">
-                Graphique à venir (intégration Recharts)
-              </div>
+              <ResponsiveContainer width="100%" height={320}>
+                <AreaChart data={getDonationsChartData()}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="mois" />
+                  <YAxis />
+                  <Tooltip {...tooltipStyles} />
+                  <Area 
+                    type="monotone" 
+                    dataKey="montant" 
+                    stroke={chartColors.blue} 
+                    fill={chartColors.blue} 
+                    fillOpacity={0.3}
+                    name="Montant (€)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         </TabsContent>
