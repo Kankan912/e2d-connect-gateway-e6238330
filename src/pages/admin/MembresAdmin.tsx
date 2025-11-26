@@ -39,20 +39,6 @@ export default function MembresAdmin() {
       nom: 'Liste_des_Membres',
     });
   };
-        Phoenix: m.est_adherent_phoenix ? 'Oui' : 'Non',
-      })),
-      columns: [
-        { header: 'Nom', dataKey: 'Nom' },
-        { header: 'Prénom', dataKey: 'Prénom' },
-        { header: 'Téléphone', dataKey: 'Téléphone' },
-        { header: 'Email', dataKey: 'Email' },
-        { header: 'Statut', dataKey: 'Statut' },
-        { header: 'E2D', dataKey: 'E2D' },
-        { header: 'Phoenix', dataKey: 'Phoenix' },
-      ],
-      metadata: { author: 'E2D Admin', dateGeneration: new Date(), association: 'E2D' }
-    });
-  };
 
   const handleEdit = (membre: Member) => {
     setSelectedMember(membre);

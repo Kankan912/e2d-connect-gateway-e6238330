@@ -313,13 +313,6 @@ export default function Epargnes() {
             <Download className="w-4 h-4 mr-2" />
             Exporter PDF
           </Button>
-              ],
-              metadata: { author: 'E2D', dateGeneration: new Date(), association: 'Association E2D' }
-            });
-          }}>
-            <Download className="w-4 h-4 mr-2" />
-            Exporter
-          </Button>
         </div>
       </div>
 

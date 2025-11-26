@@ -53,17 +53,6 @@ export default function MatchResults() {
       nom: 'Resultats_Matchs_E2D',
     });
   };
-      columns: [
-        { header: 'Date', dataKey: 'Date' },
-        { header: 'Adversaire', dataKey: 'Adversaire' },
-        { header: 'Score', dataKey: 'Score' },
-        { header: 'Type', dataKey: 'Type' },
-        { header: 'Statut', dataKey: 'Statut' },
-        { header: 'Lieu', dataKey: 'Lieu' }
-      ],
-      metadata: { author: 'E2D', dateGeneration: new Date(), association: 'Association E2D' }
-    });
-  };
 
   if (isLoading) {
     return (
