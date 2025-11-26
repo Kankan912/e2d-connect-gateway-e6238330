@@ -34,6 +34,8 @@ import CompteRenduViewer from "@/components/CompteRenduViewer";
 import ClotureReunionModal from "@/components/ClotureReunionModal";
 import CalendrierBeneficiaires from "@/components/CalendrierBeneficiaires";
 import BeneficiairesReunionManager from "@/components/BeneficiairesReunionManager";
+import ReunionSanctionsManager from "@/components/ReunionSanctionsManager";
+import ReunionPresencesManager from "@/components/ReunionPresencesManager";
 import LogoHeader from "@/components/LogoHeader";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
 import BackButton from "@/components/BackButton";
@@ -297,10 +299,18 @@ export default function Reunions() {
 
       {/* Tabs pour Réunions et Bénéficiaires */}
       <Tabs defaultValue="reunions" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="reunions" className="flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             Réunions
+          </TabsTrigger>
+          <TabsTrigger value="presences" className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Présences
+          </TabsTrigger>
+          <TabsTrigger value="sanctions" className="flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Sanctions
           </TabsTrigger>
           <TabsTrigger value="beneficiaires" className="flex items-center gap-2">
             <CalendarDays className="w-4 h-4" />
@@ -485,6 +495,30 @@ export default function Reunions() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="presences">
+          {selectedReunion ? (
+            <ReunionPresencesManager reunionId={selectedReunion.id} />
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Sélectionnez une réunion pour gérer les présences
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="sanctions">
+          {selectedReunion ? (
+            <ReunionSanctionsManager reunionId={selectedReunion.id} />
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Sélectionnez une réunion pour gérer les sanctions
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="beneficiaires">
