@@ -2696,6 +2696,108 @@ export type Database = {
           },
         ]
       }
+      reunions_presences: {
+        Row: {
+          created_at: string
+          id: string
+          membre_id: string
+          notes: string | null
+          present: boolean
+          reunion_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          membre_id: string
+          notes?: string | null
+          present?: boolean
+          reunion_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          membre_id?: string
+          notes?: string | null
+          present?: boolean
+          reunion_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reunions_presences_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reunions_presences_reunion_id_fkey"
+            columns: ["reunion_id"]
+            isOneToOne: false
+            referencedRelation: "reunions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reunions_sanctions: {
+        Row: {
+          created_at: string
+          date_levee: string | null
+          id: string
+          membre_id: string
+          montant_amende: number | null
+          motif: string
+          notes: string | null
+          reunion_id: string
+          statut: string
+          type_sanction: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_levee?: string | null
+          id?: string
+          membre_id: string
+          montant_amende?: number | null
+          motif: string
+          notes?: string | null
+          reunion_id: string
+          statut?: string
+          type_sanction: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_levee?: string | null
+          id?: string
+          membre_id?: string
+          montant_amende?: number | null
+          motif?: string
+          notes?: string | null
+          reunion_id?: string
+          statut?: string
+          type_sanction?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reunions_sanctions_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reunions_sanctions_reunion_id_fkey"
+            columns: ["reunion_id"]
+            isOneToOne: false
+            referencedRelation: "reunions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           created_at: string

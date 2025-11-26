@@ -20,12 +20,16 @@ import EntrainementInterneForm from "@/components/forms/EntrainementInterneForm"
 import TableauBordJauneRouge from "@/components/TableauBordJauneRouge";
 import PhoenixPresencesManager from "@/components/PhoenixPresencesManager";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
+import { useSportEventSync } from "@/hooks/useSportEventSync";
 
 export default function SportPhoenix() {
   const navigate = useNavigate();
   const [showMatchForm, setShowMatchForm] = useState(false);
   const [showEntrainementForm, setShowEntrainementForm] = useState(false);
   const queryClient = useQueryClient();
+
+  // Synchronisation automatique vers le site web
+  useSportEventSync();
   
   // Stats globales (désactivées pour l'instant)
   const stats: any = null;

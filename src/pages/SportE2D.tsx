@@ -21,6 +21,7 @@ import { useState } from "react";
 import E2DMatchForm from "@/components/forms/E2DMatchForm";
 import MatchDetailsModal from "@/components/MatchDetailsModal";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
+import { useSportEventSync } from "@/hooks/useSportEventSync";
 
 export default function SportE2D() {
   const navigate = useNavigate();
@@ -81,6 +82,9 @@ export default function SportE2D() {
       queryClient.invalidateQueries({ queryKey: ['membres'] });
     }
   });
+
+  // Synchronisation automatique vers le site web
+  useSportEventSync();
 
   const totalMembres = membres?.length || 0;
 
