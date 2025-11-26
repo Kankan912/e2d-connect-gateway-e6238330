@@ -127,7 +127,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Emprunteur</p>
-                    <p className="font-medium">{pret.emprunteur?.nom} {pret.emprunteur?.prenom}</p>
+                    <p className="font-medium">{(pret.emprunteur as any)?.nom} {(pret.emprunteur as any)?.prenom}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Montant prêté</p>
