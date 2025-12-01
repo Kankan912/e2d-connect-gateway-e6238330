@@ -16,6 +16,63 @@ export class ExportService {
 
       // Récupérer les données selon le type
       switch (options.type) {
+        case 'presences_reunion':
+          const { data: presencesReunion } = await supabase
+            .from('reunions_presences')
+            .select(`
+              *,
+              membre:membres(nom, prenom)
+            `)
+            .eq('reunion_id', options.configuration?.reunion_id || '');
+          data = presencesReunion?.map(p => ({
+            membre: `${p.membre?.prenom} ${p.membre?.nom}`,
+            statut: p.statut_presence,
+            heure_arrivee: p.heure_arrivee || '',
+            observations: p.observations || ''
+          })) || [];
+          columns = ['Membre', 'Statut', 'Heure d\'arrivée', 'Observations'];
+          break;
+
+        case 'presences_etat':
+          // Export de l'état global des absences
+          const { data: membresEtat } = await supabase
+            .from('membres')
+            .select('id, nom, prenom')
+            .eq('statut', 'actif');
+          const { data: presencesEtat } = await supabase
+            .from('reunions_presences')
+            .select('*');
+          const { data: reunionsEtat } = await supabase
+            .from('reunions')
+            .select('id');
+          
+          data = membresEtat?.map(m => {
+            const presencesMembre = presencesEtat?.filter(p => p.membre_id === m.id) || [];
+            const totalPresences = presencesMembre.filter(p => p.statut_presence === 'present').length;
+            const totalAbsences = presencesMembre.filter(p => p.statut_presence !== 'present').length;
+            const absencesExcusees = presencesMembre.filter(p => p.statut_presence === 'absent_excuse').length;
+            const absencesNonExcusees = presencesMembre.filter(p => p.statut_presence === 'absent_non_excuse').length;
+            const taux = reunionsEtat?.length ? (totalPresences / reunionsEtat.length * 100).toFixed(1) : 0;
+            return {
+              membre: `${m.prenom} ${m.nom}`,
+              totalPresences,
+              totalAbsences,
+              absencesExcusees,
+              absencesNonExcusees,
+              taux: `${taux}%`
+            };
+          }) || [];
+          columns = ['Membre', 'Total Présences', 'Total Absences', 'Abs. Excusées', 'Abs. Non Excusées', 'Taux'];
+          break;
+
+        case 'presences_mensuel':
+        case 'presences_annuel':
+        case 'presences_membre':
+          // Ces exports sont des exports simplifiés pour l'exemple
+          data = [{ message: 'Export à implémenter côté serveur' }];
+          columns = ['Message'];
+          break;
+
         case 'membres':
           const { data: membres } = await supabase
             .from('membres')

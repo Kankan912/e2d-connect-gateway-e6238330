@@ -2649,6 +2649,7 @@ export type Database = {
           lieu_description: string | null
           lieu_membre_id: string | null
           ordre_du_jour: string | null
+          seuil_rappel_presence: number | null
           statut: string
           sujet: string | null
           type_reunion: string | null
@@ -2662,6 +2663,7 @@ export type Database = {
           lieu_description?: string | null
           lieu_membre_id?: string | null
           ordre_du_jour?: string | null
+          seuil_rappel_presence?: number | null
           statut?: string
           sujet?: string | null
           type_reunion?: string | null
@@ -2675,6 +2677,7 @@ export type Database = {
           lieu_description?: string | null
           lieu_membre_id?: string | null
           ordre_du_jour?: string | null
+          seuil_rappel_presence?: number | null
           statut?: string
           sujet?: string | null
           type_reunion?: string | null
@@ -2699,29 +2702,38 @@ export type Database = {
       reunions_presences: {
         Row: {
           created_at: string
+          heure_arrivee: string | null
           id: string
           membre_id: string
           notes: string | null
+          observations: string | null
           present: boolean
           reunion_id: string
+          statut_presence: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          heure_arrivee?: string | null
           id?: string
           membre_id: string
           notes?: string | null
+          observations?: string | null
           present?: boolean
           reunion_id: string
+          statut_presence?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          heure_arrivee?: string | null
           id?: string
           membre_id?: string
           notes?: string | null
+          observations?: string | null
           present?: boolean
           reunion_id?: string
+          statut_presence?: string | null
           updated_at?: string
         }
         Relationships: [
