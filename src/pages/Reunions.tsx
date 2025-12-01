@@ -24,7 +24,11 @@ import {
   Users,
   Edit,
   Trash2,
-  CalendarDays
+  CalendarDays,
+  TrendingDown,
+  BarChart3,
+  UserCog,
+  Mail
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +40,10 @@ import CalendrierBeneficiaires from "@/components/CalendrierBeneficiaires";
 import BeneficiairesReunionManager from "@/components/BeneficiairesReunionManager";
 import ReunionSanctionsManager from "@/components/ReunionSanctionsManager";
 import ReunionPresencesManager from "@/components/ReunionPresencesManager";
+import PresencesEtatAbsences from "@/components/PresencesEtatAbsences";
+import PresencesRecapMensuel from "@/components/PresencesRecapMensuel";
+import PresencesRecapAnnuel from "@/components/PresencesRecapAnnuel";
+import PresencesHistoriqueMembre from "@/components/PresencesHistoriqueMembre";
 import LogoHeader from "@/components/LogoHeader";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
 import BackButton from "@/components/BackButton";
@@ -64,6 +72,9 @@ export default function Reunions() {
   const [showClotureModal, setShowClotureModal] = useState(false);
   const [selectedReunion, setSelectedReunion] = useState<Reunion | null>(null);
   const [editingReunion, setEditingReunion] = useState<Reunion | null>(null);
+  const [selectedMembreId, setSelectedMembreId] = useState<string | null>(null);
+  const [selectedMembreNom, setSelectedMembreNom] = useState<string>("");
+  const [showHistoriqueMembre, setShowHistoriqueMembre] = useState(false);
   const { toast } = useToast();
 
   // Composant pour afficher le nom du bénéficiaire
@@ -297,9 +308,9 @@ export default function Reunions() {
         />
       </div>
 
-      {/* Tabs pour Réunions et Bénéficiaires */}
+      {/* Tabs pour Réunions, Présences et Bénéficiaires */}
       <Tabs defaultValue="reunions" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="reunions" className="flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             Réunions
@@ -308,6 +319,18 @@ export default function Reunions() {
             <Users className="w-4 h-4" />
             Présences
           </TabsTrigger>
+          <TabsTrigger value="etat-absences" className="flex items-center gap-2">
+            <TrendingDown className="w-4 h-4" />
+            État Absences
+          </TabsTrigger>
+          <TabsTrigger value="recapitulatifs" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Récapitulatifs
+          </TabsTrigger>
+          <TabsTrigger value="historique" className="flex items-center gap-2">
+            <UserCog className="w-4 h-4" />
+            Historique
+          </TabsTrigger>
           <TabsTrigger value="sanctions" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
             Sanctions
@@ -315,6 +338,10 @@ export default function Reunions() {
           <TabsTrigger value="beneficiaires" className="flex items-center gap-2">
             <CalendarDays className="w-4 h-4" />
             Bénéficiaires
+          </TabsTrigger>
+          <TabsTrigger value="rappels" className="flex items-center gap-2">
+            <Mail className="w-4 h-4" />
+            Rappels
           </TabsTrigger>
         </TabsList>
 
@@ -498,6 +525,28 @@ export default function Reunions() {
         </TabsContent>
 
         <TabsContent value="presences">
+          <Card className="mb-4">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Users className="w-5 h-5" />
+                <h3 className="font-semibold">Sélectionner une réunion</h3>
+              </div>
+              <div className="space-y-2">
+                {reunions.slice(0, 10).map(reunion => (
+                  <Button
+                    key={reunion.id}
+                    variant={selectedReunion?.id === reunion.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedReunion(reunion)}
+                    className="w-full justify-start"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {new Date(reunion.date_reunion).toLocaleDateString('fr-FR')} - {reunion.ordre_du_jour}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
           {selectedReunion ? (
             <ReunionPresencesManager reunionId={selectedReunion.id} />
           ) : (
@@ -507,6 +556,41 @@ export default function Reunions() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="etat-absences">
+          <PresencesEtatAbsences />
+        </TabsContent>
+
+        <TabsContent value="recapitulatifs">
+          <Tabs defaultValue="mensuel" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="mensuel">Vue Mensuelle</TabsTrigger>
+              <TabsTrigger value="annuel">Bilan Annuel</TabsTrigger>
+            </TabsList>
+            <TabsContent value="mensuel">
+              <PresencesRecapMensuel />
+            </TabsContent>
+            <TabsContent value="annuel">
+              <PresencesRecapAnnuel />
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        <TabsContent value="historique">
+          <Card>
+            <CardHeader>
+              <CardTitle>Historique des Membres</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">
+                Cliquez sur un membre dans n'importe quelle vue pour afficher son historique complet.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Astuce : Les fiches individuelles sont accessibles depuis l'État des Absences ou les Récapitulatifs en cliquant sur le nom d'un membre.
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="sanctions">
@@ -524,6 +608,43 @@ export default function Reunions() {
         <TabsContent value="beneficiaires">
           <CalendrierBeneficiaires />
           <BeneficiairesReunionManager />
+        </TabsContent>
+
+        <TabsContent value="rappels">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Rappels Automatiques
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-muted-foreground">
+                  Cette fonctionnalité permet d'envoyer automatiquement des rappels par email aux membres dont le taux de présence est en dessous d'un seuil configurable.
+                </p>
+                <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-2">
+                    ⚠️ Configuration requise
+                  </p>
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                    Pour activer les rappels automatiques par email, vous devez configurer la clé API Resend. 
+                    Veuillez contacter l'administrateur système pour finaliser cette configuration.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-medium">Fonctionnalités à venir :</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                    <li>Configuration du seuil de présence minimum</li>
+                    <li>Aperçu des membres concernés</li>
+                    <li>Envoi manuel de rappels</li>
+                    <li>Historique des rappels envoyés</li>
+                    <li>Personnalisation des templates d'email</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -575,6 +696,20 @@ export default function Reunions() {
           reunionData={{
             sujet: selectedReunion.sujet || '',
             date_reunion: selectedReunion.date_reunion
+          }}
+        />
+      )}
+
+      {/* Modal Historique Membre */}
+      {selectedMembreId && (
+        <PresencesHistoriqueMembre
+          membreId={selectedMembreId}
+          membreNom={selectedMembreNom}
+          open={showHistoriqueMembre}
+          onClose={() => {
+            setShowHistoriqueMembre(false);
+            setSelectedMembreId(null);
+            setSelectedMembreNom("");
           }}
         />
       )}
