@@ -69,7 +69,6 @@ const tontineItems = [
 
 const reunionItems = [
   { title: "Réunions", url: "/dashboard/admin/reunions", icon: Calendar, resource: "reunions" },
-  { title: "Présences", url: "/dashboard/admin/presences", icon: CheckSquare, resource: "presences" },
 ];
 
 const sportItems = [
@@ -77,6 +76,7 @@ const sportItems = [
   { title: "Matchs E2D", url: "/dashboard/admin/sport/e2d", icon: Trophy, resource: "sport_e2d" },
   { title: "Phoenix", url: "/dashboard/admin/sport/phoenix", icon: Flame, resource: "sport_phoenix" },
   { title: "Équipes", url: "/dashboard/admin/sport/equipes", icon: Users, resource: "sport_phoenix" },
+  { title: "Présences", url: "/dashboard/admin/presences", icon: CheckSquare, resource: "presences" },
   { title: "Entraînements", url: "/dashboard/admin/sport/entrainements", icon: Dumbbell, resource: "sport_phoenix" },
   { title: "Sanctions", url: "/dashboard/admin/sport/sanctions", icon: Shield, resource: "sport_phoenix" },
   { title: "Match Gala", url: "/dashboard/admin/sport/match-gala", icon: Trophy, resource: "sport_phoenix" },

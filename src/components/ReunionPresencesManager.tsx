@@ -74,7 +74,6 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
         present: statutPresence === 'present',
         heure_arrivee: heureArrivee || null,
         observations: observations || null,
-        date_presence: new Date().toISOString(),
       };
 
       if (existingPresence) {
@@ -112,7 +111,6 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
         membre_id: membre.id,
         statut_presence: 'present',
         present: true,
-        date_presence: new Date().toISOString(),
       }));
 
       const { error } = await supabase
@@ -140,7 +138,6 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
         membre_id: membre.id,
         statut_presence: 'absent_non_excuse',
         present: false,
-        date_presence: new Date().toISOString(),
       }));
 
       const { error } = await supabase
