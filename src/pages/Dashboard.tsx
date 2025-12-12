@@ -45,6 +45,7 @@ const NotificationsAdmin = lazy(() => import("./admin/NotificationsAdmin"));
 const ExportsAdmin = lazy(() => import("./admin/ExportsAdmin"));
 const MatchGalaConfig = lazy(() => import("./admin/MatchGalaConfig"));
 const SportEquipes = lazy(() => import("./SportEquipes"));
+const E2DConfigAdmin = lazy(() => import("./admin/E2DConfigAdmin"));
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -298,6 +299,18 @@ const Dashboard = () => {
             <PermissionRoute resource="config" permission="write">
               <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
                 <ExportsAdmin />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+
+        {/* Route Configuration E2D Centralisée */}
+        <Route
+          path="/admin/e2d-config"
+          element={
+            <PermissionRoute resource="config" permission="write">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <E2DConfigAdmin />
               </Suspense>
             </PermissionRoute>
           }
