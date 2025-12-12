@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, RefreshCw, Info } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Info, Calendar } from "lucide-react";
 
 interface PretsPaiementsManagerProps {
   pretId: string;
@@ -47,6 +47,21 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
         .select('*')
         .eq('pret_id', pretId)
         .order('date_paiement', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!pretId && open,
+  });
+
+  // Historique des reconductions
+  const { data: reconductions } = useQuery({
+    queryKey: ['prets-reconductions', pretId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prets_reconductions')
+        .select('*')
+        .eq('pret_id', pretId)
+        .order('date_reconduction', { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -272,6 +287,42 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                       </Button>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Historique des reconductions */}
+            {reconductions && reconductions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Historique des reconductions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Intérêt du mois</TableHead>
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reconductions.map((recon: any) => (
+                        <TableRow key={recon.id}>
+                          <TableCell>
+                            {new Date(recon.date_reconduction).toLocaleDateString('fr-FR')}
+                          </TableCell>
+                          <TableCell className="font-medium text-amber-600">
+                            +{parseFloat(recon.interet_mois.toString()).toLocaleString()} FCFA
+                          </TableCell>
+                          <TableCell>{recon.notes || "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             )}

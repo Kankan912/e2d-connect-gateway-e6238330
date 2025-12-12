@@ -154,16 +154,27 @@ export default function PretsAdmin() {
       const interetMensuel = (pret.montant * ((pret.taux_interet || 0) / 100)) / 12;
       const nouveauTotal = totalActuel + interetMensuel;
 
+      // Mettre à jour le prêt
       const { error } = await supabase.from('prets').update({
         echeance: nouvelleEcheance.toISOString().split('T')[0],
         montant_total_du: nouveauTotal,
         reconductions: (pret.reconductions || 0) + 1
       }).eq('id', pret.id);
       if (error) throw error;
+
+      // Enregistrer la reconduction dans l'historique
+      const { error: reconError } = await supabase.from('prets_reconductions').insert({
+        pret_id: pret.id,
+        date_reconduction: new Date().toISOString().split('T')[0],
+        interet_mois: interetMensuel,
+        notes: `Reconduction #${(pret.reconductions || 0) + 1}`
+      });
+      if (reconError) throw reconError;
     },
     onSuccess: () => {
       toast({ title: "Prêt reconduit d'un mois avec nouveaux intérêts" });
       queryClient.invalidateQueries({ queryKey: ['prets'] });
+      queryClient.invalidateQueries({ queryKey: ['prets-reconductions'] });
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
