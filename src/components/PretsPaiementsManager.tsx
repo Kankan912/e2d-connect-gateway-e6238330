@@ -29,7 +29,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
     queryFn: async () => {
       const { data, error } = await supabase
         .from('prets')
-        .select('*, emprunteur:membres!emprunteur_id(nom, prenom)')
+        .select('*, emprunteur:membres!membre_id(nom, prenom)')
         .eq('id', pretId)
         .single();
       if (error) throw error;
