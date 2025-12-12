@@ -2408,6 +2408,41 @@ export type Database = {
           },
         ]
       }
+      prets_reconductions: {
+        Row: {
+          created_at: string | null
+          date_reconduction: string
+          id: string
+          interet_mois: number
+          notes: string | null
+          pret_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date_reconduction?: string
+          id?: string
+          interet_mois: number
+          notes?: string | null
+          pret_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date_reconduction?: string
+          id?: string
+          interet_mois?: number
+          notes?: string | null
+          pret_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prets_reconductions_pret_id_fkey"
+            columns: ["pret_id"]
+            isOneToOne: false
+            referencedRelation: "prets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
