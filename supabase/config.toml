@@ -1,1 +1,16 @@
 project_id = "piyvinbuxpnquwzyugdj"
+
+[functions.donations-stats]
+verify_jwt = false
+
+[functions.get-payment-config]
+verify_jwt = false
+
+[functions.process-adhesion]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.send-presence-reminders]
+verify_jwt = false
