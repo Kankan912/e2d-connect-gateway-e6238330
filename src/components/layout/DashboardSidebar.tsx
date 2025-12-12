@@ -26,6 +26,8 @@ import {
   Bell,
   Download,
   HandCoins,
+  Building2,
+  HandHeart,
 } from "lucide-react";
 import {
   Sidebar,
@@ -49,28 +51,39 @@ const memberItems = [
   { title: "Mes Cotisations", url: "/dashboard/my-cotisations", icon: Receipt },
 ];
 
-const adminItems = [
+// E2D - Section principale regroupant tous les modules internes
+const e2dCotisationsItems = [
+  { title: "Épargnes", url: "/dashboard/admin/tontine/epargnes", icon: PiggyBank, resource: "epargnes" },
+  { title: "Bénéficiaires", url: "/dashboard/admin/tontine/beneficiaires", icon: Gift, resource: "epargnes" },
+];
+
+const e2dReunionsItems = [
+  { title: "Réunions", url: "/dashboard/admin/reunions", icon: Calendar, resource: "reunions" },
+];
+
+const e2dFinancesItems = [
+  { title: "Prêts", url: "/dashboard/admin/finances/prets", icon: HandCoins, resource: "prets" },
+  { title: "Aides", url: "/dashboard/admin/finances/aides", icon: HandHeart, resource: "aides" },
+];
+
+const e2dTontineItems = [
+  { title: "Configuration Tontine", url: "/dashboard/admin/tontine/config", icon: Settings, resource: "config" },
+];
+
+const e2dGestionItems = [
+  { title: "Membres", url: "/dashboard/admin/membres", icon: Users, resource: "membres" },
+  { title: "Rôles & Permissions", url: "/dashboard/admin/roles", icon: Shield, resource: "roles" },
+  { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3, resource: "stats" },
+];
+
+// Section Administration site public
+const adminPublicItems = [
   { title: "Gestion des Dons", url: "/dashboard/admin/donations", icon: DollarSign, resource: "donations" },
   { title: "Gestion des Adhésions", url: "/dashboard/admin/adhesions", icon: UserPlus, resource: "adhesions" },
   { title: "Configuration Paiements", url: "/dashboard/admin/payment-config", icon: Settings, resource: "config" },
 ];
 
-const gestionItems = [
-  { title: "Gestion Membres", url: "/dashboard/admin/membres", icon: Users, resource: "membres" },
-  { title: "Rôles & Permissions", url: "/dashboard/admin/roles", icon: Shield, resource: "roles" },
-  { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3, resource: "stats" },
-];
-
-const tontineItems = [
-  { title: "Épargnes", url: "/dashboard/admin/tontine/epargnes", icon: PiggyBank, resource: "epargnes" },
-  { title: "Bénéficiaires", url: "/dashboard/admin/tontine/beneficiaires", icon: Gift, resource: "epargnes" },
-  { title: "Configuration", url: "/dashboard/admin/tontine/config", icon: Settings, resource: "config" },
-];
-
-const reunionItems = [
-  { title: "Réunions", url: "/dashboard/admin/reunions", icon: Calendar, resource: "reunions" },
-];
-
+// Section Sport
 const sportItems = [
   { title: "Vue d'Ensemble", url: "/dashboard/admin/sport", icon: Gauge, resource: "sport_e2d" },
   { title: "Matchs E2D", url: "/dashboard/admin/sport/e2d", icon: Trophy, resource: "sport_e2d" },
@@ -78,22 +91,21 @@ const sportItems = [
   { title: "Équipes", url: "/dashboard/admin/sport/equipes", icon: Users, resource: "sport_phoenix" },
   { title: "Présences", url: "/dashboard/admin/presences", icon: CheckSquare, resource: "presences" },
   { title: "Entraînements", url: "/dashboard/admin/sport/entrainements", icon: Dumbbell, resource: "sport_phoenix" },
-  { title: "Sanctions", url: "/dashboard/admin/sport/sanctions", icon: Shield, resource: "sport_phoenix" },
+  { title: "Sanctions Sport", url: "/dashboard/admin/sport/sanctions", icon: Shield, resource: "sport_phoenix" },
   { title: "Match Gala", url: "/dashboard/admin/sport/match-gala", icon: Trophy, resource: "sport_phoenix" },
 ];
 
-const financeAvanceeItems = [
-  { title: "Prêts", url: "/dashboard/admin/finances/prets", icon: HandCoins, resource: "prets" },
-];
-
+// Section Communication
 const communicationItems = [
   { title: "Notifications", url: "/dashboard/admin/communication/notifications", icon: Bell, resource: "notifications" },
 ];
 
+// Section Configuration
 const configItems = [
   { title: "Exports Programmés", url: "/dashboard/admin/config/exports", icon: Download, resource: "config" },
 ];
 
+// Section Site Web (CMS)
 const siteItems = [
   { title: "Hero", url: "/dashboard/admin/site/hero", icon: Palette, resource: "site" },
   { title: "Activités", url: "/dashboard/admin/site/activities", icon: Heart, resource: "site" },
@@ -117,22 +129,25 @@ export function DashboardSidebar() {
   };
 
   // Filtrer les items selon les permissions
-  const visibleAdminItems = adminItems.filter(item => 
+  const visibleE2dCotisationsItems = e2dCotisationsItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
-  const visibleGestionItems = gestionItems.filter(item => 
+  const visibleE2dReunionsItems = e2dReunionsItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
-  const visibleTontineItems = tontineItems.filter(item => 
+  const visibleE2dFinancesItems = e2dFinancesItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
-  const visibleReunionItems = reunionItems.filter(item => 
+  const visibleE2dTontineItems = e2dTontineItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
+  const visibleE2dGestionItems = e2dGestionItems.filter(item => 
+    !item.resource || hasPermission(item.resource, 'read')
+  );
+  const visibleAdminPublicItems = adminPublicItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
   const visibleSportItems = sportItems.filter(item => 
-    !item.resource || hasPermission(item.resource, 'read')
-  );
-  const visibleFinanceAvanceeItems = financeAvanceeItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
   const visibleCommunicationItems = communicationItems.filter(item => 
@@ -146,15 +161,31 @@ export function DashboardSidebar() {
   );
 
   // Vérifier si les sections doivent être affichées
-  const hasFinancesAccess = visibleAdminItems.length > 0;
-  const hasTontineAccess = visibleTontineItems.length > 0;
-  const hasReunionsAccess = visibleReunionItems.length > 0;
+  const hasE2dAccess = visibleE2dCotisationsItems.length > 0 || 
+                       visibleE2dReunionsItems.length > 0 || 
+                       visibleE2dFinancesItems.length > 0 ||
+                       visibleE2dTontineItems.length > 0 ||
+                       visibleE2dGestionItems.length > 0;
+  const hasAdminPublicAccess = visibleAdminPublicItems.length > 0;
   const hasSportAccess = visibleSportItems.length > 0;
-  const hasFinanceAvanceeAccess = visibleFinanceAvanceeItems.length > 0;
   const hasCommunicationAccess = visibleCommunicationItems.length > 0;
   const hasConfigAccess = visibleConfigItems.length > 0;
-  const hasGestionAccess = visibleGestionItems.length > 0;
   const hasSiteAccess = visibleSiteItems.length > 0;
+
+  const renderMenuItems = (items: typeof memberItems) => (
+    <SidebarMenu>
+      {items.map((item) => (
+        <SidebarMenuItem key={item.title}>
+          <SidebarMenuButton asChild isActive={isActive(item.url)}>
+            <NavLink to={item.url} className="flex items-center gap-3">
+              <item.icon className="h-4 w-4" />
+              {open && <span>{item.title}</span>}
+            </NavLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
 
   return (
     <Sidebar className={open ? "w-64" : "w-14"} collapsible="icon">
@@ -183,200 +214,102 @@ export function DashboardSidebar() {
       </div>
 
       <SidebarContent>
+        {/* Mon Espace - toujours visible */}
         <SidebarGroup>
           <SidebarGroupLabel>Mon Espace</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {memberItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4" />
-                      {open && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            {renderMenuItems(memberItems)}
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {hasFinancesAccess && (
+        {/* E2D - Section principale regroupant tous les modules internes */}
+        {hasE2dAccess && (
           <SidebarGroup>
-            <SidebarGroupLabel>Finances</SidebarGroupLabel>
+            <SidebarGroupLabel className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              E2D
+            </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleAdminItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <NavLink to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
+              {visibleE2dCotisationsItems.length > 0 && (
+                <div className="mb-2">
+                  {open && <p className="text-xs text-muted-foreground px-3 py-1">Cotisations & Épargnes</p>}
+                  {renderMenuItems(visibleE2dCotisationsItems)}
+                </div>
+              )}
+              {visibleE2dReunionsItems.length > 0 && (
+                <div className="mb-2">
+                  {open && <p className="text-xs text-muted-foreground px-3 py-1">Réunions</p>}
+                  {renderMenuItems(visibleE2dReunionsItems)}
+                </div>
+              )}
+              {visibleE2dFinancesItems.length > 0 && (
+                <div className="mb-2">
+                  {open && <p className="text-xs text-muted-foreground px-3 py-1">Prêts & Aides</p>}
+                  {renderMenuItems(visibleE2dFinancesItems)}
+                </div>
+              )}
+              {visibleE2dTontineItems.length > 0 && (
+                <div className="mb-2">
+                  {open && <p className="text-xs text-muted-foreground px-3 py-1">Tontine</p>}
+                  {renderMenuItems(visibleE2dTontineItems)}
+                </div>
+              )}
+              {visibleE2dGestionItems.length > 0 && (
+                <div className="mb-2">
+                  {open && <p className="text-xs text-muted-foreground px-3 py-1">Gestion</p>}
+                  {renderMenuItems(visibleE2dGestionItems)}
+                </div>
+              )}
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
-        {hasTontineAccess && (
+        {/* Administration Site Public */}
+        {hasAdminPublicAccess && (
           <SidebarGroup>
-            <SidebarGroupLabel>Tontine</SidebarGroupLabel>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleTontineItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <NavLink to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
+              {renderMenuItems(visibleAdminPublicItems)}
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
-        {hasReunionsAccess && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Réunions</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleReunionItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <NavLink to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
+        {/* Sport */}
         {hasSportAccess && (
           <SidebarGroup>
             <SidebarGroupLabel>Sport</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleSportItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <NavLink to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
+              {renderMenuItems(visibleSportItems)}
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
-        {hasFinanceAvanceeAccess && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Finances Avancées</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleFinanceAvanceeItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <NavLink to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
+        {/* Communication */}
         {hasCommunicationAccess && (
           <SidebarGroup>
             <SidebarGroupLabel>Communication</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleCommunicationItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <NavLink to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
+              {renderMenuItems(visibleCommunicationItems)}
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
+        {/* Configuration */}
         {hasConfigAccess && (
           <SidebarGroup>
             <SidebarGroupLabel>Configuration</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleConfigItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <NavLink to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
+              {renderMenuItems(visibleConfigItems)}
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
-        {hasGestionAccess && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Gestion</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleGestionItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <NavLink to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
+        {/* Site Web (CMS) */}
         {hasSiteAccess && (
           <SidebarGroup>
             <SidebarGroupLabel>Site Web</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
-                {visibleSiteItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <NavLink to={item.url} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
+              {renderMenuItems(visibleSiteItems)}
             </SidebarGroupContent>
           </SidebarGroup>
         )}
