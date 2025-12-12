@@ -28,24 +28,48 @@ serve(async (req) => {
     } = await supabaseClient.auth.getUser();
 
     if (!user) {
+      console.log("No authenticated user found");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { data: userRole } = await supabaseClient
+    console.log("User authenticated:", user.id);
+
+    // Fix: Query user_roles with role_id join to roles table
+    const { data: userRole, error: roleError } = await supabaseClient
       .from("user_roles")
-      .select("role")
+      .select(`
+        role_id,
+        roles:role_id (
+          id,
+          name
+        )
+      `)
       .eq("user_id", user.id)
       .single();
 
-    if (!userRole || !["admin", "tresorier"].includes(userRole.role)) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
+    if (roleError) {
+      console.log("Role query error:", roleError);
+    }
+
+    console.log("User role data:", userRole);
+
+    // Check if user has admin or tresorier role
+    const roleData = Array.isArray(userRole?.roles) ? userRole.roles[0] : userRole?.roles;
+    const roleName = roleData?.name?.toLowerCase();
+    const allowedRoles = ["admin", "tresorier", "administrateur", "trésorier"];
+    
+    if (!userRole || !allowedRoles.includes(roleName)) {
+      console.log("User role not allowed:", roleName);
+      return new Response(JSON.stringify({ error: "Forbidden", role: roleName }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log("User authorized with role:", roleName);
 
     const { period } = await req.json();
 
@@ -106,9 +130,9 @@ serve(async (req) => {
         total: Math.round(currentMonthTotal * 100) / 100,
         trend: Math.round(monthTrend * 10) / 10,
         donors: uniqueDonors,
-        newDonors: 0, // TODO: Calculate new donors
+        newDonors: 0,
         average: Math.round(average * 100) / 100,
-        averageTrend: 0, // TODO: Calculate average trend
+        averageTrend: 0,
       },
       currentYear: {
         total: Math.round(currentYearTotal * 100) / 100,
@@ -116,10 +140,13 @@ serve(async (req) => {
       },
     };
 
+    console.log("Returning stats:", stats);
+
     return new Response(JSON.stringify(stats), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
+    console.error("Error in donations-stats:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
