@@ -62,6 +62,15 @@ export default function PretsAdmin() {
     },
   });
 
+  // Fonction locale pour calculer les intérêts (utilisée dans les mutations avant que calculerInteretsCumules soit défini)
+  const calculerInteretsLocaux = (pret: any): number => {
+    const taux = pret.taux_interet || 0;
+    const interetInitial = pret.montant * (taux / 100);
+    const interetMensuel = (pret.montant * (taux / 100)) / 12;
+    const interetsReconductions = interetMensuel * (pret.reconductions || 0);
+    return interetInitial + interetsReconductions;
+  };
+
   const createPret = useMutation({
     mutationFn: async (data: any) => {
       const { error } = await supabase.from('prets').insert(data);
@@ -106,7 +115,8 @@ export default function PretsAdmin() {
   // Action: Payer Total
   const payerTotal = useMutation({
     mutationFn: async (pret: any) => {
-      const resteAPayer = (pret.montant_total_du || pret.montant) - (pret.montant_paye || 0);
+      const totalDu = pret.montant + calculerInteretsLocaux(pret);
+      const resteAPayer = totalDu - (pret.montant_paye || 0);
       
       // Ajouter un paiement
       const { error: paiementError } = await supabase.from('prets_paiements').insert([{
@@ -119,7 +129,7 @@ export default function PretsAdmin() {
 
       // Mettre à jour le prêt
       const { error: pretError } = await supabase.from('prets').update({
-        montant_paye: pret.montant_total_du || pret.montant,
+        montant_paye: totalDu,
         statut: 'rembourse'
       }).eq('id', pret.id);
       if (pretError) throw pretError;
@@ -139,9 +149,10 @@ export default function PretsAdmin() {
       const nouvelleEcheance = new Date(pret.echeance);
       nouvelleEcheance.setMonth(nouvelleEcheance.getMonth() + 1);
       
-      // Calculer les nouveaux intérêts
-      const interetMensuel = (pret.montant * (pret.taux_interet / 100)) / 12;
-      const nouveauTotal = (pret.montant_total_du || pret.montant) + interetMensuel;
+      // Calculer les nouveaux intérêts avec le calcul local
+      const totalActuel = pret.montant + calculerInteretsLocaux(pret);
+      const interetMensuel = (pret.montant * ((pret.taux_interet || 0) / 100)) / 12;
+      const nouveauTotal = totalActuel + interetMensuel;
 
       const { error } = await supabase.from('prets').update({
         echeance: nouvelleEcheance.toISOString().split('T')[0],
@@ -178,9 +189,14 @@ export default function PretsAdmin() {
     return interetInitial + interetsReconductions;
   };
 
+  // Calculer le total dû (montant + intérêts cumulés)
+  const calculerTotalDu = (pret: any): number => {
+    return pret.montant + calculerInteretsCumules(pret);
+  };
+
   // Calculer le statut effectif
   const getEffectiveStatus = (pret: any) => {
-    const totalDu = pret.montant_total_du || pret.montant;
+    const totalDu = calculerTotalDu(pret);
     const paye = pret.montant_paye || 0;
     const echeance = new Date(pret.echeance);
     const now = new Date();
@@ -272,7 +288,7 @@ export default function PretsAdmin() {
   const totalReconductions = prets?.reduce((sum, p) => sum + (p.reconductions || 0), 0) || 0;
   const montantPrete = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + p.montant, 0) || 0;
   const pretsRembourses = prets?.filter((p) => getEffectiveStatus(p) === "rembourse").length || 0;
-  const montantRestant = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + (p.montant_total_du || p.montant) - (p.montant_paye || 0), 0) || 0;
+  const montantRestant = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + calculerTotalDu(p) - (p.montant_paye || 0), 0) || 0;
   const totalInterets = prets?.reduce((sum, p) => sum + calculerInteretsCumules(p), 0) || 0;
 
   return (
@@ -443,7 +459,7 @@ export default function PretsAdmin() {
                 </TableHeader>
                 <TableBody>
                   {filteredPrets?.map((pret) => {
-                    const resteAPayer = (pret.montant_total_du || pret.montant) - (pret.montant_paye || 0);
+                    const resteAPayer = calculerTotalDu(pret) - (pret.montant_paye || 0);
                     const estRembourse = getEffectiveStatus(pret) === 'rembourse';
                     
                     return (
@@ -467,7 +483,7 @@ export default function PretsAdmin() {
                           {formatFCFA(calculerInteretsCumules(pret))}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatFCFA(pret.montant_total_du || pret.montant)}
+                          {formatFCFA(calculerTotalDu(pret))}
                         </TableCell>
                         <TableCell>{new Date(pret.echeance).toLocaleDateString('fr-FR')}</TableCell>
                         <TableCell>
