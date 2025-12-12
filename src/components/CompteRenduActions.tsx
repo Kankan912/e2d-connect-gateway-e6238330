@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, FileText, CheckCircle, Users } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Send, FileText, CheckCircle, Users, UserPlus, UserMinus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -21,10 +22,34 @@ interface CompteRenduActionsProps {
   onSuccess?: () => void;
 }
 
+interface Membre {
+  id: string;
+  nom: string;
+  prenom: string;
+  email: string | null;
+}
+
 export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduActionsProps) {
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  // Récupérer tous les membres
+  const { data: allMembers } = useQuery({
+    queryKey: ['all-members'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('membres')
+        .select('id, nom, prenom, email')
+        .eq('statut', 'actif')
+        .order('nom');
+
+      if (error) throw error;
+      return data as Membre[];
+    },
+    enabled: open
+  });
 
   // Récupérer les membres présents à la réunion
   const { data: presences } = useQuery({
@@ -32,20 +57,12 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
     queryFn: async () => {
       const { data, error } = await supabase
         .from('reunion_presences')
-        .select(`
-          membre_id,
-          membres:membre_id (
-            id,
-            nom,
-            prenom,
-            email
-          )
-        `)
+        .select('membre_id')
         .eq('reunion_id', reunion.id)
         .eq('present', true);
 
       if (error) throw error;
-      return data;
+      return data?.map(p => p.membre_id) || [];
     },
     enabled: open
   });
@@ -66,29 +83,67 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
     enabled: open
   });
 
+  // Pré-sélectionner les membres présents
+  useEffect(() => {
+    if (presences && allMembers) {
+      const presentMembersWithEmail = presences.filter(id => {
+        const member = allMembers.find(m => m.id === id);
+        return member?.email;
+      });
+      setSelectedMembers(new Set(presentMembersWithEmail));
+    }
+  }, [presences, allMembers]);
+
+  const toggleMember = (memberId: string) => {
+    const newSelected = new Set(selectedMembers);
+    if (newSelected.has(memberId)) {
+      newSelected.delete(memberId);
+    } else {
+      newSelected.add(memberId);
+    }
+    setSelectedMembers(newSelected);
+  };
+
+  const selectAllWithEmail = () => {
+    const membersWithEmail = allMembers?.filter(m => m.email).map(m => m.id) || [];
+    setSelectedMembers(new Set(membersWithEmail));
+  };
+
+  const deselectAll = () => {
+    setSelectedMembers(new Set());
+  };
+
   const handleConfirmerEtNotifier = async () => {
     setSending(true);
     try {
-      // Récupérer les emails des membres présents
-      const emails = presences
-        ?.map((p: any) => p.membres?.email)
-        .filter(Boolean) || [];
+      // Récupérer les emails des membres sélectionnés
+      const emails = allMembers
+        ?.filter(m => selectedMembers.has(m.id) && m.email)
+        .map(m => m.email) || [];
 
       if (emails.length === 0) {
         toast({
           title: "Erreur",
-          description: "Aucun membre présent avec email valide",
+          description: "Aucun membre sélectionné avec email valide",
           variant: "destructive",
         });
         return;
       }
 
+      // Préparer la liste des présents
+      const presentsNames = allMembers
+        ?.filter(m => presences?.includes(m.id))
+        .map(m => `${m.prenom} ${m.nom}`)
+        .join(', ') || 'Aucun';
+
       // Préparer le contenu du CR
       const contenuCR = comptesRendus
         ?.map((cr: any, index: number) =>
-          `${index + 1}. ${cr.sujet}\n   ${cr.resolution || 'Aucune résolution'}`
+          `${index + 1}. ${cr.sujet}\n   Résolution: ${cr.resolution || 'Aucune résolution'}`
         )
         .join('\n\n') || 'Aucun point à l\'ordre du jour';
+
+      const fullContent = `PRÉSENTS (${presences?.length || 0}):\n${presentsNames}\n\n---\n\nORDRE DU JOUR:\n\n${contenuCR}`;
 
       // Appeler l'edge function pour envoyer les emails
       const { data, error } = await supabase.functions.invoke('send-reunion-cr', {
@@ -96,7 +151,7 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
           reunionId: reunion.id,
           destinataires: emails,
           sujet: reunion.sujet || 'Réunion',
-          contenu: contenuCR,
+          contenu: fullContent,
           dateReunion: reunion.date_reunion
         }
       });
@@ -128,8 +183,11 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
     }
   };
 
-  const destinatairesCount = presences?.length || 0;
+  const totalMembers = allMembers?.length || 0;
+  const membersWithEmail = allMembers?.filter(m => m.email).length || 0;
+  const selectedCount = selectedMembers.size;
   const pointsCRCount = comptesRendus?.length || 0;
+  const presentsCount = presences?.length || 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -139,21 +197,21 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
           Confirmer et Notifier
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Envoi du Compte-Rendu
           </DialogTitle>
           <DialogDescription>
-            Confirmez l'envoi du compte-rendu à tous les membres présents
+            Sélectionnez les destinataires et confirmez l'envoi
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Résumé */}
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-2">
               <CardTitle className="text-base">Résumé</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -171,39 +229,78 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
                 <span className="text-sm text-muted-foreground">Points à l'ordre du jour</span>
                 <Badge variant="outline">{pointsCRCount}</Badge>
               </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Présents enregistrés</span>
+                <Badge variant="secondary">{presentsCount}</Badge>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Destinataires */}
+          {/* Sélection des destinataires */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Destinataires ({destinatairesCount})
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Destinataires ({selectedCount}/{membersWithEmail} avec email)
+                </span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={selectAllWithEmail}>
+                    <UserPlus className="h-3 w-3 mr-1" />
+                    Tous
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={deselectAll}>
+                    <UserMinus className="h-3 w-3 mr-1" />
+                    Aucun
+                  </Button>
+                </div>
               </CardTitle>
               <CardDescription>
-                Le compte-rendu sera envoyé aux membres présents
+                Cochez les membres qui recevront le compte-rendu
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-32">
+              <ScrollArea className="h-48">
                 <div className="space-y-2">
-                  {presences?.map((presence: any) => (
-                    <div
-                      key={presence.membre_id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-muted"
-                    >
-                      <span className="text-sm font-medium">
-                        {presence.membres?.prenom} {presence.membres?.nom}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {presence.membres?.email || 'Pas d\'email'}
-                      </span>
-                    </div>
-                  ))}
-                  {destinatairesCount === 0 && (
+                  {allMembers?.map((member) => {
+                    const isPresent = presences?.includes(member.id);
+                    const hasEmail = !!member.email;
+                    
+                    return (
+                      <div
+                        key={member.id}
+                        className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
+                          selectedMembers.has(member.id) 
+                            ? 'bg-primary/10 border border-primary/20' 
+                            : 'bg-muted'
+                        } ${!hasEmail ? 'opacity-50' : ''}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Checkbox
+                            checked={selectedMembers.has(member.id)}
+                            onCheckedChange={() => hasEmail && toggleMember(member.id)}
+                            disabled={!hasEmail}
+                          />
+                          <div>
+                            <span className="text-sm font-medium">
+                              {member.prenom} {member.nom}
+                            </span>
+                            {isPresent && (
+                              <Badge variant="secondary" className="ml-2 text-xs">
+                                Présent
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {member.email || 'Pas d\'email'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {totalMembers === 0 && (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      Aucun membre présent enregistré
+                      Aucun membre trouvé
                     </p>
                   )}
                 </div>
@@ -213,7 +310,7 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
 
           {/* Aperçu du contenu */}
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-2">
               <CardTitle className="text-base">Aperçu du Contenu</CardTitle>
             </CardHeader>
             <CardContent>
@@ -246,11 +343,11 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
             </Button>
             <Button
               onClick={handleConfirmerEtNotifier}
-              disabled={sending || destinatairesCount === 0 || pointsCRCount === 0}
+              disabled={sending || selectedCount === 0 || pointsCRCount === 0}
               className="bg-gradient-to-r from-primary to-secondary"
             >
               <CheckCircle className="w-4 h-4 mr-2" />
-              {sending ? "Envoi en cours..." : `Envoyer à ${destinatairesCount} membre(s)`}
+              {sending ? "Envoi en cours..." : `Envoyer à ${selectedCount} membre(s)`}
             </Button>
           </div>
         </div>
@@ -258,4 +355,3 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
     </Dialog>
   );
 }
-
