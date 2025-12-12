@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.send-presence-reminders]
 verify_jwt = false
+
+[functions.send-reunion-cr]
+verify_jwt = false
