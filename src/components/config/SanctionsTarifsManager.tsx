@@ -310,8 +310,8 @@ export function SanctionsTarifsManager() {
                       <Input
                         id="montant"
                         type="number"
-                        value={formData.montant_defaut}
-                        onChange={(e) => setFormData({ ...formData, montant_defaut: Number(e.target.value) })}
+                        value={formData.montant}
+                        onChange={(e) => setFormData({ ...formData, montant: Number(e.target.value) })}
                       />
                     </div>
                   </div>
@@ -344,7 +344,7 @@ export function SanctionsTarifsManager() {
                       <Badge variant="outline">{getCategorieLabel(type.categorie)}</Badge>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{type.description || "-"}</TableCell>
-                    <TableCell>{type.montant_defaut} €</TableCell>
+                    <TableCell>{type.montant} €</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button variant="outline" size="icon" onClick={() => handleEdit(type)}>
                         <Edit className="h-4 w-4" />
@@ -461,7 +461,7 @@ export function SanctionsTarifsManager() {
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setTarifDialogOpen(false)}>Annuler</Button>
                       <Button onClick={() => createTarifMutation.mutate({
-                        sanction_type_id: selectedType.id,
+                        type_sanction_id: selectedType.id,
                         ...tarifFormData
                       })}>
                         Ajouter
