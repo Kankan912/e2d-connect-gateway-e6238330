@@ -167,6 +167,17 @@ export default function PretsAdmin() {
     }
   };
 
+  // Calculer les intérêts cumulés (initial + reconductions)
+  const calculerInteretsCumules = (pret: any): number => {
+    const taux = pret.taux_interet || 0;
+    // Intérêt initial = montant × taux / 100
+    const interetInitial = pret.montant * (taux / 100);
+    // Intérêts de reconduction (chaque reconduction = 1 mois d'intérêt supplémentaire)
+    const interetMensuel = (pret.montant * (taux / 100)) / 12;
+    const interetsReconductions = interetMensuel * (pret.reconductions || 0);
+    return interetInitial + interetsReconductions;
+  };
+
   // Calculer le statut effectif
   const getEffectiveStatus = (pret: any) => {
     const totalDu = pret.montant_total_du || pret.montant;
@@ -218,11 +229,11 @@ export default function PretsAdmin() {
     }
   };
 
-  // Filtrer les prêts
+  // Filtrer et trier les prêts par priorité de statut
   const filteredPrets = useMemo(() => {
     if (!prets) return [];
     
-    return prets.filter(pret => {
+    const filtered = prets.filter(pret => {
       // Filtre par recherche
       const searchLower = searchQuery.toLowerCase();
       const matchSearch = !searchQuery || 
@@ -237,17 +248,32 @@ export default function PretsAdmin() {
 
       return matchSearch && matchStatut;
     });
+
+    // Tri par priorité de statut : en_retard > en_cours > reconduit > partiel > rembourse
+    const priorityOrder: Record<string, number> = {
+      'en_retard': 0,
+      'en_cours': 1,
+      'reconduit': 2,
+      'partiel': 3,
+      'rembourse': 4
+    };
+
+    return filtered.sort((a, b) => {
+      const priorityA = priorityOrder[getEffectiveStatus(a)] ?? 5;
+      const priorityB = priorityOrder[getEffectiveStatus(b)] ?? 5;
+      return priorityA - priorityB;
+    });
   }, [prets, searchQuery, statutFilter]);
 
   // Statistiques
   const pretsActifs = prets?.filter((p) => getEffectiveStatus(p) === "en_cours").length || 0;
   const pretsPartiels = prets?.filter((p) => getEffectiveStatus(p) === "partiel").length || 0;
   const pretsEnRetard = prets?.filter((p) => getEffectiveStatus(p) === "en_retard").length || 0;
-  const pretsReconduits = prets?.filter((p) => getEffectiveStatus(p) === "reconduit").length || 0;
+  const totalReconductions = prets?.reduce((sum, p) => sum + (p.reconductions || 0), 0) || 0;
   const montantPrete = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + p.montant, 0) || 0;
   const pretsRembourses = prets?.filter((p) => getEffectiveStatus(p) === "rembourse").length || 0;
   const montantRestant = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + (p.montant_total_du || p.montant) - (p.montant_paye || 0), 0) || 0;
-  const totalInterets = prets?.reduce((sum, p) => sum + ((p.montant_total_du || p.montant) - p.montant), 0) || 0;
+  const totalInterets = prets?.reduce((sum, p) => sum + calculerInteretsCumules(p), 0) || 0;
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -354,10 +380,10 @@ export default function PretsAdmin() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Reconductions</CardTitle>
+            <CardTitle className="text-sm text-muted-foreground">Total Reconductions</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-blue-600">{pretsReconduits}</p>
+            <p className="text-2xl font-bold text-blue-600">{totalReconductions}</p>
           </CardContent>
         </Card>
       </div>
@@ -405,13 +431,14 @@ export default function PretsAdmin() {
                     <TableHead>Emprunteur</TableHead>
                     <TableHead>Avaliste</TableHead>
                     <TableHead>Montant</TableHead>
-                    <TableHead>Total dû</TableHead>
                     <TableHead>Taux</TableHead>
+                    <TableHead>Intérêts cumulés</TableHead>
+                    <TableHead>Total dû</TableHead>
                     <TableHead>Échéance</TableHead>
-                    <TableHead>Reconductions</TableHead>
+                    <TableHead>Recon.</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Reste à payer</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-right min-w-[180px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -435,10 +462,13 @@ export default function PretsAdmin() {
                           )}
                         </TableCell>
                         <TableCell>{formatFCFA(pret.montant)}</TableCell>
+                        <TableCell>{pret.taux_interet}%</TableCell>
+                        <TableCell className="text-amber-600 font-medium">
+                          {formatFCFA(calculerInteretsCumules(pret))}
+                        </TableCell>
                         <TableCell className="font-medium">
                           {formatFCFA(pret.montant_total_du || pret.montant)}
                         </TableCell>
-                        <TableCell>{pret.taux_interet}%</TableCell>
                         <TableCell>{new Date(pret.echeance).toLocaleDateString('fr-FR')}</TableCell>
                         <TableCell>
                           {pret.reconductions > 0 ? (
@@ -464,21 +494,20 @@ export default function PretsAdmin() {
                           {formatFCFA(resteAPayer)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex gap-1 justify-end flex-wrap">
-                            {/* Actions rapides */}
+                          <div className="flex gap-0.5 justify-end flex-nowrap">
                             {!estRembourse && (
                               <>
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
-                                        size="sm"
+                                        size="icon"
                                         variant="default"
-                                        className="bg-green-600 hover:bg-green-700"
+                                        className="h-7 w-7 bg-green-600 hover:bg-green-700"
                                         onClick={() => payerTotal.mutate(pret)}
                                         disabled={payerTotal.isPending}
                                       >
-                                        <CheckCircle className="h-4 w-4" />
+                                        <CheckCircle className="h-3.5 w-3.5" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>Payer Total ({formatFCFA(resteAPayer)})</TooltipContent>
@@ -488,14 +517,15 @@ export default function PretsAdmin() {
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
-                                        size="sm"
+                                        size="icon"
                                         variant="outline"
+                                        className="h-7 w-7"
                                         onClick={() => {
                                           setPretForPaiements(pret.id);
                                           setPaiementsDialogOpen(true);
                                         }}
                                       >
-                                        <Banknote className="h-4 w-4" />
+                                        <Banknote className="h-3.5 w-3.5" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>Paiement Partiel</TooltipContent>
@@ -505,13 +535,13 @@ export default function PretsAdmin() {
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
-                                        size="sm"
+                                        size="icon"
                                         variant="outline"
-                                        className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                                        className="h-7 w-7 border-blue-500 text-blue-600 hover:bg-blue-50"
                                         onClick={() => reconduire.mutate(pret)}
                                         disabled={reconduire.isPending}
                                       >
-                                        <RefreshCw className="h-4 w-4" />
+                                        <RefreshCw className="h-3.5 w-3.5" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>Reconduire (+1 mois)</TooltipContent>
@@ -523,14 +553,15 @@ export default function PretsAdmin() {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
-                                    size="sm"
+                                    size="icon"
                                     variant="outline"
+                                    className="h-7 w-7"
                                     onClick={() => {
                                       setPretForPaiements(pret.id);
                                       setPaiementsDialogOpen(true);
                                     }}
                                   >
-                                    <CreditCard className="h-4 w-4" />
+                                    <CreditCard className="h-3.5 w-3.5" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Gérer les paiements</TooltipContent>
@@ -541,11 +572,12 @@ export default function PretsAdmin() {
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button
-                                      size="sm"
+                                      size="icon"
                                       variant="outline"
+                                      className="h-7 w-7"
                                       onClick={() => window.open(pret.justificatif_url, '_blank')}
                                     >
-                                      <FileText className="h-4 w-4" />
+                                      <FileText className="h-3.5 w-3.5" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Voir le justificatif</TooltipContent>
@@ -553,18 +585,20 @@ export default function PretsAdmin() {
                               </TooltipProvider>
                             )}
                             <Button
-                              size="sm"
+                              size="icon"
                               variant="outline"
+                              className="h-7 w-7"
                               onClick={() => { setSelectedPret(pret); setFormOpen(true); }}
                             >
-                              <Edit className="h-4 w-4" />
+                              <Edit className="h-3.5 w-3.5" />
                             </Button>
                             <Button
-                              size="sm"
+                              size="icon"
                               variant="destructive"
+                              className="h-7 w-7"
                               onClick={() => { setPretToDelete(pret.id); setDeleteDialogOpen(true); }}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </TableCell>
@@ -573,7 +607,7 @@ export default function PretsAdmin() {
                   })}
                   {filteredPrets?.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                         {prets?.length === 0 ? 'Aucun prêt enregistré' : 'Aucun prêt ne correspond aux critères'}
                       </TableCell>
                     </TableRow>
