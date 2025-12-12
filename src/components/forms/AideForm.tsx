@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAidesTypes } from "@/hooks/useAides";
+import FileUploadField from "@/components/forms/FileUploadField";
 
 const aideSchema = z.object({
   type_aide_id: z.string().min(1, "Sélectionnez un type d'aide"),
@@ -20,6 +21,7 @@ const aideSchema = z.object({
   contexte_aide: z.string().min(1, "Contexte requis"),
   statut: z.string().min(1, "Statut requis"),
   notes: z.string().optional(),
+  justificatif_url: z.string().optional(),
 });
 
 type AideFormData = z.infer<typeof aideSchema>;
@@ -32,6 +34,7 @@ interface AideFormProps {
 }
 
 export default function AideForm({ open, onClose, onSubmit, initialData }: AideFormProps) {
+  const [justificatifUrl, setJustificatifUrl] = useState<string | null>(null);
   const { data: typesAide } = useAidesTypes();
 
   const { data: membres } = useQuery({
@@ -85,6 +88,7 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
           statut: initialData.statut,
           notes: initialData.notes || "",
         });
+        setJustificatifUrl(initialData.justificatif_url || null);
       } else {
         reset({
           contexte_aide: "reunion",
@@ -92,12 +96,16 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
           date_allocation: new Date().toISOString().split("T")[0],
           notes: "",
         });
+        setJustificatifUrl(null);
       }
     }
   }, [open, initialData, reset]);
 
   const handleFormSubmit = (data: AideFormData) => {
-    onSubmit(data);
+    onSubmit({
+      ...data,
+      justificatif_url: justificatifUrl,
+    });
   };
 
   return (
@@ -205,6 +213,12 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
               )}
             </div>
           </div>
+
+          <FileUploadField
+            label="Justificatif (optionnel)"
+            value={justificatifUrl}
+            onChange={setJustificatifUrl}
+          />
 
           <div>
             <Label>Notes</Label>

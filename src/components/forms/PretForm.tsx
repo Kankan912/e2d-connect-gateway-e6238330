@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import FileUploadField from "@/components/forms/FileUploadField";
 
 const pretSchema = z.object({
   membre_id: z.string().min(1, "Sélectionnez un emprunteur"),
@@ -21,6 +22,7 @@ const pretSchema = z.object({
   exercice_id: z.string().optional(),
   reconductions: z.number().min(0).optional(),
   notes: z.string().optional(),
+  justificatif_url: z.string().optional(),
 });
 
 type PretFormData = z.infer<typeof pretSchema>;
@@ -33,6 +35,8 @@ interface PretFormProps {
 }
 
 export default function PretForm({ open, onClose, onSubmit, initialData }: PretFormProps) {
+  const [justificatifUrl, setJustificatifUrl] = useState<string | null>(null);
+  
   const { data: membres } = useQuery({
     queryKey: ['membres-actifs'],
     queryFn: async () => {
@@ -101,18 +105,23 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
           montant: initialData.montant,
           taux_interet: initialData.taux_interet || 5,
           echeance: initialData.echeance,
-          avaliste_id: initialData.avaliste_id || "",
-          reunion_id: initialData.reunion_id || "",
-          exercice_id: initialData.exercice_id || "",
+          avaliste_id: initialData.avaliste_id || "none",
+          reunion_id: initialData.reunion_id || "none",
+          exercice_id: initialData.exercice_id || "none",
           reconductions: initialData.reconductions || 0,
           notes: initialData.notes || "",
         });
+        setJustificatifUrl(initialData.justificatif_url || null);
       } else {
         reset({
           taux_interet: 5,
           reconductions: 0,
           notes: "",
+          avaliste_id: "none",
+          reunion_id: "none",
+          exercice_id: "none",
         });
+        setJustificatifUrl(null);
       }
     }
   }, [open, initialData, reset]);
@@ -125,10 +134,11 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
       statut: initialData?.statut || 'en_cours',
       montant_paye: initialData?.montant_paye || 0,
       montant_total_du: montantTotal,
-      avaliste_id: data.avaliste_id || null,
-      reunion_id: data.reunion_id || null,
-      exercice_id: data.exercice_id || null,
+      avaliste_id: data.avaliste_id === "none" ? null : data.avaliste_id,
+      reunion_id: data.reunion_id === "none" ? null : data.reunion_id,
+      exercice_id: data.exercice_id === "none" ? null : data.exercice_id,
       reconductions: data.reconductions || 0,
+      justificatif_url: justificatifUrl,
     });
   };
 
@@ -161,12 +171,12 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
 
             <div>
               <Label>Avaliste (Garant)</Label>
-              <Select value={avalisteId || ""} onValueChange={(val) => setValue("avaliste_id", val)}>
+              <Select value={avalisteId || "none"} onValueChange={(val) => setValue("avaliste_id", val)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un garant" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun</SelectItem>
+                  <SelectItem value="none">Aucun</SelectItem>
                   {membres?.filter(m => m.id !== membreId).map((m) => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.nom} {m.prenom}
@@ -235,12 +245,12 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Réunion d'attribution</Label>
-              <Select value={reunionId || ""} onValueChange={(val) => setValue("reunion_id", val)}>
+              <Select value={reunionId || "none"} onValueChange={(val) => setValue("reunion_id", val)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner une réunion" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucune</SelectItem>
+                  <SelectItem value="none">Aucune</SelectItem>
                   {reunions?.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {new Date(r.date_reunion).toLocaleDateString('fr-FR')} - {r.ordre_du_jour?.substring(0, 30)}
@@ -252,12 +262,12 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
 
             <div>
               <Label>Exercice fiscal</Label>
-              <Select value={exerciceId || ""} onValueChange={(val) => setValue("exercice_id", val)}>
+              <Select value={exerciceId || "none"} onValueChange={(val) => setValue("exercice_id", val)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un exercice" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun</SelectItem>
+                  <SelectItem value="none">Aucun</SelectItem>
                   {exercices?.map((e) => (
                     <SelectItem key={e.id} value={e.id}>
                       {e.nom} {e.statut === 'actif' && '(Actif)'}
@@ -267,6 +277,12 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
               </Select>
             </div>
           </div>
+
+          <FileUploadField
+            label="Justificatif (optionnel)"
+            value={justificatifUrl}
+            onChange={setJustificatifUrl}
+          />
 
           <div>
             <Label>Notes</Label>
