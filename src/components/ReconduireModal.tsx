@@ -10,7 +10,7 @@ import { formatFCFA } from "@/lib/utils";
 interface ReconduireModalProps {
   pret: any;
   maxReconductions: number;
-  interetRestant: number;
+  soldeRestant: number; // Total dû actuel - paiements
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -20,34 +20,32 @@ interface ReconduireModalProps {
 export default function ReconduireModal({
   pret,
   maxReconductions,
-  interetRestant,
+  soldeRestant,
   open,
   onClose,
   onConfirm,
   isPending = false
 }: ReconduireModalProps) {
-  const [interetPayeConfirme, setInteretPayeConfirme] = useState(false);
+  const [confirme, setConfirme] = useState(false);
 
   const reconductionsActuelles = pret?.reconductions || 0;
   const prochaineReconduction = reconductionsActuelles + 1;
   const limiteAtteinte = reconductionsActuelles >= maxReconductions;
   
-  // Intérêt mensuel pour cette reconduction
-  const interetMensuel = pret ? (pret.montant * ((pret.taux_interet || 5) / 100)) / 12 : 0;
+  const taux = pret?.taux_interet || 5;
   
-  // Capital restant
-  const capitalRestant = pret ? pret.montant - (pret.capital_paye || 0) : 0;
-
-  // Peut reconduire si l'intérêt est payé et limite non atteinte
-  const peutReconduire = interetRestant <= 0 || interetPayeConfirme;
+  // Selon la règle métier: lors d'une reconduction, on applique 5% sur le solde restant
+  // Nouveau total dû = Solde restant × (1 + Taux%)
+  const nouvelInteret = soldeRestant * (taux / 100);
+  const nouveauTotalDu = soldeRestant + nouvelInteret;
 
   const handleClose = () => {
-    setInteretPayeConfirme(false);
+    setConfirme(false);
     onClose();
   };
 
   const handleConfirm = () => {
-    setInteretPayeConfirme(false);
+    setConfirme(false);
     onConfirm();
   };
 
@@ -84,71 +82,65 @@ export default function ReconduireModal({
               <span className="font-medium">{pret.emprunteur?.nom} {pret.emprunteur?.prenom}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Capital restant</span>
-              <span className="font-medium">{formatFCFA(capitalRestant)}</span>
+              <span className="text-muted-foreground">Capital initial</span>
+              <span className="font-medium">{formatFCFA(pret.montant)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Intérêt mensuel</span>
-              <span className="font-medium text-amber-600">+{formatFCFA(interetMensuel)}</span>
-            </div>
-            <div className="border-t pt-2 flex justify-between">
-              <span className="text-muted-foreground">Reconductions actuelles</span>
-              <span className="font-bold">{reconductionsActuelles} / {maxReconductions}</span>
+            <div className="flex justify-between border-t pt-2">
+              <span className="text-muted-foreground">Solde restant actuel</span>
+              <span className="font-bold text-orange-600">{formatFCFA(soldeRestant)}</span>
             </div>
           </div>
 
-          {/* Intérêt restant */}
-          {interetRestant > 0 && !limiteAtteinte && (
-            <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-200">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-700 dark:text-amber-400">
-                Il reste <strong>{formatFCFA(interetRestant)}</strong> d'intérêts impayés. 
-                Selon les règles, l'intérêt du mois doit être payé avant la reconduction.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {/* Confirmation du paiement d'intérêt */}
-          {interetRestant > 0 && !limiteAtteinte && (
-            <div className="flex items-start space-x-3 p-3 border rounded-lg">
-              <Checkbox
-                id="confirm-interet"
-                checked={interetPayeConfirme}
-                onCheckedChange={(checked) => setInteretPayeConfirme(checked as boolean)}
-              />
-              <div className="space-y-1">
-                <Label htmlFor="confirm-interet" className="cursor-pointer">
-                  Je confirme que l'intérêt du mois a été payé
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Un paiement d'intérêt de {formatFCFA(interetMensuel)} sera enregistré automatiquement.
-                </p>
+          {/* Calcul de la reconduction */}
+          {!limiteAtteinte && (
+            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 space-y-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="h-4 w-4 text-blue-600" />
+                <span className="font-medium text-blue-700 dark:text-blue-400">Calcul de la reconduction :</span>
+              </div>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Solde actuel</span>
+                  <span>{formatFCFA(soldeRestant)}</span>
+                </div>
+                <div className="flex justify-between text-amber-600">
+                  <span>+ Intérêt ({taux}%)</span>
+                  <span>+{formatFCFA(nouvelInteret)}</span>
+                </div>
+                <div className="flex justify-between font-bold border-t pt-1 mt-1">
+                  <span>Nouveau total dû</span>
+                  <span className="text-primary">{formatFCFA(nouveauTotalDu)}</span>
+                </div>
               </div>
             </div>
-          )}
-
-          {/* Intérêt déjà payé */}
-          {interetRestant <= 0 && !limiteAtteinte && (
-            <Alert className="bg-green-50 dark:bg-green-950/30 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-700 dark:text-green-400">
-                Les intérêts sont à jour. Vous pouvez reconduire ce prêt.
-              </AlertDescription>
-            </Alert>
           )}
 
           {/* Ce qui va se passer */}
           {!limiteAtteinte && (
-            <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Info className="h-4 w-4 text-blue-600" />
-                <span className="font-medium text-blue-700 dark:text-blue-400">En reconduisant :</span>
+            <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-700 dark:text-amber-400">
+                <strong>Attention :</strong> Un intérêt de {taux}% sera appliqué sur le solde restant de {formatFCFA(soldeRestant)}.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Confirmation */}
+          {!limiteAtteinte && (
+            <div className="flex items-start space-x-3 p-3 border rounded-lg">
+              <Checkbox
+                id="confirm-reconduction"
+                checked={confirme}
+                onCheckedChange={(checked) => setConfirme(checked as boolean)}
+              />
+              <div className="space-y-1">
+                <Label htmlFor="confirm-reconduction" className="cursor-pointer">
+                  Je confirme vouloir reconduire ce prêt
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Le nouveau montant dû sera de {formatFCFA(nouveauTotalDu)}.
+                </p>
               </div>
-              <ul className="text-sm text-blue-600 dark:text-blue-300 space-y-1 ml-6">
-                <li>• Nouvelle échéance : +1 mois</li>
-                <li>• Intérêt mensuel ajouté : {formatFCFA(interetMensuel)}</li>
-                <li>• Reconduction #{prochaineReconduction} enregistrée</li>
-              </ul>
             </div>
           )}
         </div>
@@ -159,7 +151,7 @@ export default function ReconduireModal({
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={limiteAtteinte || !peutReconduire || isPending}
+            disabled={limiteAtteinte || !confirme || isPending}
             className="bg-blue-600 hover:bg-blue-700"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isPending ? 'animate-spin' : ''}`} />

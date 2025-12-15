@@ -85,24 +85,23 @@ export default function PretsAdmin() {
 
   const maxReconductions = pretsConfig?.max_reconductions || 3;
 
-  // Calculer les intérêts cumulés
-  const calculerInteretsCumules = (pret: any): number => {
-    const taux = pret.taux_interet || 0;
-    const interetInitial = pret.interet_initial || (pret.montant * (taux / 100));
-    const interetMensuel = (pret.montant * (taux / 100)) / 12;
-    const interetsReconductions = interetMensuel * (pret.reconductions || 0);
-    return interetInitial + interetsReconductions;
-  };
-
-  // Calculer le total dû
+  // Calculer le total dû actuel (utilise montant_total_du si disponible, sinon calcule)
   const calculerTotalDu = (pret: any): number => {
-    return pret.montant + calculerInteretsCumules(pret);
+    if (pret.montant_total_du && pret.montant_total_du > 0) {
+      return parseFloat(pret.montant_total_du.toString());
+    }
+    // Sinon calculer: capital + intérêt initial (5%)
+    const taux = pret.taux_interet || 5;
+    const capital = parseFloat(pret.montant.toString());
+    const interet = capital * (taux / 100);
+    return capital + interet;
   };
 
-  // Calculer l'intérêt restant à payer
-  const calculerInteretRestant = (pret: any): number => {
-    const interetTotal = calculerInteretsCumules(pret);
-    return Math.max(0, interetTotal - (pret.interet_paye || 0));
+  // Calculer le solde restant (total dû - montant payé)
+  const calculerSoldeRestant = (pret: any): number => {
+    const totalDu = calculerTotalDu(pret);
+    const paye = pret.montant_paye || 0;
+    return Math.max(0, totalDu - paye);
   };
 
   const createPret = useMutation({
@@ -149,12 +148,11 @@ export default function PretsAdmin() {
   // Payer Total
   const payerTotal = useMutation({
     mutationFn: async (pret: any) => {
-      const totalDu = calculerTotalDu(pret);
-      const resteAPayer = totalDu - (pret.montant_paye || 0);
+      const soldeRestant = calculerSoldeRestant(pret);
       
       const { error: paiementError } = await supabase.from('prets_paiements').insert([{
         pret_id: pret.id,
-        montant_paye: resteAPayer,
+        montant_paye: soldeRestant,
         date_paiement: new Date().toISOString().split('T')[0],
         notes: 'Paiement total',
         type_paiement: 'mixte'
@@ -162,9 +160,9 @@ export default function PretsAdmin() {
       if (paiementError) throw paiementError;
 
       const { error: pretError } = await supabase.from('prets').update({
-        montant_paye: totalDu,
-        interet_paye: calculerInteretsCumules(pret),
+        montant_paye: (pret.montant_paye || 0) + soldeRestant,
         capital_paye: pret.montant,
+        montant_total_du: 0,
         statut: 'rembourse'
       }).eq('id', pret.id);
       if (pretError) throw pretError;
@@ -178,7 +176,7 @@ export default function PretsAdmin() {
     }
   });
 
-  // Reconduire avec vérification
+  // Reconduire: applique 5% sur le solde restant
   const reconduire = useMutation({
     mutationFn: async (pret: any) => {
       // Vérifier limite
@@ -186,30 +184,20 @@ export default function PretsAdmin() {
         throw new Error(`Limite de reconductions atteinte (${maxReconductions} max)`);
       }
 
-      const interetRestant = calculerInteretRestant(pret);
-      const interetMensuel = (pret.montant * ((pret.taux_interet || 0) / 100)) / 12;
+      const soldeRestant = calculerSoldeRestant(pret);
+      const taux = pret.taux_interet || 5;
       
-      // Si intérêt reste, l'enregistrer comme payé
-      if (interetRestant > 0) {
-        const { error: paiementError } = await supabase.from('prets_paiements').insert([{
-          pret_id: pret.id,
-          montant_paye: interetMensuel,
-          date_paiement: new Date().toISOString().split('T')[0],
-          notes: `Intérêt pour reconduction #${(pret.reconductions || 0) + 1}`,
-          type_paiement: 'interet'
-        }]);
-        if (paiementError) throw paiementError;
-      }
+      // Calcul selon la règle métier:
+      // Nouvel intérêt = Solde restant × Taux%
+      // Nouveau total dû = Solde restant + Nouvel intérêt
+      const nouvelInteret = soldeRestant * (taux / 100);
+      const nouveauTotalDu = soldeRestant + nouvelInteret;
 
       const nouvelleEcheance = addMonths(new Date(pret.echeance), 1);
-      const totalActuel = calculerTotalDu(pret);
-      const nouveauTotal = totalActuel + interetMensuel;
 
       const { error } = await supabase.from('prets').update({
         echeance: format(nouvelleEcheance, 'yyyy-MM-dd'),
-        montant_total_du: nouveauTotal,
-        montant_paye: (pret.montant_paye || 0) + (interetRestant > 0 ? interetMensuel : 0),
-        interet_paye: (pret.interet_paye || 0) + (interetRestant > 0 ? interetMensuel : 0),
+        montant_total_du: nouveauTotalDu,
         reconductions: (pret.reconductions || 0) + 1
       }).eq('id', pret.id);
       if (error) throw error;
@@ -217,13 +205,13 @@ export default function PretsAdmin() {
       const { error: reconError } = await supabase.from('prets_reconductions').insert({
         pret_id: pret.id,
         date_reconduction: new Date().toISOString().split('T')[0],
-        interet_mois: interetMensuel,
-        notes: `Reconduction #${(pret.reconductions || 0) + 1}`
+        interet_mois: nouvelInteret,
+        notes: `Reconduction #${(pret.reconductions || 0) + 1} - Intérêt ${taux}% sur solde ${formatFCFA(soldeRestant)}`
       });
       if (reconError) throw reconError;
     },
     onSuccess: () => {
-      toast({ title: "Prêt reconduit d'un mois avec nouveaux intérêts" });
+      toast({ title: "Prêt reconduit avec intérêt sur le solde restant" });
       queryClient.invalidateQueries({ queryKey: ['prets'] });
       queryClient.invalidateQueries({ queryKey: ['prets-reconductions'] });
       setReconduireDialogOpen(false);
@@ -330,7 +318,7 @@ export default function PretsAdmin() {
   const montantPrete = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + p.montant, 0) || 0;
   const pretsRembourses = prets?.filter((p) => getEffectiveStatus(p) === "rembourse").length || 0;
   const montantRestant = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + calculerTotalDu(p) - (p.montant_paye || 0), 0) || 0;
-  const totalInterets = prets?.reduce((sum, p) => sum + calculerInteretsCumules(p), 0) || 0;
+  const totalInterets = prets?.reduce((sum, p) => sum + (calculerTotalDu(p) - p.montant), 0) || 0;
 
   const handleOpenReconduire = (pret: any) => {
     setPretForReconduction(pret);
@@ -756,7 +744,7 @@ export default function PretsAdmin() {
         <ReconduireModal
           pret={pretForReconduction}
           maxReconductions={maxReconductions}
-          interetRestant={calculerInteretRestant(pretForReconduction)}
+          soldeRestant={calculerSoldeRestant(pretForReconduction)}
           open={reconduireDialogOpen}
           onClose={() => {
             setReconduireDialogOpen(false);
