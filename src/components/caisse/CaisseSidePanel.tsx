@@ -9,7 +9,8 @@ import {
   HandCoins, 
   TrendingUp,
   Users,
-  Trophy
+  Trophy,
+  Banknote
 } from "lucide-react";
 import { useCaisseSynthese } from "@/hooks/useCaisseSynthese";
 
@@ -86,14 +87,16 @@ export const CaisseSidePanel = () => {
         <p className="text-xs text-muted-foreground">Vue d'ensemble des fonds</p>
       </div>
 
+      {/* 1. Fond Total */}
       <SynthWidget
-        title="Fond Total"
+        title="Fond Total Caisse"
         value={synthese?.fondTotal || 0}
         icon={<Wallet className="h-5 w-5" />}
         variant={synthese?.fondTotal && synthese.fondTotal > 0 ? "success" : "danger"}
-        subtitle="Solde global de la caisse"
+        subtitle="Solde global disponible"
       />
 
+      {/* 2. Épargnes */}
       <SynthWidget
         title="Épargnes Collectées"
         value={synthese?.totalEpargnes || 0}
@@ -102,6 +105,7 @@ export const CaisseSidePanel = () => {
         subtitle="Total des dépôts d'épargne"
       />
 
+      {/* 3. Cotisations */}
       <SynthWidget
         title="Cotisations Encaissées"
         value={synthese?.totalCotisations || 0}
@@ -110,31 +114,52 @@ export const CaisseSidePanel = () => {
         subtitle="Total des cotisations payées"
       />
 
+      {/* 4. Total Prêts Décaissés */}
+      <SynthWidget
+        title="Total Prêts Décaissés"
+        value={synthese?.pretsDecaisses || 0}
+        icon={<Banknote className="h-5 w-5" />}
+        variant="warning"
+        subtitle="Montant total des prêts accordés"
+      />
+
+      {/* 5. Prêts en Cours (capital restant) */}
+      <SynthWidget
+        title="Prêts en Cours"
+        value={synthese?.pretsEnCours || 0}
+        icon={<TrendingUp className="h-5 w-5" />}
+        variant={synthese?.pretsEnCours && synthese.pretsEnCours > 0 ? "warning" : "default"}
+        subtitle="Capital restant dû"
+      />
+
+      {/* 6. Sanctions Encaissées */}
       <SynthWidget
         title="Sanctions Encaissées"
         value={synthese?.sanctionsEncaissees || 0}
         icon={<AlertTriangle className="h-5 w-5" />}
-        variant="warning"
+        variant="success"
         subtitle={`${synthese?.tauxRecouvrement || 0}% de recouvrement`}
       />
 
+      {/* 7. Sanctions Impayées */}
       {(synthese?.sanctionsImpayees || 0) > 0 && (
-        <Card className="border-red-200 bg-red-50 dark:bg-red-950/30">
+        <Card className="border-destructive/50 bg-destructive/10">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">Sanctions Impayées</p>
-                <p className="text-lg font-bold text-red-700 dark:text-red-400">
+                <p className="text-lg font-bold text-destructive">
                   {formatMontant(synthese?.sanctionsImpayees || 0)}
                 </p>
                 <Badge variant="destructive" className="text-xs">À recouvrer</Badge>
               </div>
-              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <AlertTriangle className="h-5 w-5 text-destructive" />
             </div>
           </CardContent>
         </Card>
       )}
 
+      {/* 8. Aides Distribuées */}
       <SynthWidget
         title="Aides Distribuées"
         value={synthese?.aidesDistribuees || 0}
@@ -143,6 +168,7 @@ export const CaisseSidePanel = () => {
         subtitle="Total des aides accordées"
       />
 
+      {/* 9. Reliquat Cotisations */}
       <SynthWidget
         title="Reliquat Cotisations"
         value={synthese?.reliquatCotisations || 0}
@@ -151,16 +177,7 @@ export const CaisseSidePanel = () => {
         subtitle="Après distribution bénéficiaires"
       />
 
-      {(synthese?.pretsEnCours || 0) > 0 && (
-        <SynthWidget
-          title="Prêts en Cours"
-          value={synthese?.pretsEnCours || 0}
-          icon={<TrendingUp className="h-5 w-5" />}
-          variant="warning"
-          subtitle="Capital restant dû"
-        />
-      )}
-
+      {/* 10. Fond Sport */}
       <SynthWidget
         title="Fond Sport"
         value={synthese?.fondSport || 0}

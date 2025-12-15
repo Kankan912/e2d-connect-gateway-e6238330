@@ -16,6 +16,7 @@ import { Plus, Download, Settings, Filter, RefreshCw } from "lucide-react";
 import { CaisseDashboard } from "@/components/caisse/CaisseDashboard";
 import { CaisseOperationsTable } from "@/components/caisse/CaisseOperationsTable";
 import { CaisseOperationForm } from "@/components/caisse/CaisseOperationForm";
+import { CaisseSidePanel } from "@/components/caisse/CaisseSidePanel";
 import { 
   useCaisseOperations, 
   useCaisseConfig, 
@@ -97,37 +98,44 @@ const CaisseAdmin = () => {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* En-tête */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Caisse</h1>
-            <p className="text-muted-foreground">
-              Gestion du fond de caisse et des opérations financières
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Actualiser
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowConfigForm(true)}>
-              <Settings className="h-4 w-4 mr-2" />
-              Configuration
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExportPDF}>
-              <Download className="h-4 w-4 mr-2" />
-              Export PDF
-            </Button>
-            <Button size="sm" onClick={() => setShowOperationForm(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle opération
-            </Button>
-          </div>
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Zone A - Panel latéral gauche avec synthèse */}
+        <div className="w-full lg:w-80 lg:flex-shrink-0">
+          <CaisseSidePanel />
         </div>
 
-        {/* Dashboard */}
-        <CaisseDashboard />
+        {/* Zone principale */}
+        <div className="flex-1 space-y-6">
+          {/* En-tête */}
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Caisse</h1>
+              <p className="text-muted-foreground">
+                Gestion du fond de caisse et des opérations financières
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Actualiser
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowConfigForm(true)}>
+                <Settings className="h-4 w-4 mr-2" />
+                Configuration
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportPDF}>
+                <Download className="h-4 w-4 mr-2" />
+                Export PDF
+              </Button>
+              <Button size="sm" onClick={() => setShowOperationForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvelle opération
+              </Button>
+            </div>
+          </div>
+
+          {/* Dashboard alertes */}
+          <CaisseDashboard />
 
         {/* Onglets */}
         <Tabs defaultValue="operations" className="space-y-4">
@@ -265,7 +273,8 @@ const CaisseAdmin = () => {
               </CardContent>
             </Card>
           </TabsContent>
-        </Tabs>
+          </Tabs>
+        </div>
       </div>
 
       {/* Modal nouvelle opération */}
