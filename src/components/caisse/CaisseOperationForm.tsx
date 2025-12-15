@@ -226,16 +226,16 @@ export const CaisseOperationForm = ({ open, onClose }: CaisseOperationFormProps)
               control={form.control}
               name="beneficiaire_id"
               render={({ field }) => (
-                <FormItem>
+            <FormItem>
                   <FormLabel>Membre concerné (optionnel)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                  <Select onValueChange={(val) => field.onChange(val === "none" ? undefined : val)} value={field.value || "none"}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionnez un membre" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Aucun</SelectItem>
+                      <SelectItem value="none">Aucun</SelectItem>
                       {membres?.map((m) => (
                         <SelectItem key={m.id} value={m.id}>
                           {m.prenom} {m.nom}
@@ -255,14 +255,14 @@ export const CaisseOperationForm = ({ open, onClose }: CaisseOperationFormProps)
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Exercice (optionnel)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select onValueChange={(val) => field.onChange(val === "none" ? undefined : val)} value={field.value || "none"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Exercice" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Aucun</SelectItem>
+                        <SelectItem value="none">Aucun</SelectItem>
                         {exercices?.map((e) => (
                           <SelectItem key={e.id} value={e.id}>
                             {e.nom}
@@ -281,14 +281,14 @@ export const CaisseOperationForm = ({ open, onClose }: CaisseOperationFormProps)
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Réunion (optionnel)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <Select onValueChange={(val) => field.onChange(val === "none" ? undefined : val)} value={field.value || "none"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Réunion" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Aucune</SelectItem>
+                        <SelectItem value="none">Aucune</SelectItem>
                         {reunions?.map((r) => (
                           <SelectItem key={r.id} value={r.id}>
                             {r.sujet}
