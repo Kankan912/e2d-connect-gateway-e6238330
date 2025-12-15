@@ -47,6 +47,7 @@ const MatchGalaConfig = lazy(() => import("./admin/MatchGalaConfig"));
 const SportEquipes = lazy(() => import("./SportEquipes"));
 const E2DConfigAdmin = lazy(() => import("./admin/E2DConfigAdmin"));
 const PretsConfigAdmin = lazy(() => import("./admin/PretsConfigAdmin"));
+const CaisseAdmin = lazy(() => import("./admin/CaisseAdmin"));
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -160,6 +161,16 @@ const Dashboard = () => {
             <PermissionRoute resource="epargnes" permission="read">
               <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
                 <Beneficiaires />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/caisse"
+          element={
+            <PermissionRoute resource="epargnes" permission="read">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <CaisseAdmin />
               </Suspense>
             </PermissionRoute>
           }
