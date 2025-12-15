@@ -347,9 +347,24 @@ export default function PretsAdmin() {
   const pretsRembourses = prets?.filter((p) => getEffectiveStatus(p) === "rembourse").length || 0;
   const montantRestant = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + calculerTotalDu(p) - (p.montant_paye || 0), 0) || 0;
   const totalInterets = prets?.reduce((sum, p) => {
-    // Somme des intérêts initiaux (générés à la création)
-    return sum + (p.interet_initial || (p.montant * (p.taux_interet || 5) / 100));
+    // Somme des intérêts initiaux (générés à la création) - toujours positif
+    const interet = p.interet_initial ?? (p.montant * (p.taux_interet || 5) / 100);
+    return sum + Math.max(0, interet);
   }, 0) || 0;
+
+  // Log pour vérification (à supprimer en production)
+  console.log('📊 Stats prêts:', { 
+    totalInterets, 
+    montantPrete, 
+    montantRestant,
+    nbPrets: prets?.length,
+    details: prets?.map(p => ({ 
+      id: p.id.slice(0,8), 
+      interet_initial: p.interet_initial, 
+      calcul: p.montant * (p.taux_interet || 5) / 100,
+      statut: p.statut 
+    }))
+  });
 
   const handleOpenReconduire = (pret: any) => {
     setPretForReconduction(pret);

@@ -184,15 +184,44 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
   const supprimerPaiement = useMutation({
     mutationFn: async (paiementId: string) => {
       const paiement = paiements?.find(p => p.id === paiementId);
-      if (!paiement) return;
+      if (!paiement || !pret) return;
 
       const { error } = await supabase.from('prets_paiements').delete().eq('id', paiementId);
       if (error) throw error;
 
-      const nouveauTotalPaye = totalPaye - parseFloat(paiement.montant_paye.toString());
+      const montantSupprime = parseFloat(paiement.montant_paye.toString());
+      const nouveauTotalPaye = Math.max(0, totalPaye - montantSupprime);
+      
+      // Recalculer capital_paye et interet_paye selon le type de paiement supprimé
+      let nouveauCapitalPaye = pret.capital_paye || 0;
+      let nouvelInteretPaye = pret.interet_paye || 0;
+      
+      if (paiement.type_paiement === 'capital') {
+        nouveauCapitalPaye = Math.max(0, nouveauCapitalPaye - montantSupprime);
+      } else if (paiement.type_paiement === 'interet') {
+        nouvelInteretPaye = Math.max(0, nouvelInteretPaye - montantSupprime);
+      } else {
+        // Mixte: approximation proportionnelle
+        const ratioInteret = interetPaye > 0 ? montantSupprime * (interetPaye / (interetPaye + capitalPaye)) : 0;
+        const ratioCapital = montantSupprime - ratioInteret;
+        nouvelInteretPaye = Math.max(0, nouvelInteretPaye - ratioInteret);
+        nouveauCapitalPaye = Math.max(0, nouveauCapitalPaye - ratioCapital);
+      }
+
+      // Recalculer le total dû = capital restant + intérêt restant (dernier_interet - interet_paye)
+      const capitalRestantApres = capitalInitial - nouveauCapitalPaye;
+      const interetActuel = pret.dernier_interet || pret.interet_initial || (capitalInitial * ((pret.taux_interet || 5) / 100));
+      const nouveauTotalDu = capitalRestantApres + Math.max(0, interetActuel - nouvelInteretPaye);
+
       await supabase
         .from('prets')
-        .update({ montant_paye: nouveauTotalPaye, statut: 'en_cours' })
+        .update({ 
+          montant_paye: nouveauTotalPaye, 
+          capital_paye: nouveauCapitalPaye,
+          interet_paye: nouvelInteretPaye,
+          montant_total_du: nouveauTotalDu,
+          statut: 'en_cours' 
+        })
         .eq('id', pretId);
     },
     onSuccess: () => {
