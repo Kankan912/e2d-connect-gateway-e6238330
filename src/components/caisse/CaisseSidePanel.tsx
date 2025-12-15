@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { 
   Wallet, 
   PiggyBank, 
@@ -10,7 +11,8 @@ import {
   TrendingUp,
   Users,
   Trophy,
-  Banknote
+  Banknote,
+  RefreshCw
 } from "lucide-react";
 import { useCaisseSynthese } from "@/hooks/useCaisseSynthese";
 
@@ -63,7 +65,7 @@ const SynthWidget = ({ title, value, icon, variant = "default", subtitle }: Synt
 };
 
 export const CaisseSidePanel = () => {
-  const { data: synthese, isLoading } = useCaisseSynthese();
+  const { data: synthese, isLoading, refetch, isRefetching } = useCaisseSynthese();
 
   if (isLoading) {
     return (
@@ -82,9 +84,20 @@ export const CaisseSidePanel = () => {
 
   return (
     <div className="space-y-3">
-      <div className="mb-4">
-        <h3 className="font-semibold text-lg">Synthèse Financière</h3>
-        <p className="text-xs text-muted-foreground">Vue d'ensemble des fonds</p>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-lg">Synthèse Financière</h3>
+          <p className="text-xs text-muted-foreground">Vue d'ensemble des fonds</p>
+        </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => refetch()}
+          disabled={isRefetching}
+          className="h-8 w-8 p-0"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} />
+        </Button>
       </div>
 
       {/* 1. Fond Total */}
@@ -189,8 +202,8 @@ export const CaisseSidePanel = () => {
       <Card className="mt-4 bg-muted/50">
         <CardContent className="p-3">
           <div className="text-xs text-muted-foreground space-y-1">
-            <p>📊 Données synchronisées automatiquement</p>
-            <p>🔄 Mise à jour en temps réel</p>
+            <p>📊 Actualisation automatique (30s)</p>
+            <p>🔄 Cliquez ↻ pour rafraîchir</p>
           </div>
         </CardContent>
       </Card>

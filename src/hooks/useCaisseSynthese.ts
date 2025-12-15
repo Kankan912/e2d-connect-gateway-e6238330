@@ -108,5 +108,7 @@ export const useCaisseSynthese = () => {
         tauxRecouvrement,
       };
     },
+    refetchInterval: 30000, // Actualiser toutes les 30 secondes
+    staleTime: 10000, // Données considérées fraîches pendant 10s
   });
 };
