@@ -294,14 +294,17 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                   </span>
                 </div>
 
-                {/* Info reconductions */}
+                {/* Info reconductions avec lien vers historique */}
                 {(pret.reconductions || 0) > 0 && (
                   <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                      <RefreshCw className="h-4 w-4" />
-                      <span className="font-medium">
-                        {pret.reconductions} reconduction{pret.reconductions > 1 ? 's' : ''}
-                      </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                        <RefreshCw className="h-4 w-4" />
+                        <span className="font-medium">
+                          {pret.reconductions} reconduction{pret.reconductions > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <span className="text-xs text-amber-600">Voir historique ci-dessous</span>
                     </div>
                   </div>
                 )}

@@ -181,22 +181,42 @@ export default function PretsAdmin() {
     }
   });
 
-  // Reconduire: applique 5% sur le solde restant
+  // Vérifier si on peut reconduire (intérêt actuel doit être payé)
+  const peutReconduirePret = (pret: any): { peut: boolean; raison: string } => {
+    if ((pret.reconductions || 0) >= maxReconductions) {
+      return { peut: false, raison: `Limite de reconductions atteinte (${maxReconductions} max)` };
+    }
+    
+    // L'intérêt actuel doit être payé avant reconduction
+    const interetActuel = pret.dernier_interet || pret.interet_initial || (pret.montant * (pret.taux_interet || 5) / 100);
+    const interetPaye = pret.interet_paye || 0;
+    
+    if (interetPaye < interetActuel) {
+      const reste = interetActuel - interetPaye;
+      return { peut: false, raison: `Payez d'abord l'intérêt (${formatFCFA(reste)} restant)` };
+    }
+    
+    return { peut: true, raison: '' };
+  };
+
+  // Reconduire: applique taux% sur le CAPITAL RESTANT (pas le solde total)
   const reconduire = useMutation({
     mutationFn: async (pret: any) => {
-      // Vérifier limite
-      if ((pret.reconductions || 0) >= maxReconductions) {
-        throw new Error(`Limite de reconductions atteinte (${maxReconductions} max)`);
+      const verification = peutReconduirePret(pret);
+      if (!verification.peut) {
+        throw new Error(verification.raison);
       }
 
-      const soldeRestant = calculerSoldeRestant(pret);
       const taux = pret.taux_interet || 5;
       
-      // Calcul selon la règle métier:
-      // Nouvel intérêt = Solde restant × Taux%
-      // Nouveau total dû = Solde restant + Nouvel intérêt
-      const nouvelInteret = soldeRestant * (taux / 100);
-      const nouveauTotalDu = soldeRestant + nouvelInteret;
+      // RÈGLE MÉTIER: Reconduction sur le CAPITAL RESTANT uniquement
+      const capitalRestant = pret.montant - (pret.capital_paye || 0);
+      
+      // Nouvel intérêt = Capital restant × Taux%
+      const nouvelInteret = capitalRestant * (taux / 100);
+      
+      // Nouveau total dû = Capital restant + Nouvel intérêt
+      const nouveauTotalDu = capitalRestant + nouvelInteret;
 
       const nouvelleEcheance = addMonths(new Date(pret.echeance), 1);
 
@@ -204,6 +224,7 @@ export default function PretsAdmin() {
         echeance: format(nouvelleEcheance, 'yyyy-MM-dd'),
         montant_total_du: nouveauTotalDu,
         dernier_interet: nouvelInteret,
+        interet_paye: 0, // Reset car nouvel intérêt
         reconductions: (pret.reconductions || 0) + 1
       }).eq('id', pret.id);
       if (error) throw error;
@@ -212,12 +233,12 @@ export default function PretsAdmin() {
         pret_id: pret.id,
         date_reconduction: new Date().toISOString().split('T')[0],
         interet_mois: nouvelInteret,
-        notes: `Reconduction #${(pret.reconductions || 0) + 1} - Intérêt ${taux}% sur solde ${formatFCFA(soldeRestant)}`
+        notes: `Reconduction #${(pret.reconductions || 0) + 1} - Intérêt ${taux}% sur capital restant ${formatFCFA(capitalRestant)}`
       });
       if (reconError) throw reconError;
     },
     onSuccess: () => {
-      toast({ title: "Prêt reconduit avec intérêt sur le solde restant" });
+      toast({ title: "Prêt reconduit avec intérêt sur le capital restant" });
       queryClient.invalidateQueries({ queryKey: ['prets'] });
       queryClient.invalidateQueries({ queryKey: ['prets-reconductions'] });
       setReconduireDialogOpen(false);
@@ -498,9 +519,12 @@ export default function PretsAdmin() {
                 </TableHeader>
                 <TableBody>
                   {filteredPrets?.map((pret) => {
-                    const resteAPayer = calculerTotalDu(pret) - (pret.montant_paye || 0);
+                    // RESTE = montant_total_du directement (valeur stockée en base)
                     const estRembourse = getEffectiveStatus(pret) === 'rembourse';
-                    const peutReconduire = (pret.reconductions || 0) < maxReconductions;
+                    const resteAPayer = estRembourse ? 0 : (pret.montant_total_du || calculerTotalDu(pret));
+                    
+                    // Vérification pour reconduction
+                    const verifReconduction = peutReconduirePret(pret);
                     
                     return (
                       <TableRow key={pret.id} className={getRowClass(pret)}>
@@ -510,7 +534,7 @@ export default function PretsAdmin() {
                         </TableCell>
                         <TableCell>{formatFCFA(pret.montant)}</TableCell>
                         <TableCell>{pret.taux_interet}%</TableCell>
-                        <TableCell className="font-medium">{formatFCFA(calculerTotalDu(pret))}</TableCell>
+                        <TableCell className="font-medium">{formatFCFA(pret.montant_total_du || calculerTotalDu(pret))}</TableCell>
                         <TableCell>{new Date(pret.echeance).toLocaleDateString('fr-FR')}</TableCell>
                         <TableCell>
                           {pret.reconductions > 0 ? (
@@ -519,7 +543,7 @@ export default function PretsAdmin() {
                                 <TooltipTrigger>
                                   <Badge 
                                     variant="outline" 
-                                    className={`flex items-center gap-1 ${!peutReconduire ? 'bg-red-100 text-red-800' : ''}`}
+                                    className={`flex items-center gap-1 ${!verifReconduction.peut ? 'bg-red-100 text-red-800' : ''}`}
                                   >
                                     <RefreshCw className="h-3 w-3" />
                                     {pret.reconductions}/{maxReconductions}
@@ -527,7 +551,7 @@ export default function PretsAdmin() {
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p>{pret.reconductions}/{maxReconductions} reconductions</p>
-                                  {!peutReconduire && <p className="text-red-500">Limite atteinte</p>}
+                                  {!verifReconduction.peut && <p className="text-red-500">{verifReconduction.raison}</p>}
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -608,17 +632,17 @@ export default function PretsAdmin() {
                                       <Button
                                         size="icon"
                                         variant="outline"
-                                        className={`h-7 w-7 ${peutReconduire ? 'border-blue-500 text-blue-600 hover:bg-blue-50' : 'opacity-50'}`}
+                                        className={`h-7 w-7 ${verifReconduction.peut ? 'border-blue-500 text-blue-600 hover:bg-blue-50' : 'opacity-50'}`}
                                         onClick={() => handleOpenReconduire(pret)}
-                                        disabled={!peutReconduire || reconduire.isPending}
+                                        disabled={!verifReconduction.peut || reconduire.isPending}
                                       >
                                         <RefreshCw className="h-3.5 w-3.5" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      {peutReconduire 
+                                      {verifReconduction.peut 
                                         ? `Reconduire (+1 mois)` 
-                                        : `Limite atteinte (${maxReconductions} max)`
+                                        : verifReconduction.raison
                                       }
                                     </TooltipContent>
                                   </Tooltip>
