@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, RefreshCw, Info, Calendar } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+import { Plus, Trash2, RefreshCw, Info, Calendar, AlertTriangle, Lock } from "lucide-react";
+import { formatFCFA } from "@/lib/utils";
+import { addMonths, format } from "date-fns";
 
 interface PretsPaiementsManagerProps {
   pretId: string;
@@ -23,6 +27,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
   const queryClient = useQueryClient();
   const [montant, setMontant] = useState("");
   const [modePaiement, setModePaiement] = useState("especes");
+  const [typePaiement, setTypePaiement] = useState<"interet" | "capital" | "mixte">("mixte");
   const [datePaiement, setDatePaiement] = useState(new Date().toISOString().split('T')[0]);
 
   const { data: pret } = useQuery({
@@ -53,7 +58,6 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
     enabled: !!pretId && open,
   });
 
-  // Historique des reconductions
   const { data: reconductions } = useQuery({
     queryKey: ['prets-reconductions', pretId],
     queryFn: async () => {
@@ -68,46 +72,102 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
     enabled: !!pretId && open,
   });
 
-  // Calculer les intérêts cumulés (initial + reconductions)
+  // Calculs
   const calculerInteretsCumules = (pret: any): number => {
     if (!pret) return 0;
     const taux = pret.taux_interet || 0;
-    const interetInitial = pret.montant * (taux / 100);
+    const interetInitial = pret.interet_initial || (pret.montant * (taux / 100));
     const interetMensuel = (pret.montant * (taux / 100)) / 12;
     const interetsReconductions = interetMensuel * (pret.reconductions || 0);
     return interetInitial + interetsReconductions;
   };
 
-  // Calculer le total dû (montant + intérêts cumulés)
   const calculerTotalDu = (pret: any): number => {
     if (!pret) return 0;
     return parseFloat(pret.montant.toString()) + calculerInteretsCumules(pret);
   };
 
+  const totalPaye = paiements?.reduce((sum, p) => sum + parseFloat(p.montant_paye.toString()), 0) || 0;
+  const totalDu = calculerTotalDu(pret);
+  const interets = calculerInteretsCumules(pret);
+  
+  const interetPaye = pret?.interet_paye || 0;
+  const capitalPaye = pret?.capital_paye || 0;
+  const interetRestant = Math.max(0, interets - interetPaye);
+  const capitalRestant = pret ? Math.max(0, pret.montant - capitalPaye) : 0;
+  const montantRestant = Math.max(0, totalDu - totalPaye);
+  const estRembourse = pret?.statut === 'rembourse' || montantRestant <= 0;
+
+  // Règle: Peut payer le capital seulement si intérêt soldé
+  const peutPayerCapital = interetRestant <= 0;
+
+  // Reset type si on ne peut pas payer capital
+  useEffect(() => {
+    if (!peutPayerCapital && typePaiement === 'capital') {
+      setTypePaiement('interet');
+    }
+  }, [peutPayerCapital, typePaiement]);
+
   const ajouterPaiement = useMutation({
     mutationFn: async () => {
+      const montantPaye = parseFloat(montant);
+      
+      // Insérer le paiement
       const { error } = await supabase.from('prets_paiements').insert({
         pret_id: pretId,
-        montant_paye: parseFloat(montant),
+        montant_paye: montantPaye,
         date_paiement: datePaiement,
         mode_paiement: modePaiement,
+        type_paiement: typePaiement,
       });
       if (error) throw error;
 
-      // Mettre à jour le montant total payé du prêt
-      const totalPaye = (paiements?.reduce((sum, p) => sum + parseFloat(p.montant_paye.toString()), 0) || 0) + parseFloat(montant);
-      const totalDu = calculerTotalDu(pret);
+      // Calculer les nouvelles valeurs selon le type de paiement
+      let nouvelInteretPaye = interetPaye;
+      let nouveauCapitalPaye = capitalPaye;
       
-      // Si le total payé >= total dû, marquer comme remboursé
-      const updates: any = { montant_paye: totalPaye };
-      if (totalPaye >= totalDu) {
+      if (typePaiement === 'interet') {
+        nouvelInteretPaye = Math.min(interetPaye + montantPaye, interets);
+      } else if (typePaiement === 'capital') {
+        nouveauCapitalPaye = Math.min(capitalPaye + montantPaye, pret.montant);
+      } else {
+        // Mixte: d'abord intérêt, puis capital
+        const pourInteret = Math.min(montantPaye, interetRestant);
+        const pourCapital = montantPaye - pourInteret;
+        nouvelInteretPaye = interetPaye + pourInteret;
+        nouveauCapitalPaye = Math.min(capitalPaye + pourCapital, pret.montant);
+      }
+
+      const nouveauTotalPaye = totalPaye + montantPaye;
+      const updates: any = { 
+        montant_paye: nouveauTotalPaye,
+        interet_paye: nouvelInteretPaye,
+        capital_paye: nouveauCapitalPaye,
+      };
+
+      // Vérifier si c'est un paiement partiel du capital → nouveau cycle
+      if (typePaiement === 'capital' && nouveauCapitalPaye > capitalPaye && nouveauCapitalPaye < pret.montant) {
+        const nouveauCapital = pret.montant - nouveauCapitalPaye;
+        const nouvelInteret = nouveauCapital * ((pret.taux_interet || 5) / 100);
+        const nouvelleEcheance = addMonths(new Date(), 2);
+        
+        updates.interet_initial = nouvelInteret;
+        updates.interet_paye = 0;
+        updates.echeance = format(nouvelleEcheance, 'yyyy-MM-dd');
+        updates.reconductions = 0;
+        
+        toast({ 
+          title: "Nouveau cycle démarré",
+          description: `Paiement partiel du capital. Nouvel intérêt calculé sur ${formatFCFA(nouveauCapital)}`,
+        });
+      }
+
+      // Si remboursé complètement
+      if (nouveauTotalPaye >= totalDu) {
         updates.statut = 'rembourse';
       }
-      
-      await supabase
-        .from('prets')
-        .update(updates)
-        .eq('id', pretId);
+
+      await supabase.from('prets').update(updates).eq('id', pretId);
     },
     onSuccess: () => {
       toast({ title: "Paiement ajouté avec succès" });
@@ -116,10 +176,11 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
       queryClient.invalidateQueries({ queryKey: ['prets'] });
       setMontant("");
       setModePaiement("especes");
+      setTypePaiement("mixte");
       setDatePaiement(new Date().toISOString().split('T')[0]);
     },
-    onError: () => {
-      toast({ title: "Erreur lors de l'ajout du paiement", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Erreur lors de l'ajout du paiement", description: error.message, variant: "destructive" });
     },
   });
 
@@ -131,11 +192,10 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
       const { error } = await supabase.from('prets_paiements').delete().eq('id', paiementId);
       if (error) throw error;
 
-      // Mettre à jour le montant total payé du prêt
-      const totalPaye = (paiements?.reduce((sum, p) => sum + parseFloat(p.montant_paye.toString()), 0) || 0) - parseFloat(paiement.montant_paye.toString());
+      const nouveauTotalPaye = totalPaye - parseFloat(paiement.montant_paye.toString());
       await supabase
         .from('prets')
-        .update({ montant_paye: totalPaye, statut: 'en_cours' })
+        .update({ montant_paye: nouveauTotalPaye, statut: 'en_cours' })
         .eq('id', pretId);
     },
     onSuccess: () => {
@@ -146,14 +206,11 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
     },
   });
 
-  const totalPaye = paiements?.reduce((sum, p) => sum + parseFloat(p.montant_paye.toString()), 0) || 0;
-  const totalDu = calculerTotalDu(pret);
-  const interets = calculerInteretsCumules(pret);
-  const montantRestant = Math.max(0, totalDu - totalPaye);
-  const estRembourse = pret?.statut === 'rembourse';
-
-  // Vérifier si le prêt a été remboursé sans historique de paiement (migration)
   const rembourseSansHistorique = estRembourse && (!paiements || paiements.length === 0);
+
+  // Progression
+  const progressionInteret = interets > 0 ? (interetPaye / interets) * 100 : 0;
+  const progressionCapital = pret?.montant > 0 ? (capitalPaye / pret.montant) * 100 : 0;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -162,9 +219,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
           <DialogTitle className="flex items-center gap-2">
             Gestion des paiements du prêt
             {estRembourse && (
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
-                Remboursé
-              </Badge>
+              <Badge className="bg-green-500">Remboursé</Badge>
             )}
           </DialogTitle>
         </DialogHeader>
@@ -177,47 +232,67 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                 <CardTitle>Résumé</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Emprunteur</p>
                     <p className="font-medium">{(pret.emprunteur as any)?.nom} {(pret.emprunteur as any)?.prenom}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Montant prêté</p>
-                    <p className="font-medium">{parseFloat(pret.montant.toString()).toLocaleString()} FCFA</p>
+                    <p className="text-sm text-muted-foreground">Capital emprunté</p>
+                    <p className="font-medium">{formatFCFA(pret.montant)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Intérêts ({pret.taux_interet || 0}%)</p>
-                    <p className="font-medium text-blue-600">{interets.toLocaleString()} FCFA</p>
+                    <p className="text-sm text-muted-foreground">Total intérêts</p>
+                    <p className="font-medium text-amber-600">{formatFCFA(interets)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total dû</p>
-                    <p className="font-bold">{totalDu.toLocaleString()} FCFA</p>
+                    <p className="font-bold">{formatFCFA(totalDu)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total payé</p>
                     <p className="font-medium text-green-600">
-                      {rembourseSansHistorique ? totalDu.toLocaleString() : totalPaye.toLocaleString()} FCFA
+                      {rembourseSansHistorique ? formatFCFA(totalDu) : formatFCFA(totalPaye)}
                     </p>
                   </div>
                 </div>
                 
-                {/* Barre de progression et reste à payer */}
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-muted-foreground">Progression du remboursement</span>
-                    <span className={`font-bold ${estRembourse ? 'text-green-600' : 'text-orange-600'}`}>
-                      Reste à payer: {estRembourse ? 0 : montantRestant.toLocaleString()} FCFA
-                    </span>
+                {/* Barres de progression séparées */}
+                <div className="space-y-4 mt-4 pt-4 border-t">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                        Intérêts payés
+                      </span>
+                      <span>{formatFCFA(interetPaye)} / {formatFCFA(interets)}</span>
+                    </div>
+                    <Progress value={progressionInteret} className="h-2 [&>div]:bg-amber-500" />
+                    {interetRestant > 0 && (
+                      <p className="text-xs text-amber-600 mt-1">Reste: {formatFCFA(interetRestant)}</p>
+                    )}
                   </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full transition-all" 
-                      style={{ 
-                        width: `${Math.min(100, estRembourse ? 100 : (totalPaye / totalDu) * 100)}%` 
-                      }}
-                    />
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                        Capital remboursé
+                      </span>
+                      <span>{formatFCFA(capitalPaye)} / {formatFCFA(pret.montant)}</span>
+                    </div>
+                    <Progress value={progressionCapital} className="h-2 [&>div]:bg-blue-500" />
+                    {capitalRestant > 0 && (
+                      <p className="text-xs text-blue-600 mt-1">Reste: {formatFCFA(capitalRestant)}</p>
+                    )}
                   </div>
+                </div>
+
+                {/* Reste à payer */}
+                <div className="mt-4 p-3 bg-muted rounded-lg flex justify-between items-center">
+                  <span className="font-medium">Reste à payer total</span>
+                  <span className={`text-xl font-bold ${estRembourse ? 'text-green-600' : 'text-orange-600'}`}>
+                    {estRembourse ? '0' : formatFCFA(montantRestant)}
+                  </span>
                 </div>
 
                 {/* Info reconductions */}
@@ -229,9 +304,6 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                         {pret.reconductions} reconduction{pret.reconductions > 1 ? 's' : ''}
                       </span>
                     </div>
-                    <p className="text-sm text-amber-600 dark:text-amber-500 mt-1">
-                      Intérêts mensuels de reconduction: {((parseFloat(pret.montant.toString()) * (pret.taux_interet || 0) / 100) / 12).toLocaleString()} FCFA/mois
-                    </p>
                   </div>
                 )}
               </CardContent>
@@ -243,8 +315,19 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                 <CardHeader>
                   <CardTitle>Ajouter un paiement</CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <CardContent className="space-y-4">
+                  {/* Règle intérêt avant capital */}
+                  {!peutPayerCapital && (
+                    <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-200">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-amber-700 dark:text-amber-400">
+                        <strong>Règle : Intérêt avant capital</strong><br />
+                        Il reste {formatFCFA(interetRestant)} d'intérêts à payer avant de pouvoir rembourser le capital.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div>
                       <Label>Montant</Label>
                       <Input
@@ -255,6 +338,26 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                       />
                     </div>
                     <div>
+                      <Label>Type de paiement</Label>
+                      <Select value={typePaiement} onValueChange={(v) => setTypePaiement(v as any)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="interet">
+                            Intérêt ({formatFCFA(interetRestant)} restant)
+                          </SelectItem>
+                          <SelectItem value="capital" disabled={!peutPayerCapital}>
+                            {peutPayerCapital 
+                              ? `Capital (${formatFCFA(capitalRestant)} restant)`
+                              : <span className="flex items-center gap-1"><Lock className="h-3 w-3" /> Capital (soldez l'intérêt)</span>
+                            }
+                          </SelectItem>
+                          <SelectItem value="mixte">Mixte (auto-répartition)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
                       <Label>Date</Label>
                       <Input
                         type="date"
@@ -263,7 +366,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                       />
                     </div>
                     <div>
-                      <Label>Mode de paiement</Label>
+                      <Label>Mode</Label>
                       <Select value={modePaiement} onValueChange={setModePaiement}>
                         <SelectTrigger>
                           <SelectValue />
@@ -316,7 +419,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                             {new Date(recon.date_reconduction).toLocaleDateString('fr-FR')}
                           </TableCell>
                           <TableCell className="font-medium text-amber-600">
-                            +{parseFloat(recon.interet_mois.toString()).toLocaleString()} FCFA
+                            +{formatFCFA(recon.interet_mois)}
                           </TableCell>
                           <TableCell>{recon.notes || "-"}</TableCell>
                         </TableRow>
@@ -341,7 +444,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                         Ce prêt a été marqué comme remboursé avant la mise en place du suivi des paiements.
                       </p>
                       <p className="text-sm text-blue-600 dark:text-blue-500 mt-1">
-                        Montant total remboursé: <strong>{totalDu.toLocaleString()} FCFA</strong>
+                        Montant total remboursé: <strong>{formatFCFA(totalDu)}</strong>
                       </p>
                     </div>
                   </div>
@@ -351,6 +454,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                       <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>Montant</TableHead>
+                        <TableHead>Type</TableHead>
                         <TableHead>Mode</TableHead>
                         <TableHead>Notes</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -362,8 +466,13 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                           <TableCell>
                             {new Date(paiement.date_paiement).toLocaleDateString('fr-FR')}
                           </TableCell>
-                          <TableCell className="font-medium">
-                            {parseFloat(paiement.montant_paye.toString()).toLocaleString()} FCFA
+                          <TableCell className="font-medium text-green-600">
+                            {formatFCFA(paiement.montant_paye)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">
+                              {paiement.type_paiement || 'mixte'}
+                            </Badge>
                           </TableCell>
                           <TableCell className="capitalize">{paiement.mode_paiement}</TableCell>
                           <TableCell>{paiement.notes || "-"}</TableCell>

@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Edit, Lock, Trash2, Loader2 } from "lucide-react";
+import { Calendar, Plus, Edit, Lock, Trash2, Loader2, Percent } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -22,6 +22,7 @@ interface Exercice {
   statut: string;
   croissance_fond_caisse: number | null;
   plafond_fond_caisse: number | null;
+  taux_interet_prets: number | null;
   created_at: string;
 }
 
@@ -31,6 +32,7 @@ interface ExerciceFormData {
   date_fin: string;
   croissance_fond_caisse: number;
   plafond_fond_caisse: number;
+  taux_interet_prets: number;
 }
 
 export function ExercicesManager() {
@@ -44,6 +46,7 @@ export function ExercicesManager() {
     date_fin: "",
     croissance_fond_caisse: 5000,
     plafond_fond_caisse: 50000,
+    taux_interet_prets: 5,
   });
 
   const { data: exercices, isLoading } = useQuery({
@@ -139,6 +142,7 @@ export function ExercicesManager() {
       date_fin: "",
       croissance_fond_caisse: 5000,
       plafond_fond_caisse: 50000,
+      taux_interet_prets: 5,
     });
     setEditingExercice(null);
     setDialogOpen(false);
@@ -152,6 +156,7 @@ export function ExercicesManager() {
       date_fin: exercice.date_fin,
       croissance_fond_caisse: exercice.croissance_fond_caisse || 5000,
       plafond_fond_caisse: exercice.plafond_fond_caisse || 50000,
+      taux_interet_prets: exercice.taux_interet_prets || 5,
     });
     setDialogOpen(true);
   };
@@ -235,9 +240,30 @@ export function ExercicesManager() {
                     />
                   </div>
                 </div>
+                
+                {/* Taux d'intérêt prêts */}
+                <div className="space-y-2">
+                  <Label htmlFor="taux_interet" className="flex items-center gap-2">
+                    <Percent className="h-4 w-4 text-amber-600" />
+                    Taux d'intérêt prêts (%)
+                  </Label>
+                  <Input
+                    id="taux_interet"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={formData.taux_interet_prets}
+                    onChange={(e) => setFormData({ ...formData, taux_interet_prets: Number(e.target.value) })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ce taux sera appliqué par défaut aux nouveaux prêts de cet exercice
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="croissance">Croissance fond de caisse (€)</Label>
+                    <Label htmlFor="croissance">Croissance fond de caisse (FCFA)</Label>
                     <Input
                       id="croissance"
                       type="number"
@@ -246,7 +272,7 @@ export function ExercicesManager() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="plafond">Plafond fond de caisse (€)</Label>
+                    <Label htmlFor="plafond">Plafond fond de caisse (FCFA)</Label>
                     <Input
                       id="plafond"
                       type="number"
@@ -280,6 +306,12 @@ export function ExercicesManager() {
               Du {format(new Date(activeExercice.date_debut), "d MMMM yyyy", { locale: fr })} au{" "}
               {format(new Date(activeExercice.date_fin), "d MMMM yyyy", { locale: fr })}
             </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                <Percent className="h-3 w-3 mr-1" />
+                Taux prêts: {activeExercice.taux_interet_prets || 5}%
+              </Badge>
+            </div>
           </div>
         )}
 
@@ -289,6 +321,7 @@ export function ExercicesManager() {
               <TableHead>Nom</TableHead>
               <TableHead>Période</TableHead>
               <TableHead>Statut</TableHead>
+              <TableHead>Taux Prêts</TableHead>
               <TableHead>Croissance Fond</TableHead>
               <TableHead>Plafond</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -307,8 +340,13 @@ export function ExercicesManager() {
                     {exercice.statut === "actif" ? "Actif" : "Clôturé"}
                   </Badge>
                 </TableCell>
-                <TableCell>{exercice.croissance_fond_caisse?.toLocaleString()} €</TableCell>
-                <TableCell>{exercice.plafond_fond_caisse?.toLocaleString()} €</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="bg-amber-50 text-amber-700">
+                    {exercice.taux_interet_prets || 5}%
+                  </Badge>
+                </TableCell>
+                <TableCell>{exercice.croissance_fond_caisse?.toLocaleString()} FCFA</TableCell>
+                <TableCell>{exercice.plafond_fond_caisse?.toLocaleString()} FCFA</TableCell>
                 <TableCell className="text-right space-x-2">
                   <Button
                     variant="outline"
@@ -373,7 +411,7 @@ export function ExercicesManager() {
             ))}
             {!exercices?.length && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                   Aucun exercice configuré
                 </TableCell>
               </TableRow>

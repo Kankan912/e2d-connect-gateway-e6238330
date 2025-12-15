@@ -11,6 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import FileUploadField from "@/components/forms/FileUploadField";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Info, Calendar } from "lucide-react";
+import { addMonths, format } from "date-fns";
 
 const pretSchema = z.object({
   membre_id: z.string().min(1, "Sélectionnez un emprunteur"),
@@ -18,8 +21,8 @@ const pretSchema = z.object({
   taux_interet: z.number().min(0).max(100),
   echeance: z.string().min(1, "Date d'échéance requise"),
   avaliste_id: z.string().optional(),
-  reunion_id: z.string().optional(),
-  exercice_id: z.string().optional(),
+  reunion_id: z.string().min(1, "La réunion d'attribution est obligatoire"),
+  exercice_id: z.string().min(1, "L'exercice fiscal est obligatoire"),
   reconductions: z.number().min(0).optional(),
   notes: z.string().optional(),
   justificatif_url: z.string().optional(),
@@ -64,11 +67,11 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
   });
 
   const { data: exercices } = useQuery({
-    queryKey: ['exercices'],
+    queryKey: ['exercices-avec-taux'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('exercices')
-        .select('id, nom, statut')
+        .select('id, nom, statut, taux_interet_prets')
         .order('date_debut', { ascending: false });
       if (error) throw error;
       return data;
@@ -90,11 +93,33 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
   const exerciceId = watch("exercice_id");
   const montant = watch("montant");
   const tauxInteret = watch("taux_interet");
+  const echeance = watch("echeance");
 
-  // Calculer le montant total dû
-  const montantTotalDu = montant && tauxInteret 
-    ? montant * (1 + tauxInteret / 100) 
-    : montant || 0;
+  // Calculer le montant total dû (intérêt initial)
+  const interetInitial = montant && tauxInteret ? montant * (tauxInteret / 100) : 0;
+  const montantTotalDu = montant ? montant + interetInitial : 0;
+
+  // Calcul automatique de l'échéance quand une réunion est sélectionnée
+  useEffect(() => {
+    if (reunionId && reunionId !== "none" && !initialData) {
+      const reunion = reunions?.find(r => r.id === reunionId);
+      if (reunion) {
+        const dateReunion = new Date(reunion.date_reunion);
+        const nouvelleEcheance = addMonths(dateReunion, 2);
+        setValue("echeance", format(nouvelleEcheance, 'yyyy-MM-dd'));
+      }
+    }
+  }, [reunionId, reunions, setValue, initialData]);
+
+  // Charger le taux d'intérêt de l'exercice sélectionné
+  useEffect(() => {
+    if (exerciceId && exerciceId !== "none" && !initialData) {
+      const exercice = exercices?.find(e => e.id === exerciceId);
+      if (exercice?.taux_interet_prets) {
+        setValue("taux_interet", exercice.taux_interet_prets);
+      }
+    }
+  }, [exerciceId, exercices, setValue, initialData]);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -106,41 +131,55 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
           taux_interet: initialData.taux_interet || 5,
           echeance: initialData.echeance,
           avaliste_id: initialData.avaliste_id || "none",
-          reunion_id: initialData.reunion_id || "none",
-          exercice_id: initialData.exercice_id || "none",
+          reunion_id: initialData.reunion_id || "",
+          exercice_id: initialData.exercice_id || "",
           reconductions: initialData.reconductions || 0,
           notes: initialData.notes || "",
         });
         setJustificatifUrl(initialData.justificatif_url || null);
       } else {
+        // Pour un nouveau prêt, pré-sélectionner l'exercice actif
+        const exerciceActif = exercices?.find(e => e.statut === 'actif');
         reset({
-          taux_interet: 5,
+          taux_interet: exerciceActif?.taux_interet_prets || 5,
           reconductions: 0,
           notes: "",
           avaliste_id: "none",
-          reunion_id: "none",
-          exercice_id: "none",
+          reunion_id: "",
+          exercice_id: exerciceActif?.id || "",
         });
         setJustificatifUrl(null);
       }
     }
-  }, [open, initialData, reset]);
+  }, [open, initialData, reset, exercices]);
 
   const handleFormSubmit = (data: PretFormData) => {
-    const montantTotal = data.montant * (1 + (data.taux_interet || 0) / 100);
+    const interetInit = data.montant * ((data.taux_interet || 0) / 100);
+    const montantTotal = data.montant + interetInit;
+    
     onSubmit({
       ...data,
       date_pret: initialData?.date_pret || new Date().toISOString().split('T')[0],
       statut: initialData?.statut || 'en_cours',
       montant_paye: initialData?.montant_paye || 0,
       montant_total_du: montantTotal,
+      interet_initial: interetInit,
+      interet_paye: initialData?.interet_paye || 0,
+      capital_paye: initialData?.capital_paye || 0,
+      duree_mois: 2,
       avaliste_id: data.avaliste_id === "none" ? null : data.avaliste_id,
-      reunion_id: data.reunion_id === "none" ? null : data.reunion_id,
-      exercice_id: data.exercice_id === "none" ? null : data.exercice_id,
+      reunion_id: data.reunion_id,
+      exercice_id: data.exercice_id,
       reconductions: data.reconductions || 0,
       justificatif_url: justificatifUrl,
     });
   };
+
+  // Trouver la réunion sélectionnée pour afficher la date d'échéance calculée
+  const reunionSelectionnee = reunions?.find(r => r.id === reunionId);
+  const dateEcheanceCalculee = reunionSelectionnee 
+    ? format(addMonths(new Date(reunionSelectionnee.date_reunion), 2), 'dd/MM/yyyy')
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -149,6 +188,14 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
           <DialogTitle>{initialData ? "Modifier le prêt" : "Nouveau prêt"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+          {/* Info durée fixe */}
+          <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-700 dark:text-blue-400">
+              <strong>Durée fixe : 2 mois</strong> — L'échéance est calculée automatiquement à partir de la date de réunion.
+            </AlertDescription>
+          </Alert>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Emprunteur *</Label>
@@ -187,6 +234,52 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Réunion d'attribution *</Label>
+              <Select value={reunionId || ""} onValueChange={(val) => setValue("reunion_id", val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une réunion" />
+                </SelectTrigger>
+                <SelectContent>
+                  {reunions?.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {new Date(r.date_reunion).toLocaleDateString('fr-FR')} - {r.ordre_du_jour?.substring(0, 30)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.reunion_id && (
+                <p className="text-sm text-destructive mt-1">{errors.reunion_id.message}</p>
+              )}
+              {dateEcheanceCalculee && (
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Échéance auto: {dateEcheanceCalculee}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label>Exercice fiscal *</Label>
+              <Select value={exerciceId || ""} onValueChange={(val) => setValue("exercice_id", val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un exercice" />
+                </SelectTrigger>
+                <SelectContent>
+                  {exercices?.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.nom} {e.statut === 'actif' && '(Actif)'} - Taux: {e.taux_interet_prets || 5}%
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.exercice_id && (
+                <p className="text-sm text-destructive mt-1">{errors.exercice_id.message}</p>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label>Montant (FCFA) *</Label>
@@ -213,17 +306,17 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
             </div>
 
             <div>
-              <Label>Montant total dû</Label>
+              <Label>Intérêt initial</Label>
               <Input
                 type="text"
-                value={`${montantTotalDu.toLocaleString()} FCFA`}
+                value={`${interetInitial.toLocaleString()} FCFA`}
                 disabled
-                className="bg-muted"
+                className="bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <Label>Date d'échéance *</Label>
               <Input type="date" {...register("echeance")} />
@@ -233,48 +326,26 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
             </div>
 
             <div>
-              <Label>Nombre de reconductions</Label>
+              <Label>Reconductions</Label>
               <Input
                 type="number"
                 min="0"
                 {...register("reconductions", { valueAsNumber: true })}
+                disabled={!initialData}
               />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Réunion d'attribution</Label>
-              <Select value={reunionId || "none"} onValueChange={(val) => setValue("reunion_id", val)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner une réunion" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Aucune</SelectItem>
-                  {reunions?.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {new Date(r.date_reunion).toLocaleDateString('fr-FR')} - {r.ordre_du_jour?.substring(0, 30)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {initialData ? "Modifiable" : "Géré automatiquement"}
+              </p>
             </div>
 
             <div>
-              <Label>Exercice fiscal</Label>
-              <Select value={exerciceId || "none"} onValueChange={(val) => setValue("exercice_id", val)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner un exercice" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Aucun</SelectItem>
-                  {exercices?.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.nom} {e.statut === 'actif' && '(Actif)'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Montant total dû</Label>
+              <Input
+                type="text"
+                value={`${montantTotalDu.toLocaleString()} FCFA`}
+                disabled
+                className="bg-muted font-semibold"
+              />
             </div>
           </div>
 
