@@ -164,6 +164,7 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
       montant_paye: initialData?.montant_paye || 0,
       montant_total_du: montantTotal,
       interet_initial: interetInit,
+      dernier_interet: initialData?.dernier_interet || interetInit,
       interet_paye: initialData?.interet_paye || 0,
       capital_paye: initialData?.capital_paye || 0,
       duree_mois: 2,
