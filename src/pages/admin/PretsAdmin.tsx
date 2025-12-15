@@ -149,19 +149,23 @@ export default function PretsAdmin() {
   const payerTotal = useMutation({
     mutationFn: async (pret: any) => {
       const soldeRestant = calculerSoldeRestant(pret);
+      const totalDu = calculerTotalDu(pret);
+      const interetTotal = pret.interet_initial || (pret.montant * (pret.taux_interet || 5) / 100);
       
       const { error: paiementError } = await supabase.from('prets_paiements').insert([{
         pret_id: pret.id,
         montant_paye: soldeRestant,
         date_paiement: new Date().toISOString().split('T')[0],
-        notes: 'Paiement total',
-        type_paiement: 'mixte'
+        notes: 'Paiement total du solde restant',
+        type_paiement: 'mixte',
+        mode_paiement: 'especes'
       }]);
       if (paiementError) throw paiementError;
 
       const { error: pretError } = await supabase.from('prets').update({
-        montant_paye: (pret.montant_paye || 0) + soldeRestant,
+        montant_paye: totalDu,
         capital_paye: pret.montant,
+        interet_paye: interetTotal,
         montant_total_du: 0,
         statut: 'rembourse'
       }).eq('id', pret.id);

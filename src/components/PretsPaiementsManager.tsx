@@ -208,10 +208,16 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
 
   const rembourseSansHistorique = estRembourse && (!paiements || paiements.length === 0);
 
-  // Progression
-  const totalInteretDu = interetDansTotal + interetPaye; // Total intérêt à payer
-  const progressionInteret = totalInteretDu > 0 ? (interetPaye / totalInteretDu) * 100 : 0;
-  const progressionCapital = pret?.montant > 0 ? (capitalPaye / pret.montant) * 100 : 0;
+  // Progression correcte pour prêts remboursés
+  const interetInitial = pret?.interet_initial || (capitalInitial * ((pret?.taux_interet || 5) / 100));
+  
+  // Pour un prêt remboursé, les valeurs payées sont complètes
+  const interetPayeReel = estRembourse ? interetInitial : (pret?.interet_paye || 0);
+  const capitalPayeReel = estRembourse ? capitalInitial : (pret?.capital_paye || 0);
+  
+  // Calcul des progressions
+  const progressionInteret = interetInitial > 0 ? (interetPayeReel / interetInitial) * 100 : (estRembourse ? 100 : 0);
+  const progressionCapital = capitalInitial > 0 ? (capitalPayeReel / capitalInitial) * 100 : (estRembourse ? 100 : 0);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -266,10 +272,10 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                         <span className="w-3 h-3 rounded-full bg-amber-500"></span>
                         Intérêts payés
                       </span>
-                      <span>{formatFCFA(interetPaye)} / {formatFCFA(interetRestant + interetPaye)}</span>
+                      <span>{formatFCFA(interetPayeReel)} / {formatFCFA(interetInitial)}</span>
                     </div>
                     <Progress value={progressionInteret} className="h-2 [&>div]:bg-amber-500" />
-                    {interetRestant > 0 && (
+                    {!estRembourse && interetRestant > 0 && (
                       <p className="text-xs text-amber-600 mt-1">Reste: {formatFCFA(interetRestant)}</p>
                     )}
                   </div>
@@ -279,10 +285,10 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                         <span className="w-3 h-3 rounded-full bg-blue-500"></span>
                         Capital remboursé
                       </span>
-                      <span>{formatFCFA(capitalPaye)} / {formatFCFA(pret.montant)}</span>
+                      <span>{formatFCFA(capitalPayeReel)} / {formatFCFA(capitalInitial)}</span>
                     </div>
                     <Progress value={progressionCapital} className="h-2 [&>div]:bg-blue-500" />
-                    {capitalRestant > 0 && (
+                    {!estRembourse && capitalRestant > 0 && (
                       <p className="text-xs text-blue-600 mt-1">Reste: {formatFCFA(capitalRestant)}</p>
                     )}
                   </div>
