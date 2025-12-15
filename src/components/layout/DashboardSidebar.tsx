@@ -28,6 +28,7 @@ import {
   HandCoins,
   Building2,
   HandHeart,
+  Wallet,
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,6 +56,7 @@ const memberItems = [
 const e2dCotisationsItems = [
   { title: "Épargnes", url: "/dashboard/admin/tontine/epargnes", icon: PiggyBank, resource: "epargnes" },
   { title: "Bénéficiaires", url: "/dashboard/admin/tontine/beneficiaires", icon: Gift, resource: "epargnes" },
+  { title: "Caisse", url: "/dashboard/admin/caisse", icon: Wallet, resource: "epargnes" },
 ];
 
 const e2dReunionsItems = [

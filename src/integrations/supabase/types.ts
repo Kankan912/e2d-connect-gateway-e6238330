@@ -285,6 +285,33 @@ export type Database = {
         }
         Relationships: []
       }
+      caisse_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          pourcentage_empruntable: number | null
+          seuil_alerte_empruntable: number | null
+          seuil_alerte_solde: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          pourcentage_empruntable?: number | null
+          seuil_alerte_empruntable?: number | null
+          seuil_alerte_solde?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          pourcentage_empruntable?: number | null
+          seuil_alerte_empruntable?: number | null
+          seuil_alerte_solde?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       cms_events: {
         Row: {
           created_at: string | null
@@ -1070,40 +1097,55 @@ export type Database = {
       fond_caisse_operations: {
         Row: {
           beneficiaire_id: string | null
+          categorie: string | null
           created_at: string
           date_operation: string
+          exercice_id: string | null
           id: string
           justificatif_url: string | null
           libelle: string
           montant: number
           notes: string | null
           operateur_id: string
+          reunion_id: string | null
+          source_id: string | null
+          source_table: string | null
           type_operation: string
           updated_at: string
         }
         Insert: {
           beneficiaire_id?: string | null
+          categorie?: string | null
           created_at?: string
           date_operation?: string
+          exercice_id?: string | null
           id?: string
           justificatif_url?: string | null
           libelle: string
           montant: number
           notes?: string | null
           operateur_id: string
+          reunion_id?: string | null
+          source_id?: string | null
+          source_table?: string | null
           type_operation: string
           updated_at?: string
         }
         Update: {
           beneficiaire_id?: string | null
+          categorie?: string | null
           created_at?: string
           date_operation?: string
+          exercice_id?: string | null
           id?: string
           justificatif_url?: string | null
           libelle?: string
           montant?: number
           notes?: string | null
           operateur_id?: string
+          reunion_id?: string | null
+          source_id?: string | null
+          source_table?: string | null
           type_operation?: string
           updated_at?: string
         }
@@ -1120,6 +1162,20 @@ export type Database = {
             columns: ["operateur_id"]
             isOneToOne: false
             referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fond_caisse_operations_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fond_caisse_operations_reunion_id_fkey"
+            columns: ["reunion_id"]
+            isOneToOne: false
+            referencedRelation: "reunions"
             referencedColumns: ["id"]
           },
         ]
