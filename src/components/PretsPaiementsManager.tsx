@@ -72,29 +72,40 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
     enabled: !!pretId && open,
   });
 
-  // Calculs
-  const calculerInteretsCumules = (pret: any): number => {
-    if (!pret) return 0;
-    const taux = pret.taux_interet || 0;
-    const interetInitial = pret.interet_initial || (pret.montant * (taux / 100));
-    const interetMensuel = (pret.montant * (taux / 100)) / 12;
-    const interetsReconductions = interetMensuel * (pret.reconductions || 0);
-    return interetInitial + interetsReconductions;
-  };
-
+  // Calculs selon la règle métier:
+  // - Intérêt initial = Capital × Taux%
+  // - Total dû initial = Capital + Intérêt initial
+  // - Après paiement partiel + reconduction: 
+  //   Nouveau solde = Total dû - Paiement
+  //   Nouvel intérêt = Nouveau solde × Taux%
+  //   Nouveau total dû = Nouveau solde + Nouvel intérêt
+  
   const calculerTotalDu = (pret: any): number => {
     if (!pret) return 0;
-    return parseFloat(pret.montant.toString()) + calculerInteretsCumules(pret);
+    // montant_total_du contient le montant actuellement dû après reconductions
+    // Si non défini, calculer: capital + intérêt initial
+    if (pret.montant_total_du && pret.montant_total_du > 0) {
+      return parseFloat(pret.montant_total_du.toString());
+    }
+    const taux = pret.taux_interet || 5;
+    const capital = parseFloat(pret.montant.toString());
+    const interet = capital * (taux / 100);
+    return capital + interet;
   };
 
   const totalPaye = paiements?.reduce((sum, p) => sum + parseFloat(p.montant_paye.toString()), 0) || 0;
   const totalDu = calculerTotalDu(pret);
-  const interets = calculerInteretsCumules(pret);
   
-  const interetPaye = pret?.interet_paye || 0;
+  // Calculer l'intérêt dans le total dû actuel
+  const capitalInitial = pret ? parseFloat(pret.montant.toString()) : 0;
   const capitalPaye = pret?.capital_paye || 0;
-  const interetRestant = Math.max(0, interets - interetPaye);
-  const capitalRestant = pret ? Math.max(0, pret.montant - capitalPaye) : 0;
+  const capitalRestant = Math.max(0, capitalInitial - capitalPaye);
+  
+  // L'intérêt inclus dans le total dû actuel
+  const interetDansTotal = totalDu - capitalRestant;
+  const interetPaye = pret?.interet_paye || 0;
+  const interetRestant = Math.max(0, interetDansTotal - interetPaye);
+  
   const montantRestant = Math.max(0, totalDu - totalPaye);
   const estRembourse = pret?.statut === 'rembourse' || montantRestant <= 0;
 
@@ -127,44 +138,33 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
       let nouveauCapitalPaye = capitalPaye;
       
       if (typePaiement === 'interet') {
-        nouvelInteretPaye = Math.min(interetPaye + montantPaye, interets);
+        nouvelInteretPaye = interetPaye + montantPaye;
       } else if (typePaiement === 'capital') {
-        nouveauCapitalPaye = Math.min(capitalPaye + montantPaye, pret.montant);
+        nouveauCapitalPaye = capitalPaye + montantPaye;
       } else {
         // Mixte: d'abord intérêt, puis capital
         const pourInteret = Math.min(montantPaye, interetRestant);
         const pourCapital = montantPaye - pourInteret;
         nouvelInteretPaye = interetPaye + pourInteret;
-        nouveauCapitalPaye = Math.min(capitalPaye + pourCapital, pret.montant);
+        nouveauCapitalPaye = capitalPaye + pourCapital;
       }
 
       const nouveauTotalPaye = totalPaye + montantPaye;
+      
+      // Calculer le nouveau solde restant
+      const nouveauSolde = totalDu - montantPaye;
+      
       const updates: any = { 
         montant_paye: nouveauTotalPaye,
         interet_paye: nouvelInteretPaye,
         capital_paye: nouveauCapitalPaye,
+        montant_total_du: Math.max(0, nouveauSolde),
       };
 
-      // Vérifier si c'est un paiement partiel du capital → nouveau cycle
-      if (typePaiement === 'capital' && nouveauCapitalPaye > capitalPaye && nouveauCapitalPaye < pret.montant) {
-        const nouveauCapital = pret.montant - nouveauCapitalPaye;
-        const nouvelInteret = nouveauCapital * ((pret.taux_interet || 5) / 100);
-        const nouvelleEcheance = addMonths(new Date(), 2);
-        
-        updates.interet_initial = nouvelInteret;
-        updates.interet_paye = 0;
-        updates.echeance = format(nouvelleEcheance, 'yyyy-MM-dd');
-        updates.reconductions = 0;
-        
-        toast({ 
-          title: "Nouveau cycle démarré",
-          description: `Paiement partiel du capital. Nouvel intérêt calculé sur ${formatFCFA(nouveauCapital)}`,
-        });
-      }
-
       // Si remboursé complètement
-      if (nouveauTotalPaye >= totalDu) {
+      if (nouveauSolde <= 0) {
         updates.statut = 'rembourse';
+        updates.montant_total_du = 0;
       }
 
       await supabase.from('prets').update(updates).eq('id', pretId);
@@ -209,7 +209,8 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
   const rembourseSansHistorique = estRembourse && (!paiements || paiements.length === 0);
 
   // Progression
-  const progressionInteret = interets > 0 ? (interetPaye / interets) * 100 : 0;
+  const totalInteretDu = interetDansTotal + interetPaye; // Total intérêt à payer
+  const progressionInteret = totalInteretDu > 0 ? (interetPaye / totalInteretDu) * 100 : 0;
   const progressionCapital = pret?.montant > 0 ? (capitalPaye / pret.montant) * 100 : 0;
 
   return (
@@ -242,8 +243,8 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                     <p className="font-medium">{formatFCFA(pret.montant)}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total intérêts</p>
-                    <p className="font-medium text-amber-600">{formatFCFA(interets)}</p>
+                    <p className="text-sm text-muted-foreground">Intérêts restants</p>
+                    <p className="font-medium text-amber-600">{formatFCFA(interetRestant)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total dû</p>
@@ -265,7 +266,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                         <span className="w-3 h-3 rounded-full bg-amber-500"></span>
                         Intérêts payés
                       </span>
-                      <span>{formatFCFA(interetPaye)} / {formatFCFA(interets)}</span>
+                      <span>{formatFCFA(interetPaye)} / {formatFCFA(interetRestant + interetPaye)}</span>
                     </div>
                     <Progress value={progressionInteret} className="h-2 [&>div]:bg-amber-500" />
                     {interetRestant > 0 && (
