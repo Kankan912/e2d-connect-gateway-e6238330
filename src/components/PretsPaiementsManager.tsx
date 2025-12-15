@@ -72,42 +72,39 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
     enabled: !!pretId && open,
   });
 
-  // Calculs selon la règle métier:
-  // - Intérêt initial = Capital × Taux%
-  // - Total dû initial = Capital + Intérêt initial
-  // - Après paiement partiel + reconduction: 
-  //   Nouveau solde = Total dû - Paiement
-  //   Nouvel intérêt = Nouveau solde × Taux%
-  //   Nouveau total dû = Nouveau solde + Nouvel intérêt
-  
-  const calculerTotalDu = (pret: any): number => {
-    if (!pret) return 0;
-    // montant_total_du contient le montant actuellement dû après reconductions
-    // Si non défini, calculer: capital + intérêt initial
-    if (pret.montant_total_du && pret.montant_total_du > 0) {
-      return parseFloat(pret.montant_total_du.toString());
-    }
-    const taux = pret.taux_interet || 5;
-    const capital = parseFloat(pret.montant.toString());
-    const interet = capital * (taux / 100);
-    return capital + interet;
-  };
-
-  const totalPaye = paiements?.reduce((sum, p) => sum + parseFloat(p.montant_paye.toString()), 0) || 0;
-  const totalDu = calculerTotalDu(pret);
-  
-  // Calculer l'intérêt dans le total dû actuel
+  // Capital initial et payé
   const capitalInitial = pret ? parseFloat(pret.montant.toString()) : 0;
-  const capitalPaye = pret?.capital_paye || 0;
-  const capitalRestant = Math.max(0, capitalInitial - capitalPaye);
-  
-  // L'intérêt inclus dans le total dû actuel
-  const interetDansTotal = totalDu - capitalRestant;
-  const interetPaye = pret?.interet_paye || 0;
-  const interetRestant = Math.max(0, interetDansTotal - interetPaye);
-  
-  const montantRestant = Math.max(0, totalDu - totalPaye);
-  const estRembourse = pret?.statut === 'rembourse' || montantRestant <= 0;
+  const capitalPayeDB = pret?.capital_paye || 0;
+  const capitalRestant = Math.max(0, capitalInitial - capitalPayeDB);
+
+  // Intérêt initial (calculé à la création du prêt)
+  const interetInitial = pret?.interet_initial || (capitalInitial * ((pret?.taux_interet || 5) / 100));
+
+  // Dernier intérêt calculé (après reconductions) ou intérêt initial
+  const dernierInteret = pret?.dernier_interet || interetInitial;
+
+  // Intérêts payés (de la base de données)
+  const interetPayeDB = pret?.interet_paye || 0;
+
+  // Statut remboursé
+  const estRembourse = pret?.statut === 'rembourse';
+
+  // Pour un prêt REMBOURSÉ: tout est payé, intérêt restant = 0
+  // Pour un prêt EN COURS: utiliser dernier_interet - interet_paye
+  const interetRestant = estRembourse ? 0 : Math.max(0, dernierInteret - interetPayeDB);
+
+  // Montant total actuellement dû (directement de la base)
+  const totalDu = estRembourse ? 0 : (pret?.montant_total_du || (capitalInitial + interetInitial));
+
+  // Total payé depuis l'historique des paiements
+  const totalPaye = paiements?.reduce((sum, p) => sum + parseFloat(p.montant_paye.toString()), 0) || 0;
+
+  // Reste à payer = montant_total_du (stocké directement en base)
+  const montantRestant = estRembourse ? 0 : (pret?.montant_total_du || 0);
+
+  // Valeurs pour les barres de progression
+  const capitalPaye = estRembourse ? capitalInitial : capitalPayeDB;
+  const interetPaye = estRembourse ? interetInitial : interetPayeDB;
 
   // Règle: Peut payer le capital seulement si intérêt soldé
   const peutPayerCapital = interetRestant <= 0;
@@ -208,16 +205,9 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
 
   const rembourseSansHistorique = estRembourse && (!paiements || paiements.length === 0);
 
-  // Progression correcte pour prêts remboursés
-  const interetInitial = pret?.interet_initial || (capitalInitial * ((pret?.taux_interet || 5) / 100));
-  
-  // Pour un prêt remboursé, les valeurs payées sont complètes
-  const interetPayeReel = estRembourse ? interetInitial : (pret?.interet_paye || 0);
-  const capitalPayeReel = estRembourse ? capitalInitial : (pret?.capital_paye || 0);
-  
   // Calcul des progressions
-  const progressionInteret = interetInitial > 0 ? (interetPayeReel / interetInitial) * 100 : (estRembourse ? 100 : 0);
-  const progressionCapital = capitalInitial > 0 ? (capitalPayeReel / capitalInitial) * 100 : (estRembourse ? 100 : 0);
+  const progressionInteret = interetInitial > 0 ? (interetPaye / interetInitial) * 100 : (estRembourse ? 100 : 0);
+  const progressionCapital = capitalInitial > 0 ? (capitalPaye / capitalInitial) * 100 : (estRembourse ? 100 : 0);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -250,7 +240,9 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Intérêts restants</p>
-                    <p className="font-medium text-amber-600">{formatFCFA(interetRestant)}</p>
+                    <p className="font-medium text-amber-600">
+                      {estRembourse ? formatFCFA(0) : formatFCFA(interetRestant)}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total dû</p>
@@ -272,7 +264,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                         <span className="w-3 h-3 rounded-full bg-amber-500"></span>
                         Intérêts payés
                       </span>
-                      <span>{formatFCFA(interetPayeReel)} / {formatFCFA(interetInitial)}</span>
+                      <span>{formatFCFA(interetPaye)} / {formatFCFA(interetInitial)}</span>
                     </div>
                     <Progress value={progressionInteret} className="h-2 [&>div]:bg-amber-500" />
                     {!estRembourse && interetRestant > 0 && (
@@ -285,7 +277,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                         <span className="w-3 h-3 rounded-full bg-blue-500"></span>
                         Capital remboursé
                       </span>
-                      <span>{formatFCFA(capitalPayeReel)} / {formatFCFA(capitalInitial)}</span>
+                      <span>{formatFCFA(capitalPaye)} / {formatFCFA(capitalInitial)}</span>
                     </div>
                     <Progress value={progressionCapital} className="h-2 [&>div]:bg-blue-500" />
                     {!estRembourse && capitalRestant > 0 && (

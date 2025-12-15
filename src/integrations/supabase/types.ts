@@ -2287,6 +2287,7 @@ export type Database = {
           capital_paye: number | null
           created_at: string
           date_pret: string
+          dernier_interet: number | null
           duree_mois: number | null
           echeance: string
           exercice_id: string | null
@@ -2310,6 +2311,7 @@ export type Database = {
           capital_paye?: number | null
           created_at?: string
           date_pret?: string
+          dernier_interet?: number | null
           duree_mois?: number | null
           echeance: string
           exercice_id?: string | null
@@ -2333,6 +2335,7 @@ export type Database = {
           capital_paye?: number | null
           created_at?: string
           date_pret?: string
+          dernier_interet?: number | null
           duree_mois?: number | null
           echeance?: string
           exercice_id?: string | null
