@@ -10,6 +10,7 @@ import { formatFCFA } from "@/lib/utils";
 interface ReconduireModalProps {
   pret: any;
   maxReconductions: number;
+  dureeReconduction: number;
   soldeRestant: number; // Non utilisé - on calcule sur capital restant
   open: boolean;
   onClose: () => void;
@@ -20,6 +21,7 @@ interface ReconduireModalProps {
 export default function ReconduireModal({
   pret,
   maxReconductions,
+  dureeReconduction = 2,
   soldeRestant,
   open,
   onClose,
@@ -70,7 +72,7 @@ export default function ReconduireModal({
             Reconduire le prêt
           </DialogTitle>
           <DialogDescription>
-            Reconduction #{prochaineReconduction} sur {maxReconductions} maximum
+            Reconduction #{prochaineReconduction} sur {maxReconductions} maximum — +{dureeReconduction} mois
           </DialogDescription>
         </DialogHeader>
 
@@ -146,7 +148,8 @@ export default function ReconduireModal({
             <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-200">
               <AlertTriangle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-700 dark:text-amber-400">
-                <strong>Attention :</strong> Un intérêt de {taux}% sera appliqué sur le capital restant de {formatFCFA(capitalRestant)}.
+                <strong>Attention :</strong> Un intérêt de {taux}% sera appliqué sur le capital restant de {formatFCFA(capitalRestant)}. 
+                L'échéance sera prolongée de <strong>{dureeReconduction} mois</strong>.
               </AlertDescription>
             </Alert>
           )}

@@ -2389,6 +2389,7 @@ export type Database = {
         Row: {
           created_at: string | null
           duree_mois: number
+          duree_reconduction: number
           exercice_id: string | null
           id: string
           interet_avant_capital: boolean
@@ -2399,6 +2400,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           duree_mois?: number
+          duree_reconduction?: number
           exercice_id?: string | null
           id?: string
           interet_avant_capital?: boolean
@@ -2409,6 +2411,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           duree_mois?: number
+          duree_reconduction?: number
           exercice_id?: string | null
           id?: string
           interet_avant_capital?: boolean

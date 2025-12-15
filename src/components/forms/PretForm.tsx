@@ -78,6 +78,23 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
     }
   });
 
+  // Configuration des prêts
+  const { data: pretsConfig } = useQuery({
+    queryKey: ['prets-config'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prets_config')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const dureeMoisConfig = pretsConfig?.duree_mois || 2;
+  const tauxInteretDefaut = pretsConfig?.taux_interet_defaut || 5;
+
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<PretFormData>({
     resolver: zodResolver(pretSchema),
     defaultValues: {
@@ -105,11 +122,11 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
       const reunion = reunions?.find(r => r.id === reunionId);
       if (reunion) {
         const dateReunion = new Date(reunion.date_reunion);
-        const nouvelleEcheance = addMonths(dateReunion, 2);
+        const nouvelleEcheance = addMonths(dateReunion, dureeMoisConfig);
         setValue("echeance", format(nouvelleEcheance, 'yyyy-MM-dd'));
       }
     }
-  }, [reunionId, reunions, setValue, initialData]);
+  }, [reunionId, reunions, setValue, initialData, dureeMoisConfig]);
 
   // Charger le taux d'intérêt de l'exercice sélectionné
   useEffect(() => {
@@ -128,7 +145,7 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
         reset({
           membre_id: initialData.membre_id,
           montant: initialData.montant,
-          taux_interet: initialData.taux_interet || 5,
+          taux_interet: initialData.taux_interet || tauxInteretDefaut,
           echeance: initialData.echeance,
           avaliste_id: initialData.avaliste_id || "none",
           reunion_id: initialData.reunion_id || "",
@@ -141,7 +158,7 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
         // Pour un nouveau prêt, pré-sélectionner l'exercice actif
         const exerciceActif = exercices?.find(e => e.statut === 'actif');
         reset({
-          taux_interet: exerciceActif?.taux_interet_prets || 5,
+          taux_interet: exerciceActif?.taux_interet_prets || tauxInteretDefaut,
           reconductions: 0,
           notes: "",
           avaliste_id: "none",
@@ -151,7 +168,7 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
         setJustificatifUrl(null);
       }
     }
-  }, [open, initialData, reset, exercices]);
+  }, [open, initialData, reset, exercices, tauxInteretDefaut]);
 
   const handleFormSubmit = (data: PretFormData) => {
     const interetInit = data.montant * ((data.taux_interet || 0) / 100);
@@ -167,7 +184,7 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
       dernier_interet: initialData?.dernier_interet || interetInit,
       interet_paye: initialData?.interet_paye || 0,
       capital_paye: initialData?.capital_paye || 0,
-      duree_mois: 2,
+      duree_mois: dureeMoisConfig,
       avaliste_id: data.avaliste_id === "none" ? null : data.avaliste_id,
       reunion_id: data.reunion_id,
       exercice_id: data.exercice_id,
@@ -179,7 +196,7 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
   // Trouver la réunion sélectionnée pour afficher la date d'échéance calculée
   const reunionSelectionnee = reunions?.find(r => r.id === reunionId);
   const dateEcheanceCalculee = reunionSelectionnee 
-    ? format(addMonths(new Date(reunionSelectionnee.date_reunion), 2), 'dd/MM/yyyy')
+    ? format(addMonths(new Date(reunionSelectionnee.date_reunion), dureeMoisConfig), 'dd/MM/yyyy')
     : null;
 
   return (
@@ -189,11 +206,11 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
           <DialogTitle>{initialData ? "Modifier le prêt" : "Nouveau prêt"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          {/* Info durée fixe */}
+          {/* Info durée configurable */}
           <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200">
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-700 dark:text-blue-400">
-              <strong>Durée fixe : 2 mois</strong> — L'échéance est calculée automatiquement à partir de la date de réunion.
+              <strong>Durée : {dureeMoisConfig} mois</strong> — L'échéance est calculée automatiquement à partir de la date de réunion.
             </AlertDescription>
           </Alert>
 

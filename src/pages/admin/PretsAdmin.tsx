@@ -84,6 +84,7 @@ export default function PretsAdmin() {
   });
 
   const maxReconductions = pretsConfig?.max_reconductions || 3;
+  const dureeReconduction = pretsConfig?.duree_reconduction || 2;
 
   // Calculer le total dû actuel (utilise montant_total_du si disponible, sinon calcule)
   const calculerTotalDu = (pret: any): number => {
@@ -218,7 +219,7 @@ export default function PretsAdmin() {
       // Nouveau total dû = Capital restant + Nouvel intérêt
       const nouveauTotalDu = capitalRestant + nouvelInteret;
 
-      const nouvelleEcheance = addMonths(new Date(pret.echeance), 1);
+      const nouvelleEcheance = addMonths(new Date(pret.echeance), dureeReconduction);
 
       const { error } = await supabase.from('prets').update({
         echeance: format(nouvelleEcheance, 'yyyy-MM-dd'),
@@ -345,7 +346,10 @@ export default function PretsAdmin() {
   const montantPrete = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + p.montant, 0) || 0;
   const pretsRembourses = prets?.filter((p) => getEffectiveStatus(p) === "rembourse").length || 0;
   const montantRestant = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + calculerTotalDu(p) - (p.montant_paye || 0), 0) || 0;
-  const totalInterets = prets?.reduce((sum, p) => sum + (calculerTotalDu(p) - p.montant), 0) || 0;
+  const totalInterets = prets?.reduce((sum, p) => {
+    // Somme des intérêts initiaux (générés à la création)
+    return sum + (p.interet_initial || (p.montant * (p.taux_interet || 5) / 100));
+  }, 0) || 0;
 
   const handleOpenReconduire = (pret: any) => {
     setPretForReconduction(pret);
@@ -361,7 +365,7 @@ export default function PretsAdmin() {
           <div>
             <h1 className="text-3xl font-bold">Gestion des Prêts</h1>
             <p className="text-sm text-muted-foreground">
-              Max reconductions: {maxReconductions} | Règle: Intérêt avant capital
+              Reconduction: +{dureeReconduction} mois | Max: {maxReconductions} | Règle: Intérêt avant capital
             </p>
           </div>
         </div>
@@ -774,6 +778,7 @@ export default function PretsAdmin() {
         <ReconduireModal
           pret={pretForReconduction}
           maxReconductions={maxReconductions}
+          dureeReconduction={dureeReconduction}
           soldeRestant={calculerSoldeRestant(pretForReconduction)}
           open={reconduireDialogOpen}
           onClose={() => {
