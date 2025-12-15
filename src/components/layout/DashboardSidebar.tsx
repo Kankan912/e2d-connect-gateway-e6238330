@@ -63,6 +63,7 @@ const e2dReunionsItems = [
 
 const e2dFinancesItems = [
   { title: "Prêts", url: "/dashboard/admin/finances/prets", icon: HandCoins, resource: "prets" },
+  { title: "Config Prêts", url: "/dashboard/admin/finances/prets/config", icon: Settings, resource: "config" },
   { title: "Aides", url: "/dashboard/admin/finances/aides", icon: HandHeart, resource: "aides" },
 ];
 
