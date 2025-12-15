@@ -910,6 +910,7 @@ export type Database = {
           nom: string
           plafond_fond_caisse: number | null
           statut: string
+          taux_interet_prets: number | null
         }
         Insert: {
           created_at?: string
@@ -920,6 +921,7 @@ export type Database = {
           nom: string
           plafond_fond_caisse?: number | null
           statut?: string
+          taux_interet_prets?: number | null
         }
         Update: {
           created_at?: string
@@ -930,6 +932,7 @@ export type Database = {
           nom?: string
           plafond_fond_caisse?: number | null
           statut?: string
+          taux_interet_prets?: number | null
         }
         Relationships: []
       }
@@ -2281,11 +2284,15 @@ export type Database = {
       prets: {
         Row: {
           avaliste_id: string | null
+          capital_paye: number | null
           created_at: string
           date_pret: string
+          duree_mois: number | null
           echeance: string
           exercice_id: string | null
           id: string
+          interet_initial: number | null
+          interet_paye: number | null
           justificatif_url: string | null
           membre_id: string
           montant: number
@@ -2300,11 +2307,15 @@ export type Database = {
         }
         Insert: {
           avaliste_id?: string | null
+          capital_paye?: number | null
           created_at?: string
           date_pret?: string
+          duree_mois?: number | null
           echeance: string
           exercice_id?: string | null
           id?: string
+          interet_initial?: number | null
+          interet_paye?: number | null
           justificatif_url?: string | null
           membre_id: string
           montant: number
@@ -2319,11 +2330,15 @@ export type Database = {
         }
         Update: {
           avaliste_id?: string | null
+          capital_paye?: number | null
           created_at?: string
           date_pret?: string
+          duree_mois?: number | null
           echeance?: string
           exercice_id?: string | null
           id?: string
+          interet_initial?: number | null
+          interet_paye?: number | null
           justificatif_url?: string | null
           membre_id?: string
           montant?: number
@@ -2367,6 +2382,47 @@ export type Database = {
           },
         ]
       }
+      prets_config: {
+        Row: {
+          created_at: string | null
+          duree_mois: number
+          exercice_id: string | null
+          id: string
+          interet_avant_capital: boolean
+          max_reconductions: number
+          taux_interet_defaut: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          duree_mois?: number
+          exercice_id?: string | null
+          id?: string
+          interet_avant_capital?: boolean
+          max_reconductions?: number
+          taux_interet_defaut?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          duree_mois?: number
+          exercice_id?: string | null
+          id?: string
+          interet_avant_capital?: boolean
+          max_reconductions?: number
+          taux_interet_defaut?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prets_config_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: true
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prets_paiements: {
         Row: {
           created_at: string
@@ -2376,6 +2432,7 @@ export type Database = {
           montant_paye: number
           notes: string | null
           pret_id: string
+          type_paiement: string | null
           updated_at: string
         }
         Insert: {
@@ -2386,6 +2443,7 @@ export type Database = {
           montant_paye: number
           notes?: string | null
           pret_id: string
+          type_paiement?: string | null
           updated_at?: string
         }
         Update: {
@@ -2396,6 +2454,7 @@ export type Database = {
           montant_paye?: number
           notes?: string | null
           pret_id?: string
+          type_paiement?: string | null
           updated_at?: string
         }
         Relationships: [

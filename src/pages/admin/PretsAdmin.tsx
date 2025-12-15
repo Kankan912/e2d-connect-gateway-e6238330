@@ -1,4 +1,4 @@
-import { DollarSign, Plus, Edit, Trash2, CreditCard, FileText, RefreshCw, Search, LayoutDashboard, CheckCircle, AlertTriangle, Clock, Banknote } from "lucide-react";
+import { DollarSign, Plus, Edit, Trash2, CreditCard, FileText, RefreshCw, Search, LayoutDashboard, CheckCircle, AlertTriangle, Clock, Banknote, Eye, Settings } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +12,8 @@ import { toast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
 import PretForm from "@/components/forms/PretForm";
 import PretsPaiementsManager from "@/components/PretsPaiementsManager";
+import ReconduireModal from "@/components/ReconduireModal";
+import PretDetailsModal from "@/components/PretDetailsModal";
 import { formatFCFA } from "@/lib/utils";
 import {
   AlertDialog,
@@ -29,6 +31,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { addMonths, format } from "date-fns";
 
 type StatutFilter = 'tous' | 'en_cours' | 'rembourse' | 'partiel' | 'en_retard' | 'reconduit';
 
@@ -39,6 +42,10 @@ export default function PretsAdmin() {
   const [pretToDelete, setPretToDelete] = useState<string | null>(null);
   const [paiementsDialogOpen, setPaiementsDialogOpen] = useState(false);
   const [pretForPaiements, setPretForPaiements] = useState<string | null>(null);
+  const [reconduireDialogOpen, setReconduireDialogOpen] = useState(false);
+  const [pretForReconduction, setPretForReconduction] = useState<any>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [pretForDetails, setPretForDetails] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statutFilter, setStatutFilter] = useState<StatutFilter>('tous');
   const [showDashboard, setShowDashboard] = useState(false);
@@ -62,13 +69,40 @@ export default function PretsAdmin() {
     },
   });
 
-  // Fonction locale pour calculer les intérêts (utilisée dans les mutations avant que calculerInteretsCumules soit défini)
-  const calculerInteretsLocaux = (pret: any): number => {
+  // Configuration des prêts (max reconductions, etc.)
+  const { data: pretsConfig } = useQuery({
+    queryKey: ["prets-config"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("prets_config")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const maxReconductions = pretsConfig?.max_reconductions || 3;
+
+  // Calculer les intérêts cumulés
+  const calculerInteretsCumules = (pret: any): number => {
     const taux = pret.taux_interet || 0;
-    const interetInitial = pret.montant * (taux / 100);
+    const interetInitial = pret.interet_initial || (pret.montant * (taux / 100));
     const interetMensuel = (pret.montant * (taux / 100)) / 12;
     const interetsReconductions = interetMensuel * (pret.reconductions || 0);
     return interetInitial + interetsReconductions;
+  };
+
+  // Calculer le total dû
+  const calculerTotalDu = (pret: any): number => {
+    return pret.montant + calculerInteretsCumules(pret);
+  };
+
+  // Calculer l'intérêt restant à payer
+  const calculerInteretRestant = (pret: any): number => {
+    const interetTotal = calculerInteretsCumules(pret);
+    return Math.max(0, interetTotal - (pret.interet_paye || 0));
   };
 
   const createPret = useMutation({
@@ -112,24 +146,25 @@ export default function PretsAdmin() {
     }
   });
 
-  // Action: Payer Total
+  // Payer Total
   const payerTotal = useMutation({
     mutationFn: async (pret: any) => {
-      const totalDu = pret.montant + calculerInteretsLocaux(pret);
+      const totalDu = calculerTotalDu(pret);
       const resteAPayer = totalDu - (pret.montant_paye || 0);
       
-      // Ajouter un paiement
       const { error: paiementError } = await supabase.from('prets_paiements').insert([{
         pret_id: pret.id,
         montant_paye: resteAPayer,
         date_paiement: new Date().toISOString().split('T')[0],
-        notes: 'Paiement total'
+        notes: 'Paiement total',
+        type_paiement: 'mixte'
       }]);
       if (paiementError) throw paiementError;
 
-      // Mettre à jour le prêt
       const { error: pretError } = await supabase.from('prets').update({
         montant_paye: totalDu,
+        interet_paye: calculerInteretsCumules(pret),
+        capital_paye: pret.montant,
         statut: 'rembourse'
       }).eq('id', pret.id);
       if (pretError) throw pretError;
@@ -143,26 +178,42 @@ export default function PretsAdmin() {
     }
   });
 
-  // Action: Reconduire
+  // Reconduire avec vérification
   const reconduire = useMutation({
     mutationFn: async (pret: any) => {
-      const nouvelleEcheance = new Date(pret.echeance);
-      nouvelleEcheance.setMonth(nouvelleEcheance.getMonth() + 1);
-      
-      // Calculer les nouveaux intérêts avec le calcul local
-      const totalActuel = pret.montant + calculerInteretsLocaux(pret);
+      // Vérifier limite
+      if ((pret.reconductions || 0) >= maxReconductions) {
+        throw new Error(`Limite de reconductions atteinte (${maxReconductions} max)`);
+      }
+
+      const interetRestant = calculerInteretRestant(pret);
       const interetMensuel = (pret.montant * ((pret.taux_interet || 0) / 100)) / 12;
+      
+      // Si intérêt reste, l'enregistrer comme payé
+      if (interetRestant > 0) {
+        const { error: paiementError } = await supabase.from('prets_paiements').insert([{
+          pret_id: pret.id,
+          montant_paye: interetMensuel,
+          date_paiement: new Date().toISOString().split('T')[0],
+          notes: `Intérêt pour reconduction #${(pret.reconductions || 0) + 1}`,
+          type_paiement: 'interet'
+        }]);
+        if (paiementError) throw paiementError;
+      }
+
+      const nouvelleEcheance = addMonths(new Date(pret.echeance), 1);
+      const totalActuel = calculerTotalDu(pret);
       const nouveauTotal = totalActuel + interetMensuel;
 
-      // Mettre à jour le prêt
       const { error } = await supabase.from('prets').update({
-        echeance: nouvelleEcheance.toISOString().split('T')[0],
+        echeance: format(nouvelleEcheance, 'yyyy-MM-dd'),
         montant_total_du: nouveauTotal,
+        montant_paye: (pret.montant_paye || 0) + (interetRestant > 0 ? interetMensuel : 0),
+        interet_paye: (pret.interet_paye || 0) + (interetRestant > 0 ? interetMensuel : 0),
         reconductions: (pret.reconductions || 0) + 1
       }).eq('id', pret.id);
       if (error) throw error;
 
-      // Enregistrer la reconduction dans l'historique
       const { error: reconError } = await supabase.from('prets_reconductions').insert({
         pret_id: pret.id,
         date_reconduction: new Date().toISOString().split('T')[0],
@@ -175,6 +226,8 @@ export default function PretsAdmin() {
       toast({ title: "Prêt reconduit d'un mois avec nouveaux intérêts" });
       queryClient.invalidateQueries({ queryKey: ['prets'] });
       queryClient.invalidateQueries({ queryKey: ['prets-reconductions'] });
+      setReconduireDialogOpen(false);
+      setPretForReconduction(null);
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
@@ -189,23 +242,7 @@ export default function PretsAdmin() {
     }
   };
 
-  // Calculer les intérêts cumulés (initial + reconductions)
-  const calculerInteretsCumules = (pret: any): number => {
-    const taux = pret.taux_interet || 0;
-    // Intérêt initial = montant × taux / 100
-    const interetInitial = pret.montant * (taux / 100);
-    // Intérêts de reconduction (chaque reconduction = 1 mois d'intérêt supplémentaire)
-    const interetMensuel = (pret.montant * (taux / 100)) / 12;
-    const interetsReconductions = interetMensuel * (pret.reconductions || 0);
-    return interetInitial + interetsReconductions;
-  };
-
-  // Calculer le total dû (montant + intérêts cumulés)
-  const calculerTotalDu = (pret: any): number => {
-    return pret.montant + calculerInteretsCumules(pret);
-  };
-
-  // Calculer le statut effectif
+  // Statut effectif
   const getEffectiveStatus = (pret: any) => {
     const totalDu = calculerTotalDu(pret);
     const paye = pret.montant_paye || 0;
@@ -219,7 +256,6 @@ export default function PretsAdmin() {
     return pret.statut;
   };
 
-  // Couleur de la ligne selon le statut
   const getRowClass = (pret: any) => {
     const status = getEffectiveStatus(pret);
     switch (status) {
@@ -249,34 +285,28 @@ export default function PretsAdmin() {
         return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />En retard</Badge>;
       case 'reconduit':
         return <Badge className="bg-blue-500"><RefreshCw className="h-3 w-3 mr-1" />Reconduit</Badge>;
-      case 'defaut':
-        return <Badge variant="destructive">Défaut</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  // Filtrer et trier les prêts par priorité de statut
+  // Filtrage et tri
   const filteredPrets = useMemo(() => {
     if (!prets) return [];
     
     const filtered = prets.filter(pret => {
-      // Filtre par recherche
       const searchLower = searchQuery.toLowerCase();
       const matchSearch = !searchQuery || 
         pret.emprunteur?.nom?.toLowerCase().includes(searchLower) ||
         pret.emprunteur?.prenom?.toLowerCase().includes(searchLower) ||
-        pret.avaliste?.nom?.toLowerCase().includes(searchLower) ||
-        pret.avaliste?.prenom?.toLowerCase().includes(searchLower);
+        pret.avaliste?.nom?.toLowerCase().includes(searchLower);
 
-      // Filtre par statut
       const effectiveStatus = getEffectiveStatus(pret);
       const matchStatut = statutFilter === 'tous' || effectiveStatus === statutFilter;
 
       return matchSearch && matchStatut;
     });
 
-    // Tri par priorité de statut : en_retard > en_cours > reconduit > partiel > rembourse
     const priorityOrder: Record<string, number> = {
       'en_retard': 0,
       'en_cours': 1,
@@ -302,13 +332,23 @@ export default function PretsAdmin() {
   const montantRestant = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + calculerTotalDu(p) - (p.montant_paye || 0), 0) || 0;
   const totalInterets = prets?.reduce((sum, p) => sum + calculerInteretsCumules(p), 0) || 0;
 
+  const handleOpenReconduire = (pret: any) => {
+    setPretForReconduction(pret);
+    setReconduireDialogOpen(true);
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <BackButton />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-2">
           <DollarSign className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Gestion des Prêts</h1>
+          <div>
+            <h1 className="text-3xl font-bold">Gestion des Prêts</h1>
+            <p className="text-sm text-muted-foreground">
+              Max reconductions: {maxReconductions} | Règle: Intérêt avant capital
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -325,7 +365,7 @@ export default function PretsAdmin() {
         </div>
       </div>
 
-      {/* Tableau de bord détaillé */}
+      {/* Dashboard */}
       {showDashboard && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="border-l-4 border-l-blue-500">
@@ -337,7 +377,6 @@ export default function PretsAdmin() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-blue-600">{pretsActifs}</p>
-              <p className="text-xs text-muted-foreground mt-1">Prêts actifs</p>
             </CardContent>
           </Card>
           <Card className="border-l-4 border-l-orange-500">
@@ -349,7 +388,6 @@ export default function PretsAdmin() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-orange-600">{pretsPartiels}</p>
-              <p className="text-xs text-muted-foreground mt-1">Paiements en cours</p>
             </CardContent>
           </Card>
           <Card className="border-l-4 border-l-red-500">
@@ -361,7 +399,6 @@ export default function PretsAdmin() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-red-600">{pretsEnRetard}</p>
-              <p className="text-xs text-muted-foreground mt-1">Échéance dépassée</p>
             </CardContent>
           </Card>
           <Card className="border-l-4 border-l-green-500">
@@ -373,13 +410,12 @@ export default function PretsAdmin() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold text-green-600">{pretsRembourses}</p>
-              <p className="text-xs text-muted-foreground mt-1">Prêts soldés</p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Statistiques principales */}
+      {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
@@ -424,7 +460,7 @@ export default function PretsAdmin() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Rechercher un emprunteur..."
+                  placeholder="Rechercher..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 w-full sm:w-64"
@@ -435,9 +471,9 @@ export default function PretsAdmin() {
                   <SelectValue placeholder="Filtrer par statut" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="tous">Tous les statuts</SelectItem>
+                  <SelectItem value="tous">Tous</SelectItem>
                   <SelectItem value="en_cours">En cours</SelectItem>
-                  <SelectItem value="partiel">Partiellement payé</SelectItem>
+                  <SelectItem value="partiel">Partiel</SelectItem>
                   <SelectItem value="en_retard">En retard</SelectItem>
                   <SelectItem value="reconduit">Reconduit</SelectItem>
                   <SelectItem value="rembourse">Remboursé</SelectItem>
@@ -456,22 +492,21 @@ export default function PretsAdmin() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Emprunteur</TableHead>
-                    <TableHead>Avaliste</TableHead>
                     <TableHead>Montant</TableHead>
                     <TableHead>Taux</TableHead>
-                    <TableHead>Intérêts cumulés</TableHead>
                     <TableHead>Total dû</TableHead>
                     <TableHead>Échéance</TableHead>
                     <TableHead>Recon.</TableHead>
                     <TableHead>Statut</TableHead>
-                    <TableHead>Reste à payer</TableHead>
-                    <TableHead className="text-right min-w-[180px]">Actions</TableHead>
+                    <TableHead>Reste</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredPrets?.map((pret) => {
                     const resteAPayer = calculerTotalDu(pret) - (pret.montant_paye || 0);
                     const estRembourse = getEffectiveStatus(pret) === 'rembourse';
+                    const peutReconduire = (pret.reconductions || 0) < maxReconductions;
                     
                     return (
                       <TableRow key={pret.id} className={getRowClass(pret)}>
@@ -479,41 +514,31 @@ export default function PretsAdmin() {
                         <TableCell className="font-medium">
                           {pret.emprunteur?.nom} {pret.emprunteur?.prenom}
                         </TableCell>
-                        <TableCell>
-                          {pret.avaliste ? (
-                            <span className="text-sm">
-                              {pret.avaliste.nom} {pret.avaliste.prenom}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">-</span>
-                          )}
-                        </TableCell>
                         <TableCell>{formatFCFA(pret.montant)}</TableCell>
                         <TableCell>{pret.taux_interet}%</TableCell>
-                        <TableCell className="text-amber-600 font-medium">
-                          {formatFCFA(calculerInteretsCumules(pret))}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {formatFCFA(calculerTotalDu(pret))}
-                        </TableCell>
+                        <TableCell className="font-medium">{formatFCFA(calculerTotalDu(pret))}</TableCell>
                         <TableCell>{new Date(pret.echeance).toLocaleDateString('fr-FR')}</TableCell>
                         <TableCell>
                           {pret.reconductions > 0 ? (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger>
-                                  <Badge variant="outline" className="flex items-center gap-1">
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`flex items-center gap-1 ${!peutReconduire ? 'bg-red-100 text-red-800' : ''}`}
+                                  >
                                     <RefreshCw className="h-3 w-3" />
-                                    {pret.reconductions}
+                                    {pret.reconductions}/{maxReconductions}
                                   </Badge>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p>{pret.reconductions} reconduction(s)</p>
+                                  <p>{pret.reconductions}/{maxReconductions} reconductions</p>
+                                  {!peutReconduire && <p className="text-red-500">Limite atteinte</p>}
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                           ) : (
-                            <span className="text-muted-foreground">-</span>
+                            <span className="text-muted-foreground text-xs">0/{maxReconductions}</span>
                           )}
                         </TableCell>
                         <TableCell>{getStatutBadge(pret)}</TableCell>
@@ -522,8 +547,29 @@ export default function PretsAdmin() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-0.5 justify-end flex-nowrap">
+                            {/* Voir détails */}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-7 w-7"
+                                    onClick={() => {
+                                      setPretForDetails(pret.id);
+                                      setDetailsDialogOpen(true);
+                                    }}
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Voir détails</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            
                             {!estRembourse && (
                               <>
+                                {/* Payer Total */}
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -540,6 +586,8 @@ export default function PretsAdmin() {
                                     <TooltipContent>Payer Total ({formatFCFA(resteAPayer)})</TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
+                                
+                                {/* Paiement Partiel */}
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -558,24 +606,33 @@ export default function PretsAdmin() {
                                     <TooltipContent>Paiement Partiel</TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
+                                
+                                {/* Reconduire */}
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button
                                         size="icon"
                                         variant="outline"
-                                        className="h-7 w-7 border-blue-500 text-blue-600 hover:bg-blue-50"
-                                        onClick={() => reconduire.mutate(pret)}
-                                        disabled={reconduire.isPending}
+                                        className={`h-7 w-7 ${peutReconduire ? 'border-blue-500 text-blue-600 hover:bg-blue-50' : 'opacity-50'}`}
+                                        onClick={() => handleOpenReconduire(pret)}
+                                        disabled={!peutReconduire || reconduire.isPending}
                                       >
                                         <RefreshCw className="h-3.5 w-3.5" />
                                       </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>Reconduire (+1 mois)</TooltipContent>
+                                    <TooltipContent>
+                                      {peutReconduire 
+                                        ? `Reconduire (+1 mois)` 
+                                        : `Limite atteinte (${maxReconductions} max)`
+                                      }
+                                    </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
                               </>
                             )}
+                            
+                            {/* Gérer paiements */}
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -594,6 +651,8 @@ export default function PretsAdmin() {
                                 <TooltipContent>Gérer les paiements</TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
+                            
+                            {/* Justificatif */}
                             {pret.justificatif_url && (
                               <TooltipProvider>
                                 <Tooltip>
@@ -607,10 +666,12 @@ export default function PretsAdmin() {
                                       <FileText className="h-3.5 w-3.5" />
                                     </Button>
                                   </TooltipTrigger>
-                                  <TooltipContent>Voir le justificatif</TooltipContent>
+                                  <TooltipContent>Voir justificatif</TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
                             )}
+                            
+                            {/* Éditer */}
                             <Button
                               size="icon"
                               variant="outline"
@@ -619,6 +680,8 @@ export default function PretsAdmin() {
                             >
                               <Edit className="h-3.5 w-3.5" />
                             </Button>
+                            
+                            {/* Supprimer */}
                             <Button
                               size="icon"
                               variant="destructive"
@@ -634,8 +697,8 @@ export default function PretsAdmin() {
                   })}
                   {filteredPrets?.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
-                        {prets?.length === 0 ? 'Aucun prêt enregistré' : 'Aucun prêt ne correspond aux critères'}
+                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                        Aucun prêt trouvé
                       </TableCell>
                     </TableRow>
                   )}
@@ -646,7 +709,7 @@ export default function PretsAdmin() {
         </CardContent>
       </Card>
 
-      {/* Légende des couleurs */}
+      {/* Légende */}
       <Card>
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-4 text-sm">
@@ -656,7 +719,7 @@ export default function PretsAdmin() {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-orange-200 dark:bg-orange-900" />
-              <span>Partiellement payé</span>
+              <span>Partiel</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded bg-red-200 dark:bg-red-900" />
@@ -670,6 +733,7 @@ export default function PretsAdmin() {
         </CardContent>
       </Card>
 
+      {/* Modals */}
       <PretForm
         open={formOpen}
         onClose={() => { setFormOpen(false); setSelectedPret(null); }}
@@ -684,6 +748,32 @@ export default function PretsAdmin() {
           onClose={() => {
             setPaiementsDialogOpen(false);
             setPretForPaiements(null);
+          }}
+        />
+      )}
+
+      {pretForReconduction && (
+        <ReconduireModal
+          pret={pretForReconduction}
+          maxReconductions={maxReconductions}
+          interetRestant={calculerInteretRestant(pretForReconduction)}
+          open={reconduireDialogOpen}
+          onClose={() => {
+            setReconduireDialogOpen(false);
+            setPretForReconduction(null);
+          }}
+          onConfirm={() => reconduire.mutate(pretForReconduction)}
+          isPending={reconduire.isPending}
+        />
+      )}
+
+      {pretForDetails && (
+        <PretDetailsModal
+          pretId={pretForDetails}
+          open={detailsDialogOpen}
+          onClose={() => {
+            setDetailsDialogOpen(false);
+            setPretForDetails(null);
           }}
         />
       )}
