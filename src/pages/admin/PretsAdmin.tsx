@@ -167,6 +167,7 @@ export default function PretsAdmin() {
         capital_paye: pret.montant,
         interet_paye: interetTotal,
         montant_total_du: 0,
+        dernier_interet: 0,
         statut: 'rembourse'
       }).eq('id', pret.id);
       if (pretError) throw pretError;
@@ -202,6 +203,7 @@ export default function PretsAdmin() {
       const { error } = await supabase.from('prets').update({
         echeance: format(nouvelleEcheance, 'yyyy-MM-dd'),
         montant_total_du: nouveauTotalDu,
+        dernier_interet: nouvelInteret,
         reconductions: (pret.reconductions || 0) + 1
       }).eq('id', pret.id);
       if (error) throw error;
