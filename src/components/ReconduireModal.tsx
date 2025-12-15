@@ -10,7 +10,7 @@ import { formatFCFA } from "@/lib/utils";
 interface ReconduireModalProps {
   pret: any;
   maxReconductions: number;
-  soldeRestant: number; // Total dû actuel - paiements
+  soldeRestant: number; // Non utilisé - on calcule sur capital restant
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -34,10 +34,20 @@ export default function ReconduireModal({
   
   const taux = pret?.taux_interet || 5;
   
-  // Selon la règle métier: lors d'une reconduction, on applique 5% sur le solde restant
-  // Nouveau total dû = Solde restant × (1 + Taux%)
-  const nouvelInteret = soldeRestant * (taux / 100);
-  const nouveauTotalDu = soldeRestant + nouvelInteret;
+  // Vérifier si l'intérêt actuel est payé
+  const interetActuel = pret?.dernier_interet || pret?.interet_initial || ((pret?.montant || 0) * (taux / 100));
+  const interetPaye = pret?.interet_paye || 0;
+  const interetNonPaye = Math.max(0, interetActuel - interetPaye);
+  const interetSolde = interetNonPaye <= 0;
+  
+  // RÈGLE: Reconduction sur le CAPITAL RESTANT (pas le solde total)
+  const capitalRestant = (pret?.montant || 0) - (pret?.capital_paye || 0);
+  
+  // Nouvel intérêt = Capital restant × Taux%
+  const nouvelInteret = capitalRestant * (taux / 100);
+  
+  // Nouveau total dû = Capital restant + Nouvel intérêt
+  const nouveauTotalDu = capitalRestant + nouvelInteret;
 
   const handleClose = () => {
     setConfirme(false);
@@ -75,6 +85,18 @@ export default function ReconduireModal({
             </Alert>
           )}
 
+          {/* Intérêt non payé - bloquant */}
+          {!limiteAtteinte && !interetSolde && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Reconduction impossible !</strong><br />
+                L'intérêt actuel doit être payé avant reconduction.<br />
+                Reste à payer: <strong>{formatFCFA(interetNonPaye)}</strong>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Récapitulatif */}
           <div className="bg-muted/50 rounded-lg p-4 space-y-3">
             <div className="flex justify-between">
@@ -85,14 +107,18 @@ export default function ReconduireModal({
               <span className="text-muted-foreground">Capital initial</span>
               <span className="font-medium">{formatFCFA(pret.montant)}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Capital payé</span>
+              <span className="font-medium text-green-600">{formatFCFA(pret.capital_paye || 0)}</span>
+            </div>
             <div className="flex justify-between border-t pt-2">
-              <span className="text-muted-foreground">Solde restant actuel</span>
-              <span className="font-bold text-orange-600">{formatFCFA(soldeRestant)}</span>
+              <span className="text-muted-foreground">Capital restant</span>
+              <span className="font-bold text-orange-600">{formatFCFA(capitalRestant)}</span>
             </div>
           </div>
 
           {/* Calcul de la reconduction */}
-          {!limiteAtteinte && (
+          {!limiteAtteinte && interetSolde && (
             <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2 mb-2">
                 <Info className="h-4 w-4 text-blue-600" />
@@ -100,8 +126,8 @@ export default function ReconduireModal({
               </div>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span>Solde actuel</span>
-                  <span>{formatFCFA(soldeRestant)}</span>
+                  <span>Capital restant</span>
+                  <span>{formatFCFA(capitalRestant)}</span>
                 </div>
                 <div className="flex justify-between text-amber-600">
                   <span>+ Intérêt ({taux}%)</span>
@@ -116,17 +142,17 @@ export default function ReconduireModal({
           )}
 
           {/* Ce qui va se passer */}
-          {!limiteAtteinte && (
+          {!limiteAtteinte && interetSolde && (
             <Alert className="bg-amber-50 dark:bg-amber-950/30 border-amber-200">
               <AlertTriangle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-amber-700 dark:text-amber-400">
-                <strong>Attention :</strong> Un intérêt de {taux}% sera appliqué sur le solde restant de {formatFCFA(soldeRestant)}.
+                <strong>Attention :</strong> Un intérêt de {taux}% sera appliqué sur le capital restant de {formatFCFA(capitalRestant)}.
               </AlertDescription>
             </Alert>
           )}
 
           {/* Confirmation */}
-          {!limiteAtteinte && (
+          {!limiteAtteinte && interetSolde && (
             <div className="flex items-start space-x-3 p-3 border rounded-lg">
               <Checkbox
                 id="confirm-reconduction"
@@ -151,7 +177,7 @@ export default function ReconduireModal({
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={limiteAtteinte || !confirme || isPending}
+            disabled={limiteAtteinte || !interetSolde || !confirme || isPending}
             className="bg-blue-600 hover:bg-blue-700"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isPending ? 'animate-spin' : ''}`} />
