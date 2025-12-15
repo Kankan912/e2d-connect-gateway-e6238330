@@ -205,9 +205,10 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
 
   const rembourseSansHistorique = estRembourse && (!paiements || paiements.length === 0);
 
-  // Calcul des progressions
-  const progressionInteret = interetInitial > 0 ? (interetPaye / interetInitial) * 100 : (estRembourse ? 100 : 0);
-  const progressionCapital = capitalInitial > 0 ? (capitalPaye / capitalInitial) * 100 : (estRembourse ? 100 : 0);
+  // Calcul des progressions - utiliser dernierInteret comme référence pour les prêts avec reconductions
+  const interetReference = dernierInteret > 0 ? dernierInteret : interetInitial;
+  const progressionInteret = interetReference > 0 ? Math.min(100, (interetPaye / interetReference) * 100) : (estRembourse ? 100 : 0);
+  const progressionCapital = capitalInitial > 0 ? Math.min(100, (capitalPaye / capitalInitial) * 100) : (estRembourse ? 100 : 0);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -263,8 +264,11 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                       <span className="flex items-center gap-1">
                         <span className="w-3 h-3 rounded-full bg-amber-500"></span>
                         Intérêts payés
+                        {(pret.reconductions || 0) > 0 && dernierInteret !== interetInitial && (
+                          <span className="text-xs text-muted-foreground">(après reconduction)</span>
+                        )}
                       </span>
-                      <span>{formatFCFA(interetPaye)} / {formatFCFA(interetInitial)}</span>
+                      <span>{formatFCFA(interetPaye)} / {formatFCFA(interetReference)}</span>
                     </div>
                     <Progress value={progressionInteret} className="h-2 [&>div]:bg-amber-500" />
                     {!estRembourse && interetRestant > 0 && (
