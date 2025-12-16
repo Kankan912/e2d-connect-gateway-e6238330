@@ -51,6 +51,7 @@ export type CaisseCategorie =
   | 'aide' 
   | 'beneficiaire' 
   | 'interet'
+  | 'sport'
   | 'autre';
 
 export const CAISSE_CATEGORIES: Record<CaisseCategorie, { label: string; color: string }> = {
@@ -62,6 +63,7 @@ export const CAISSE_CATEGORIES: Record<CaisseCategorie, { label: string; color: 
   aide: { label: 'Aide', color: 'bg-purple-500' },
   beneficiaire: { label: 'Bénéficiaire Tontine', color: 'bg-pink-500' },
   interet: { label: 'Intérêts', color: 'bg-yellow-500' },
+  sport: { label: 'Sport', color: 'bg-teal-500' },
   autre: { label: 'Autre', color: 'bg-gray-500' },
 };
 
