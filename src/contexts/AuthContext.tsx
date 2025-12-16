@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSessionManager } from '@/hooks/useSessionManager';
+import { SessionWarningModal } from '@/components/SessionWarningModal';
+import { useToast } from '@/hooks/use-toast';
 
 interface Profile {
   id: string;
@@ -13,6 +16,11 @@ interface Profile {
   est_membre_e2d: boolean;
   est_adherent_phoenix: boolean;
   statut: string;
+}
+
+interface Permission {
+  resource: string;
+  permission: string;
 }
 
 interface AuthContextType {
@@ -28,11 +36,50 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Fetch user permissions
+  const fetchUserPermissions = async (userId: string): Promise<Permission[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select(`
+          role_id,
+          roles!inner(
+            id,
+            name,
+            role_permissions(
+              resource,
+              permission
+            )
+          )
+        `)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      const perms: Permission[] = [];
+      data?.forEach((ur: any) => {
+        ur.roles?.role_permissions?.forEach((rp: any) => {
+          perms.push({
+            resource: rp.resource,
+            permission: rp.permission
+          });
+        });
+      });
+
+      return perms;
+    } catch (error) {
+      console.error('❌ [AuthContext] Error fetching permissions:', error);
+      return [];
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -49,6 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           setProfile(null);
           setUserRole(null);
+          setPermissions([]);
         }
       }
     );
@@ -108,6 +156,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('✅ [AuthContext] Role name extracted:', roleData?.roles?.name);
       
       setUserRole(roleData?.roles?.name || null);
+
+      // Fetch permissions for session manager
+      const userPerms = await fetchUserPermissions(userId);
+      setPermissions(userPerms);
+      console.log('✅ [AuthContext] Permissions loaded:', userPerms.length);
+
     } catch (error) {
       console.error('❌ [AuthContext] Error fetching user data:', error);
     } finally {
@@ -121,11 +175,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
     setProfile(null);
     setUserRole(null);
+    setPermissions([]);
   };
+
+  // Session manager integration
+  const sessionManager = useSessionManager({
+    session,
+    userRole,
+    permissions,
+    onLogout: async () => {
+      const reason = sessionManager.logoutReason;
+      await signOut();
+      
+      // Afficher un toast explicatif
+      toast({
+        title: reason === 'inactivity' 
+          ? 'Session expirée pour inactivité' 
+          : 'Durée maximale de session atteinte',
+        description: 'Veuillez vous reconnecter pour continuer.',
+        variant: 'default'
+      });
+    },
+    enabled: !!session && !loading
+  });
 
   return (
     <AuthContext.Provider value={{ user, session, profile, userRole, loading, signOut }}>
       {children}
+      
+      {/* Modal d'avertissement de session */}
+      <SessionWarningModal
+        open={sessionManager.showWarning}
+        secondsLeft={sessionManager.warningSecondsLeft}
+        reason={sessionManager.logoutReason}
+        onExtend={sessionManager.extendSession}
+        onLogout={sessionManager.logoutNow}
+      />
     </AuthContext.Provider>
   );
 };
