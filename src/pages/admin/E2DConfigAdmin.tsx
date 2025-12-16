@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BackButton from "@/components/BackButton";
-import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download } from "lucide-react";
+import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download, Banknote } from "lucide-react";
 import { ExercicesManager } from "@/components/config/ExercicesManager";
 import { CotisationsTypesManager } from "@/components/config/CotisationsTypesManager";
 import { SanctionsTarifsManager } from "@/components/config/SanctionsTarifsManager";
@@ -13,6 +13,7 @@ import RolesAdmin from "./RolesAdmin";
 import PermissionsAdmin from "./PermissionsAdmin";
 import NotificationsAdmin from "./NotificationsAdmin";
 import TontineConfig from "./TontineConfig";
+import PretsConfigAdmin from "./PretsConfigAdmin";
 
 const E2DConfigAdmin = () => {
   return (
@@ -47,6 +48,10 @@ const E2DConfigAdmin = () => {
           <TabsTrigger value="cotisations" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />
             Cotisations
+          </TabsTrigger>
+          <TabsTrigger value="prets" className="flex items-center gap-2">
+            <Banknote className="h-4 w-4" />
+            Prêts
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
@@ -110,6 +115,23 @@ const E2DConfigAdmin = () => {
 
         <TabsContent value="cotisations">
           <CotisationsTypesManager />
+        </TabsContent>
+
+        <TabsContent value="prets">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Banknote className="h-5 w-5" />
+                Configuration des Prêts
+              </CardTitle>
+              <CardDescription>
+                Durées, taux d'intérêt et règles de reconduction
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PretsConfigAdmin embedded={true} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="notifications">

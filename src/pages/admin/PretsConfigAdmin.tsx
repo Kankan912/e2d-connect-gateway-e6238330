@@ -11,7 +11,11 @@ import BackButton from "@/components/BackButton";
 import { Settings, Save, RefreshCw, Percent, Calendar, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export default function PretsConfigAdmin() {
+interface PretsConfigAdminProps {
+  embedded?: boolean;
+}
+
+export default function PretsConfigAdmin({ embedded = false }: PretsConfigAdminProps) {
   const queryClient = useQueryClient();
   
   const [dureeMois, setDureeMois] = useState(2);
@@ -86,24 +90,14 @@ export default function PretsConfigAdmin() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 flex items-center justify-center">
+      <div className={embedded ? "flex items-center justify-center py-8" : "container mx-auto p-6 flex items-center justify-center"}>
         <RefreshCw className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      <BackButton />
-      
-      <div className="flex items-center gap-3">
-        <Settings className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">Configuration des Prêts</h1>
-          <p className="text-muted-foreground">Paramètres globaux pour la gestion des prêts</p>
-        </div>
-      </div>
-
+  const content = (
+    <>
       <div className="grid gap-6 md:grid-cols-2">
         {/* Durées */}
         <Card>
@@ -253,6 +247,26 @@ export default function PretsConfigAdmin() {
           {saveConfig.isPending ? "Sauvegarde..." : "Sauvegarder la Configuration"}
         </Button>
       </div>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="space-y-6">{content}</div>;
+  }
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <BackButton />
+      
+      <div className="flex items-center gap-3">
+        <Settings className="h-8 w-8 text-primary" />
+        <div>
+          <h1 className="text-3xl font-bold">Configuration des Prêts</h1>
+          <p className="text-muted-foreground">Paramètres globaux pour la gestion des prêts</p>
+        </div>
+      </div>
+
+      {content}
     </div>
   );
 }

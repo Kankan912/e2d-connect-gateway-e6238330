@@ -1,14 +1,21 @@
 import { useState } from "react";
-import { Users, Plus, Edit, Trash2, Search, Download } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Search, Download, Mail, Phone, CheckCircle, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+} from "@/components/ui/table";
 import { useMembers, Member } from "@/hooks/useMembers";
+import { useMemberCotisationStats } from "@/hooks/useMemberDetails";
 import BackButton from "@/components/BackButton";
 import { useToast } from "@/hooks/use-toast";
 import MemberForm from "@/components/forms/MemberForm";
+import MemberDetailSheet from "@/components/MemberDetailSheet";
 import { ExportService } from "@/lib/exportService";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,16 +27,46 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// Composant pour afficher les stats de cotisation d'un membre dans la table
+function MemberCotisationCell({ membreId }: { membreId: string }) {
+  const { data: stats, isLoading } = useMemberCotisationStats(membreId);
+  
+  if (isLoading) {
+    return <span className="text-muted-foreground text-xs">Chargement...</span>;
+  }
+  
+  if (!stats) {
+    return <span className="text-muted-foreground text-xs">-</span>;
+  }
+  
+  return (
+    <div className="space-y-1">
+      <Badge variant={stats.enRetard ? 'destructive' : 'default'} className="text-xs">
+        {stats.pourcentage}%{stats.enRetard && ' - En retard'}
+      </Badge>
+      <p className="text-xs text-muted-foreground">{stats.payees}/{stats.total} réunions payées</p>
+      {stats.dernierPaiement && (
+        <p className="text-xs text-muted-foreground">
+          Dernière: {format(new Date(stats.dernierPaiement), 'dd/MM/yyyy', { locale: fr })}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function MembresAdmin() {
   const { members: membres = [], isLoading, createMember, updateMember, deleteMember } = useMembers();
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [selectedMemberForDetail, setSelectedMemberForDetail] = useState<Member | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const filteredMembres = membres.filter((membre) =>
-    `${membre.nom} ${membre.prenom}`.toLowerCase().includes(searchTerm.toLowerCase())
+    `${membre.nom} ${membre.prenom}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    membre.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    membre.telephone?.includes(searchTerm)
   );
 
   const handleExport = async () => {
@@ -43,6 +80,7 @@ export default function MembresAdmin() {
   const handleEdit = (membre: Member) => {
     setSelectedMember(membre);
     setShowForm(true);
+    setSelectedMemberForDetail(null);
   };
 
   const handleCreate = () => {
@@ -81,17 +119,24 @@ export default function MembresAdmin() {
     }
   };
 
+  // Statistiques
+  const totalMembres = membres.length;
+  const membresActifs = membres.filter(m => m.statut === 'actif').length;
+  const membresE2D = membres.filter(m => m.est_membre_e2d).length;
+  const membresPhoenix = membres.filter(m => m.est_adherent_phoenix).length;
+
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* En-tête */}
       <div className="flex items-center justify-between">
         <div>
           <BackButton />
-          <h1 className="text-3xl font-bold mt-4 flex items-center gap-2">
-            <Users className="h-8 w-8" />
+          <h1 className="text-2xl font-bold mt-4 text-[#0B6B7C] flex items-center gap-2">
+            <Users className="h-7 w-7" />
             Gestion des Membres
           </h1>
-          <p className="text-muted-foreground mt-2">
-            Gérer les membres de l'association
+          <p className="text-muted-foreground mt-1">
+            Gérez les membres de l'association E2D
           </p>
         </div>
         <div className="flex gap-2">
@@ -99,77 +144,79 @@ export default function MembresAdmin() {
             <Download className="w-4 h-4 mr-2" />
             Exporter
           </Button>
-          <Button onClick={handleCreate}>
+          <Button onClick={handleCreate} className="bg-[#0B6B7C] hover:bg-[#0a5a68]">
             <Plus className="w-4 h-4 mr-2" />
-            Nouveau Membre
+            Nouveau membre
           </Button>
         </div>
       </div>
 
       {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border-l-4 border-l-gray-500">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Membres</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Total Membres
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{membres.length}</div>
+            <div className="text-3xl font-bold">{totalMembres}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-l-4 border-l-blue-500">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Actifs</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-blue-500" />
+              Membres Actifs
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {membres.filter(m => m.statut === 'actif').length}
-            </div>
+            <div className="text-3xl font-bold text-blue-600">{membresActifs}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-l-4 border-l-cyan-500">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">E2D</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Users className="h-4 w-4 text-cyan-500" />
+              Membres E2D
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {membres.filter(m => m.est_membre_e2d).length}
-            </div>
+            <div className="text-3xl font-bold text-cyan-600">{membresE2D}</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-l-4 border-l-red-500">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Phoenix</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Users className="h-4 w-4 text-red-500" />
+              Adhérents Phoenix
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {membres.filter(m => m.est_adherent_phoenix).length}
-            </div>
+            <div className="text-3xl font-bold text-red-600">{membresPhoenix}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recherche */}
+      {/* Section Liste des Membres */}
       <Card>
         <CardHeader>
-          <CardTitle>Rechercher</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher un membre..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Liste des Membres
+            </CardTitle>
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher un membre..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Liste des membres */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Liste des Membres</CardTitle>
           <CardDescription>
             {filteredMembres.length} membre(s) trouvé(s)
           </CardDescription>
@@ -178,42 +225,105 @@ export default function MembresAdmin() {
           {isLoading ? (
             <div className="text-center py-8">Chargement...</div>
           ) : (
-            <div className="space-y-3">
-              {filteredMembres.map((membre) => (
-                <div
-                  key={membre.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <p className="font-semibold">
-                      {membre.nom} {membre.prenom}
-                    </p>
-                    <div className="flex gap-2 mt-1">
-                      <Badge variant={membre.statut === 'actif' ? 'default' : 'secondary'}>
-                        {membre.statut}
-                      </Badge>
-                      {membre.est_membre_e2d && <Badge variant="outline">E2D</Badge>}
-                      {membre.est_adherent_phoenix && <Badge variant="outline">Phoenix</Badge>}
-                    </div>
-                    <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-                      <span>{membre.email}</span>
-                      <span>{membre.telephone}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(membre)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => setDeleteId(membre.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nom Complet</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Cotisations</TableHead>
+                    <TableHead>Types</TableHead>
+                    <TableHead>Date d'inscription</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMembres.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        Aucun membre trouvé
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredMembres.map((membre) => (
+                    <TableRow 
+                      key={membre.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setSelectedMemberForDetail(membre)}
+                    >
+                      <TableCell className="font-medium">
+                        {membre.nom} {membre.prenom}
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Mail className="h-3 w-3" />
+                            {membre.email || "Non renseigné"}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Phone className="h-3 w-3" />
+                            {membre.telephone}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={membre.statut === 'actif' ? 'default' : 'secondary'} className="flex items-center gap-1 w-fit">
+                          {membre.statut === 'actif' ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                          {membre.statut}
+                        </Badge>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <MemberCotisationCell membreId={membre.id} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {membre.est_membre_e2d && (
+                            <Badge variant="outline" className="bg-cyan-50 border-cyan-300 text-cyan-700 text-xs">
+                              E2D
+                            </Badge>
+                          )}
+                          {membre.est_adherent_phoenix && (
+                            <Badge variant="outline" className="bg-red-50 border-red-300 text-red-700 text-xs">
+                              Phoenix
+                            </Badge>
+                          )}
+                          {!membre.est_membre_e2d && !membre.est_adherent_phoenix && (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {membre.date_inscription 
+                          ? format(new Date(membre.date_inscription), 'dd/MM/yyyy', { locale: fr })
+                          : '-'
+                        }
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => handleEdit(membre)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(membre.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Fiche membre détaillée */}
+      <MemberDetailSheet
+        member={selectedMemberForDetail}
+        open={!!selectedMemberForDetail}
+        onOpenChange={(open) => !open && setSelectedMemberForDetail(null)}
+        onEdit={handleEdit}
+      />
 
       <MemberForm
         open={showForm}
