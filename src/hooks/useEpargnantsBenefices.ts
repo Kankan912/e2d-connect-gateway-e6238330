@@ -124,11 +124,11 @@ export const useEpargnantsBenefices = () => {
         const { data: epargnesData, error: epargnesError } = await epargnesQuery;
         if (epargnesError) throw epargnesError;
 
-        // 2. Récupérer les intérêts des prêts
+        // 2. Récupérer les intérêts des prêts (avec les bons statuts)
         let pretsQuery = supabase
           .from('prets')
-          .select('montant, taux_interet, interet_paye, exercice_id')
-          .in('statut', ['actif', 'rembourse']);
+          .select('id, montant, taux_interet, interet_paye, dernier_interet, exercice_id, reconductions')
+          .in('statut', ['en_cours', 'rembourse', 'partiel', 'reconduit']);
 
         if (selectedExerciceId !== "all") {
           pretsQuery = pretsQuery.eq('exercice_id', selectedExerciceId);
@@ -137,13 +137,31 @@ export const useEpargnantsBenefices = () => {
         const { data: pretsData, error: pretsError } = await pretsQuery;
         if (pretsError) throw pretsError;
 
-        // 3. Calculer le total des intérêts des prêts
+        // 3. Récupérer les intérêts de reconduction enregistrés
+        const { data: reconductionsData, error: reconductionsError } = await supabase
+          .from('prets_reconductions')
+          .select('pret_id, interet_mois');
+        
+        if (reconductionsError) {
+          console.warn('Erreur récupération reconductions:', reconductionsError);
+        }
+
+        // Créer un map des intérêts de reconduction par prêt
+        const interetsReconductions = new Map<string, number>();
+        (reconductionsData || []).forEach(r => {
+          const current = interetsReconductions.get(r.pret_id) || 0;
+          interetsReconductions.set(r.pret_id, current + (r.interet_mois || 0));
+        });
+
+        // 4. Calculer le total des intérêts des prêts
+        // Utiliser interet_paye car c'est ce qui a été effectivement payé et entre dans la caisse
         const totalInterets = (pretsData || []).reduce((sum, pret) => {
-          const interet = pret.interet_paye || (pret.montant * (pret.taux_interet || 10) / 100);
-          return sum + interet;
+          // L'intérêt payé inclut les intérêts de reconduction payés
+          const interetPaye = pret.interet_paye || 0;
+          return sum + interetPaye;
         }, 0);
 
-        // 4. Grouper les épargnes par membre
+        // 5. Grouper les épargnes par membre
         const epargnesParMembre: { [membreId: string]: { membre: any; total: number } } = {};
         
         (epargnesData || []).forEach(epargne => {
