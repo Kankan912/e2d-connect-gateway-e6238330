@@ -3133,6 +3133,36 @@ export type Database = {
         }
         Relationships: []
       }
+      session_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          inactivity_timeout_minutes: number
+          role_type: string
+          session_duration_minutes: number
+          updated_at: string | null
+          warning_before_logout_seconds: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          inactivity_timeout_minutes: number
+          role_type: string
+          session_duration_minutes: number
+          updated_at?: string | null
+          warning_before_logout_seconds?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          inactivity_timeout_minutes?: number
+          role_type?: string
+          session_duration_minutes?: number
+          updated_at?: string | null
+          warning_before_logout_seconds?: number | null
+        }
+        Relationships: []
+      }
       site_about: {
         Row: {
           actif: boolean
