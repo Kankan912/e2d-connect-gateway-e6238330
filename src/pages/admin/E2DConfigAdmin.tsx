@@ -1,12 +1,13 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BackButton from "@/components/BackButton";
-import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download, Banknote } from "lucide-react";
+import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download, Banknote, Clock } from "lucide-react";
 import { ExercicesManager } from "@/components/config/ExercicesManager";
 import { CotisationsTypesManager } from "@/components/config/CotisationsTypesManager";
 import { SanctionsTarifsManager } from "@/components/config/SanctionsTarifsManager";
 import { GestionGeneraleManager } from "@/components/config/GestionGeneraleManager";
 import { SauvegardeManager } from "@/components/config/SauvegardeManager";
+import { SessionsConfigManager } from "@/components/config/SessionsConfigManager";
 
 // Import des pages existantes pour intégration
 import RolesAdmin from "./RolesAdmin";
@@ -44,6 +45,10 @@ const E2DConfigAdmin = () => {
           <TabsTrigger value="permissions" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             Permissions
+          </TabsTrigger>
+          <TabsTrigger value="sessions" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Sessions
           </TabsTrigger>
           <TabsTrigger value="cotisations" className="flex items-center gap-2">
             <Receipt className="h-4 w-4" />
@@ -111,6 +116,10 @@ const E2DConfigAdmin = () => {
               <PermissionsAdmin />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="sessions">
+          <SessionsConfigManager />
         </TabsContent>
 
         <TabsContent value="cotisations">
