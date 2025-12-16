@@ -111,7 +111,7 @@ export const useEpargnantsBenefices = () => {
             reunion_id,
             membres:membre_id(id, nom, prenom)
           `)
-          .eq('statut', 'valide');
+          .eq('statut', 'actif');
 
         if (selectedExerciceId !== "all") {
           epargnesQuery = epargnesQuery.eq('exercice_id', selectedExerciceId);
