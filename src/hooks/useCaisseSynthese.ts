@@ -51,10 +51,13 @@ export const useCaisseSynthese = () => {
         ?.filter(o => o.type_operation === 'entree' && o.categorie === 'pret_remboursement')
         .reduce((sum, o) => sum + Number(o.montant), 0) || 0;
 
+      // CORRECTION: Distributions bénéficiaires - inclure catégorie 'beneficiaire' OU libellé contenant 'bénéficiaire'
       const totalDistributionsBeneficiaires = operations
-        ?.filter(o => o.type_operation === 'sortie' && o.categorie === 'beneficiaire')
+        ?.filter(o => o.type_operation === 'sortie' && 
+          (o.categorie === 'beneficiaire' || o.libelle?.toLowerCase().includes('bénéficiaire')))
         .reduce((sum, o) => sum + Number(o.montant), 0) || 0;
 
+      // CORRECTION: Fond sport - inclure catégorie 'sport' OU libellé contenant 'sport'
       const fondSport = operations
         ?.filter(o => o.categorie === 'sport' || o.libelle?.toLowerCase().includes('sport'))
         .reduce((sum, o) => {
@@ -62,10 +65,11 @@ export const useCaisseSynthese = () => {
           return o.type_operation === 'entree' ? sum + montant : sum - montant;
         }, 0) || 0;
 
-      // Récupérer les sanctions impayées
+      // Récupérer les sanctions impayées (avec montant_amende non null)
       const { data: sanctionsData } = await supabase
         .from("reunions_sanctions")
-        .select("montant_amende, statut");
+        .select("montant_amende, statut")
+        .not("montant_amende", "is", null);
       
       const totalSanctions = sanctionsData?.reduce((sum, s) => sum + Number(s.montant_amende || 0), 0) || 0;
       const sanctionsImpayees = totalSanctions - sanctionsEncaissees;
@@ -75,8 +79,14 @@ export const useCaisseSynthese = () => {
         ? Math.round((sanctionsEncaissees / totalSanctions) * 100) 
         : 100;
 
-      // Prêts en cours = décaissés - remboursés
-      const pretsEnCours = pretsDecaisses - pretsRembourses;
+      // CORRECTION: Prêts en cours = requête directe sur table prets (capital restant dû)
+      const { data: pretsData } = await supabase
+        .from("prets")
+        .select("montant, capital_paye, statut")
+        .in('statut', ['en_cours', 'partiel', 'reconduit']);
+      
+      const pretsEnCours = pretsData?.reduce((sum, p) => 
+        sum + (Number(p.montant) - Number(p.capital_paye || 0)), 0) || 0;
 
       // Reliquat cotisations = cotisations - distributions aux bénéficiaires
       const reliquatCotisations = totalCotisations - totalDistributionsBeneficiaires;
