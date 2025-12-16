@@ -1,336 +1,268 @@
-import { useState, useEffect } from "react";
-import { Gift, Calendar, TrendingUp, AlertCircle, Check, X } from "lucide-react";
+import { PiggyBank, DollarSign, TrendingUp, Download, Calculator, Users } from "lucide-react";
+import logoE2D from "@/assets/logo-e2d.png";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import BackButton from "@/components/BackButton";
-import BeneficiairesReunionManager from "@/components/BeneficiairesReunionManager";
-import CalendrierBeneficiaires from "@/components/CalendrierBeneficiaires";
-import { calculateSoldeNetBeneficiaire } from "@/lib/beneficiairesCalculs";
-
-interface Reunion {
-  id: string;
-  sujet: string;
-  date_reunion: string;
-  statut: string;
-}
-
-interface Beneficiaire {
-  id: string;
-  reunion_id: string;
-  membre_id: string;
-  montant_benefice: number;
-  statut: string;
-  date_benefice_prevue: string;
-  membres?: {
-    nom: string;
-    prenom: string;
-  };
-  reunions?: {
-    sujet: string;
-    date_reunion: string;
-  };
-}
+import { useEpargnantsBenefices } from "@/hooks/useEpargnantsBenefices";
 
 export default function Beneficiaires() {
-  const [reunions, setReunions] = useState<Reunion[]>([]);
-  const [selectedReunionId, setSelectedReunionId] = useState<string>("");
-  const [beneficiaires, setBeneficiaires] = useState<Beneficiaire[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    paye: 0,
-    impaye: 0,
-    montantTotal: 0,
-    montantPaye: 0
-  });
-  const { toast } = useToast();
+  const {
+    exercices,
+    reunions,
+    selectedExerciceId,
+    setSelectedExerciceId,
+    selectedReunionId,
+    setSelectedReunionId,
+    epargnants,
+    stats,
+    loading
+  } = useEpargnantsBenefices();
 
-  useEffect(() => {
-    fetchReunions();
-  }, []);
-
-  useEffect(() => {
-    if (selectedReunionId) {
-      fetchBeneficiaires();
-    }
-  }, [selectedReunionId]);
-
-  const fetchReunions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('reunions')
-        .select('*')
-        .order('date_reunion', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      setReunions(data || []);
-    } catch (error) {
-      console.error('Erreur chargement réunions:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les réunions",
-        variant: "destructive"
-      });
-    }
+  const handleExportPDF = () => {
+    // TODO: Implémenter l'export PDF
+    console.log('Export PDF - À implémenter');
   };
 
-  const fetchBeneficiaires = async () => {
-    if (!selectedReunionId) return;
-    
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('reunion_beneficiaires')
-        .select(`
-          *,
-          membres:membre_id(nom, prenom),
-          reunions:reunion_id(sujet, date_reunion)
-        `)
-        .eq('reunion_id', selectedReunionId);
-
-      if (error) throw error;
-
-      const beneficiairesData = data || [];
-      setBeneficiaires(beneficiairesData);
-
-      // Calculer les statistiques
-      const stats = beneficiairesData.reduce((acc, b) => ({
-        total: acc.total + 1,
-        paye: acc.paye + (b.statut === 'paye' ? 1 : 0),
-        impaye: acc.impaye + (b.statut === 'impaye' ? 1 : 0),
-        montantTotal: acc.montantTotal + b.montant_benefice,
-        montantPaye: acc.montantPaye + (b.statut === 'paye' ? b.montant_benefice : 0)
-      }), {
-        total: 0,
-        paye: 0,
-        impaye: 0,
-        montantTotal: 0,
-        montantPaye: 0
-      });
-
-      setStats(stats);
-    } catch (error) {
-      console.error('Erreur chargement bénéficiaires:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les bénéficiaires",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMarquerPaye = async (beneficiaireId: string, montantNet: number) => {
-    try {
-      // Mettre à jour le statut du bénéficiaire
-      const { error: updateError } = await supabase
-        .from('reunion_beneficiaires')
-        .update({
-          statut: 'paye'
-        })
-        .eq('id', beneficiaireId);
-
-      if (updateError) throw updateError;
-
-      // Créer l'opération dans fond_caisse_operations
-      const { data: userData } = await supabase.auth.getUser();
-      const { data: membreData } = await supabase
-        .from('membres')
-        .select('id')
-        .eq('user_id', userData.user?.id)
-        .single();
-
-      if (membreData) {
-        const beneficiaire = beneficiaires.find(b => b.id === beneficiaireId);
-        await supabase
-          .from('fond_caisse_operations')
-          .insert({
-            type_operation: 'sortie',
-            montant: montantNet,
-            libelle: `Paiement bénéficiaire tontine`,
-            operateur_id: membreData.id,
-            beneficiaire_id: beneficiaire?.membre_id,
-            date_operation: new Date().toISOString()
-          });
-      }
-
-      toast({
-        title: "Succès",
-        description: "Paiement enregistré avec succès"
-      });
-
-      fetchBeneficiaires();
-    } catch (error) {
-      console.error('Erreur marquage paiement:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'enregistrer le paiement",
-        variant: "destructive"
-      });
-    }
+  const formatMontant = (montant: number) => {
+    return new Intl.NumberFormat('fr-FR').format(Math.round(montant)) + ' FCFA';
   };
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <BackButton />
-          <h1 className="text-3xl font-bold mt-4">Gestion des Bénéficiaires</h1>
-          <p className="text-muted-foreground mt-2">
-            Gérer les bénéficiaires de la tontine et les paiements
-          </p>
+          <div className="flex items-center gap-3 mt-4">
+            <img 
+              src={logoE2D} 
+              alt="E2D Logo" 
+              className="h-10 w-10 object-contain"
+            />
+            <div>
+              <h1 className="text-2xl font-bold text-primary">Épargnants - Bénéfices Attendus</h1>
+              <p className="text-muted-foreground text-sm">
+                Répartition des gains au prorata des montants épargnés
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <Select value={selectedExerciceId} onValueChange={setSelectedExerciceId}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Tous exercices" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous exercices</SelectItem>
+              {exercices.map((exercice) => (
+                <SelectItem key={exercice.id} value={exercice.id}>
+                  {exercice.nom}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedReunionId} onValueChange={setSelectedReunionId}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Toutes réunions" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes réunions</SelectItem>
+              {reunions.map((reunion) => (
+                <SelectItem key={reunion.id} value={reunion.id}>
+                  {format(new Date(reunion.date_reunion), 'dd MMM yyyy', { locale: fr })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button variant="outline" onClick={handleExportPDF} className="gap-2">
+            <Download className="h-4 w-4" />
+            Exporter PDF
+          </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="liste" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="liste">Liste des Bénéficiaires</TabsTrigger>
-          <TabsTrigger value="calendrier">Calendrier</TabsTrigger>
-          <TabsTrigger value="gestion">Gestion Réunion</TabsTrigger>
-        </TabsList>
+      {/* Statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Épargnes</CardTitle>
+              <PiggyBank className="h-5 w-5 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-8 w-32" />
+            ) : (
+              <div className="text-2xl font-bold text-primary">{formatMontant(stats.totalEpargnes)}</div>
+            )}
+          </CardContent>
+        </Card>
 
-        <TabsContent value="liste" className="space-y-6">
-          {/* Statistiques */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Payés</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.paye}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Impayés</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{stats.impaye}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.montantTotal.toLocaleString()} €</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Montant Payé</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.montantPaye.toLocaleString()} €</div>
-              </CardContent>
-            </Card>
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Intérêts des Prêts</CardTitle>
+              <DollarSign className="h-5 w-5 text-green-500" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-8 w-32" />
+            ) : (
+              <div className="text-2xl font-bold text-green-600">{formatMontant(stats.totalInteretsPrets)}</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Épargnants</CardTitle>
+              <Users className="h-5 w-5 text-blue-500" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">
+                Actifs: <span className="text-blue-600">{stats.nombreEpargnants}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Méthode de Calcul */}
+      <Card className="bg-muted/30 border-dashed">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Calculator className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg">Méthode de Calcul</CardTitle>
           </div>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="flex gap-2">
+            <span className="font-semibold text-primary min-w-[100px]">Principe :</span>
+            <span className="text-muted-foreground">Les intérêts des prêts sont répartis au prorata des montants épargnés par chaque membre</span>
+          </div>
+          <div className="flex gap-2">
+            <span className="font-semibold text-amber-600 min-w-[100px]">Formule :</span>
+            <span className="text-muted-foreground">Gain = (Montant épargné / Total épargnes) × Total des intérêts</span>
+          </div>
+          <div className="flex gap-2">
+            <span className="font-semibold text-green-600 min-w-[100px]">Distribution :</span>
+            <span className="text-muted-foreground">Versés automatiquement en fin d'exercice ou lors des clôtures de réunions</span>
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* Sélection réunion */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Sélectionner une Réunion</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select value={selectedReunionId} onValueChange={setSelectedReunionId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir une réunion" />
-                </SelectTrigger>
-                <SelectContent>
-                  {reunions.map((reunion) => (
-                    <SelectItem key={reunion.id} value={reunion.id}>
-                      {format(new Date(reunion.date_reunion), 'dd MMMM yyyy', { locale: fr })} - {reunion.sujet}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          {/* Liste des bénéficiaires */}
-          {selectedReunionId && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Bénéficiaires de la Réunion</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="text-center py-8">Chargement...</div>
-                ) : beneficiaires.length === 0 ? (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Aucun bénéficiaire pour cette réunion
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="space-y-3">
-                    {beneficiaires.map((beneficiaire) => (
-                      <div
-                        key={beneficiaire.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <p className="font-semibold">
-                            {beneficiaire.membres?.nom} {beneficiaire.membres?.prenom}
+      {/* Tableau des Épargnants */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Répartition Détaillée par Épargnant
+          </CardTitle>
+          <CardDescription>
+            Calcul des gains estimés basé sur les épargnes actuelles
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          ) : epargnants.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <PiggyBank className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Aucun épargnant trouvé pour cette période</p>
+              <p className="text-sm mt-1">Sélectionnez un autre exercice ou réunion</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-12 text-center">#</TableHead>
+                    <TableHead>Épargnant</TableHead>
+                    <TableHead className="text-right">Montant épargné</TableHead>
+                    <TableHead className="text-center">Part (%)</TableHead>
+                    <TableHead className="text-right">Gains estimés</TableHead>
+                    <TableHead className="text-right">Total attendu</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {epargnants.map((epargnant, index) => (
+                    <TableRow 
+                      key={epargnant.id} 
+                      className={index % 2 === 0 ? "bg-background" : "bg-muted/20"}
+                    >
+                      <TableCell className="text-center font-medium text-muted-foreground">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{epargnant.prenom} {epargnant.nom}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {epargnant.part.toFixed(2)}% du total
                           </p>
-                    <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
-                      <span>Montant: {beneficiaire.montant_benefice.toLocaleString()} €</span>
-                      <span>Date prévue: {format(new Date(beneficiaire.date_benefice_prevue), 'dd/MM/yyyy')}</span>
-                    </div>
                         </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={beneficiaire.statut === 'paye' ? 'default' : 'secondary'}>
-                      {beneficiaire.statut === 'paye' ? (
-                        <><Check className="w-3 h-3 mr-1" /> Payé</>
-                      ) : (
-                        <><X className="w-3 h-3 mr-1" /> Impayé</>
-                      )}
-                    </Badge>
-                    {beneficiaire.statut !== 'paye' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleMarquerPaye(beneficiaire.id, beneficiaire.montant_benefice)}
-                      >
-                        Marquer comme payé
-                      </Button>
-                    )}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatMontant(epargnant.montantEpargne)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
+                          {epargnant.part.toFixed(2)}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-green-600 font-medium">
+                        +{formatMontant(epargnant.gainsEstimes)}
+                      </TableCell>
+                      <TableCell className="text-right font-bold text-primary">
+                        {formatMontant(epargnant.totalAttendu)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {/* Totaux */}
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Total épargné:</span>
+                    <span className="ml-2 font-bold">{formatMontant(stats.totalEpargnes)}</span>
                   </div>
-                      </div>
-                    ))}
+                  <div>
+                    <span className="text-muted-foreground">Intérêts à distribuer:</span>
+                    <span className="ml-2 font-bold text-green-600">{formatMontant(stats.totalInteretsPrets)}</span>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  <div>
+                    <span className="text-muted-foreground">Total à verser:</span>
+                    <span className="ml-2 font-bold text-primary">
+                      {formatMontant(stats.totalEpargnes + stats.totalInteretsPrets)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
-        </TabsContent>
-
-        <TabsContent value="calendrier">
-          <CalendrierBeneficiaires />
-        </TabsContent>
-
-        <TabsContent value="gestion">
-          <BeneficiairesReunionManager reunionId={selectedReunionId} />
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }
