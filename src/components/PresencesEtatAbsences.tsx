@@ -15,27 +15,29 @@ export default function PresencesEtatAbsences() {
   const [periode, setPeriode] = useState<string>("all");
   const [filtreTaux, setFiltreTaux] = useState<string>("all");
 
-  // Charger tous les membres actifs
+  // Charger uniquement les membres E2D actifs
   const { data: membres } = useQuery({
-    queryKey: ['membres-actifs'],
+    queryKey: ['membres-actifs-e2d'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('membres')
         .select('id, nom, prenom')
         .eq('statut', 'actif')
+        .eq('est_membre_e2d', true)
         .order('nom');
       if (error) throw error;
       return data;
     },
   });
 
-  // Charger toutes les réunions et présences
+  // Charger uniquement les réunions clôturées (effectives avec compte rendu validé)
   const { data: reunions } = useQuery({
-    queryKey: ['reunions-all'],
+    queryKey: ['reunions-cloturees'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('reunions')
         .select('id, date_reunion, statut')
+        .eq('statut', 'cloturee')
         .order('date_reunion', { ascending: false });
       if (error) throw error;
       return data;
@@ -53,18 +55,27 @@ export default function PresencesEtatAbsences() {
     },
   });
 
-  // Calculer les statistiques par membre
+  // Calculer les statistiques par membre basées sur les réunions effectives (clôturées)
   const stats = useMemo(() => {
     if (!membres || !reunions || !presences) return [];
 
+    // Nombre de réunions effectives (clôturées)
+    const totalReunionsEffectives = reunions.length;
+
     return membres.map(membre => {
-      const presencesMembre = presences.filter(p => p.membre_id === membre.id);
+      // Filtrer les présences uniquement pour les réunions clôturées
+      const reunionIds = reunions.map(r => r.id);
+      const presencesMembre = presences.filter(
+        p => p.membre_id === membre.id && reunionIds.includes(p.reunion_id)
+      );
+      
       const totalPresences = presencesMembre.filter(p => p.statut_presence === 'present').length;
-      const totalAbsences = presencesMembre.filter(p => p.statut_presence !== 'present').length;
       const absencesExcusees = presencesMembre.filter(p => p.statut_presence === 'absent_excuse').length;
       const absencesNonExcusees = presencesMembre.filter(p => p.statut_presence === 'absent_non_excuse').length;
-      const totalReunions = reunions.length;
-      const taux = totalReunions > 0 ? (totalPresences / totalReunions) * 100 : 0;
+      const totalAbsences = absencesExcusees + absencesNonExcusees;
+      
+      // Taux de présence = (présences / réunions effectives) * 100
+      const taux = totalReunionsEffectives > 0 ? (totalPresences / totalReunionsEffectives) * 100 : 0;
 
       let statut = '';
       let statutColor = '';
@@ -85,6 +96,7 @@ export default function PresencesEtatAbsences() {
         totalAbsences,
         absencesExcusees,
         absencesNonExcusees,
+        totalReunionsEffectives,
         taux: taux.toFixed(1),
         statut,
         statutColor,

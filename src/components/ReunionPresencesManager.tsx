@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,11 +9,67 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Search, UserCheck, UserX, Clock, FileDown, HelpCircle } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Users, Search, UserCheck, UserX, Clock, FileDown } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExportService } from "@/lib/exportService";
 import { cn } from "@/lib/utils";
+
+// Composant Textarea avec debounce pour les observations
+function DebouncedTextarea({ 
+  value, 
+  onChange, 
+  placeholder,
+  className,
+  rows 
+}: { 
+  value: string; 
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  rows?: number;
+}) {
+  const [localValue, setLocalValue] = useState(value);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Synchroniser avec la valeur externe quand elle change
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    
+    // Annuler le timeout précédent
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    // Debounce de 500ms avant de sauvegarder
+    timeoutRef.current = setTimeout(() => {
+      onChange(newValue);
+    }, 500);
+  }, [onChange]);
+
+  // Cleanup du timeout
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <Textarea
+      value={localValue}
+      onChange={handleChange}
+      placeholder={placeholder}
+      className={className}
+      rows={rows}
+    />
+  );
+}
 interface ReunionPresencesManagerProps {
   reunionId: string;
 }
@@ -451,9 +507,9 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Textarea
+                        <DebouncedTextarea
                           value={presence?.observations || ''}
-                          onChange={(e) => handleObservationsChange(membre.id, e.target.value)}
+                          onChange={(obs) => handleObservationsChange(membre.id, obs)}
                           placeholder="Observations..."
                           className="min-h-[60px] text-sm"
                           rows={2}
