@@ -9,11 +9,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Search, UserCheck, UserX, Clock, FileDown } from "lucide-react";
+import { Users, Search, UserCheck, UserX, Clock, FileDown, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExportService } from "@/lib/exportService";
-
+import { cn } from "@/lib/utils";
 interface ReunionPresencesManagerProps {
   reunionId: string;
 }
@@ -24,14 +24,15 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
   const [searchTerm, setSearchTerm] = useState("");
   const [filtreStatut, setFiltreStatut] = useState<string>("all");
 
-  // Charger tous les membres actifs
+  // Charger uniquement les membres E2D actifs
   const { data: membres } = useQuery({
-    queryKey: ['membres-actifs'],
+    queryKey: ['membres-actifs-e2d'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('membres')
         .select('id, nom, prenom, photo_url')
         .eq('statut', 'actif')
+        .eq('est_membre_e2d', true)
         .order('nom');
       if (error) throw error;
       return data;
@@ -206,10 +207,17 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
     });
   };
 
+  // Calcul des statistiques basé sur les présences enregistrées uniquement
+  const presentsCount = presences?.filter(p => p.statut_presence === 'present').length || 0;
+  const absentsExcusesCount = presences?.filter(p => p.statut_presence === 'absent_excuse').length || 0;
+  const absentsNonExcusesCount = presences?.filter(p => p.statut_presence === 'absent_non_excuse').length || 0;
+  const nonMarquesCount = (membres?.length || 0) - (presences?.length || 0);
+
   const stats = {
-    presents: presences?.filter(p => p.statut_presence === 'present').length || 0,
-    absentsExcuses: presences?.filter(p => p.statut_presence === 'absent_excuse').length || 0,
-    absentsNonExcuses: presences?.filter(p => p.statut_presence === 'absent_non_excuse').length || 0,
+    presents: presentsCount,
+    absentsExcuses: absentsExcusesCount,
+    absentsNonExcuses: absentsNonExcusesCount,
+    nonMarques: nonMarquesCount,
     total: membres?.length || 0,
   };
 
@@ -219,10 +227,22 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
 
   const handleExport = async (exportFormat: 'excel' | 'pdf' | 'csv') => {
     try {
+      // Récupérer les infos de la réunion pour le titre
+      const { data: reunion } = await supabase
+        .from('reunions')
+        .select('date_reunion, type_reunion')
+        .eq('id', reunionId)
+        .single();
+
       await ExportService.export({
         type: 'presences_reunion',
         format: exportFormat,
-        nom: `feuille_presence_${reunionId}`,
+        nom: `feuille_presence_${reunion?.date_reunion || reunionId}`,
+        configuration: { 
+          reunion_id: reunionId,
+          date: reunion?.date_reunion,
+          type: reunion?.type_reunion
+        },
       });
       toast({
         title: "Export réussi",
@@ -240,8 +260,8 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
   return (
     <div className="space-y-6">
       {/* Statistiques */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <Card className="border-l-4 border-l-green-500 bg-green-50 dark:bg-green-950/20">
           <CardContent className="p-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-green-600">{stats.presents}</p>
@@ -249,7 +269,7 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-l-4 border-l-orange-500 bg-orange-50 dark:bg-orange-950/20">
           <CardContent className="p-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-orange-600">{stats.absentsExcuses}</p>
@@ -257,7 +277,7 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/20">
           <CardContent className="p-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-red-600">{stats.absentsNonExcuses}</p>
@@ -265,15 +285,23 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-l-4 border-l-gray-400 bg-gray-50 dark:bg-gray-950/20">
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="text-2xl font-bold text-gray-600">{stats.nonMarques}</p>
+              <p className="text-xs text-muted-foreground">Non marqués</p>
             </div>
           </CardContent>
         </Card>
         <Card>
+          <CardContent className="p-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xs text-muted-foreground">Total E2D</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20">
           <CardContent className="p-4">
             <div className="text-center">
               <p className="text-2xl font-bold text-blue-600">{tauxPresence}%</p>
@@ -365,17 +393,25 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
               <TableBody>
                 {filteredMembres?.map((membre, index) => {
                   const presence = getPresence(membre.id);
-                  const statut = presence?.statut_presence || 'present';
+                  const statut = presence?.statut_presence || null;
 
                   return (
-                    <TableRow key={membre.id}>
+                    <TableRow 
+                      key={membre.id}
+                      className={cn(
+                        statut === 'present' && 'bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50 border-l-4 border-l-green-500',
+                        statut === 'absent_non_excuse' && 'bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 border-l-4 border-l-red-500',
+                        statut === 'absent_excuse' && 'bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/30 dark:hover:bg-orange-950/50 border-l-4 border-l-orange-500',
+                        !statut && 'bg-gray-50 hover:bg-gray-100 dark:bg-gray-950/30 dark:hover:bg-gray-950/50 border-l-4 border-l-gray-400'
+                      )}
+                    >
                       <TableCell className="font-medium">{index + 1}</TableCell>
                       <TableCell className="font-medium">
                         {membre.prenom} {membre.nom}
                       </TableCell>
                       <TableCell>
                         <RadioGroup
-                          value={statut}
+                          value={statut || ''}
                           onValueChange={(value) => handleStatutChange(membre.id, value)}
                           className="flex gap-4"
                         >
