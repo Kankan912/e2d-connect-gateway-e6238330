@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
+
+// Helper functions for toast
+const showSuccess = (message: string) => toast({ title: "Succès", description: message });
+const showError = (message: string) => toast({ title: "Erreur", description: message, variant: "destructive" });
 
 // Hook pour Hero
 export const useSiteHero = () => {
@@ -33,10 +37,10 @@ export const useUpdateHero = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-hero"] });
-      toast.success("Section Hero mise à jour");
+      showSuccess("Section Hero mise à jour");
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      showError("Erreur lors de la mise à jour");
     },
   });
 };
@@ -72,10 +76,10 @@ export const useUpdateAbout = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-about"] });
-      toast.success("Section À Propos mise à jour");
+      showSuccess("Section À Propos mise à jour");
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      showError("Erreur lors de la mise à jour");
     },
   });
 };
@@ -107,10 +111,10 @@ export const useCreateActivity = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-activities"] });
-      toast.success("Activité créée");
+      showSuccess("Activité créée");
     },
     onError: () => {
-      toast.error("Erreur lors de la création");
+      showError("Erreur lors de la création");
     },
   });
 };
@@ -129,10 +133,10 @@ export const useUpdateActivity = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-activities"] });
-      toast.success("Activité mise à jour");
+      showSuccess("Activité mise à jour");
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      showError("Erreur lors de la mise à jour");
     },
   });
 };
@@ -151,10 +155,10 @@ export const useDeleteActivity = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-activities"] });
-      toast.success("Activité supprimée");
+      showSuccess("Activité supprimée");
     },
     onError: () => {
-      toast.error("Erreur lors de la suppression");
+      showError("Erreur lors de la suppression");
     },
   });
 };
@@ -186,10 +190,10 @@ export const useCreateEvent = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-events"] });
-      toast.success("Événement créé");
+      showSuccess("Événement créé");
     },
     onError: () => {
-      toast.error("Erreur lors de la création");
+      showError("Erreur lors de la création");
     },
   });
 };
@@ -208,10 +212,10 @@ export const useUpdateEvent = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-events"] });
-      toast.success("Événement mis à jour");
+      showSuccess("Événement mis à jour");
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      showError("Erreur lors de la mise à jour");
     },
   });
 };
@@ -230,10 +234,10 @@ export const useDeleteEvent = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-events"] });
-      toast.success("Événement supprimé");
+      showSuccess("Événement supprimé");
     },
     onError: () => {
-      toast.error("Erreur lors de la suppression");
+      showError("Erreur lors de la suppression");
     },
   });
 };
@@ -265,10 +269,10 @@ export const useCreateGalleryItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-gallery"] });
-      toast.success("Élément de galerie créé");
+      showSuccess("Élément de galerie créé");
     },
     onError: () => {
-      toast.error("Erreur lors de la création");
+      showError("Erreur lors de la création");
     },
   });
 };
@@ -287,10 +291,10 @@ export const useUpdateGalleryItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-gallery"] });
-      toast.success("Élément mis à jour");
+      showSuccess("Élément mis à jour");
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      showError("Erreur lors de la mise à jour");
     },
   });
 };
@@ -309,10 +313,10 @@ export const useDeleteGalleryItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-gallery"] });
-      toast.success("Élément supprimé");
+      showSuccess("Élément supprimé");
     },
     onError: () => {
-      toast.error("Erreur lors de la suppression");
+      showError("Erreur lors de la suppression");
     },
   });
 };
@@ -344,10 +348,10 @@ export const useCreatePartner = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-partners"] });
-      toast.success("Partenaire créé");
+      showSuccess("Partenaire créé");
     },
     onError: () => {
-      toast.error("Erreur lors de la création");
+      showError("Erreur lors de la création");
     },
   });
 };
@@ -366,10 +370,10 @@ export const useUpdatePartner = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-partners"] });
-      toast.success("Partenaire mis à jour");
+      showSuccess("Partenaire mis à jour");
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      showError("Erreur lors de la mise à jour");
     },
   });
 };
@@ -388,10 +392,10 @@ export const useDeletePartner = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-partners"] });
-      toast.success("Partenaire supprimé");
+      showSuccess("Partenaire supprimé");
     },
     onError: () => {
-      toast.error("Erreur lors de la suppression");
+      showError("Erreur lors de la suppression");
     },
   });
 };
@@ -426,10 +430,10 @@ export const useUpdateConfig = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-config"] });
-      toast.success("Configuration mise à jour");
+      showSuccess("Configuration mise à jour");
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      showError("Erreur lors de la mise à jour");
     },
   });
 };
@@ -467,10 +471,10 @@ export const useCreateHeroImage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-hero-images"] });
-      toast.success("Image ajoutée");
+      showSuccess("Image ajoutée");
     },
     onError: () => {
-      toast.error("Erreur lors de l'ajout");
+      showError("Erreur lors de l'ajout");
     },
   });
 };
@@ -489,10 +493,10 @@ export const useUpdateHeroImage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-hero-images"] });
-      toast.success("Image mise à jour");
+      showSuccess("Image mise à jour");
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      showError("Erreur lors de la mise à jour");
     },
   });
 };
@@ -511,10 +515,10 @@ export const useDeleteHeroImage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-hero-images"] });
-      toast.success("Image supprimée");
+      showSuccess("Image supprimée");
     },
     onError: () => {
-      toast.error("Erreur lors de la suppression");
+      showError("Erreur lors de la suppression");
     },
   });
 };
@@ -549,10 +553,10 @@ export const useCreateGalleryAlbum = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-gallery-albums"] });
-      toast.success("Album créé");
+      showSuccess("Album créé");
     },
     onError: () => {
-      toast.error("Erreur lors de la création");
+      showError("Erreur lors de la création");
     },
   });
 };
@@ -572,10 +576,10 @@ export const useUpdateGalleryAlbum = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-gallery-albums"] });
       queryClient.invalidateQueries({ queryKey: ["site-gallery"] });
-      toast.success("Album mis à jour");
+      showSuccess("Album mis à jour");
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      showError("Erreur lors de la mise à jour");
     },
   });
 };
@@ -595,10 +599,10 @@ export const useDeleteGalleryAlbum = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-gallery-albums"] });
       queryClient.invalidateQueries({ queryKey: ["site-gallery"] });
-      toast.success("Album supprimé");
+      showSuccess("Album supprimé");
     },
     onError: () => {
-      toast.error("Erreur lors de la suppression");
+      showError("Erreur lors de la suppression");
     },
   });
 };
@@ -654,10 +658,10 @@ export const useUpdateEventsCarouselConfig = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["site-events-carousel-config"] });
-      toast.success("Configuration carousel mise à jour");
+      showSuccess("Configuration carousel mise à jour");
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      showError("Erreur lors de la mise à jour");
     },
   });
 };

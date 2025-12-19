@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 export interface Cotisation {
   id: string;
@@ -109,10 +109,10 @@ export const useCreateCotisation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-cotisations'] });
       queryClient.invalidateQueries({ queryKey: ['all-cotisations'] });
-      toast.success("Cotisation créée avec succès");
+      toast({ title: "Succès", description: "Cotisation créée avec succès" });
     },
     onError: (error) => {
-      toast.error("Erreur lors de la création de la cotisation");
+      toast({ title: "Erreur", description: "Erreur lors de la création de la cotisation", variant: "destructive" });
       console.error(error);
     },
   });
@@ -136,10 +136,10 @@ export const useUpdateCotisation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-cotisations'] });
       queryClient.invalidateQueries({ queryKey: ['all-cotisations'] });
-      toast.success("Cotisation mise à jour avec succès");
+      toast({ title: "Succès", description: "Cotisation mise à jour avec succès" });
     },
     onError: (error) => {
-      toast.error("Erreur lors de la mise à jour de la cotisation");
+      toast({ title: "Erreur", description: "Erreur lors de la mise à jour de la cotisation", variant: "destructive" });
       console.error(error);
     },
   });
@@ -160,10 +160,10 @@ export const useDeleteCotisation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-cotisations'] });
       queryClient.invalidateQueries({ queryKey: ['all-cotisations'] });
-      toast.success("Cotisation supprimée avec succès");
+      toast({ title: "Succès", description: "Cotisation supprimée avec succès" });
     },
     onError: (error) => {
-      toast.error("Erreur lors de la suppression de la cotisation");
+      toast({ title: "Erreur", description: "Erreur lors de la suppression de la cotisation", variant: "destructive" });
       console.error(error);
     },
   });
