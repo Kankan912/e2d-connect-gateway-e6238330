@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User, Home } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 export const DashboardHeader = () => {
   const navigate = useNavigate();
@@ -20,10 +20,10 @@ export const DashboardHeader = () => {
   const handleSignOut = async () => {
     try {
       await signOut();
-      toast.success("Déconnexion réussie");
+      toast({ title: "Succès", description: "Déconnexion réussie" });
       navigate("/");
     } catch (error) {
-      toast.error("Erreur lors de la déconnexion");
+      toast({ title: "Erreur", description: "Erreur lors de la déconnexion", variant: "destructive" });
     }
   };
 

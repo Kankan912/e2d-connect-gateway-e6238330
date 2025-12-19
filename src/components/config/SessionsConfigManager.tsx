@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Clock, Save, Shield, Edit, Eye } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 
 interface SessionConfig {
   id: string;
@@ -87,10 +87,10 @@ export const SessionsConfigManager = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['session-config'] });
-      toast.success("Configuration de session mise à jour");
+      toast({ title: "Succès", description: "Configuration de session mise à jour" });
     },
     onError: () => {
-      toast.error("Erreur lors de la mise à jour");
+      toast({ title: "Erreur", description: "Erreur lors de la mise à jour", variant: "destructive" });
     }
   });
 
@@ -113,15 +113,15 @@ export const SessionsConfigManager = () => {
     
     // Validation
     if (values.session_duration_minutes < 30) {
-      toast.error("La durée de session doit être d'au moins 30 minutes");
+      toast({ title: "Erreur", description: "La durée de session doit être d'au moins 30 minutes", variant: "destructive" });
       return;
     }
     if (values.inactivity_timeout_minutes < 5) {
-      toast.error("Le timeout d'inactivité doit être d'au moins 5 minutes");
+      toast({ title: "Erreur", description: "Le timeout d'inactivité doit être d'au moins 5 minutes", variant: "destructive" });
       return;
     }
     if (values.warning_before_logout_seconds > values.inactivity_timeout_minutes * 60) {
-      toast.error("L'avertissement doit être inférieur au timeout d'inactivité");
+      toast({ title: "Erreur", description: "L'avertissement doit être inférieur au timeout d'inactivité", variant: "destructive" });
       return;
     }
 

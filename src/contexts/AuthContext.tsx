@@ -44,37 +44,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user permissions
+  // Fetch user permissions - utilise deux requêtes séparées car la FK role_permissions→roles n'existe pas encore
   const fetchUserPermissions = async (userId: string): Promise<Permission[]> => {
     try {
-      const { data, error } = await supabase
+      // 1. Récupérer les role_ids de l'utilisateur
+      const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
-        .select(`
-          role_id,
-          roles!inner(
-            id,
-            name,
-            role_permissions(
-              resource,
-              permission
-            )
-          )
-        `)
+        .select('role_id')
         .eq('user_id', userId);
+      
+      if (rolesError) throw rolesError;
+      if (!userRoles?.length) return [];
+      
+      // 2. Récupérer les permissions pour ces rôles
+      const roleIds = userRoles.map(r => r.role_id).filter(Boolean);
+      if (!roleIds.length) return [];
 
-      if (error) throw error;
-
-      const perms: Permission[] = [];
-      data?.forEach((ur: any) => {
-        ur.roles?.role_permissions?.forEach((rp: any) => {
-          perms.push({
-            resource: rp.resource,
-            permission: rp.permission
-          });
-        });
-      });
-
-      return perms;
+      const { data: rolePerms, error: permsError } = await supabase
+        .from('role_permissions')
+        .select('resource, permission')
+        .in('role_id', roleIds)
+        .eq('granted', true);
+      
+      if (permsError) throw permsError;
+      
+      return (rolePerms || []).map(rp => ({
+        resource: rp.resource,
+        permission: rp.permission
+      }));
     } catch (error) {
       console.error('❌ [AuthContext] Error fetching permissions:', error);
       return [];

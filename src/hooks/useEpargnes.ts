@@ -22,17 +22,17 @@ export interface Epargne {
 export type EpargneInsert = Omit<Epargne, "id" | "created_at" | "updated_at" | "membre">;
 
 export const useUserEpargnes = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
 
   return useQuery({
-    queryKey: ["user-epargnes", user?.id],
+    queryKey: ["user-epargnes", profile?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!profile?.id) return [];
 
       const { data: membre } = await supabase
         .from("membres")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", profile.id)
         .maybeSingle();
 
       if (!membre) return [];
@@ -49,7 +49,7 @@ export const useUserEpargnes = () => {
       if (error) throw error;
       return data as Epargne[];
     },
-    enabled: !!user?.id,
+    enabled: !!profile?.id,
   });
 };
 

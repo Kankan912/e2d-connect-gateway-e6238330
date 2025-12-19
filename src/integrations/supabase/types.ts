@@ -2609,6 +2609,8 @@ export type Database = {
       rapports_seances: {
         Row: {
           created_at: string
+          decisions: string | null
+          description: string | null
           id: string
           numero_ordre: number | null
           resolution: string | null
@@ -2617,6 +2619,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          decisions?: string | null
+          description?: string | null
           id?: string
           numero_ordre?: number | null
           resolution?: string | null
@@ -2625,6 +2629,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          decisions?: string | null
+          description?: string | null
           id?: string
           numero_ordre?: number | null
           resolution?: string | null
@@ -2991,7 +2997,15 @@ export type Database = {
           resource?: string
           role_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       roles: {
         Row: {
