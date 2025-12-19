@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle, AlertCircle, Users, FileText, Send } from 'lucide-react';
+import { CheckCircle, AlertCircle, Users, FileText, Send, Lock, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface ClotureReunionModalProps {
   open: boolean;
@@ -29,23 +29,39 @@ export default function ClotureReunionModal({
 }: ClotureReunionModalProps) {
   const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Récupérer les présences
+  // Récupérer tous les membres E2D actifs
+  const { data: membresE2D } = useQuery({
+    queryKey: ['membres-e2d-cloture'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('membres')
+        .select('id, nom, prenom, email')
+        .eq('statut', 'actif')
+        .eq('est_membre_e2d', true);
+      if (error) throw error;
+      return data;
+    },
+    enabled: open
+  });
+
+  // Récupérer les présences depuis reunions_presences
   const { data: presences } = useQuery({
     queryKey: ['reunion-presences-cloture', reunionId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('reunion_presences')
+        .from('reunions_presences')
         .select(`
-          present,
+          membre_id,
+          statut_presence,
           membres:membre_id (
             nom,
             prenom,
             email
           )
         `)
-        .eq('reunion_id', reunionId)
-        .eq('present', true);
+        .eq('reunion_id', reunionId);
 
       if (error) throw error;
       return data;
@@ -69,17 +85,88 @@ export default function ClotureReunionModal({
     enabled: open
   });
 
-  const presentsCount = presences?.length || 0;
+  // Récupérer la configuration des sanctions pour absence depuis les configurations
+  const { data: sanctionConfig } = useQuery({
+    queryKey: ['sanction-absence-config'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('configurations')
+        .select('valeur')
+        .eq('cle', 'sanction_absence_montant')
+        .maybeSingle();
+      if (error) throw error;
+      return data ? { montant: parseFloat(data.valeur) } : { montant: 500 }; // Défaut 500 FCFA
+    },
+    enabled: open
+  });
+
+  const presentsCount = presences?.filter(p => p.statut_presence === 'present').length || 0;
   const pointsCRCount = comptesRendus?.length || 0;
   const canClose = presentsCount > 0 && pointsCRCount > 0;
+
+  // Calculer les membres non marqués (qui n'ont pas d'enregistrement de présence)
+  const membresNonMarques = membresE2D?.filter(
+    m => !presences?.some(p => p.membre_id === m.id)
+  ) || [];
 
   const handleCloturer = async () => {
     if (!canClose) return;
 
     setProcessing(true);
     try {
-      // Récupérer les emails des membres présents
-      const emails = presences
+      // === ÉTAPE 1: Traiter les membres non marqués comme absents non excusés ===
+      if (membresNonMarques.length > 0) {
+        const absencesACreer = membresNonMarques.map(m => ({
+          reunion_id: reunionId,
+          membre_id: m.id,
+          statut_presence: 'absent_non_excuse',
+          present: false,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('reunions_presences')
+          .insert(absencesACreer);
+
+        if (insertError) throw insertError;
+      }
+
+      // === ÉTAPE 2: Récupérer tous les absents non excusés pour sanctions ===
+      const { data: tousAbsentsNonExcuses } = await supabase
+        .from('reunions_presences')
+        .select('membre_id')
+        .eq('reunion_id', reunionId)
+        .eq('statut_presence', 'absent_non_excuse');
+
+      // === ÉTAPE 3: Créer les sanctions automatiques pour les absents non excusés ===
+      if (tousAbsentsNonExcuses && tousAbsentsNonExcuses.length > 0 && sanctionConfig) {
+        const sanctionsACreer = tousAbsentsNonExcuses.map(abs => ({
+          reunion_id: reunionId,
+          membre_id: abs.membre_id,
+          type_sanction: 'absence',
+          montant: sanctionConfig.montant || 500,
+          montant_paye: 0,
+          motif: 'Absence non excusée à la réunion',
+          statut: 'impaye',
+        }));
+
+        const { error: sanctionError } = await supabase
+          .from('reunions_sanctions')
+          .insert(sanctionsACreer);
+
+        if (sanctionError) {
+          console.error('Erreur création sanctions:', sanctionError);
+          // On continue même si les sanctions échouent
+        }
+      }
+
+      // === ÉTAPE 4: Récupérer les emails des membres présents pour l'envoi du CR ===
+      const { data: presentsData } = await supabase
+        .from('reunions_presences')
+        .select('membres:membre_id (email)')
+        .eq('reunion_id', reunionId)
+        .eq('statut_presence', 'present');
+
+      const emails = presentsData
         ?.map((p: any) => p.membres?.email)
         .filter(Boolean) || [];
 
@@ -89,17 +176,17 @@ export default function ClotureReunionModal({
           description: "Aucun email valide trouvé pour les membres présents",
           variant: "destructive",
         });
+        setProcessing(false);
         return;
       }
 
-      // Préparer le contenu du CR
+      // === ÉTAPE 5: Préparer et envoyer le compte-rendu par email ===
       const contenuCR = comptesRendus
         ?.map((cr: any, index: number) =>
           `${index + 1}. ${cr.sujet}\n   ${cr.resolution || 'Aucune résolution'}`
         )
         .join('\n\n') || 'Aucun point à l\'ordre du jour';
 
-      // Appeler l'edge function pour envoyer les emails
       const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
         body: {
           reunionId,
@@ -112,7 +199,7 @@ export default function ClotureReunionModal({
 
       if (emailError) throw emailError;
 
-      // Mettre à jour le statut de la réunion
+      // === ÉTAPE 6: Mettre à jour le statut de la réunion à "terminee" ===
       const { error: updateError } = await supabase
         .from('reunions')
         .update({ statut: 'terminee' })
@@ -120,9 +207,15 @@ export default function ClotureReunionModal({
 
       if (updateError) throw updateError;
 
+      // Invalider les caches pour rafraîchir les données
+      queryClient.invalidateQueries({ queryKey: ['reunion-presences'] });
+      queryClient.invalidateQueries({ queryKey: ['reunions'] });
+      queryClient.invalidateQueries({ queryKey: ['reunions-sanctions'] });
+
+      const nbSanctions = tousAbsentsNonExcuses?.length || 0;
       toast({
-        title: "Succès",
-        description: `Réunion clôturée et compte-rendu envoyé à ${emails.length} membre(s)`,
+        title: "Réunion clôturée avec succès",
+        description: `CR envoyé à ${emails.length} membre(s). ${nbSanctions > 0 ? `${nbSanctions} sanction(s) créée(s) pour absence.` : ''}`,
       });
 
       onOpenChange(false);
@@ -144,11 +237,11 @@ export default function ClotureReunionModal({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
+            <Lock className="h-5 w-5" />
             Clôturer la Réunion
           </DialogTitle>
           <DialogDescription>
-            Confirmez la clôture de la réunion et l'envoi du compte-rendu
+            La clôture est définitive : elle bloque les modifications, applique les sanctions et envoie le compte-rendu.
           </DialogDescription>
         </DialogHeader>
 
@@ -210,6 +303,28 @@ export default function ClotureReunionModal({
             </CardContent>
           </Card>
 
+          {/* Avertissement membres non marqués */}
+          {membresNonMarques.length > 0 && (
+            <Card className="border-orange-500 bg-orange-50 dark:bg-orange-950">
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+                  <div className="text-sm text-orange-800 dark:text-orange-200">
+                    <p className="font-medium mb-1">{membresNonMarques.length} membre(s) non marqué(s)</p>
+                    <p>
+                      Ces membres seront automatiquement marqués comme <strong>absents non excusés</strong> et 
+                      recevront une sanction.
+                    </p>
+                    <div className="mt-2 text-xs">
+                      {membresNonMarques.slice(0, 5).map(m => m.prenom + ' ' + m.nom).join(', ')}
+                      {membresNonMarques.length > 5 && ` et ${membresNonMarques.length - 5} autre(s)...`}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Destinataires */}
           {presentsCount > 0 && (
             <Card>
@@ -222,7 +337,7 @@ export default function ClotureReunionModal({
               <CardContent>
                 <ScrollArea className="h-24">
                   <div className="space-y-2">
-                    {presences?.map((presence: any, index: number) => (
+                    {presences?.filter(p => p.statut_presence === 'present').map((presence: any, index: number) => (
                       <div
                         key={index}
                         className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm"
@@ -241,7 +356,7 @@ export default function ClotureReunionModal({
             </Card>
           )}
 
-          {/* Avertissement */}
+          {/* Avertissement conditions non remplies */}
           {!canClose && (
             <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
               <CardContent className="pt-4">

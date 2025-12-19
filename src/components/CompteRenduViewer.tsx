@@ -48,17 +48,17 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
     enabled: open && !!reunion?.id
   });
 
-  // Récupérer les présences
+  // Récupérer les présences depuis reunions_presences
   const { data: presences } = useQuery({
     queryKey: ['reunion-presences-full', reunion?.id],
     queryFn: async () => {
       if (!reunion?.id) return [];
       const { data, error } = await supabase
-        .from('reunion_presences')
+        .from('reunions_presences')
         .select(`
-          present,
-          excusee,
-          retard,
+          statut_presence,
+          heure_arrivee,
+          observations,
           membres:membre_id (
             nom,
             prenom
@@ -117,11 +117,11 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       doc.text(`Statut: ${reunion.statut === 'terminee' ? 'Terminée' : reunion.statut}`, margin, yPosition);
       yPosition += 12;
 
-      // Liste des présents
-      const presents = presences?.filter((p: any) => p.present) || [];
-      const absents = presences?.filter((p: any) => !p.present) || [];
-      const excuses = presences?.filter((p: any) => p.excusee) || [];
-      const retards = presences?.filter((p: any) => p.retard) || [];
+      // Liste des présents - adapté pour reunions_presences
+      const presents = presences?.filter((p: any) => p.statut_presence === 'present') || [];
+      const absents = presences?.filter((p: any) => p.statut_presence === 'absent_non_excuse' || p.statut_presence === 'absent_excuse') || [];
+      const excuses = presences?.filter((p: any) => p.statut_presence === 'absent_excuse') || [];
+      const retards = presences?.filter((p: any) => p.heure_arrivee) || [];
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
@@ -256,7 +256,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
   };
 
   const pointsCRCount = comptesRendus?.length || 0;
-  const presentsCount = presences?.filter((p: any) => p.present).length || 0;
+  const presentsCount = presences?.filter((p: any) => p.statut_presence === 'present').length || 0;
 
   if (!reunion) {
     return null;
@@ -326,7 +326,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2">
-                    {presences?.filter((p: any) => p.present).map((presence: any, index: number) => (
+                    {presences?.filter((p: any) => p.statut_presence === 'present').map((presence: any, index: number) => (
                       <div
                         key={index}
                         className="flex items-center gap-2 p-2 rounded-lg bg-muted text-sm"
@@ -334,8 +334,8 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                         <span>
                           {presence.membres?.prenom} {presence.membres?.nom}
                         </span>
-                        {presence.retard && (
-                          <Badge variant="outline" className="text-xs">Retard</Badge>
+                        {presence.heure_arrivee && (
+                          <Badge variant="outline" className="text-xs">Arrivée: {presence.heure_arrivee}</Badge>
                         )}
                       </div>
                     ))}

@@ -37,7 +37,7 @@ export default function PresencesEtatAbsences() {
       const { data, error } = await supabase
         .from('reunions')
         .select('id, date_reunion, statut')
-        .eq('statut', 'cloturee')
+        .eq('statut', 'terminee')
         .order('date_reunion', { ascending: false });
       if (error) throw error;
       return data;
