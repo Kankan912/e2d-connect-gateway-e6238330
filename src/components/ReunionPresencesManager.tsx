@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Search, UserCheck, UserX, Clock, FileDown } from "lucide-react";
+import { Users, Search, UserCheck, UserX, Clock, FileDown, Lock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExportService } from "@/lib/exportService";
 import { cn } from "@/lib/utils";
@@ -79,6 +79,23 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [filtreStatut, setFiltreStatut] = useState<string>("all");
+
+  // Vérifier si la réunion est clôturée (verrouillée)
+  const { data: reunionInfo } = useQuery({
+    queryKey: ['reunion-info', reunionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reunions')
+        .select('statut')
+        .eq('id', reunionId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!reunionId,
+  });
+
+  const isLocked = reunionInfo?.statut === 'terminee';
 
   // Charger uniquement les membres E2D actifs
   const { data: membres } = useQuery({
@@ -315,6 +332,21 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
 
   return (
     <div className="space-y-6">
+      {/* Avertissement si réunion clôturée */}
+      {isLocked && (
+        <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+          <CardContent className="p-4 flex items-center gap-3">
+            <Lock className="h-5 w-5 text-amber-600" />
+            <div>
+              <p className="font-medium text-amber-800 dark:text-amber-200">Réunion clôturée</p>
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                Cette réunion a été clôturée. Les modifications ne sont plus possibles.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Statistiques */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <Card className="border-l-4 border-l-green-500 bg-green-50 dark:bg-green-950/20">
@@ -372,7 +404,7 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
         <div className="flex gap-2">
           <Button
             onClick={() => markAllPresent.mutate()}
-            disabled={markAllPresent.isPending}
+            disabled={markAllPresent.isPending || isLocked}
             variant="outline"
             size="sm"
           >
@@ -381,7 +413,7 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
           </Button>
           <Button
             onClick={() => markAllAbsent.mutate()}
-            disabled={markAllAbsent.isPending}
+            disabled={markAllAbsent.isPending || isLocked}
             variant="outline"
             size="sm"
           >
@@ -470,24 +502,25 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
                           value={statut || ''}
                           onValueChange={(value) => handleStatutChange(membre.id, value)}
                           className="flex gap-4"
+                          disabled={isLocked}
                         >
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="present" id={`${membre.id}-present`} />
-                            <Label htmlFor={`${membre.id}-present`} className="cursor-pointer flex items-center gap-1">
+                            <RadioGroupItem value="present" id={`${membre.id}-present`} disabled={isLocked} />
+                            <Label htmlFor={`${membre.id}-present`} className={cn("flex items-center gap-1", isLocked ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
                               <UserCheck className="w-4 h-4 text-green-600" />
                               Présent
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="absent_non_excuse" id={`${membre.id}-absent`} />
-                            <Label htmlFor={`${membre.id}-absent`} className="cursor-pointer flex items-center gap-1">
+                            <RadioGroupItem value="absent_non_excuse" id={`${membre.id}-absent`} disabled={isLocked} />
+                            <Label htmlFor={`${membre.id}-absent`} className={cn("flex items-center gap-1", isLocked ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
                               <UserX className="w-4 h-4 text-red-600" />
                               Absent
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="absent_excuse" id={`${membre.id}-excuse`} />
-                            <Label htmlFor={`${membre.id}-excuse`} className="cursor-pointer flex items-center gap-1">
+                            <RadioGroupItem value="absent_excuse" id={`${membre.id}-excuse`} disabled={isLocked} />
+                            <Label htmlFor={`${membre.id}-excuse`} className={cn("flex items-center gap-1", isLocked ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
                               <UserX className="w-4 h-4 text-orange-600" />
                               Excusé
                             </Label>
@@ -502,16 +535,16 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
                             value={presence?.heure_arrivee || ''}
                             onChange={(e) => handleHeureChange(membre.id, e.target.value)}
                             className="w-32"
-                            disabled={statut !== 'present'}
+                            disabled={statut !== 'present' || isLocked}
                           />
                         </div>
                       </TableCell>
                       <TableCell>
                         <DebouncedTextarea
                           value={presence?.observations || ''}
-                          onChange={(obs) => handleObservationsChange(membre.id, obs)}
-                          placeholder="Observations..."
-                          className="min-h-[60px] text-sm"
+                          onChange={(obs) => !isLocked && handleObservationsChange(membre.id, obs)}
+                          placeholder={isLocked ? "Verrouillé" : "Observations..."}
+                          className={cn("min-h-[60px] text-sm", isLocked && "opacity-50 cursor-not-allowed")}
                           rows={2}
                         />
                       </TableCell>
