@@ -56,10 +56,10 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
     queryKey: ['reunion-presences', reunion.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('reunion_presences')
+        .from('reunions_presences')
         .select('membre_id')
         .eq('reunion_id', reunion.id)
-        .eq('present', true);
+        .eq('statut_presence', 'present');
 
       if (error) throw error;
       return data?.map(p => p.membre_id) || [];
@@ -116,12 +116,16 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
   const handleConfirmerEtNotifier = async () => {
     setSending(true);
     try {
-      // Récupérer les emails des membres sélectionnés
-      const emails = allMembers
+      // Récupérer les destinataires avec leurs infos complètes pour l'edge function
+      const destinataires = allMembers
         ?.filter(m => selectedMembers.has(m.id) && m.email)
-        .map(m => m.email) || [];
+        .map(m => ({
+          email: m.email!,
+          nom: m.nom,
+          prenom: m.prenom
+        })) || [];
 
-      if (emails.length === 0) {
+      if (destinataires.length === 0) {
         toast({
           title: "Erreur",
           description: "Aucun membre sélectionné avec email valide",
@@ -149,7 +153,7 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
       const { data, error } = await supabase.functions.invoke('send-reunion-cr', {
         body: {
           reunionId: reunion.id,
-          destinataires: emails,
+          destinataires,
           sujet: reunion.sujet || 'Réunion',
           contenu: fullContent,
           dateReunion: reunion.date_reunion
@@ -166,7 +170,7 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
 
       toast({
         title: "Succès",
-        description: `Compte-rendu envoyé à ${emails.length} membre(s)`,
+        description: `Compte-rendu envoyé à ${destinataires.length} membre(s)`,
       });
 
       setOpen(false);

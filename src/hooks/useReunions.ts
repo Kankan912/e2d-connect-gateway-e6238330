@@ -20,9 +20,10 @@ export interface Presence {
   id: string;
   reunion_id: string;
   membre_id: string;
+  statut_presence: string;
   present: boolean;
-  notes: string | null;
-  date_presence: string;
+  heure_arrivee: string | null;
+  observations: string | null;
   membre?: {
     nom: string;
     prenom: string;
@@ -51,15 +52,24 @@ export const usePresences = (reunionId: string | null) => {
       if (!reunionId) return [];
 
       const { data, error } = await supabase
-        .from("reunion_presences")
+        .from("reunions_presences")
         .select(`
-          *,
+          id,
+          reunion_id,
+          membre_id,
+          statut_presence,
+          heure_arrivee,
+          observations,
           membre:membres(nom, prenom)
         `)
         .eq("reunion_id", reunionId);
 
       if (error) throw error;
-      return data as Presence[];
+      // Mapper statut_presence vers present pour compatibilité
+      return (data || []).map(p => ({
+        ...p,
+        present: p.statut_presence === 'present'
+      })) as Presence[];
     },
     enabled: !!reunionId,
   });
@@ -166,10 +176,17 @@ export const useMarkPresence = () => {
       membre_id: string;
       present: boolean;
     }) => {
+      const statut_presence = present ? 'present' : 'absent_non_excuse';
       const { data, error } = await supabase
-        .from("reunion_presences")
+        .from("reunions_presences")
         .upsert(
-          { reunion_id, membre_id, present, date_presence: new Date().toISOString() },
+          { 
+            reunion_id, 
+            membre_id, 
+            statut_presence,
+            present,
+            updated_at: new Date().toISOString() 
+          },
           { onConflict: "reunion_id,membre_id" }
         )
         .select()

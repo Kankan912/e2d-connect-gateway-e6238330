@@ -92,7 +92,8 @@ export default function CompteRenduForm({
           numero_ordre: data.numero_ordre,
           sujet: data.sujet,
           description: data.description || null,
-          resolution: data.resolution || null
+          resolution: data.resolution || null,
+          decisions: data.decisions || null
         }]);
         if (error) throw error;
         toast({ title: 'Succès', description: 'Point ajouté au compte-rendu' });
