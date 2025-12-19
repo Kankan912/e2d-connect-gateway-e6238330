@@ -24,14 +24,15 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
   const [motif, setMotif] = useState("");
   const [montantAmende, setMontantAmende] = useState("");
 
-  // Charger les membres
+  // Charger les membres E2D actifs
   const { data: membres } = useQuery({
-    queryKey: ['membres-actifs'],
+    queryKey: ['membres-e2d-sanctions'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('membres')
         .select('id, nom, prenom')
         .eq('statut', 'actif')
+        .eq('est_membre_e2d', true)
         .order('nom');
       if (error) throw error;
       return data;

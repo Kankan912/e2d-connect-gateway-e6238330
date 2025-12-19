@@ -143,7 +143,7 @@ export default function ClotureReunionModal({
           reunion_id: reunionId,
           membre_id: abs.membre_id,
           type_sanction: 'absence',
-          montant: sanctionConfig.montant || 500,
+          montant_amende: sanctionConfig.montant || 500,
           montant_paye: 0,
           motif: 'Absence non excusée à la réunion',
           statut: 'impaye',
@@ -159,18 +159,23 @@ export default function ClotureReunionModal({
         }
       }
 
-      // === ÉTAPE 4: Récupérer les emails des membres présents pour l'envoi du CR ===
+      // === ÉTAPE 4: Récupérer les infos des membres présents pour l'envoi du CR ===
       const { data: presentsData } = await supabase
         .from('reunions_presences')
-        .select('membres:membre_id (email)')
+        .select('membres:membre_id (nom, prenom, email)')
         .eq('reunion_id', reunionId)
         .eq('statut_presence', 'present');
 
-      const emails = presentsData
-        ?.map((p: any) => p.membres?.email)
-        .filter(Boolean) || [];
+      // Formater les destinataires comme attendu par l'edge function
+      const destinataires = presentsData
+        ?.filter((p: any) => p.membres?.email)
+        .map((p: any) => ({
+          email: p.membres.email,
+          nom: p.membres.nom,
+          prenom: p.membres.prenom
+        })) || [];
 
-      if (emails.length === 0) {
+      if (destinataires.length === 0) {
         toast({
           title: "Attention",
           description: "Aucun email valide trouvé pour les membres présents",
@@ -190,7 +195,7 @@ export default function ClotureReunionModal({
       const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
         body: {
           reunionId,
-          destinataires: emails,
+          destinataires,
           sujet: reunionData.sujet || 'Réunion',
           contenu: contenuCR,
           dateReunion: reunionData.date_reunion
@@ -215,7 +220,7 @@ export default function ClotureReunionModal({
       const nbSanctions = tousAbsentsNonExcuses?.length || 0;
       toast({
         title: "Réunion clôturée avec succès",
-        description: `CR envoyé à ${emails.length} membre(s). ${nbSanctions > 0 ? `${nbSanctions} sanction(s) créée(s) pour absence.` : ''}`,
+        description: `CR envoyé à ${destinataires.length} membre(s). ${nbSanctions > 0 ? `${nbSanctions} sanction(s) créée(s) pour absence.` : ''}`,
       });
 
       onOpenChange(false);

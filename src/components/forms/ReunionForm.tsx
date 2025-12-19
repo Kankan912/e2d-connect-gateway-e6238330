@@ -39,6 +39,7 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
       date_reunion: '',
       lieu_membre_id: '',
       lieu_description: '',
+      beneficiaire_id: '',
       type_reunion: 'tontine',
       sujet: '',
       ordre_du_jour: '',
@@ -51,6 +52,7 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
         date_reunion: initialData.date_reunion?.split('T')[0] || '',
         lieu_membre_id: initialData.lieu_membre_id || '',
         lieu_description: initialData.lieu_description || '',
+        beneficiaire_id: initialData.beneficiaire_id || '',
         type_reunion: initialData.type_reunion || 'tontine',
         sujet: initialData.sujet || '',
         ordre_du_jour: initialData.ordre_du_jour || '',
@@ -138,6 +140,22 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
             <FormLabel>Description du Lieu</FormLabel>
             <FormControl><Input placeholder="Ex: Salle des fêtes, Domicile..." {...field} /></FormControl>
             <FormDescription>Optionnel : Adresse ou description du lieu</FormDescription>
+            <FormMessage />
+          </FormItem>
+        )} />
+        <FormField control={form.control} name="beneficiaire_id" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Bénéficiaire de la Tontine</FormLabel>
+            <Select onValueChange={field.onChange} value={field.value}>
+              <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un bénéficiaire" /></SelectTrigger></FormControl>
+              <SelectContent>
+                <SelectItem value="">Aucun</SelectItem>
+                {membres?.map((membre: any) => (
+                  <SelectItem key={membre.id} value={membre.id}>{membre.prenom} {membre.nom}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormDescription>Optionnel : Membre qui reçoit la tontine</FormDescription>
             <FormMessage />
           </FormItem>
         )} />
