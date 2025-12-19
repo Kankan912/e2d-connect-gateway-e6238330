@@ -214,9 +214,11 @@ export default function ClotureReunionModal({
 
       // Invalider les caches pour rafraîchir les données
       queryClient.invalidateQueries({ queryKey: ['reunion-presences'] });
+      queryClient.invalidateQueries({ queryKey: ['reunion-presences-cloture'] });
+      queryClient.invalidateQueries({ queryKey: ['presences-all'] });
       queryClient.invalidateQueries({ queryKey: ['reunions'] });
+      queryClient.invalidateQueries({ queryKey: ['reunions-cloturees'] });
       queryClient.invalidateQueries({ queryKey: ['reunions-sanctions'] });
-
       const nbSanctions = tousAbsentsNonExcuses?.length || 0;
       toast({
         title: "Réunion clôturée avec succès",

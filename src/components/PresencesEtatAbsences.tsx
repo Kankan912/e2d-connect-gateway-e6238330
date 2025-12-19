@@ -61,17 +61,24 @@ export default function PresencesEtatAbsences() {
 
     // Nombre de réunions effectives (clôturées)
     const totalReunionsEffectives = reunions.length;
+    const reunionIds = reunions.map(r => r.id);
 
     return membres.map(membre => {
       // Filtrer les présences uniquement pour les réunions clôturées
-      const reunionIds = reunions.map(r => r.id);
       const presencesMembre = presences.filter(
         p => p.membre_id === membre.id && reunionIds.includes(p.reunion_id)
       );
       
       const totalPresences = presencesMembre.filter(p => p.statut_presence === 'present').length;
       const absencesExcusees = presencesMembre.filter(p => p.statut_presence === 'absent_excuse').length;
-      const absencesNonExcusees = presencesMembre.filter(p => p.statut_presence === 'absent_non_excuse').length;
+      const absencesEnregistreesNonExcusees = presencesMembre.filter(p => p.statut_presence === 'absent_non_excuse').length;
+      
+      // CORRECTION: Les réunions sans enregistrement = absences non excusées
+      const reunionsSansEnregistrement = reunionIds.filter(
+        rid => !presencesMembre.find(p => p.reunion_id === rid)
+      ).length;
+      
+      const absencesNonExcusees = absencesEnregistreesNonExcusees + reunionsSansEnregistrement;
       const totalAbsences = absencesExcusees + absencesNonExcusees;
       
       // Taux de présence = (présences / réunions effectives) * 100
