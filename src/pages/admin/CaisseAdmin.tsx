@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,7 +96,7 @@ const CaisseAdmin = () => {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Zone A - Panel latéral gauche avec synthèse */}
         <div className="w-full lg:w-80 lg:flex-shrink-0">
@@ -341,7 +340,7 @@ const CaisseAdmin = () => {
           </form>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 };
 

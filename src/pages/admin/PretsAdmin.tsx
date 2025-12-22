@@ -352,19 +352,6 @@ export default function PretsAdmin() {
     return sum + Math.max(0, interet);
   }, 0) || 0;
 
-  // Log pour vérification (à supprimer en production)
-  console.log('📊 Stats prêts:', { 
-    totalInterets, 
-    montantPrete, 
-    montantRestant,
-    nbPrets: prets?.length,
-    details: prets?.map(p => ({ 
-      id: p.id.slice(0,8), 
-      interet_initial: p.interet_initial, 
-      calcul: p.montant * (p.taux_interet || 5) / 100,
-      statut: p.statut 
-    }))
-  });
 
   const handleOpenReconduire = (pret: any) => {
     setPretForReconduction(pret);
