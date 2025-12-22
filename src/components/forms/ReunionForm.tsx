@@ -65,9 +65,9 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
       // Cast explicite pour satisfaire TypeScript
       const reunionData = {
         date_reunion: data.date_reunion,
-        lieu_membre_id: data.lieu_membre_id || null,
+        lieu_membre_id: data.lieu_membre_id === 'none' ? null : data.lieu_membre_id || null,
         lieu_description: data.lieu_description || null,
-        beneficiaire_id: data.beneficiaire_id || null,
+        beneficiaire_id: data.beneficiaire_id === 'none' ? null : data.beneficiaire_id || null,
         type_reunion: data.type_reunion,
         sujet: data.sujet,
         ordre_du_jour: data.ordre_du_jour || null,
@@ -125,7 +125,7 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
             <Select onValueChange={field.onChange} value={field.value}>
               <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un membre" /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="">Aucun</SelectItem>
+                <SelectItem value="none">Aucun</SelectItem>
                 {membres?.map((membre: any) => (
                   <SelectItem key={membre.id} value={membre.id}>{membre.prenom} {membre.nom}</SelectItem>
                 ))}
@@ -149,7 +149,7 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
             <Select onValueChange={field.onChange} value={field.value}>
               <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un bénéficiaire" /></SelectTrigger></FormControl>
               <SelectContent>
-                <SelectItem value="">Aucun</SelectItem>
+                <SelectItem value="none">Aucun</SelectItem>
                 {membres?.map((membre: any) => (
                   <SelectItem key={membre.id} value={membre.id}>{membre.prenom} {membre.nom}</SelectItem>
                 ))}
