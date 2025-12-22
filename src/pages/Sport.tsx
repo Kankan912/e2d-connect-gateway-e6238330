@@ -148,7 +148,7 @@ export default function Sport() {
         </div>
         <Button 
           variant="outline"
-          onClick={() => navigate("/sport-config")}
+          onClick={() => navigate("/dashboard/admin/e2d-config")}
         >
           <Settings className="w-4 h-4 mr-2" />
           Configuration

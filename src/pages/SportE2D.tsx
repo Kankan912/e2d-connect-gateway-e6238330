@@ -132,7 +132,7 @@ export default function SportE2D() {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => navigate("/sport-config")}
+                  onClick={() => navigate("/dashboard/admin/e2d-config")}
                 >
                   <Settings className="h-4 w-4 mr-1" />
                   Modifier la config
@@ -145,7 +145,7 @@ export default function SportE2D() {
 
       {/* Actions rapides */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/gestion-presences")}>
+        <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate("/dashboard/admin/presences")}>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -168,7 +168,7 @@ export default function SportE2D() {
         <Button 
           className="h-full min-h-[120px] flex flex-col items-center justify-center"
           variant="outline"
-          onClick={() => navigate("/match-results")}
+          onClick={() => navigate("/dashboard/admin/sport")}
         >
           <TrendingUp className="h-8 w-8 mb-2" />
           <span className="text-sm">Voir les résultats</span>
@@ -177,7 +177,7 @@ export default function SportE2D() {
         <Button 
           className="h-full min-h-[120px] flex flex-col items-center justify-center"
           variant="outline"
-          onClick={() => navigate("/sport-e2d-finances")}
+          onClick={() => navigate("/dashboard/admin/e2d-config")}
         >
           <Settings className="h-8 w-8 mb-2" />
           <span className="text-sm">Gérer les finances</span>
