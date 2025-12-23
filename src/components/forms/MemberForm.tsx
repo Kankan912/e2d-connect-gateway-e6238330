@@ -8,6 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Member } from "@/hooks/useMembers";
+import { useRoles } from "@/hooks/useRoles";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useRef } from "react";
+import { Upload, User, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const memberSchema = z.object({
   nom: z.string().min(2, "Nom requis"),
@@ -21,6 +27,7 @@ const memberSchema = z.object({
   equipe_phoenix: z.string().optional(),
   equipe_jaune_rouge: z.enum(["jaune", "rouge", "", "none"]).optional(),
   fonction: z.string().optional(),
+  photo_url: z.string().optional(),
 });
 
 type MemberFormData = z.infer<typeof memberSchema>;
@@ -33,7 +40,33 @@ interface MemberFormProps {
   isLoading?: boolean;
 }
 
+// Fonction pour formater le nom du rôle
+const formatRoleName = (name: string): string => {
+  const roleLabels: Record<string, string> = {
+    'admin': 'Administrateur',
+    'president': 'Président',
+    'vice_president': 'Vice-Président',
+    'secretaire_general': 'Secrétaire Général',
+    'secretaire_adjoint': 'Secrétaire Adjoint',
+    'tresorier': 'Trésorier',
+    'tresorier_adjoint': 'Trésorier Adjoint',
+    'commissaire_comptes': 'Commissaire aux Comptes',
+    'responsable_sport': 'Responsable Sport',
+    'responsable_communication': 'Responsable Communication',
+    'membre': 'Membre',
+    'user': 'Utilisateur',
+    'moderator': 'Modérateur',
+  };
+  return roleLabels[name.toLowerCase()] || name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, ' ');
+};
+
 export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoading }: MemberFormProps) {
+  const { roles, isLoading: rolesLoading } = useRoles();
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(member?.photo_url || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const form = useForm<MemberFormData>({
     resolver: zodResolver(memberSchema),
     defaultValues: member ? {
@@ -47,7 +80,8 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
       equipe_e2d: member.equipe_e2d || "",
       equipe_phoenix: member.equipe_phoenix || "",
       equipe_jaune_rouge: ((member as any).equipe_jaune_rouge as "jaune" | "rouge" | "" | "none") || "none",
-      fonction: member.fonction || "",
+      fonction: member.fonction || "none",
+      photo_url: member.photo_url || "",
     } : {
       nom: "",
       prenom: "",
@@ -59,18 +93,80 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
       equipe_e2d: "",
       equipe_phoenix: "",
       equipe_jaune_rouge: "none",
-      fonction: "",
+      fonction: "none",
+      photo_url: "",
     },
   });
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner une image",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Vérifier la taille (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "Erreur",
+        description: "L'image ne doit pas dépasser 2 Mo",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `photos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('members-photos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('members-photos')
+        .getPublicUrl(filePath);
+
+      form.setValue('photo_url', publicUrl);
+      setPreviewUrl(publicUrl);
+      
+      toast({
+        title: "Photo uploadée",
+        description: "La photo a été téléchargée avec succès",
+      });
+    } catch (error: any) {
+      console.error('Erreur upload:', error);
+      toast({
+        title: "Erreur d'upload",
+        description: error.message || "Impossible de télécharger l'image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = (data: MemberFormData) => {
     const cleanedData = {
       ...data,
       equipe_jaune_rouge: data.equipe_jaune_rouge === 'none' ? '' : data.equipe_jaune_rouge,
+      fonction: data.fonction === 'none' ? '' : data.fonction,
     };
     onSubmit(cleanedData);
     if (!member) {
       form.reset();
+      setPreviewUrl(null);
     }
   };
 
@@ -82,6 +178,45 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {/* Photo Upload Section */}
+            <div className="flex flex-col items-center gap-3 pb-4 border-b">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={previewUrl || undefined} alt="Photo du membre" />
+                <AvatarFallback className="bg-muted">
+                  <User className="h-12 w-12 text-muted-foreground" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handlePhotoUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Chargement...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      {previewUrl ? "Changer la photo" : "Ajouter une photo"}
+                    </>
+                  )}
+                </Button>
+                <p className="text-xs text-muted-foreground">JPG, PNG - Max 2 Mo</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -169,9 +304,25 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fonction</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Secrétaire" {...field} />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choisir une fonction" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Aucune fonction</SelectItem>
+                        {rolesLoading ? (
+                          <SelectItem value="loading" disabled>Chargement...</SelectItem>
+                        ) : (
+                          roles?.map((role) => (
+                            <SelectItem key={role.id} value={role.name}>
+                              {formatRoleName(role.name)}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -213,9 +364,20 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Équipe E2D</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Seniors" {...field} />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choisir une équipe" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Non assigné</SelectItem>
+                        <SelectItem value="Seniors">Seniors</SelectItem>
+                        <SelectItem value="Vétérans">Vétérans</SelectItem>
+                        <SelectItem value="Juniors">Juniors</SelectItem>
+                        <SelectItem value="Féminines">Féminines</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -230,9 +392,19 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Équipe Phoenix</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Vétérans" {...field} />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choisir une équipe" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">Non assigné</SelectItem>
+                          <SelectItem value="Seniors">Seniors</SelectItem>
+                          <SelectItem value="Vétérans">Vétérans</SelectItem>
+                          <SelectItem value="Mixte">Mixte</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -266,7 +438,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Annuler
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || uploading}>
                 {isLoading ? "Enregistrement..." : member ? "Mettre à jour" : "Créer"}
               </Button>
             </div>
