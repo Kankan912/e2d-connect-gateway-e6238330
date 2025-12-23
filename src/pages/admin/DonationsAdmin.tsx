@@ -19,8 +19,8 @@ import { chartColors, tooltipStyles } from "@/lib/rechartsConfig";
 
 export default function DonationsAdmin() {
   const [filters, setFilters] = useState({
-    paymentMethod: "",
-    paymentStatus: "",
+    paymentMethod: "all",
+    paymentStatus: "all",
   });
 
   const { data: donations, isLoading: donationsLoading } = useDonations(filters);
@@ -151,7 +151,7 @@ export default function DonationsAdmin() {
                     <SelectValue placeholder="Méthode de paiement" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Toutes</SelectItem>
+                    <SelectItem value="all">Toutes</SelectItem>
                     <SelectItem value="stripe">Stripe</SelectItem>
                     <SelectItem value="paypal">PayPal</SelectItem>
                     <SelectItem value="bank_transfer">Virement</SelectItem>
@@ -168,7 +168,7 @@ export default function DonationsAdmin() {
                     <SelectValue placeholder="Statut" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Tous</SelectItem>
+                    <SelectItem value="all">Tous</SelectItem>
                     <SelectItem value="completed">Complété</SelectItem>
                     <SelectItem value="pending">En attente</SelectItem>
                     <SelectItem value="failed">Échoué</SelectItem>
@@ -177,7 +177,7 @@ export default function DonationsAdmin() {
                 </Select>
                 <Button
                   variant="outline"
-                  onClick={() => setFilters({ paymentMethod: "", paymentStatus: "" })}
+                  onClick={() => setFilters({ paymentMethod: "all", paymentStatus: "all" })}
                 >
                   Réinitialiser
                 </Button>

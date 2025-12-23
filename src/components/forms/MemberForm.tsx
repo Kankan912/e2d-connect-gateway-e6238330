@@ -19,7 +19,7 @@ const memberSchema = z.object({
   est_adherent_phoenix: z.boolean(),
   equipe_e2d: z.string().optional(),
   equipe_phoenix: z.string().optional(),
-  equipe_jaune_rouge: z.enum(["jaune", "rouge", ""]).optional(),
+  equipe_jaune_rouge: z.enum(["jaune", "rouge", "", "none"]).optional(),
   fonction: z.string().optional(),
 });
 
@@ -46,7 +46,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
       est_adherent_phoenix: member.est_adherent_phoenix || false,
       equipe_e2d: member.equipe_e2d || "",
       equipe_phoenix: member.equipe_phoenix || "",
-      equipe_jaune_rouge: ((member as any).equipe_jaune_rouge as "jaune" | "rouge" | "") || "",
+      equipe_jaune_rouge: ((member as any).equipe_jaune_rouge as "jaune" | "rouge" | "" | "none") || "none",
       fonction: member.fonction || "",
     } : {
       nom: "",
@@ -58,13 +58,17 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
       est_adherent_phoenix: false,
       equipe_e2d: "",
       equipe_phoenix: "",
-      equipe_jaune_rouge: "",
+      equipe_jaune_rouge: "none",
       fonction: "",
     },
   });
 
   const handleSubmit = (data: MemberFormData) => {
-    onSubmit(data);
+    const cleanedData = {
+      ...data,
+      equipe_jaune_rouge: data.equipe_jaune_rouge === 'none' ? '' : data.equipe_jaune_rouge,
+    };
+    onSubmit(cleanedData);
     if (!member) {
       form.reset();
     }
@@ -246,7 +250,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Non assigné</SelectItem>
+                          <SelectItem value="none">Non assigné</SelectItem>
                           <SelectItem value="jaune">Jaune</SelectItem>
                           <SelectItem value="rouge">Rouge</SelectItem>
                         </SelectContent>
