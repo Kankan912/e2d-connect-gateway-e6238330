@@ -25,7 +25,7 @@ const memberSchema = z.object({
   est_adherent_phoenix: z.boolean(),
   equipe_e2d: z.string().optional(),
   equipe_phoenix: z.string().optional(),
-  equipe_jaune_rouge: z.enum(["jaune", "rouge", "", "none"]).optional(),
+  equipe_jaune_rouge: z.enum(["Jaune", "Rouge", "none"]).optional(),
   fonction: z.string().optional(),
   photo_url: z.string().optional(),
 });
@@ -79,7 +79,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
       est_adherent_phoenix: member.est_adherent_phoenix || false,
       equipe_e2d: member.equipe_e2d || "",
       equipe_phoenix: member.equipe_phoenix || "",
-      equipe_jaune_rouge: ((member as any).equipe_jaune_rouge as "jaune" | "rouge" | "" | "none") || "none",
+      equipe_jaune_rouge: ((member as any).equipe_jaune_rouge as "Jaune" | "Rouge" | "none") || "none",
       fonction: member.fonction || "none",
       photo_url: member.photo_url || "",
     } : {
@@ -160,10 +160,13 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
   const handleSubmit = (data: MemberFormData) => {
     const cleanedData = {
       ...data,
-      equipe_jaune_rouge: data.equipe_jaune_rouge === 'none' ? '' : data.equipe_jaune_rouge,
-      fonction: data.fonction === 'none' ? '' : data.fonction,
+      // La contrainte CHECK n'accepte que 'Jaune', 'Rouge' ou NULL
+      equipe_jaune_rouge: data.equipe_jaune_rouge === 'none' ? null : data.equipe_jaune_rouge,
+      equipe_e2d: data.equipe_e2d === 'none' ? null : data.equipe_e2d,
+      equipe_phoenix: data.equipe_phoenix === 'none' ? null : data.equipe_phoenix,
+      fonction: data.fonction === 'none' ? null : data.fonction,
     };
-    onSubmit(cleanedData);
+    onSubmit(cleanedData as any);
     if (!member) {
       form.reset();
       setPreviewUrl(null);
@@ -423,8 +426,8 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="none">Non assigné</SelectItem>
-                          <SelectItem value="jaune">Jaune</SelectItem>
-                          <SelectItem value="rouge">Rouge</SelectItem>
+                          <SelectItem value="Jaune">Jaune</SelectItem>
+                          <SelectItem value="Rouge">Rouge</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
