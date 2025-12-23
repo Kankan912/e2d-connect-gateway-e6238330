@@ -24,10 +24,10 @@ export const useDonations = (filters?: DonationFilters) => {
       if (filters?.endDate) {
         query = query.lte("created_at", filters.endDate);
       }
-      if (filters?.paymentMethod) {
+      if (filters?.paymentMethod && filters.paymentMethod !== "all") {
         query = query.eq("payment_method", filters.paymentMethod);
       }
-      if (filters?.paymentStatus) {
+      if (filters?.paymentStatus && filters.paymentStatus !== "all") {
         query = query.eq("payment_status", filters.paymentStatus);
       }
       if (filters?.isRecurring !== undefined) {
