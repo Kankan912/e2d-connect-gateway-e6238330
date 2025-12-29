@@ -168,3 +168,27 @@ export const useDeleteCotisation = () => {
     },
   });
 };
+
+// Hook pour récupérer les cotisations par réunion
+export const useCotisationsParReunion = (reunionId: string | null) => {
+  return useQuery({
+    queryKey: ['cotisations-reunion', reunionId],
+    queryFn: async () => {
+      if (!reunionId) return [];
+      
+      const { data, error } = await supabase
+        .from('cotisations')
+        .select(`
+          *,
+          type:cotisations_types(nom, description, montant_defaut),
+          membre:membres(nom, prenom)
+        `)
+        .eq('reunion_id', reunionId)
+        .order('date_paiement', { ascending: false });
+
+      if (error) throw error;
+      return data as Cotisation[];
+    },
+    enabled: !!reunionId,
+  });
+};
