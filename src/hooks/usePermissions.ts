@@ -69,3 +69,21 @@ export const useRefreshPermissions = () => {
     });
   };
 };
+
+// Hook pour récupérer l'historique d'audit des permissions
+export const usePermissionsAudit = () => {
+  return useQuery({
+    queryKey: ['permissions-audit'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('permissions_audit')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+};
