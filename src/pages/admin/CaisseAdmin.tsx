@@ -76,8 +76,79 @@ const CaisseAdmin = () => {
     toast({ title: "Actualisé", description: "Les données ont été rafraîchies" });
   };
 
-  const handleExportPDF = () => {
-    toast({ title: "Export", description: "Export PDF en cours de développement" });
+  const handleExportPDF = async () => {
+    if (!operations || operations.length === 0) {
+      toast({ title: "Aucune donnée", description: "Aucune opération à exporter", variant: "destructive" });
+      return;
+    }
+
+    const { jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // En-tête
+    doc.setFontSize(20);
+    doc.setTextColor(41, 128, 185);
+    doc.text("Rapport de Caisse", pageWidth / 2, 20, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    const dateStr = new Date().toLocaleDateString("fr-FR", { 
+      day: "2-digit", month: "long", year: "numeric" 
+    });
+    doc.text(`Généré le ${dateStr}`, pageWidth / 2, 28, { align: "center" });
+
+    // Résumé
+    const totalEntrees = operations
+      .filter(o => o.type_operation === "entree")
+      .reduce((sum, o) => sum + Number(o.montant), 0);
+    const totalSorties = operations
+      .filter(o => o.type_operation === "sortie")
+      .reduce((sum, o) => sum + Number(o.montant), 0);
+    const solde = totalEntrees - totalSorties;
+
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text("Résumé", 14, 40);
+
+    doc.setFontSize(10);
+    doc.text(`Total Entrées: ${new Intl.NumberFormat("fr-FR").format(totalEntrees)} FCFA`, 14, 48);
+    doc.text(`Total Sorties: ${new Intl.NumberFormat("fr-FR").format(totalSorties)} FCFA`, 14, 54);
+    doc.setTextColor(solde >= 0 ? 0 : 200, solde >= 0 ? 128 : 0, solde >= 0 ? 0 : 0);
+    doc.text(`Solde: ${new Intl.NumberFormat("fr-FR").format(solde)} FCFA`, 14, 60);
+
+    // Tableau des opérations
+    const tableData = operations.map(op => [
+      new Date(op.date_operation).toLocaleDateString("fr-FR"),
+      op.type_operation === "entree" ? "Entrée" : "Sortie",
+      CAISSE_CATEGORIES[op.categorie as keyof typeof CAISSE_CATEGORIES]?.label || op.categorie || "-",
+      op.libelle,
+      `${new Intl.NumberFormat("fr-FR").format(Number(op.montant))} FCFA`
+    ]);
+
+    autoTable(doc, {
+      startY: 70,
+      head: [["Date", "Type", "Catégorie", "Libellé", "Montant"]],
+      body: tableData,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 70 },
+        4: { cellWidth: 35, halign: "right" },
+      },
+    });
+
+    // Télécharger
+    const fileName = `rapport_caisse_${new Date().toISOString().split("T")[0]}.pdf`;
+    doc.save(fileName);
+
+    toast({ title: "Export réussi", description: `Le fichier ${fileName} a été téléchargé` });
   };
 
   const handleResetFilters = () => {

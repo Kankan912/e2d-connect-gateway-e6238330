@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoles } from "@/hooks/useRoles";
-import { useRefreshPermissions } from "@/hooks/usePermissions";
+import { useRefreshPermissions, usePermissionsAudit } from "@/hooks/usePermissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PermissionsMatrix } from "@/components/admin/PermissionsMatrix";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, RefreshCw, Shield, History } from "lucide-react";
+import { Download, RefreshCw, Shield, History, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import * as XLSX from 'xlsx';
-
 const RESOURCES = [
   { id: 'membres', label: 'Membres', icon: '👥' },
   { id: 'cotisations', label: 'Cotisations', icon: '💰' },
@@ -319,25 +320,101 @@ const PermissionsAdmin = () => {
 
         {/* Historique d'audit */}
         <TabsContent value="audit" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Historique des modifications
-              </CardTitle>
-              <CardDescription>
-                Journal des changements de permissions (à implémenter avec la table permissions_audit)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-center py-8">
-                Cette fonctionnalité nécessite la création de la table permissions_audit
-              </p>
-            </CardContent>
-          </Card>
+          <PermissionsAuditTab />
         </TabsContent>
       </Tabs>
     </div>
+  );
+};
+
+// Composant pour l'onglet historique d'audit
+const PermissionsAuditTab = () => {
+  const { data: auditLogs, isLoading } = usePermissionsAudit();
+
+  const getActionBadge = (action: string) => {
+    switch (action) {
+      case 'INSERT':
+        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Création</Badge>;
+      case 'UPDATE':
+        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Modification</Badge>;
+      case 'DELETE':
+        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Suppression</Badge>;
+      default:
+        return <Badge variant="outline">{action}</Badge>;
+    }
+  };
+
+  const formatData = (data: any) => {
+    if (!data) return '-';
+    if (typeof data === 'object') {
+      const resource = data.resource || '-';
+      const permission = data.permission || '-';
+      const granted = data.granted !== undefined ? (data.granted ? '✓' : '✗') : '-';
+      return `${resource} / ${permission} [${granted}]`;
+    }
+    return String(data);
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-12 flex justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <History className="h-5 w-5" />
+          Historique des modifications
+        </CardTitle>
+        <CardDescription>
+          Journal des changements de permissions
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {auditLogs && auditLogs.length > 0 ? (
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[160px]">Date</TableHead>
+                  <TableHead className="w-[100px]">Action</TableHead>
+                  <TableHead>Table</TableHead>
+                  <TableHead>Avant</TableHead>
+                  <TableHead>Après</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {auditLogs.map((log: any) => (
+                  <TableRow key={log.id}>
+                    <TableCell className="text-sm">
+                      {format(new Date(log.created_at), "dd MMM yyyy HH:mm", { locale: fr })}
+                    </TableCell>
+                    <TableCell>{getActionBadge(log.action)}</TableCell>
+                    <TableCell className="font-mono text-xs">{log.table_name}</TableCell>
+                    <TableCell className="text-xs max-w-[200px] truncate">
+                      {formatData(log.old_data)}
+                    </TableCell>
+                    <TableCell className="text-xs max-w-[200px] truncate">
+                      {formatData(log.new_data)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-center py-8">
+            Aucun historique de modification disponible
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
