@@ -28,7 +28,8 @@ import {
   TrendingDown,
   BarChart3,
   UserCog,
-  Mail
+  Mail,
+  Coins
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +46,7 @@ import PresencesRecapMensuel from "@/components/PresencesRecapMensuel";
 import PresencesRecapAnnuel from "@/components/PresencesRecapAnnuel";
 import PresencesHistoriqueMembre from "@/components/PresencesHistoriqueMembre";
 import LogoHeader from "@/components/LogoHeader";
+import CotisationsReunionView from "@/components/CotisationsReunionView";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
 import BackButton from "@/components/BackButton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -533,10 +535,14 @@ export default function Reunions() {
 
       {/* Tabs pour Réunions, Présences et Bénéficiaires */}
       <Tabs defaultValue="reunions" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="reunions" className="flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             Réunions
+          </TabsTrigger>
+          <TabsTrigger value="cotisations" className="flex items-center gap-2">
+            <Coins className="w-4 h-4" />
+            Cotisations
           </TabsTrigger>
           <TabsTrigger value="presences" className="flex items-center gap-2">
             <Users className="w-4 h-4" />
@@ -745,6 +751,52 @@ export default function Reunions() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="cotisations">
+          <Card className="mb-4">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Coins className="w-5 h-5" />
+                <h3 className="font-semibold">Sélectionner une réunion</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {reunions.slice(0, 12).map(reunion => (
+                  <Button
+                    key={reunion.id}
+                    variant={selectedReunion?.id === reunion.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedReunion(reunion)}
+                    className="justify-start truncate"
+                  >
+                    <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span className="truncate">
+                      {new Date(reunion.date_reunion).toLocaleDateString('fr-FR')}
+                    </span>
+                    {reunion.statut === 'terminee' && (
+                      <Badge className="ml-1 bg-success text-success-foreground text-xs">✓</Badge>
+                    )}
+                    {reunion.statut === 'planifie' && (
+                      <Badge variant="secondary" className="ml-1 text-xs">P</Badge>
+                    )}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          {selectedReunion ? (
+            <CotisationsReunionView 
+              reunionId={selectedReunion.id} 
+              reunionStatut={selectedReunion.statut}
+              reunionDate={selectedReunion.date_reunion}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Sélectionnez une réunion pour voir les cotisations collectées ou les projections
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="presences">
