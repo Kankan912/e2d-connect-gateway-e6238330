@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit, Download, FileText, Calendar, Users, Clock, Loader2 } from 'lucide-react';
+import { Edit, Download, FileText, Calendar, Users, Clock, Loader2, AlertTriangle, Coins, PiggyBank, HandHeart } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -72,6 +72,66 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
     enabled: open && !!reunion?.id
   });
 
+  // Récupérer les sanctions de la réunion
+  const { data: sanctionsReunion } = useQuery({
+    queryKey: ['reunion-sanctions-cr', reunion?.id],
+    queryFn: async () => {
+      if (!reunion?.id) return [];
+      const { data, error } = await supabase
+        .from('reunions_sanctions')
+        .select('*, membre:membre_id(nom, prenom)')
+        .eq('reunion_id', reunion.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!reunion?.id
+  });
+
+  // Récupérer les cotisations collectées
+  const { data: cotisationsReunion } = useQuery({
+    queryKey: ['reunion-cotisations-cr', reunion?.id],
+    queryFn: async () => {
+      if (!reunion?.id) return [];
+      const { data, error } = await supabase
+        .from('cotisations')
+        .select('*, membre:membre_id(nom, prenom), type:type_cotisation_id(nom)')
+        .eq('reunion_id', reunion.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!reunion?.id
+  });
+
+  // Récupérer les épargnes déposées
+  const { data: epargnesReunion } = useQuery({
+    queryKey: ['reunion-epargnes-cr', reunion?.id],
+    queryFn: async () => {
+      if (!reunion?.id) return [];
+      const { data, error } = await supabase
+        .from('epargnes')
+        .select('*, membre:membre_id(nom, prenom)')
+        .eq('reunion_id', reunion.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!reunion?.id
+  });
+
+  // Récupérer les aides distribuées (par date de la réunion)
+  const { data: aidesReunion } = useQuery({
+    queryKey: ['reunion-aides-cr', reunion?.id, reunion?.date_reunion],
+    queryFn: async () => {
+      if (!reunion?.id || !reunion?.date_reunion) return [];
+      const { data, error } = await supabase
+        .from('aides')
+        .select('*, beneficiaire:beneficiaire_id(nom, prenom), type:type_aide_id(nom)')
+        .eq('date_allocation', reunion.date_reunion);
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!reunion?.id
+  });
+
   const handleDownloadPDF = async () => {
     if (!reunion?.id) return;
     setDownloading(true);
@@ -81,6 +141,13 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       const pageWidth = doc.internal.pageSize.getWidth();
       const margin = 20;
       let yPosition = 20;
+
+      const checkNewPage = (neededSpace: number = 30) => {
+        if (yPosition > 260 - neededSpace) {
+          doc.addPage();
+          yPosition = 20;
+        }
+      };
 
       // Titre principal
       doc.setFontSize(18);
@@ -117,9 +184,8 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       doc.text(`Statut: ${reunion.statut === 'terminee' ? 'Terminée' : reunion.statut}`, margin, yPosition);
       yPosition += 12;
 
-      // Liste des présents - adapté pour reunions_presences
+      // Liste des présents
       const presents = presences?.filter((p: any) => p.statut_presence === 'present') || [];
-      const absents = presences?.filter((p: any) => p.statut_presence === 'absent_non_excuse' || p.statut_presence === 'absent_excuse') || [];
       const excuses = presences?.filter((p: any) => p.statut_presence === 'absent_excuse') || [];
       const retards = presences?.filter((p: any) => p.heure_arrivee) || [];
 
@@ -163,6 +229,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       yPosition += 5;
 
       // Points à l'ordre du jour
+      checkNewPage();
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
       doc.text(`ORDRE DU JOUR (${comptesRendus?.length || 0} point(s))`, margin, yPosition);
@@ -170,11 +237,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
       if (comptesRendus && comptesRendus.length > 0) {
         comptesRendus.forEach((cr: any, index: number) => {
-          // Vérifier si on a besoin d'une nouvelle page
-          if (yPosition > 260) {
-            doc.addPage();
-            yPosition = 20;
-          }
+          checkNewPage();
 
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(11);
@@ -219,6 +282,84 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
         doc.setFont('helvetica', 'italic');
         doc.setFontSize(10);
         doc.text('Aucun point à l\'ordre du jour', margin, yPosition);
+        yPosition += 10;
+      }
+
+      // === SECTION COTISATIONS ===
+      if (cotisationsReunion && cotisationsReunion.length > 0) {
+        checkNewPage();
+        const totalCotisations = cotisationsReunion.reduce((sum: number, c: any) => sum + (c.montant || 0), 0);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(`COTISATIONS COLLECTÉES (${cotisationsReunion.length}) - Total: ${totalCotisations.toLocaleString()} FCFA`, margin, yPosition);
+        yPosition += 8;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        cotisationsReunion.forEach((c: any) => {
+          checkNewPage(10);
+          doc.text(`• ${c.membre?.prenom} ${c.membre?.nom} - ${c.type?.nom || 'Type inconnu'}: ${c.montant?.toLocaleString()} FCFA`, margin + 5, yPosition);
+          yPosition += 5;
+        });
+        yPosition += 5;
+      }
+
+      // === SECTION ÉPARGNES ===
+      if (epargnesReunion && epargnesReunion.length > 0) {
+        checkNewPage();
+        const totalEpargnes = epargnesReunion.reduce((sum: number, e: any) => sum + (e.montant || 0), 0);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(`ÉPARGNES DÉPOSÉES (${epargnesReunion.length}) - Total: ${totalEpargnes.toLocaleString()} FCFA`, margin, yPosition);
+        yPosition += 8;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        epargnesReunion.forEach((e: any) => {
+          checkNewPage(10);
+          doc.text(`• ${e.membre?.prenom} ${e.membre?.nom}: ${e.montant?.toLocaleString()} FCFA`, margin + 5, yPosition);
+          yPosition += 5;
+        });
+        yPosition += 5;
+      }
+
+      // === SECTION SANCTIONS ===
+      if (sanctionsReunion && sanctionsReunion.length > 0) {
+        checkNewPage();
+        const totalSanctions = sanctionsReunion.reduce((sum: number, s: any) => sum + (s.montant_amende || 0), 0);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(`SANCTIONS (${sanctionsReunion.length}) - Total: ${totalSanctions.toLocaleString()} FCFA`, margin, yPosition);
+        yPosition += 8;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        sanctionsReunion.forEach((s: any) => {
+          checkNewPage(10);
+          const statut = s.statut === 'paye' ? '✓' : '○';
+          doc.text(`${statut} ${s.membre?.prenom} ${s.membre?.nom} - ${s.motif || 'Sanction'}: ${s.montant_amende?.toLocaleString()} FCFA`, margin + 5, yPosition);
+          yPosition += 5;
+        });
+        yPosition += 5;
+      }
+
+      // === SECTION AIDES ===
+      if (aidesReunion && aidesReunion.length > 0) {
+        checkNewPage();
+        const totalAides = aidesReunion.reduce((sum: number, a: any) => sum + (a.montant || 0), 0);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(`AIDES DISTRIBUÉES (${aidesReunion.length}) - Total: ${totalAides.toLocaleString()} FCFA`, margin, yPosition);
+        yPosition += 8;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        aidesReunion.forEach((a: any) => {
+          checkNewPage(10);
+          doc.text(`• ${a.beneficiaire?.prenom} ${a.beneficiaire?.nom} - ${a.type?.nom || 'Aide'}: ${a.montant?.toLocaleString()} FCFA`, margin + 5, yPosition);
+          yPosition += 5;
+        });
+        yPosition += 5;
       }
 
       // Pied de page
@@ -257,6 +398,15 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
   const pointsCRCount = comptesRendus?.length || 0;
   const presentsCount = presences?.filter((p: any) => p.statut_presence === 'present').length || 0;
+  const sanctionsCount = sanctionsReunion?.length || 0;
+  const cotisationsCount = cotisationsReunion?.length || 0;
+  const epargnesCount = epargnesReunion?.length || 0;
+  const aidesCount = aidesReunion?.length || 0;
+
+  const totalCotisations = cotisationsReunion?.reduce((sum: number, c: any) => sum + (c.montant || 0), 0) || 0;
+  const totalEpargnes = epargnesReunion?.reduce((sum: number, e: any) => sum + (e.montant || 0), 0) || 0;
+  const totalSanctions = sanctionsReunion?.reduce((sum: number, s: any) => sum + (s.montant_amende || 0), 0) || 0;
+  const totalAides = aidesReunion?.reduce((sum: number, a: any) => sum + (a.montant || 0), 0) || 0;
 
   if (!reunion) {
     return null;
@@ -271,7 +421,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
             Compte-Rendu de Réunion
           </DialogTitle>
           <DialogDescription>
-            Consultation du compte-rendu
+            Consultation du compte-rendu complet
           </DialogDescription>
         </DialogHeader>
 
@@ -397,6 +547,114 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 )}
               </CardContent>
             </Card>
+
+            {/* Cotisations collectées */}
+            {cotisationsCount > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Coins className="h-4 w-4" />
+                    Cotisations Collectées ({cotisationsCount})
+                    <Badge variant="secondary" className="ml-auto">{totalCotisations.toLocaleString()} FCFA</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {cotisationsReunion?.map((c: any) => (
+                      <div key={c.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
+                        <span>{c.membre?.prenom} {c.membre?.nom}</span>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{c.type?.nom || 'Type inconnu'}</Badge>
+                          <span className="font-medium">{c.montant?.toLocaleString()} FCFA</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Épargnes déposées */}
+            {epargnesCount > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <PiggyBank className="h-4 w-4" />
+                    Épargnes Déposées ({epargnesCount})
+                    <Badge variant="secondary" className="ml-auto">{totalEpargnes.toLocaleString()} FCFA</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {epargnesReunion?.map((e: any) => (
+                      <div key={e.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
+                        <span>{e.membre?.prenom} {e.membre?.nom}</span>
+                        <span className="font-medium">{e.montant?.toLocaleString()} FCFA</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Sanctions */}
+            {sanctionsCount > 0 && (
+              <Card className="border-orange-200 dark:border-orange-800">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-orange-500" />
+                    Sanctions ({sanctionsCount})
+                    <Badge variant="destructive" className="ml-auto">{totalSanctions.toLocaleString()} FCFA</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {sanctionsReunion?.map((s: any) => (
+                      <div key={s.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
+                        <div className="flex items-center gap-2">
+                          <span>{s.membre?.prenom} {s.membre?.nom}</span>
+                          <span className="text-muted-foreground">- {s.motif || 'Sanction'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={s.statut === 'paye' ? 'default' : 'outline'}>
+                            {s.statut === 'paye' ? 'Payé' : 'Impayé'}
+                          </Badge>
+                          <span className="font-medium">{s.montant_amende?.toLocaleString()} FCFA</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Aides distribuées */}
+            {aidesCount > 0 && (
+              <Card className="border-green-200 dark:border-green-800">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <HandHeart className="h-4 w-4 text-green-500" />
+                    Aides Distribuées ({aidesCount})
+                    <Badge className="ml-auto bg-green-600">{totalAides.toLocaleString()} FCFA</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {aidesReunion?.map((a: any) => (
+                      <div key={a.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
+                        <div className="flex items-center gap-2">
+                          <span>{a.beneficiaire?.prenom} {a.beneficiaire?.nom}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{a.type?.nom || 'Aide'}</Badge>
+                          <span className="font-medium">{a.montant?.toLocaleString()} FCFA</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </ScrollArea>
 
