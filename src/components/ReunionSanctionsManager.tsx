@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,20 +9,41 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, AlertTriangle, Check, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface ReunionSanctionsManagerProps {
   reunionId: string;
 }
 
+interface SanctionType {
+  id: string;
+  nom: string;
+  description: string | null;
+  categorie: string;
+  montant: number;
+}
+
 export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsManagerProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [membreId, setMembreId] = useState("");
-  const [typeSanction, setTypeSanction] = useState<string>("avertissement");
+  const [typeSanctionId, setTypeSanctionId] = useState<string>("");
   const [motif, setMotif] = useState("");
   const [montantAmende, setMontantAmende] = useState("");
+
+  // Charger les types de sanctions standardisés
+  const { data: sanctionsTypes } = useQuery({
+    queryKey: ['sanctions-types'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sanctions_types')
+        .select('*')
+        .order('categorie', { ascending: true });
+      if (error) throw error;
+      return data as SanctionType[];
+    },
+  });
 
   // Charger les membres E2D actifs
   const { data: membres } = useQuery({
@@ -56,6 +77,16 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
     },
     enabled: !!reunionId,
   });
+
+  // Auto-remplir le montant quand un type est sélectionné
+  useEffect(() => {
+    if (typeSanctionId && sanctionsTypes) {
+      const selectedType = sanctionsTypes.find(t => t.id === typeSanctionId);
+      if (selectedType && selectedType.montant > 0) {
+        setMontantAmende(selectedType.montant.toString());
+      }
+    }
+  }, [typeSanctionId, sanctionsTypes]);
 
   // Ajouter une sanction
   const addSanction = useMutation({
@@ -96,6 +127,7 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reunion-sanctions', reunionId] });
+      queryClient.invalidateQueries({ queryKey: ['fond-caisse-operations'] });
       toast({
         title: "Sanction supprimée",
         description: "La sanction a été supprimée avec succès.",
@@ -103,19 +135,41 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
     },
   });
 
+  // Marquer une amende comme payée
+  const markAsPaid = useMutation({
+    mutationFn: async (sanctionId: string) => {
+      const { error } = await supabase
+        .from('reunions_sanctions')
+        .update({ statut: 'paye' })
+        .eq('id', sanctionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reunion-sanctions', reunionId] });
+      queryClient.invalidateQueries({ queryKey: ['fond-caisse-operations'] });
+      toast({
+        title: "Amende payée",
+        description: "L'amende a été marquée comme payée et synchronisée avec la caisse.",
+      });
+    },
+  });
+
   const resetForm = () => {
     setMembreId("");
-    setTypeSanction("avertissement");
+    setTypeSanctionId("");
     setMotif("");
     setMontantAmende("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!membreId || !motif) {
+    
+    const selectedType = sanctionsTypes?.find(t => t.id === typeSanctionId);
+    
+    if (!membreId || !typeSanctionId) {
       toast({
         title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires.",
+        description: "Veuillez sélectionner un membre et un type de sanction.",
         variant: "destructive",
       });
       return;
@@ -124,27 +178,38 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
     addSanction.mutate({
       reunion_id: reunionId,
       membre_id: membreId,
-      type_sanction: typeSanction,
-      motif,
+      type_sanction: selectedType?.nom || 'Autre',
+      motif: motif || selectedType?.description || '',
       montant_amende: montantAmende ? parseFloat(montantAmende) : null,
       statut: 'active',
     });
   };
 
   const getSanctionBadgeVariant = (type: string) => {
-    switch (type) {
-      case 'avertissement':
-        return 'secondary';
-      case 'blame':
-        return 'default';
-      case 'amende':
-        return 'destructive';
-      case 'suspension':
-        return 'destructive';
-      default:
-        return 'outline';
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes('carton rouge') || lowerType.includes('suspension')) return 'destructive';
+    if (lowerType.includes('amende') || lowerType.includes('absence')) return 'destructive';
+    if (lowerType.includes('carton jaune') || lowerType.includes('retard')) return 'secondary';
+    if (lowerType.includes('avertissement') || lowerType.includes('blâme')) return 'default';
+    return 'outline';
+  };
+
+  const getCategorieLabel = (categorie: string) => {
+    switch (categorie) {
+      case 'reunion': return '📅 Réunion';
+      case 'sport': return '⚽ Sport';
+      case 'discipline': return '⚠️ Discipline';
+      case 'financiere': return '💰 Financière';
+      default: return categorie;
     }
   };
+
+  // Grouper les types par catégorie
+  const groupedTypes = sanctionsTypes?.reduce((acc, type) => {
+    if (!acc[type.categorie]) acc[type.categorie] = [];
+    acc[type.categorie].push(type);
+    return acc;
+  }, {} as Record<string, SanctionType[]>);
 
   return (
     <div className="space-y-6">
@@ -177,40 +242,49 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
 
               <div>
                 <Label>Type de Sanction *</Label>
-                <Select value={typeSanction} onValueChange={setTypeSanction}>
+                <Select value={typeSanctionId} onValueChange={setTypeSanctionId}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Sélectionner un type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="avertissement">Avertissement</SelectItem>
-                    <SelectItem value="blame">Blâme</SelectItem>
-                    <SelectItem value="amende">Amende</SelectItem>
-                    <SelectItem value="suspension">Suspension</SelectItem>
+                    {groupedTypes && Object.entries(groupedTypes).map(([categorie, types]) => (
+                      <div key={categorie}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
+                          {getCategorieLabel(categorie)}
+                        </div>
+                        {types.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.nom} {type.montant > 0 && `(${type.montant.toLocaleString()} FCFA)`}
+                          </SelectItem>
+                        ))}
+                      </div>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {typeSanction === 'amende' && (
-              <div>
-                <Label>Montant de l'amende (FCFA) *</Label>
-                <Input
-                  type="number"
-                  value={montantAmende}
-                  onChange={(e) => setMontantAmende(e.target.value)}
-                  placeholder="Ex: 5000"
-                  min="0"
-                />
-              </div>
-            )}
+            <div>
+              <Label>Montant de l'amende (FCFA)</Label>
+              <Input
+                type="number"
+                value={montantAmende}
+                onChange={(e) => setMontantAmende(e.target.value)}
+                placeholder="Montant auto-rempli selon le type"
+                min="0"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Le montant est pré-rempli selon le type sélectionné mais peut être modifié
+              </p>
+            </div>
 
             <div>
-              <Label>Motif *</Label>
+              <Label>Motif / Détails</Label>
               <Textarea
                 value={motif}
                 onChange={(e) => setMotif(e.target.value)}
-                placeholder="Décrire le motif de la sanction..."
-                rows={3}
+                placeholder="Décrire le motif de la sanction (optionnel)..."
+                rows={2}
               />
             </div>
 
@@ -252,7 +326,7 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
-                      {sanction.motif}
+                      {sanction.motif || '-'}
                     </TableCell>
                     <TableCell>
                       {sanction.montant_amende 
@@ -261,18 +335,30 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
                       }
                     </TableCell>
                     <TableCell>
-                      <Badge variant={sanction.statut === 'active' ? 'default' : 'secondary'}>
-                        {sanction.statut}
+                      <Badge variant={sanction.statut === 'paye' ? 'default' : sanction.statut === 'active' ? 'secondary' : 'outline'}>
+                        {sanction.statut === 'paye' ? '✓ Payé' : sanction.statut}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => deleteSanction.mutate(sanction.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        {sanction.statut === 'active' && sanction.montant_amende > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => markAsPaid.mutate(sanction.id)}
+                            title="Marquer comme payé"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => deleteSanction.mutate(sanction.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
