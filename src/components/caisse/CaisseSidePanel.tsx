@@ -1,4 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,12 @@ import {
   Users,
   Trophy,
   Banknote,
-  RefreshCw
+  RefreshCw,
+  ChevronRight
 } from "lucide-react";
 import { useCaisseSynthese } from "@/hooks/useCaisseSynthese";
+import { CaisseSyntheseDetailModal } from "./CaisseSyntheseDetailModal";
+import { DetailType } from "@/hooks/useCaisseDetails";
 
 const formatMontant = (montant: number) =>
   new Intl.NumberFormat("fr-FR").format(montant) + " FCFA";
@@ -25,9 +29,10 @@ interface SynthWidgetProps {
   icon: React.ReactNode;
   variant?: "default" | "success" | "warning" | "danger" | "info";
   subtitle?: string;
+  onClick?: () => void;
 }
 
-const SynthWidget = ({ title, value, icon, variant = "default", subtitle }: SynthWidgetProps) => {
+const SynthWidget = ({ title, value, icon, variant = "default", subtitle, onClick }: SynthWidgetProps) => {
   const variantStyles = {
     default: "border-border bg-card",
     success: "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30",
@@ -45,10 +50,13 @@ const SynthWidget = ({ title, value, icon, variant = "default", subtitle }: Synt
   };
 
   return (
-    <Card className={`${variantStyles[variant]} border`}>
+    <Card 
+      className={`${variantStyles[variant]} border cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]`}
+      onClick={onClick}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
+          <div className="space-y-1 flex-1">
             <p className="text-xs font-medium text-muted-foreground">{title}</p>
             <p className={`text-lg font-bold ${valueStyles[variant]}`}>
               {formatMontant(value)}
@@ -57,7 +65,10 @@ const SynthWidget = ({ title, value, icon, variant = "default", subtitle }: Synt
               <p className="text-xs text-muted-foreground">{subtitle}</p>
             )}
           </div>
-          <div className="text-muted-foreground">{icon}</div>
+          <div className="flex items-center gap-1">
+            <div className="text-muted-foreground">{icon}</div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -66,6 +77,10 @@ const SynthWidget = ({ title, value, icon, variant = "default", subtitle }: Synt
 
 export const CaisseSidePanel = () => {
   const { data: synthese, isLoading, refetch, isRefetching } = useCaisseSynthese();
+  const [selectedDetail, setSelectedDetail] = useState<DetailType | null>(null);
+
+  const openDetail = (type: DetailType) => setSelectedDetail(type);
+  const closeDetail = () => setSelectedDetail(null);
 
   if (isLoading) {
     return (
@@ -87,7 +102,7 @@ export const CaisseSidePanel = () => {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-lg">Synthèse Financière</h3>
-          <p className="text-xs text-muted-foreground">Vue d'ensemble des fonds</p>
+          <p className="text-xs text-muted-foreground">Cliquez pour voir les détails</p>
         </div>
         <Button 
           variant="ghost" 
@@ -107,6 +122,7 @@ export const CaisseSidePanel = () => {
         icon={<Wallet className="h-5 w-5" />}
         variant={synthese?.fondTotal && synthese.fondTotal > 0 ? "success" : "danger"}
         subtitle="Solde global disponible"
+        onClick={() => openDetail('fond_total')}
       />
 
       {/* 2. Épargnes */}
@@ -116,6 +132,7 @@ export const CaisseSidePanel = () => {
         icon={<PiggyBank className="h-5 w-5" />}
         variant="info"
         subtitle="Total des dépôts d'épargne"
+        onClick={() => openDetail('epargnes')}
       />
 
       {/* 3. Cotisations */}
@@ -125,6 +142,7 @@ export const CaisseSidePanel = () => {
         icon={<Receipt className="h-5 w-5" />}
         variant="success"
         subtitle="Total des cotisations payées"
+        onClick={() => openDetail('cotisations')}
       />
 
       {/* 4. Total Prêts Décaissés */}
@@ -134,6 +152,7 @@ export const CaisseSidePanel = () => {
         icon={<Banknote className="h-5 w-5" />}
         variant="warning"
         subtitle="Montant total des prêts accordés"
+        onClick={() => openDetail('prets_decaisses')}
       />
 
       {/* 5. Prêts en Cours (capital restant) */}
@@ -143,6 +162,7 @@ export const CaisseSidePanel = () => {
         icon={<TrendingUp className="h-5 w-5" />}
         variant={synthese?.pretsEnCours && synthese.pretsEnCours > 0 ? "warning" : "default"}
         subtitle="Capital restant dû"
+        onClick={() => openDetail('prets_en_cours')}
       />
 
       {/* 6. Sanctions Encaissées */}
@@ -152,21 +172,28 @@ export const CaisseSidePanel = () => {
         icon={<AlertTriangle className="h-5 w-5" />}
         variant="success"
         subtitle={`${synthese?.tauxRecouvrement || 0}% de recouvrement`}
+        onClick={() => openDetail('sanctions_encaissees')}
       />
 
       {/* 7. Sanctions Impayées */}
       {(synthese?.sanctionsImpayees || 0) > 0 && (
-        <Card className="border-destructive/50 bg-destructive/10">
+        <Card 
+          className="border-destructive/50 bg-destructive/10 cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+          onClick={() => openDetail('sanctions_impayees')}
+        >
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
-              <div className="space-y-1">
+              <div className="space-y-1 flex-1">
                 <p className="text-xs font-medium text-muted-foreground">Sanctions Impayées</p>
                 <p className="text-lg font-bold text-destructive">
                   {formatMontant(synthese?.sanctionsImpayees || 0)}
                 </p>
                 <Badge variant="destructive" className="text-xs">À recouvrer</Badge>
               </div>
-              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <div className="flex items-center gap-1">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -179,6 +206,7 @@ export const CaisseSidePanel = () => {
         icon={<HandCoins className="h-5 w-5" />}
         variant="default"
         subtitle="Total des aides accordées"
+        onClick={() => openDetail('aides')}
       />
 
       {/* 9. Reliquat Cotisations */}
@@ -188,6 +216,7 @@ export const CaisseSidePanel = () => {
         icon={<Users className="h-5 w-5" />}
         variant="info"
         subtitle="Après distribution bénéficiaires"
+        onClick={() => openDetail('reliquat')}
       />
 
       {/* 10. Fond Sport */}
@@ -197,6 +226,7 @@ export const CaisseSidePanel = () => {
         icon={<Trophy className="h-5 w-5" />}
         variant="default"
         subtitle="Budget activités sportives"
+        onClick={() => openDetail('fond_sport')}
       />
 
       <Card className="mt-4 bg-muted/50">
@@ -207,6 +237,13 @@ export const CaisseSidePanel = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de détails */}
+      <CaisseSyntheseDetailModal
+        type={selectedDetail}
+        isOpen={selectedDetail !== null}
+        onClose={closeDetail}
+      />
     </div>
   );
 };
