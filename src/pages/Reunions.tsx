@@ -26,6 +26,7 @@ import {
   Trash2,
   CalendarDays,
   TrendingDown,
+  TrendingUp,
   BarChart3,
   UserCog,
   Mail,
@@ -274,6 +275,203 @@ function RappelsTab() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// Composant pour l'onglet Cotisations avec sélecteur d'exercice
+function CotisationsTabContent({ 
+  reunions, 
+  selectedReunion, 
+  onSelectReunion 
+}: { 
+  reunions: Reunion[]; 
+  selectedReunion: Reunion | null; 
+  onSelectReunion: (r: Reunion) => void;
+}) {
+  const [selectedExercice, setSelectedExercice] = useState<string>("all");
+
+  // Charger les exercices
+  const { data: exercices } = useQuery({
+    queryKey: ['exercices-cotisations-filter'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exercices')
+        .select('id, nom, date_debut, date_fin, statut')
+        .order('date_debut', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Filtrer réunions par exercice
+  const reunionsFiltrees = reunions.filter(r => {
+    if (selectedExercice === "all") return true;
+    const exercice = exercices?.find(e => e.id === selectedExercice);
+    if (!exercice) return true;
+    return r.date_reunion >= exercice.date_debut && r.date_reunion <= exercice.date_fin;
+  });
+
+  // Trouver l'exercice d'une réunion
+  const getExerciceForReunion = (dateReunion: string) => {
+    return exercices?.find(e => dateReunion >= e.date_debut && dateReunion <= e.date_fin);
+  };
+
+  // Grouper par mois
+  const reunionsParMois = reunionsFiltrees.reduce((acc, r) => {
+    const date = new Date(r.date_reunion);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const label = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    if (!acc[key]) acc[key] = { label, reunions: [] };
+    acc[key].reunions.push(r);
+    return acc;
+  }, {} as Record<string, { label: string; reunions: Reunion[] }>);
+
+  const currentExercice = selectedReunion ? getExerciceForReunion(selectedReunion.date_reunion) : null;
+
+  return (
+    <Tabs defaultValue="par-reunion" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="par-reunion">Par Réunion</TabsTrigger>
+        <TabsTrigger value="cumul-annuel">Suivi Annuel</TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="par-reunion">
+        <Card className="mb-4">
+          <CardContent className="pt-6">
+            {/* Sélecteur d'exercice */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Coins className="w-5 h-5" />
+                <h3 className="font-semibold">Sélectionner une réunion</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Exercice :</span>
+                <Select value={selectedExercice} onValueChange={setSelectedExercice}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Tous les exercices" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les exercices</SelectItem>
+                    {exercices?.map(e => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.nom} {e.statut === 'actif' && '(Actif)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Liste des réunions groupées par mois */}
+            {Object.keys(reunionsParMois).length > 0 ? (
+              <div className="space-y-4">
+                {Object.entries(reunionsParMois).map(([key, { label, reunions: reunionsMois }]) => (
+                  <div key={key}>
+                    <p className="text-xs font-medium text-muted-foreground mb-2 uppercase">{label}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {reunionsMois.map(reunion => {
+                        const isSelected = selectedReunion?.id === reunion.id;
+                        const nbCotisations = 0; // Sera enrichi par les queries
+                        return (
+                          <Button
+                            key={reunion.id}
+                            variant={isSelected ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => onSelectReunion(reunion)}
+                            className={`justify-start h-auto py-2 ${isSelected ? 'ring-2 ring-primary' : ''}`}
+                          >
+                            <div className="flex flex-col items-start w-full">
+                              <div className="flex items-center gap-1 w-full">
+                                <Calendar className="w-3 h-3 flex-shrink-0" />
+                                <span className="font-medium">
+                                  {new Date(reunion.date_reunion).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                                </span>
+                                {reunion.statut === 'terminee' && (
+                                  <Lock className="w-3 h-3 ml-auto text-success" />
+                                )}
+                                {reunion.statut === 'planifie' && (
+                                  <Clock className="w-3 h-3 ml-auto text-muted-foreground" />
+                                )}
+                                {reunion.statut === 'en_cours' && (
+                                  <Users className="w-3 h-3 ml-auto text-warning" />
+                                )}
+                              </div>
+                              <span className="text-[10px] text-muted-foreground truncate w-full text-left">
+                                {reunion.statut === 'terminee' ? 'Clôturée' : 
+                                 reunion.statut === 'planifie' ? 'Planifiée' : 
+                                 reunion.statut === 'en_cours' ? 'En cours' : reunion.statut}
+                              </span>
+                            </div>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-4">
+                Aucune réunion pour cet exercice
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Message explicatif selon le statut */}
+        {selectedReunion && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${
+            selectedReunion.statut === 'terminee' 
+              ? 'bg-success/10 text-success border border-success/30' 
+              : selectedReunion.statut === 'en_cours'
+              ? 'bg-warning/10 text-warning border border-warning/30'
+              : 'bg-primary/10 text-primary border border-primary/30'
+          }`}>
+            {selectedReunion.statut === 'terminee' && (
+              <p className="flex items-center gap-2">
+                <Lock className="w-4 h-4" />
+                <span>Réunion clôturée - Vue en lecture seule avec comparaison attendu/payé</span>
+              </p>
+            )}
+            {selectedReunion.statut === 'planifie' && (
+              <p className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                <span>Réunion planifiée - Projection des cotisations attendues + saisie possible</span>
+              </p>
+            )}
+            {selectedReunion.statut === 'en_cours' && (
+              <p className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                <span>Réunion en cours - Saisie des cotisations activée</span>
+              </p>
+            )}
+          </div>
+        )}
+
+        {selectedReunion ? (
+          <CotisationsReunionView 
+            reunionId={selectedReunion.id} 
+            reunionStatut={selectedReunion.statut}
+            reunionDate={selectedReunion.date_reunion}
+            exerciceId={currentExercice?.id}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              <Coins className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>Sélectionnez une réunion pour voir les cotisations</p>
+              <p className="text-sm mt-2">
+                • Réunion planifiée = projection des montants attendus<br/>
+                • Réunion terminée = bilan comparatif attendu/payé
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </TabsContent>
+      
+      <TabsContent value="cumul-annuel">
+        <CotisationsCumulAnnuel />
+      </TabsContent>
+    </Tabs>
   );
 }
 
@@ -771,62 +969,11 @@ export default function Reunions() {
         </TabsContent>
 
         <TabsContent value="cotisations">
-          <Tabs defaultValue="par-reunion" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="par-reunion">Par Réunion</TabsTrigger>
-              <TabsTrigger value="cumul-annuel">Suivi Annuel</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="par-reunion">
-              <Card className="mb-4">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Coins className="w-5 h-5" />
-                    <h3 className="font-semibold">Sélectionner une réunion</h3>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {reunions.slice(0, 12).map(reunion => (
-                      <Button
-                        key={reunion.id}
-                        variant={selectedReunion?.id === reunion.id ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedReunion(reunion)}
-                        className="justify-start truncate"
-                      >
-                        <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-                        <span className="truncate">
-                          {new Date(reunion.date_reunion).toLocaleDateString('fr-FR')}
-                        </span>
-                        {reunion.statut === 'terminee' && (
-                          <Badge className="ml-1 bg-success text-success-foreground text-xs">✓</Badge>
-                        )}
-                        {reunion.statut === 'planifie' && (
-                          <Badge variant="secondary" className="ml-1 text-xs">P</Badge>
-                        )}
-                      </Button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-              {selectedReunion ? (
-                <CotisationsReunionView 
-                  reunionId={selectedReunion.id} 
-                  reunionStatut={selectedReunion.statut}
-                  reunionDate={selectedReunion.date_reunion}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    Sélectionnez une réunion pour voir les cotisations collectées ou les projections
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="cumul-annuel">
-              <CotisationsCumulAnnuel />
-            </TabsContent>
-          </Tabs>
+          <CotisationsTabContent 
+            reunions={reunions}
+            selectedReunion={selectedReunion}
+            onSelectReunion={setSelectedReunion}
+          />
         </TabsContent>
 
         <TabsContent value="presences">
