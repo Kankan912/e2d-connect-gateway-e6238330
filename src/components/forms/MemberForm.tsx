@@ -19,7 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 const memberSchema = z.object({
   nom: z.string().min(2, "Nom requis"),
   prenom: z.string().min(2, "Prénom requis"),
-  telephone: z.string().min(10, "Téléphone requis"),
+  telephone: z.string().min(1, "Téléphone requis"),
   email: z.string().email("Email invalide").optional().or(z.literal("")),
   statut: z.enum(["actif", "inactif", "suspendu"]),
   est_membre_e2d: z.boolean(),
