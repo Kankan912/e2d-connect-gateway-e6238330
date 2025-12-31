@@ -2814,6 +2814,7 @@ export type Database = {
           seuil_rappel_presence: number | null
           statut: string
           sujet: string | null
+          taux_presence: number | null
           type_reunion: string | null
         }
         Insert: {
@@ -2828,6 +2829,7 @@ export type Database = {
           seuil_rappel_presence?: number | null
           statut?: string
           sujet?: string | null
+          taux_presence?: number | null
           type_reunion?: string | null
         }
         Update: {
@@ -2842,6 +2844,7 @@ export type Database = {
           seuil_rappel_presence?: number | null
           statut?: string
           sujet?: string | null
+          taux_presence?: number | null
           type_reunion?: string | null
         }
         Relationships: [

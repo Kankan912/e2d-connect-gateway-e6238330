@@ -29,7 +29,8 @@ import {
   BarChart3,
   UserCog,
   Mail,
-  Coins
+  Coins,
+  Lock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -286,6 +287,7 @@ interface Reunion {
   compte_rendu_url: string;
   lieu_membre_id?: string;
   beneficiaire_id?: string;
+  taux_presence?: number;
 }
 
 export default function Reunions() {
@@ -423,7 +425,7 @@ export default function Reunions() {
     </Card>
   );
 
-  const getStatutBadge = (statut: string) => {
+  const getStatutBadge = (statut: string, tauxPresence?: number) => {
     switch (statut) {
       case 'planifie':
         return (
@@ -441,10 +443,20 @@ export default function Reunions() {
         );
       case 'terminee':
         return (
-          <Badge className="bg-success text-success-foreground">
-            <FileText className="w-3 h-3 mr-1" />
-            Terminée
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge className="bg-success text-success-foreground font-semibold">
+              <Lock className="w-3 h-3 mr-1" />
+              Clôturée
+            </Badge>
+            {tauxPresence !== undefined && tauxPresence !== null && (
+              <Badge 
+                variant={tauxPresence >= 75 ? 'default' : tauxPresence >= 50 ? 'secondary' : 'destructive'}
+                className="text-xs"
+              >
+                {tauxPresence}%
+              </Badge>
+            )}
+          </div>
         );
       case 'annulee':
         return (
@@ -629,7 +641,7 @@ export default function Reunions() {
                         </TableCell>
                         
                         <TableCell>
-                          {getStatutBadge(reunion.statut)}
+                          {getStatutBadge(reunion.statut, reunion.taux_presence)}
                         </TableCell>
                         
                         <TableCell>

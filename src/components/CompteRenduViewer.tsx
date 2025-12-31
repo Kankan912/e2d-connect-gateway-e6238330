@@ -184,14 +184,22 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       doc.text(`Statut: ${reunion.statut === 'terminee' ? 'Terminée' : reunion.statut}`, margin, yPosition);
       yPosition += 12;
 
-      // Liste des présents
+      // Liste des présents, excusés, absents non excusés
       const presents = presences?.filter((p: any) => p.statut_presence === 'present') || [];
       const excuses = presences?.filter((p: any) => p.statut_presence === 'absent_excuse') || [];
+      const absentsNonExcuses = presences?.filter((p: any) => p.statut_presence === 'absent_non_excuse') || [];
       const retards = presences?.filter((p: any) => p.heure_arrivee) || [];
+      const totalMembres = presents.length + excuses.length + absentsNonExcuses.length;
+      const tauxPresence = totalMembres > 0 ? Math.round((presents.length / totalMembres) * 100) : 0;
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
-      doc.text(`PRÉSENCES (${presents.length} présent(s))`, margin, yPosition);
+      doc.text(`PRÉSENCES - Taux: ${tauxPresence}%`, margin, yPosition);
+      yPosition += 8;
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Présents: ${presents.length} | Excusés: ${excuses.length} | Absents non excusés: ${absentsNonExcuses.length}`, margin, yPosition);
       yPosition += 8;
 
       doc.setFont('helvetica', 'normal');
@@ -224,6 +232,17 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
         const retardsLines = doc.splitTextToSize(retardsText, pageWidth - 2 * margin);
         doc.text(retardsLines, margin, yPosition);
         yPosition += retardsLines.length * 5 + 5;
+      }
+
+      // Absents non excusés (en rouge)
+      if (absentsNonExcuses.length > 0) {
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(200, 0, 0); // Rouge
+        const absentsText = `Absents non excusés: ${absentsNonExcuses.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).join(', ')}`;
+        const absentsLines = doc.splitTextToSize(absentsText, pageWidth - 2 * margin);
+        doc.text(absentsLines, margin, yPosition);
+        yPosition += absentsLines.length * 5 + 5;
+        doc.setTextColor(0, 0, 0); // Reset couleur
       }
 
       yPosition += 5;
@@ -398,10 +417,15 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
   const pointsCRCount = comptesRendus?.length || 0;
   const presentsCount = presences?.filter((p: any) => p.statut_presence === 'present').length || 0;
+  const excusesCount = presences?.filter((p: any) => p.statut_presence === 'absent_excuse').length || 0;
+  const absentsNonExcusesCount = presences?.filter((p: any) => p.statut_presence === 'absent_non_excuse').length || 0;
   const sanctionsCount = sanctionsReunion?.length || 0;
   const cotisationsCount = cotisationsReunion?.length || 0;
   const epargnesCount = epargnesReunion?.length || 0;
   const aidesCount = aidesReunion?.length || 0;
+  
+  const totalMembresPresence = presentsCount + excusesCount + absentsNonExcusesCount;
+  const tauxPresenceCalcule = totalMembresPresence > 0 ? Math.round((presentsCount / totalMembresPresence) * 100) : 0;
 
   const totalCotisations = cotisationsReunion?.reduce((sum: number, c: any) => sum + (c.montant || 0), 0) || 0;
   const totalEpargnes = epargnesReunion?.reduce((sum: number, e: any) => sum + (e.montant || 0), 0) || 0;
@@ -459,8 +483,24 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 )}
                 <div className="flex items-center gap-2 text-sm">
                   <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Présents:</span>
-                  <Badge variant="outline">{presentsCount}</Badge>
+                  <span className="font-medium">Taux de présence:</span>
+                  <Badge variant={tauxPresenceCalcule >= 75 ? 'default' : tauxPresenceCalcule >= 50 ? 'secondary' : 'destructive'}>
+                    {tauxPresenceCalcule}%
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground">Présents:</span>
+                    <Badge variant="outline" className="bg-green-50 dark:bg-green-950">{presentsCount}</Badge>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground">Excusés:</span>
+                    <Badge variant="outline" className="bg-orange-50 dark:bg-orange-950">{excusesCount}</Badge>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground">Absents:</span>
+                    <Badge variant="destructive">{absentsNonExcusesCount}</Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -487,6 +527,32 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                         {presence.heure_arrivee && (
                           <Badge variant="outline" className="text-xs">Arrivée: {presence.heure_arrivee}</Badge>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Absents non excusés */}
+            {absentsNonExcusesCount > 0 && (
+              <Card className="border-destructive/50">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    Absents Non Excusés ({absentsNonExcusesCount})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2">
+                    {presences?.filter((p: any) => p.statut_presence === 'absent_non_excuse').map((presence: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 text-sm"
+                      >
+                        <span className="text-destructive">
+                          {presence.membres?.prenom} {presence.membres?.nom}
+                        </span>
                       </div>
                     ))}
                   </div>
