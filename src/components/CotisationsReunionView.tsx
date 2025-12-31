@@ -2,19 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Coins, TrendingUp, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Coins, TrendingUp, CheckCircle, Clock, AlertCircle, AlertTriangle, MinusCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import CotisationSaisieForm from "@/components/forms/CotisationSaisieForm";
 
 interface CotisationsReunionViewProps {
   reunionId: string;
   reunionStatut: string;
   reunionDate: string;
+  exerciceId?: string;
 }
 
-export default function CotisationsReunionView({ reunionId, reunionStatut, reunionDate }: CotisationsReunionViewProps) {
-  // Charger les cotisations de la réunion (pour réunions passées)
+export default function CotisationsReunionView({ reunionId, reunionStatut, reunionDate, exerciceId }: CotisationsReunionViewProps) {
+  const isEditable = reunionStatut === 'planifie' || reunionStatut === 'en_cours';
+  const showComparative = reunionStatut === 'terminee';
+
+  // Charger les cotisations de la réunion
   const { data: cotisationsPayees, isLoading: loadingCotisations } = useQuery({
     queryKey: ['cotisations-reunion', reunionId],
     queryFn: async () => {
@@ -32,11 +36,10 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
       
       if (error) throw error;
       return data;
-    },
-    enabled: reunionStatut === 'terminee'
+    }
   });
 
-  // Charger les membres E2D actifs et types de cotisations (pour projections)
+  // Charger les membres E2D actifs
   const { data: membresE2D, isLoading: loadingMembres } = useQuery({
     queryKey: ['membres-e2d-actifs'],
     queryFn: async () => {
@@ -49,10 +52,10 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
       
       if (error) throw error;
       return data;
-    },
-    enabled: reunionStatut === 'planifie'
+    }
   });
 
+  // Charger les types obligatoires
   const { data: typesObligatoires, isLoading: loadingTypes } = useQuery({
     queryKey: ['types-cotisations-obligatoires'],
     queryFn: async () => {
@@ -63,8 +66,7 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
       
       if (error) throw error;
       return data;
-    },
-    enabled: reunionStatut === 'planifie'
+    }
   });
 
   // Charger les montants personnalisés par membre
@@ -78,8 +80,7 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
       
       if (error) throw error;
       return data;
-    },
-    enabled: reunionStatut === 'planifie'
+    }
   });
 
   const isLoading = loadingCotisations || loadingMembres || loadingTypes;
@@ -98,103 +99,157 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
     );
   }
 
-  // Vue pour réunion TERMINÉE - afficher les cotisations payées
-  if (reunionStatut === 'terminee') {
-    const totalPaye = cotisationsPayees?.reduce((sum, c) => sum + (c.montant || 0), 0) || 0;
-    const nbCotisations = cotisationsPayees?.length || 0;
+  // Calculer le montant attendu pour un membre
+  const getMontantAttendu = (membreId: string) => {
+    return typesObligatoires?.reduce((total, type) => {
+      const configPerso = cotisationsMembres?.find(
+        cm => cm.membre_id === membreId && cm.type_cotisation_id === type.id
+      );
+      return total + (configPerso?.montant_personnalise || type.montant_defaut || 0);
+    }, 0) || 0;
+  };
 
-    // Grouper par type de cotisation
-    const parType = cotisationsPayees?.reduce((acc, c) => {
-      const typeNom = c.type?.nom || 'Autre';
-      if (!acc[typeNom]) {
-        acc[typeNom] = { total: 0, count: 0 };
-      }
-      acc[typeNom].total += c.montant || 0;
-      acc[typeNom].count += 1;
-      return acc;
-    }, {} as Record<string, { total: number; count: number }>);
+  // Vue COMPARATIVE pour réunion TERMINÉE
+  if (showComparative) {
+    const totalPaye = cotisationsPayees?.reduce((sum, c) => sum + (c.montant || 0), 0) || 0;
+
+    // Créer la vue comparative par membre
+    const comparatif = membresE2D?.map(membre => {
+      const attendu = getMontantAttendu(membre.id);
+      const cotisationsMembre = cotisationsPayees?.filter(c => c.membre?.id === membre.id) || [];
+      const paye = cotisationsMembre.reduce((sum, c) => sum + (c.montant || 0), 0);
+      const ecart = paye - attendu;
+      
+      let statut: 'complet' | 'partiel' | 'non_paye' = 'non_paye';
+      if (paye >= attendu && attendu > 0) statut = 'complet';
+      else if (paye > 0) statut = 'partiel';
+      
+      return { membre, attendu, paye, ecart, statut };
+    }) || [];
+
+    const totalAttendu = comparatif.reduce((sum, c) => sum + c.attendu, 0);
+    const totalEcart = totalPaye - totalAttendu;
+    const membresComplets = comparatif.filter(c => c.statut === 'complet').length;
+    const membresPartiels = comparatif.filter(c => c.statut === 'partiel').length;
+    const membresNonPayes = comparatif.filter(c => c.statut === 'non_paye').length;
 
     return (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Coins className="h-5 w-5 text-primary" />
-            Cotisations Collectées
+            Bilan des Cotisations
             <Badge className="bg-success text-success-foreground ml-2">
-              Réunion terminée
+              Réunion clôturée
             </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Résumé */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Résumé avec comparaison */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-warning/10 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-warning">{totalAttendu.toLocaleString()} €</p>
+              <p className="text-sm text-muted-foreground">Total attendu</p>
+            </div>
             <div className="bg-success/10 rounded-lg p-4 text-center">
               <p className="text-2xl font-bold text-success">{totalPaye.toLocaleString()} €</p>
               <p className="text-sm text-muted-foreground">Total collecté</p>
             </div>
-            <div className="bg-primary/10 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-primary">{nbCotisations}</p>
-              <p className="text-sm text-muted-foreground">Cotisations payées</p>
+            <div className={`rounded-lg p-4 text-center ${totalEcart >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
+              <p className={`text-2xl font-bold ${totalEcart >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {totalEcart >= 0 ? '+' : ''}{totalEcart.toLocaleString()} €
+              </p>
+              <p className="text-sm text-muted-foreground">Écart</p>
             </div>
             <div className="bg-muted rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold">{Object.keys(parType || {}).length}</p>
-              <p className="text-sm text-muted-foreground">Types de cotisations</p>
+              <p className="text-2xl font-bold">{membresE2D?.length || 0}</p>
+              <p className="text-sm text-muted-foreground">Membres E2D</p>
             </div>
           </div>
 
-          {/* Par type de cotisation */}
-          {parType && Object.keys(parType).length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm text-muted-foreground">Par type de cotisation</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {Object.entries(parType).map(([type, data]) => (
-                  <div key={type} className="bg-muted/50 rounded-lg p-3">
-                    <p className="font-medium text-sm">{type}</p>
-                    <p className="text-lg font-bold">{data.total.toLocaleString()} €</p>
-                    <p className="text-xs text-muted-foreground">{data.count} paiement(s)</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Statut des membres */}
+          <div className="flex flex-wrap gap-3">
+            <Badge className="bg-success/20 text-success border-success/30 px-3 py-1">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              {membresComplets} à jour
+            </Badge>
+            <Badge className="bg-warning/20 text-warning border-warning/30 px-3 py-1">
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              {membresPartiels} partiels
+            </Badge>
+            <Badge className="bg-destructive/20 text-destructive border-destructive/30 px-3 py-1">
+              <MinusCircle className="w-3 h-3 mr-1" />
+              {membresNonPayes} non payés
+            </Badge>
+          </div>
 
-          {/* Tableau détaillé */}
-          {cotisationsPayees && cotisationsPayees.length > 0 ? (
+          {/* Tableau comparatif */}
+          {comparatif.length > 0 ? (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Membre</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Montant</TableHead>
+                    <TableHead className="text-right">Attendu</TableHead>
+                    <TableHead className="text-right">Payé</TableHead>
+                    <TableHead className="text-right">Écart</TableHead>
                     <TableHead>Statut</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {cotisationsPayees.map((cotisation) => (
-                    <TableRow key={cotisation.id}>
+                  {comparatif.map((row) => (
+                    <TableRow key={row.membre.id}>
                       <TableCell className="font-medium">
-                        {cotisation.membre?.prenom} {cotisation.membre?.nom}
+                        {row.membre.prenom} {row.membre.nom}
                       </TableCell>
-                      <TableCell>{cotisation.type?.nom || '-'}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {row.attendu.toLocaleString()} €
+                      </TableCell>
                       <TableCell className="text-right font-semibold">
-                        {cotisation.montant?.toLocaleString()} €
+                        {row.paye.toLocaleString()} €
+                      </TableCell>
+                      <TableCell className={`text-right font-semibold ${row.ecart >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {row.ecart >= 0 ? '+' : ''}{row.ecart.toLocaleString()} €
                       </TableCell>
                       <TableCell>
-                        <Badge className="bg-success text-success-foreground">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Payé
-                        </Badge>
+                        {row.statut === 'complet' && (
+                          <Badge className="bg-success text-success-foreground">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Complet
+                          </Badge>
+                        )}
+                        {row.statut === 'partiel' && (
+                          <Badge className="bg-warning text-warning-foreground">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            Partiel
+                          </Badge>
+                        )}
+                        {row.statut === 'non_paye' && (
+                          <Badge variant="destructive">
+                            <MinusCircle className="w-3 h-3 mr-1" />
+                            Non payé
+                          </Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
+                  {/* Ligne totaux */}
+                  <TableRow className="bg-muted/50 font-bold">
+                    <TableCell>TOTAL</TableCell>
+                    <TableCell className="text-right">{totalAttendu.toLocaleString()} €</TableCell>
+                    <TableCell className="text-right">{totalPaye.toLocaleString()} €</TableCell>
+                    <TableCell className={`text-right ${totalEcart >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {totalEcart >= 0 ? '+' : ''}{totalEcart.toLocaleString()} €
+                    </TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>Aucune cotisation enregistrée pour cette réunion</p>
+              <p>Aucun membre E2D configuré</p>
             </div>
           )}
         </CardContent>
@@ -202,12 +257,11 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
     );
   }
 
-  // Vue pour réunion PLANIFIÉE - afficher les projections
-  if (reunionStatut === 'planifie') {
+  // Vue pour réunion PLANIFIÉE ou EN_COURS - projection + formulaire de saisie
+  if (reunionStatut === 'planifie' || reunionStatut === 'en_cours') {
     // Calculer les projections par membre
     const projections = membresE2D?.map(membre => {
       const montantsAttendus = typesObligatoires?.map(type => {
-        // Chercher montant personnalisé
         const configPerso = cotisationsMembres?.find(
           cm => cm.membre_id === membre.id && cm.type_cotisation_id === type.id
         );
@@ -217,130 +271,169 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
       
       const totalAttendu = montantsAttendus.reduce((sum, m) => sum + m.montant, 0);
       
+      // Vérifier si déjà payé
+      const cotisationsMembre = cotisationsPayees?.filter(c => c.membre?.id === membre.id) || [];
+      const totalPaye = cotisationsMembre.reduce((sum, c) => sum + (c.montant || 0), 0);
+      
       return {
         membre,
         montantsAttendus,
-        totalAttendu
+        totalAttendu,
+        totalPaye
       };
     }) || [];
 
     const totalProjection = projections.reduce((sum, p) => sum + p.totalAttendu, 0);
+    const totalDejaCollecte = cotisationsPayees?.reduce((sum, c) => sum + (c.montant || 0), 0) || 0;
     const nbMembres = membresE2D?.length || 0;
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-warning" />
-            Projection des Cotisations
-            <Badge variant="secondary" className="ml-2">
-              <Clock className="w-3 h-3 mr-1" />
-              Réunion planifiée
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Résumé projection */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-warning/10 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-warning">{totalProjection.toLocaleString()} €</p>
-              <p className="text-sm text-muted-foreground">Total attendu</p>
-            </div>
-            <div className="bg-primary/10 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-primary">{nbMembres}</p>
-              <p className="text-sm text-muted-foreground">Membres E2D</p>
-            </div>
-            <div className="bg-muted rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold">{typesObligatoires?.length || 0}</p>
-              <p className="text-sm text-muted-foreground">Types obligatoires</p>
-            </div>
-          </div>
+      <div className="space-y-4">
+        {/* Formulaire de saisie pour réunions non clôturées */}
+        {isEditable && (
+          <CotisationSaisieForm 
+            reunionId={reunionId} 
+            exerciceId={exerciceId}
+          />
+        )}
 
-          {/* Types de cotisations obligatoires */}
-          {typesObligatoires && typesObligatoires.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm text-muted-foreground">Cotisations obligatoires</h4>
-              <div className="flex flex-wrap gap-2">
-                {typesObligatoires.map(type => (
-                  <Badge key={type.id} variant="outline" className="px-3 py-1">
-                    {type.nom}: {type.montant_defaut?.toLocaleString() || 0} €
-                  </Badge>
-                ))}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-warning" />
+              {reunionStatut === 'en_cours' ? 'Suivi des Cotisations' : 'Projection des Cotisations'}
+              <Badge variant="secondary" className="ml-2">
+                <Clock className="w-3 h-3 mr-1" />
+                {reunionStatut === 'en_cours' ? 'Réunion en cours' : 'Réunion planifiée'}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Résumé projection */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-warning/10 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-warning">{totalProjection.toLocaleString()} €</p>
+                <p className="text-sm text-muted-foreground">Total attendu</p>
+              </div>
+              {totalDejaCollecte > 0 && (
+                <div className="bg-success/10 rounded-lg p-4 text-center">
+                  <p className="text-2xl font-bold text-success">{totalDejaCollecte.toLocaleString()} €</p>
+                  <p className="text-sm text-muted-foreground">Déjà collecté</p>
+                </div>
+              )}
+              <div className="bg-primary/10 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold text-primary">{nbMembres}</p>
+                <p className="text-sm text-muted-foreground">Membres E2D</p>
+              </div>
+              <div className="bg-muted rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold">{typesObligatoires?.length || 0}</p>
+                <p className="text-sm text-muted-foreground">Types obligatoires</p>
               </div>
             </div>
-          )}
 
-          {/* Tableau des projections par membre */}
-          {projections.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Membre</TableHead>
-                    {typesObligatoires?.map(type => (
-                      <TableHead key={type.id} className="text-right">{type.nom}</TableHead>
-                    ))}
-                    <TableHead className="text-right font-bold">Total Attendu</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {projections.map((projection) => (
-                    <TableRow key={projection.membre.id}>
-                      <TableCell className="font-medium">
-                        {projection.membre.prenom} {projection.membre.nom}
-                      </TableCell>
-                      {projection.montantsAttendus.map((m, idx) => (
-                        <TableCell key={idx} className="text-right">
-                          <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
-                            {m.montant.toLocaleString()} €
-                          </Badge>
-                        </TableCell>
-                      ))}
-                      <TableCell className="text-right">
-                        <span className="font-bold text-warning">
-                          {projection.totalAttendu.toLocaleString()} €
-                        </span>
-                      </TableCell>
-                    </TableRow>
+            {/* Types de cotisations obligatoires */}
+            {typesObligatoires && typesObligatoires.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm text-muted-foreground">Cotisations obligatoires</h4>
+                <div className="flex flex-wrap gap-2">
+                  {typesObligatoires.map(type => (
+                    <Badge key={type.id} variant="outline" className="px-3 py-1">
+                      {type.nom}: {type.montant_defaut?.toLocaleString() || 0} €
+                    </Badge>
                   ))}
-                  {/* Ligne de total */}
-                  <TableRow className="bg-muted/50 font-bold">
-                    <TableCell>TOTAL</TableCell>
-                    {typesObligatoires?.map(type => {
-                      const totalType = projections.reduce((sum, p) => {
-                        const m = p.montantsAttendus.find(ma => ma.type === type.nom);
-                        return sum + (m?.montant || 0);
-                      }, 0);
-                      return (
-                        <TableCell key={type.id} className="text-right">
-                          {totalType.toLocaleString()} €
+                </div>
+              </div>
+            )}
+
+            {/* Tableau des projections par membre */}
+            {projections.length > 0 ? (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Membre</TableHead>
+                      {typesObligatoires?.map(type => (
+                        <TableHead key={type.id} className="text-right">{type.nom}</TableHead>
+                      ))}
+                      <TableHead className="text-right font-bold">Attendu</TableHead>
+                      {totalDejaCollecte > 0 && <TableHead className="text-right">Payé</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {projections.map((projection) => (
+                      <TableRow key={projection.membre.id}>
+                        <TableCell className="font-medium">
+                          {projection.membre.prenom} {projection.membre.nom}
                         </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-right text-lg text-warning">
-                      {totalProjection.toLocaleString()} €
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>Aucun membre E2D actif ou cotisation obligatoire configurée</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                        {projection.montantsAttendus.map((m, idx) => (
+                          <TableCell key={idx} className="text-right">
+                            <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
+                              {m.montant.toLocaleString()} €
+                            </Badge>
+                          </TableCell>
+                        ))}
+                        <TableCell className="text-right">
+                          <span className="font-bold text-warning">
+                            {projection.totalAttendu.toLocaleString()} €
+                          </span>
+                        </TableCell>
+                        {totalDejaCollecte > 0 && (
+                          <TableCell className="text-right">
+                            {projection.totalPaye > 0 ? (
+                              <Badge className="bg-success text-success-foreground">
+                                {projection.totalPaye.toLocaleString()} €
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                    {/* Ligne de total */}
+                    <TableRow className="bg-muted/50 font-bold">
+                      <TableCell>TOTAL</TableCell>
+                      {typesObligatoires?.map(type => {
+                        const totalType = projections.reduce((sum, p) => {
+                          const m = p.montantsAttendus.find(ma => ma.type === type.nom);
+                          return sum + (m?.montant || 0);
+                        }, 0);
+                        return (
+                          <TableCell key={type.id} className="text-right">
+                            {totalType.toLocaleString()} €
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className="text-right text-lg text-warning">
+                        {totalProjection.toLocaleString()} €
+                      </TableCell>
+                      {totalDejaCollecte > 0 && (
+                        <TableCell className="text-right text-success">
+                          {totalDejaCollecte.toLocaleString()} €
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <AlertCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Aucun membre E2D actif ou cotisation obligatoire configurée</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  // Pour les autres statuts (en_cours, annulee)
+  // Pour les autres statuts (annulee)
   return (
     <Card>
       <CardContent className="py-8 text-center text-muted-foreground">
         <Coins className="w-12 h-12 mx-auto mb-2 opacity-50" />
-        <p>Sélectionnez une réunion planifiée ou terminée pour voir les cotisations</p>
+        <p>Cette réunion a été annulée</p>
       </CardContent>
     </Card>
   );
