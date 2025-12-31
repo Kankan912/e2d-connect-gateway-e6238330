@@ -203,10 +203,18 @@ export default function ClotureReunionModal({
 
       if (emailError) throw emailError;
 
-      // === ÉTAPE 6: Mettre à jour le statut de la réunion à "terminee" ===
+      // === ÉTAPE 6: Calculer le taux de présence et mettre à jour le statut ===
+      const totalMembresE2D = membresE2D?.length || 0;
+      const tauxPresenceCalcule = totalMembresE2D > 0 
+        ? Math.round((presentsCount / totalMembresE2D) * 100 * 10) / 10  // Arrondi 1 décimale
+        : 0;
+
       const { error: updateError } = await supabase
         .from('reunions')
-        .update({ statut: 'terminee' })
+        .update({ 
+          statut: 'terminee',
+          taux_presence: tauxPresenceCalcule 
+        })
         .eq('id', reunionId);
 
       if (updateError) throw updateError;
