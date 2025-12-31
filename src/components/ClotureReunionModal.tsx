@@ -144,7 +144,6 @@ export default function ClotureReunionModal({
           membre_id: abs.membre_id,
           type_sanction: 'absence',
           montant_amende: sanctionConfig.montant || 500,
-          montant_paye: 0,
           motif: 'Absence non excusée à la réunion',
           statut: 'impaye',
         }));
