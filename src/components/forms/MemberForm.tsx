@@ -91,21 +91,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
 
   const form = useForm<MemberFormData>({
     resolver: zodResolver(memberSchema),
-    defaultValues: member ? {
-      nom: member.nom,
-      prenom: member.prenom,
-      telephone: member.telephone,
-      email: member.email || "",
-      statut: member.statut as "actif" | "inactif" | "suspendu",
-      est_membre_e2d: member.est_membre_e2d || false,
-      est_adherent_phoenix: member.est_adherent_phoenix || false,
-      equipe_e2d: member.equipe_e2d || "",
-      equipe_phoenix: member.equipe_phoenix || "",
-      equipe_jaune_rouge: ((member as any).equipe_jaune_rouge as "Jaune" | "Rouge" | "none") || "none",
-      fonction: member.fonction || "none",
-      photo_url: member.photo_url || "",
-      role_id: "",
-    } : {
+    defaultValues: {
       nom: "",
       prenom: "",
       telephone: "",
@@ -122,17 +108,56 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
     },
   });
 
-  // Met à jour le form quand currentRoleId change
-  useQuery({
-    queryKey: ['sync-role-to-form', currentRoleId],
-    queryFn: async () => {
-      if (currentRoleId) {
-        form.setValue('role_id', currentRoleId);
+  // Réinitialiser le formulaire quand le modal s'ouvre ou le membre change
+  useEffect(() => {
+    if (open) {
+      if (member) {
+        // Mode édition : pré-remplir avec les données du membre
+        form.reset({
+          nom: member.nom,
+          prenom: member.prenom,
+          telephone: member.telephone,
+          email: member.email || "",
+          statut: member.statut as "actif" | "inactif" | "suspendu",
+          est_membre_e2d: member.est_membre_e2d || false,
+          est_adherent_phoenix: member.est_adherent_phoenix || false,
+          equipe_e2d: member.equipe_e2d || "",
+          equipe_phoenix: member.equipe_phoenix || "",
+          equipe_jaune_rouge: ((member as any).equipe_jaune_rouge as "Jaune" | "Rouge" | "none") || "none",
+          fonction: member.fonction || "none",
+          photo_url: member.photo_url || "",
+          role_id: currentRoleId || "",
+        });
+        setPreviewUrl(member.photo_url || null);
+      } else {
+        // Mode création : réinitialiser à vide
+        form.reset({
+          nom: "",
+          prenom: "",
+          telephone: "",
+          email: "",
+          statut: "actif",
+          est_membre_e2d: false,
+          est_adherent_phoenix: false,
+          equipe_e2d: "",
+          equipe_phoenix: "",
+          equipe_jaune_rouge: "none",
+          fonction: "none",
+          photo_url: "",
+          role_id: "",
+        });
+        setPreviewUrl(null);
+        setCurrentRoleId(null);
       }
-      return null;
-    },
-    enabled: !!currentRoleId,
-  });
+    }
+  }, [open, member, form]);
+
+  // Met à jour le role_id quand currentRoleId est chargé
+  useEffect(() => {
+    if (currentRoleId && open && member) {
+      form.setValue('role_id', currentRoleId);
+    }
+  }, [currentRoleId, open, member, form]);
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -321,7 +346,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Statut *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
@@ -343,7 +368,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fonction</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
+                    <Select onValueChange={field.onChange} value={field.value || "none"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Choisir une fonction" />
@@ -403,7 +428,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Équipe E2D</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
+                    <Select onValueChange={field.onChange} value={field.value || "none"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Choisir une équipe" />
@@ -431,7 +456,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Équipe Phoenix</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value || "none"}>
+                      <Select onValueChange={field.onChange} value={field.value || "none"}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Choisir une équipe" />
@@ -454,7 +479,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Équipe Jaune/Rouge</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Choisir" />
