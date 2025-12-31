@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Coins, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface CotisationSaisieFormProps {
   reunionId: string;
@@ -22,6 +23,7 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
   const [selectedMembre, setSelectedMembre] = useState<string>("");
   const [selectedType, setSelectedType] = useState<string>("");
   const [montant, setMontant] = useState<string>("");
+  const [selectedExercice, setSelectedExercice] = useState<string>(exerciceId || "");
 
   // Charger les membres E2D actifs
   const { data: membres } = useQuery({
@@ -66,6 +68,28 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
       return data;
     }
   });
+
+  // Charger les exercices
+  const { data: exercices } = useQuery({
+    queryKey: ['exercices-saisie'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exercices')
+        .select('id, nom, statut')
+        .order('date_debut', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  // Pré-sélectionner l'exercice actif par défaut
+  useEffect(() => {
+    if (!selectedExercice && exercices) {
+      const actif = exercices.find(e => e.statut === 'actif');
+      if (actif) setSelectedExercice(actif.id);
+    }
+  }, [exercices, selectedExercice]);
 
   // Mutation pour créer la cotisation
   const createCotisation = useMutation({
@@ -117,8 +141,8 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
   };
 
   const handleSubmit = () => {
-    if (!selectedMembre || !selectedType || !montant) {
-      toast({ title: "Erreur", description: "Veuillez remplir tous les champs", variant: "destructive" });
+    if (!selectedMembre || !selectedType || !montant || !selectedExercice) {
+      toast({ title: "Erreur", description: "Veuillez remplir tous les champs (y compris l'exercice)", variant: "destructive" });
       return;
     }
 
@@ -127,7 +151,7 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
       type_cotisation_id: selectedType,
       montant: parseFloat(montant),
       reunion_id: reunionId,
-      exercice_id: exerciceId
+      exercice_id: selectedExercice
     });
   };
 
@@ -140,7 +164,7 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           <div className="space-y-1">
             <Label className="text-xs">Membre</Label>
             <Select value={selectedMembre} onValueChange={setSelectedMembre}>
@@ -174,6 +198,29 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
           </div>
 
           <div className="space-y-1">
+            <Label className="text-xs flex items-center gap-1">
+              Exercice
+              {exercices?.find(e => e.id === selectedExercice)?.statut === 'actif' && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-green-500/10 text-green-600 border-green-500/30">
+                  Actif
+                </Badge>
+              )}
+            </Label>
+            <Select value={selectedExercice} onValueChange={setSelectedExercice}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Exercice..." />
+              </SelectTrigger>
+              <SelectContent>
+                {exercices?.map(e => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.nom}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
             <Label className="text-xs">Montant (€)</Label>
             <Input
               type="number"
@@ -186,7 +233,7 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
 
           <Button 
             onClick={handleSubmit} 
-            disabled={createCotisation.isPending || !selectedMembre || !selectedType || !montant}
+            disabled={createCotisation.isPending || !selectedMembre || !selectedType || !montant || !selectedExercice}
             size="sm"
             className="h-9"
           >
