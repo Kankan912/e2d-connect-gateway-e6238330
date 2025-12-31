@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRoles } from "@/hooks/useRoles";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
+import { Loader2, CheckCircle, XCircle } from "lucide-react";
 
 const RESOURCES = [
   { id: 'membres', label: 'Membres' },
@@ -32,6 +34,8 @@ interface PermissionsMatrixProps {
 export const PermissionsMatrix = ({ roleId }: PermissionsMatrixProps) => {
   const { useRolePermissions, updateRolePermission } = useRoles();
   const { data: permissions, isLoading } = useRolePermissions(roleId);
+  const [savingCell, setSavingCell] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<Record<string, 'success' | 'error' | null>>({});
 
   const hasPermission = (resource: string, permission: string) => {
     return permissions?.some(
@@ -39,13 +43,34 @@ export const PermissionsMatrix = ({ roleId }: PermissionsMatrixProps) => {
     ) || false;
   };
 
-  const handleToggle = (resource: string, permission: string, granted: boolean) => {
-    updateRolePermission.mutate({ roleId, resource, permission, granted });
+  const handleToggle = async (resource: string, permission: string, granted: boolean) => {
+    const cellKey = `${resource}-${permission}`;
+    setSavingCell(cellKey);
+    setSaveStatus(prev => ({ ...prev, [cellKey]: null }));
+    
+    try {
+      await updateRolePermission.mutateAsync({ roleId, resource, permission, granted });
+      setSaveStatus(prev => ({ ...prev, [cellKey]: 'success' }));
+      // Clear success status after 2 seconds
+      setTimeout(() => {
+        setSaveStatus(prev => ({ ...prev, [cellKey]: null }));
+      }, 2000);
+    } catch (error) {
+      console.error('Erreur sauvegarde permission:', error);
+      setSaveStatus(prev => ({ ...prev, [cellKey]: 'error' }));
+      // Keep error status visible longer
+      setTimeout(() => {
+        setSaveStatus(prev => ({ ...prev, [cellKey]: null }));
+      }, 5000);
+    } finally {
+      setSavingCell(null);
+    }
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" />
         <p className="text-muted-foreground">Chargement des permissions...</p>
       </div>
     );
@@ -68,25 +93,42 @@ export const PermissionsMatrix = ({ roleId }: PermissionsMatrixProps) => {
           {RESOURCES.map(resource => (
             <TableRow key={resource.id}>
               <TableCell className="font-medium">{resource.label}</TableCell>
-              {PERMISSIONS.map(perm => (
-                <TableCell key={perm.id} className="text-center">
-                  <div className="flex items-center justify-center">
-                    <Checkbox
-                      id={`${resource.id}-${perm.id}`}
-                      checked={hasPermission(resource.id, perm.id)}
-                      onCheckedChange={(checked) => 
-                        handleToggle(resource.id, perm.id, checked as boolean)
-                      }
-                    />
-                    <Label 
-                      htmlFor={`${resource.id}-${perm.id}`}
-                      className="sr-only"
-                    >
-                      {`${perm.label} ${resource.label}`}
-                    </Label>
-                  </div>
-                </TableCell>
-              ))}
+              {PERMISSIONS.map(perm => {
+                const cellKey = `${resource.id}-${perm.id}`;
+                const isSaving = savingCell === cellKey;
+                const status = saveStatus[cellKey];
+                
+                return (
+                  <TableCell key={perm.id} className="text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      {isSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      ) : (
+                        <Checkbox
+                          id={cellKey}
+                          checked={hasPermission(resource.id, perm.id)}
+                          onCheckedChange={(checked) => 
+                            handleToggle(resource.id, perm.id, checked as boolean)
+                          }
+                          disabled={updateRolePermission.isPending}
+                        />
+                      )}
+                      {status === 'success' && (
+                        <CheckCircle className="h-3 w-3 text-green-500" />
+                      )}
+                      {status === 'error' && (
+                        <XCircle className="h-3 w-3 text-red-500" />
+                      )}
+                      <Label 
+                        htmlFor={cellKey}
+                        className="sr-only"
+                      >
+                        {`${perm.label} ${resource.label}`}
+                      </Label>
+                    </div>
+                  </TableCell>
+                );
+              })}
             </TableRow>
           ))}
         </TableBody>
