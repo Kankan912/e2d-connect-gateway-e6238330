@@ -189,21 +189,21 @@ export const useCaisseDetails = (type: DetailType | null, enabled: boolean) => {
             .from('reunions_sanctions')
             .select(`
               id,
-              date_sanction,
+              created_at,
               motif,
-              montant,
+              montant_amende,
               statut,
               membre:membre_id(nom, prenom)
             `)
             .neq('statut', 'paye')
-            .order('date_sanction', { ascending: false });
+            .order('created_at', { ascending: false });
 
           if (error) throw error;
           return (data || []).map((sanction: any) => ({
             id: sanction.id,
-            date: sanction.date_sanction,
-            libelle: sanction.motif,
-            montant: sanction.montant,
+            date: sanction.created_at,
+            libelle: sanction.motif || 'Sanction',
+            montant: sanction.montant_amende || 0,
             type: sanction.statut,
             membre_nom: sanction.membre ? `${sanction.membre.prenom} ${sanction.membre.nom}` : undefined
           }));

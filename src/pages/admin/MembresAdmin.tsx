@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Users, Plus, Edit, Trash2, Search, Download, Mail, Phone, CheckCircle, Clock } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,12 +89,33 @@ export default function MembresAdmin() {
     setShowForm(true);
   };
 
-  const handleFormSubmit = (data: any) => {
+  const handleFormSubmit = async (data: any) => {
+    const { role_id, ...memberData } = data;
+    
     if (selectedMember) {
       updateMember.mutate(
-        { id: selectedMember.id, data },
+        { id: selectedMember.id, data: memberData },
         {
-          onSuccess: () => {
+          onSuccess: async () => {
+            // Gérer le rôle si sélectionné
+            if (role_id && role_id !== 'none') {
+              // Supprimer l'ancien rôle
+              await supabase
+                .from('membres_roles')
+                .delete()
+                .eq('membre_id', selectedMember.id);
+              
+              // Insérer le nouveau rôle
+              await supabase
+                .from('membres_roles')
+                .insert({ membre_id: selectedMember.id, role_id });
+            } else if (role_id === 'none') {
+              // Supprimer le rôle si "Aucun" sélectionné
+              await supabase
+                .from('membres_roles')
+                .delete()
+                .eq('membre_id', selectedMember.id);
+            }
             setShowForm(false);
             setSelectedMember(null);
           },
@@ -101,9 +123,15 @@ export default function MembresAdmin() {
       );
     } else {
       createMember.mutate(
-        { ...data, date_inscription: new Date().toISOString().split('T')[0] },
+        { ...memberData, date_inscription: new Date().toISOString().split('T')[0] },
         {
-          onSuccess: () => {
+          onSuccess: async (newMember: any) => {
+            // Assigner le rôle si sélectionné
+            if (role_id && role_id !== 'none' && newMember?.id) {
+              await supabase
+                .from('membres_roles')
+                .insert({ membre_id: newMember.id, role_id });
+            }
             setShowForm(false);
           },
         }
