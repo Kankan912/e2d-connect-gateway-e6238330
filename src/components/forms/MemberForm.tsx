@@ -10,10 +10,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Member } from "@/hooks/useMembers";
 import { useRoles } from "@/hooks/useRoles";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useRef } from "react";
-import { Upload, User, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Upload, User, Loader2, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useQuery } from "@tanstack/react-query";
 
 const memberSchema = z.object({
   nom: z.string().min(2, "Nom requis"),
@@ -28,6 +29,7 @@ const memberSchema = z.object({
   equipe_jaune_rouge: z.enum(["Jaune", "Rouge", "none"]).optional(),
   fonction: z.string().optional(),
   photo_url: z.string().optional(),
+  role_id: z.string().optional(),
 });
 
 type MemberFormData = z.infer<typeof memberSchema>;
@@ -65,7 +67,27 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(member?.photo_url || null);
+  const [currentRoleId, setCurrentRoleId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Récupérer le rôle actuel du membre si édition
+  useQuery({
+    queryKey: ['membre-role', member?.id],
+    queryFn: async () => {
+      if (!member?.id) return null;
+      const { data, error } = await supabase
+        .from('membres_roles')
+        .select('role_id')
+        .eq('membre_id', member.id)
+        .maybeSingle();
+      if (error) throw error;
+      if (data) {
+        setCurrentRoleId(data.role_id);
+      }
+      return data;
+    },
+    enabled: !!member?.id && open,
+  });
 
   const form = useForm<MemberFormData>({
     resolver: zodResolver(memberSchema),
@@ -82,6 +104,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
       equipe_jaune_rouge: ((member as any).equipe_jaune_rouge as "Jaune" | "Rouge" | "none") || "none",
       fonction: member.fonction || "none",
       photo_url: member.photo_url || "",
+      role_id: "",
     } : {
       nom: "",
       prenom: "",
@@ -95,7 +118,20 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
       equipe_jaune_rouge: "none",
       fonction: "none",
       photo_url: "",
+      role_id: "",
     },
+  });
+
+  // Met à jour le form quand currentRoleId change
+  useQuery({
+    queryKey: ['sync-role-to-form', currentRoleId],
+    queryFn: async () => {
+      if (currentRoleId) {
+        form.setValue('role_id', currentRoleId);
+      }
+      return null;
+    },
+    enabled: !!currentRoleId,
   });
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -436,6 +472,46 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
                 />
               </div>
             )}
+
+            {/* Sélection du rôle système */}
+            <div className="space-y-3 border p-4 rounded-lg border-primary/30 bg-primary/5">
+              <h4 className="font-medium flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Rôle Système (Permissions)
+              </h4>
+              <FormField
+                control={form.control}
+                name="role_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rôle attribué</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || currentRoleId || ""}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionner un rôle" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Aucun rôle</SelectItem>
+                        {rolesLoading ? (
+                          <SelectItem value="loading" disabled>Chargement...</SelectItem>
+                        ) : (
+                          roles?.map((role) => (
+                            <SelectItem key={role.id} value={role.id}>
+                              {formatRoleName(role.name)}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Le rôle détermine les permissions d'accès au système
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

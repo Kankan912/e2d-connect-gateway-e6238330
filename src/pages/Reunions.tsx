@@ -47,6 +47,7 @@ import PresencesRecapAnnuel from "@/components/PresencesRecapAnnuel";
 import PresencesHistoriqueMembre from "@/components/PresencesHistoriqueMembre";
 import LogoHeader from "@/components/LogoHeader";
 import CotisationsReunionView from "@/components/CotisationsReunionView";
+import CotisationsCumulAnnuel from "@/components/CotisationsCumulAnnuel";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
 import BackButton from "@/components/BackButton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -723,6 +724,8 @@ export default function Reunions() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleEdit(reunion)}
+                              disabled={reunion.statut === 'terminee'}
+                              title={reunion.statut === 'terminee' ? 'Réunion clôturée - Modifications bloquées' : 'Modifier'}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -731,6 +734,8 @@ export default function Reunions() {
                               size="sm"
                               onClick={() => handleDelete(reunion.id)}
                               className="text-destructive hover:bg-destructive/10"
+                              disabled={reunion.statut === 'terminee'}
+                              title={reunion.statut === 'terminee' ? 'Réunion clôturée - Suppression bloquée' : 'Supprimer'}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -754,49 +759,62 @@ export default function Reunions() {
         </TabsContent>
 
         <TabsContent value="cotisations">
-          <Card className="mb-4">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Coins className="w-5 h-5" />
-                <h3 className="font-semibold">Sélectionner une réunion</h3>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {reunions.slice(0, 12).map(reunion => (
-                  <Button
-                    key={reunion.id}
-                    variant={selectedReunion?.id === reunion.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedReunion(reunion)}
-                    className="justify-start truncate"
-                  >
-                    <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-                    <span className="truncate">
-                      {new Date(reunion.date_reunion).toLocaleDateString('fr-FR')}
-                    </span>
-                    {reunion.statut === 'terminee' && (
-                      <Badge className="ml-1 bg-success text-success-foreground text-xs">✓</Badge>
-                    )}
-                    {reunion.statut === 'planifie' && (
-                      <Badge variant="secondary" className="ml-1 text-xs">P</Badge>
-                    )}
-                  </Button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-          {selectedReunion ? (
-            <CotisationsReunionView 
-              reunionId={selectedReunion.id} 
-              reunionStatut={selectedReunion.statut}
-              reunionDate={selectedReunion.date_reunion}
-            />
-          ) : (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                Sélectionnez une réunion pour voir les cotisations collectées ou les projections
-              </CardContent>
-            </Card>
-          )}
+          <Tabs defaultValue="par-reunion" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="par-reunion">Par Réunion</TabsTrigger>
+              <TabsTrigger value="cumul-annuel">Suivi Annuel</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="par-reunion">
+              <Card className="mb-4">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Coins className="w-5 h-5" />
+                    <h3 className="font-semibold">Sélectionner une réunion</h3>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {reunions.slice(0, 12).map(reunion => (
+                      <Button
+                        key={reunion.id}
+                        variant={selectedReunion?.id === reunion.id ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedReunion(reunion)}
+                        className="justify-start truncate"
+                      >
+                        <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+                        <span className="truncate">
+                          {new Date(reunion.date_reunion).toLocaleDateString('fr-FR')}
+                        </span>
+                        {reunion.statut === 'terminee' && (
+                          <Badge className="ml-1 bg-success text-success-foreground text-xs">✓</Badge>
+                        )}
+                        {reunion.statut === 'planifie' && (
+                          <Badge variant="secondary" className="ml-1 text-xs">P</Badge>
+                        )}
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+              {selectedReunion ? (
+                <CotisationsReunionView 
+                  reunionId={selectedReunion.id} 
+                  reunionStatut={selectedReunion.statut}
+                  reunionDate={selectedReunion.date_reunion}
+                />
+              ) : (
+                <Card>
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    Sélectionnez une réunion pour voir les cotisations collectées ou les projections
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="cumul-annuel">
+              <CotisationsCumulAnnuel />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="presences">

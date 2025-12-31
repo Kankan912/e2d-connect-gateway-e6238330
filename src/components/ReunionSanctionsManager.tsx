@@ -32,6 +32,23 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
   const [motif, setMotif] = useState("");
   const [montantAmende, setMontantAmende] = useState("");
 
+  // Vérifier si la réunion est clôturée (verrouillée)
+  const { data: reunionInfo } = useQuery({
+    queryKey: ['reunion-info-sanctions', reunionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reunions')
+        .select('statut')
+        .eq('id', reunionId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!reunionId,
+  });
+
+  const isLocked = reunionInfo?.statut === 'terminee';
+
   // Charger les types de sanctions standardisés
   const { data: sanctionsTypes } = useQuery({
     queryKey: ['sanctions-types'],
@@ -213,7 +230,23 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
 
   return (
     <div className="space-y-6">
+      {/* Avertissement si réunion clôturée */}
+      {isLocked && (
+        <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+          <CardContent className="p-4 flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            <div>
+              <p className="font-medium text-amber-800 dark:text-amber-200">Réunion clôturée - Lecture seule</p>
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                Cette réunion a été clôturée. Les sanctions ne peuvent plus être modifiées.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Formulaire d'ajout */}
+      {!isLocked && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -295,6 +328,7 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
           </form>
         </CardContent>
       </Card>
+      )}
 
       {/* Liste des sanctions */}
       <Card>
@@ -341,7 +375,7 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        {sanction.statut === 'active' && sanction.montant_amende > 0 && (
+                        {sanction.statut === 'active' && sanction.montant_amende > 0 && !isLocked && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -351,6 +385,7 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
                             <CreditCard className="w-4 h-4" />
                           </Button>
                         )}
+                        {!isLocked && (
                         <Button
                           size="sm"
                           variant="destructive"
@@ -358,6 +393,7 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
