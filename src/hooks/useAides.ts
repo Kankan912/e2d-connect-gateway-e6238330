@@ -6,6 +6,7 @@ export interface Aide {
   id: string;
   type_aide_id: string;
   beneficiaire_id: string;
+  reunion_id: string | null;
   montant: number;
   date_allocation: string;
   contexte_aide: string;
@@ -23,6 +24,11 @@ export interface Aide {
     id: string;
     nom: string;
     prenom: string;
+  };
+  reunion?: {
+    id: string;
+    date_reunion: string;
+    ordre_du_jour: string | null;
   };
 }
 
@@ -44,7 +50,8 @@ export function useAides() {
         .select(`
           *,
           type_aide:aides_types(id, nom, montant_defaut, mode_repartition),
-          beneficiaire:membres!beneficiaire_id(id, nom, prenom)
+          beneficiaire:membres!beneficiaire_id(id, nom, prenom),
+          reunion:reunions!reunion_id(id, date_reunion, ordre_du_jour)
         `)
         .order("date_allocation", { ascending: false });
       if (error) throw error;

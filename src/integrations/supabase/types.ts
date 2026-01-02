@@ -130,6 +130,7 @@ export type Database = {
           justificatif_url: string | null
           montant: number
           notes: string | null
+          reunion_id: string | null
           statut: string
           type_aide_id: string
         }
@@ -142,6 +143,7 @@ export type Database = {
           justificatif_url?: string | null
           montant: number
           notes?: string | null
+          reunion_id?: string | null
           statut?: string
           type_aide_id: string
         }
@@ -154,10 +156,18 @@ export type Database = {
           justificatif_url?: string | null
           montant?: number
           notes?: string | null
+          reunion_id?: string | null
           statut?: string
           type_aide_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "aides_reunion_id_fkey"
+            columns: ["reunion_id"]
+            isOneToOne: false
+            referencedRelation: "reunions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_aides_beneficiaire"
             columns: ["beneficiaire_id"]

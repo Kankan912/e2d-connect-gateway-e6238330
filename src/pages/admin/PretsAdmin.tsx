@@ -1,4 +1,4 @@
-import { DollarSign, Plus, Edit, Trash2, CreditCard, FileText, RefreshCw, Search, LayoutDashboard, CheckCircle, AlertTriangle, Clock, Banknote, Eye, Settings } from "lucide-react";
+import { DollarSign, Plus, Edit, Trash2, CreditCard, FileText, RefreshCw, Search, LayoutDashboard, CheckCircle, AlertTriangle, Clock, Banknote, Eye, Settings, Download } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import PretsPaiementsManager from "@/components/PretsPaiementsManager";
 import ReconduireModal from "@/components/ReconduireModal";
 import PretDetailsModal from "@/components/PretDetailsModal";
 import { formatFCFA } from "@/lib/utils";
+import { exportPretPDF } from "@/lib/pret-pdf-export";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -358,6 +359,17 @@ export default function PretsAdmin() {
     setReconduireDialogOpen(true);
   };
 
+  const handleExportPDF = async (pret: any) => {
+    // Récupérer les paiements et reconductions pour ce prêt
+    const [paiementsRes, recondRes] = await Promise.all([
+      supabase.from('prets_paiements').select('*').eq('pret_id', pret.id).order('date_paiement', { ascending: false }),
+      supabase.from('prets_reconductions').select('*').eq('pret_id', pret.id).order('date_reconduction', { ascending: false })
+    ]);
+    
+    exportPretPDF(pret, paiementsRes.data || [], recondRes.data || []);
+    toast({ title: "PDF exporté avec succès" });
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <BackButton />
@@ -694,6 +706,23 @@ export default function PretsAdmin() {
                                 </Tooltip>
                               </TooltipProvider>
                             )}
+                            
+                            {/* Export PDF */}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-7 w-7"
+                                    onClick={() => handleExportPDF(pret)}
+                                  >
+                                    <Download className="h-3.5 w-3.5" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Exporter PDF</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                             
                             {/* Éditer */}
                             <Button

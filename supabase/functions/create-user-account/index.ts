@@ -104,6 +104,30 @@ serve(async (req) => {
       console.log('✅ Member linked to user');
     }
 
+    // Récupérer l'ID du rôle "membre" et l'assigner automatiquement
+    const { data: roleMembre } = await supabaseAdmin
+      .from('roles')
+      .select('id')
+      .ilike('name', 'membre')
+      .single();
+
+    if (roleMembre) {
+      const { error: roleError } = await supabaseAdmin
+        .from('membres_roles')
+        .insert({
+          membre_id: memberId,
+          role_id: roleMembre.id
+        });
+      
+      if (roleError) {
+        console.error('⚠️ Error assigning member role:', roleError);
+      } else {
+        console.log('✅ Role "membre" assigned to member');
+      }
+    } else {
+      console.log('⚠️ Role "membre" not found, skipping role assignment');
+    }
+
     // Send welcome email with credentials
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
     if (RESEND_API_KEY) {
