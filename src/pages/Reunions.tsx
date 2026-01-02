@@ -49,6 +49,7 @@ import PresencesRecapAnnuel from "@/components/PresencesRecapAnnuel";
 import PresencesHistoriqueMembre from "@/components/PresencesHistoriqueMembre";
 import LogoHeader from "@/components/LogoHeader";
 import CotisationsReunionView from "@/components/CotisationsReunionView";
+import CotisationsGridView from "@/components/CotisationsGridView";
 import CotisationsCumulAnnuel from "@/components/CotisationsCumulAnnuel";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
 import BackButton from "@/components/BackButton";
@@ -448,12 +449,22 @@ function CotisationsTabContent({
         )}
 
         {selectedReunion ? (
-          <CotisationsReunionView 
-            reunionId={selectedReunion.id} 
-            reunionStatut={selectedReunion.statut}
-            reunionDate={selectedReunion.date_reunion}
-            exerciceId={currentExercice?.id}
-          />
+          selectedReunion.statut === 'terminee' ? (
+            // Vue comparative pour les réunions clôturées
+            <CotisationsReunionView 
+              reunionId={selectedReunion.id} 
+              reunionStatut={selectedReunion.statut}
+              reunionDate={selectedReunion.date_reunion}
+              exerciceId={currentExercice?.id}
+            />
+          ) : (
+            // Grille matricielle pour les réunions en cours ou planifiées
+            <CotisationsGridView 
+              reunionId={selectedReunion.id} 
+              exerciceId={currentExercice?.id}
+              isEditable={selectedReunion.statut === 'planifie' || selectedReunion.statut === 'en_cours'}
+            />
+          )
         ) : (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
