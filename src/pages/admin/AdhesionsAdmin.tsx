@@ -107,7 +107,7 @@ export default function AdhesionsAdmin() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Montant Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.montantTotal.toLocaleString()} €</div>
+            <div className="text-2xl font-bold">{stats.montantTotal.toLocaleString('fr-FR')} FCFA</div>
           </CardContent>
         </Card>
       </div>
@@ -144,7 +144,7 @@ export default function AdhesionsAdmin() {
                       <span>Type: {adhesion.type_adhesion}</span>
                     </div>
                     <div className="flex gap-4 mt-1 text-sm">
-                      <span>Montant: {adhesion.montant_paye} €</span>
+                      <span>Montant: {adhesion.montant_paye.toLocaleString('fr-FR')} FCFA</span>
                       <span>Méthode: {adhesion.payment_method}</span>
                       <span>
                         Date: {format(new Date(adhesion.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })}

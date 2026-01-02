@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Coins, Loader2 } from "lucide-react";
+import { Plus, Coins, Loader2, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatFCFA } from "@/lib/utils";
 
 interface CotisationSaisieFormProps {
   reunionId: string;
@@ -20,10 +21,27 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  const [selectedExercice, setSelectedExercice] = useState<string>(exerciceId || "");
   const [selectedMembre, setSelectedMembre] = useState<string>("");
   const [selectedType, setSelectedType] = useState<string>("");
   const [montant, setMontant] = useState<string>("");
-  const [selectedExercice, setSelectedExercice] = useState<string>(exerciceId || "");
+
+  // Étape actuelle du formulaire (1: Exercice, 2: Membre, 3: Type, 4: Montant)
+  const currentStep = !selectedExercice ? 1 : !selectedMembre ? 2 : !selectedType ? 3 : 4;
+
+  // Charger les exercices
+  const { data: exercices } = useQuery({
+    queryKey: ['exercices-saisie'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exercices')
+        .select('id, nom, statut')
+        .order('date_debut', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    }
+  });
 
   // Charger les membres E2D actifs
   const { data: membres } = useQuery({
@@ -57,30 +75,18 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
 
   // Charger les montants personnalisés
   const { data: cotisationsMembres } = useQuery({
-    queryKey: ['cotisations-membres-saisie'],
+    queryKey: ['cotisations-membres-saisie', selectedExercice],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cotisations_membres')
         .select('membre_id, type_cotisation_id, montant_personnalise')
-        .eq('actif', true);
+        .eq('actif', true)
+        .eq('exercice_id', selectedExercice);
       
       if (error) throw error;
       return data;
-    }
-  });
-
-  // Charger les exercices
-  const { data: exercices } = useQuery({
-    queryKey: ['exercices-saisie'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('exercices')
-        .select('id, nom, statut')
-        .order('date_debut', { ascending: false });
-      
-      if (error) throw error;
-      return data;
-    }
+    },
+    enabled: !!selectedExercice
   });
 
   // Pré-sélectionner l'exercice actif par défaut
@@ -111,6 +117,7 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
     onSuccess: () => {
       toast({ title: "Succès", description: "Cotisation enregistrée" });
       queryClient.invalidateQueries({ queryKey: ['cotisations-reunion', reunionId] });
+      // Reset pour nouvelle saisie (garder exercice sélectionné)
       setSelectedMembre("");
       setSelectedType("");
       setMontant("");
@@ -140,9 +147,24 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
     }
   };
 
+  // Reset membre et suivants quand exercice change
+  const handleExerciceChange = (value: string) => {
+    setSelectedExercice(value);
+    setSelectedMembre("");
+    setSelectedType("");
+    setMontant("");
+  };
+
+  // Reset type et montant quand membre change
+  const handleMembreChange = (value: string) => {
+    setSelectedMembre(value);
+    setSelectedType("");
+    setMontant("");
+  };
+
   const handleSubmit = () => {
     if (!selectedMembre || !selectedType || !montant || !selectedExercice) {
-      toast({ title: "Erreur", description: "Veuillez remplir tous les champs (y compris l'exercice)", variant: "destructive" });
+      toast({ title: "Erreur", description: "Veuillez remplir tous les champs", variant: "destructive" });
       return;
     }
 
@@ -155,21 +177,73 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
     });
   };
 
+  // Indicateur de progression
+  const StepIndicator = ({ step, label, active, completed }: { step: number; label: string; active: boolean; completed: boolean }) => (
+    <div className="flex items-center gap-1">
+      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+        completed ? 'bg-success text-success-foreground' : 
+        active ? 'bg-primary text-primary-foreground' : 
+        'bg-muted text-muted-foreground'
+      }`}>
+        {completed ? <CheckCircle2 className="w-4 h-4" /> : step}
+      </div>
+      <span className={`text-xs ${active ? 'font-medium' : 'text-muted-foreground'}`}>{label}</span>
+    </div>
+  );
+
   return (
     <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          Enregistrer une cotisation
+        <CardTitle className="text-sm font-medium flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Enregistrer une cotisation
+          </div>
+          {/* Progression */}
+          <div className="flex items-center gap-4">
+            <StepIndicator step={1} label="Exercice" active={currentStep === 1} completed={!!selectedExercice} />
+            <StepIndicator step={2} label="Membre" active={currentStep === 2} completed={!!selectedMembre} />
+            <StepIndicator step={3} label="Type" active={currentStep === 3} completed={!!selectedType} />
+            <StepIndicator step={4} label="Montant" active={currentStep === 4} completed={!!montant} />
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+          {/* Étape 1: Exercice */}
           <div className="space-y-1">
-            <Label className="text-xs">Membre</Label>
-            <Select value={selectedMembre} onValueChange={setSelectedMembre}>
-              <SelectTrigger className="h-9">
+            <Label className="text-xs flex items-center gap-1">
+              1. Exercice
+              {exercices?.find(e => e.id === selectedExercice)?.statut === 'actif' && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-green-500/10 text-green-600 border-green-500/30">
+                  Actif
+                </Badge>
+              )}
+            </Label>
+            <Select value={selectedExercice} onValueChange={handleExerciceChange}>
+              <SelectTrigger className={`h-9 ${!selectedExercice ? 'ring-2 ring-primary' : ''}`}>
                 <SelectValue placeholder="Sélectionner..." />
+              </SelectTrigger>
+              <SelectContent>
+                {exercices?.map(e => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.nom} {e.statut === 'actif' && '✓'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Étape 2: Membre */}
+          <div className="space-y-1">
+            <Label className="text-xs">2. Membre</Label>
+            <Select 
+              value={selectedMembre} 
+              onValueChange={handleMembreChange}
+              disabled={!selectedExercice}
+            >
+              <SelectTrigger className={`h-9 ${selectedExercice && !selectedMembre ? 'ring-2 ring-primary' : ''}`}>
+                <SelectValue placeholder={!selectedExercice ? "Choisir exercice d'abord" : "Sélectionner..."} />
               </SelectTrigger>
               <SelectContent>
                 {membres?.map(m => (
@@ -181,53 +255,37 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
             </Select>
           </div>
 
+          {/* Étape 3: Type */}
           <div className="space-y-1">
-            <Label className="text-xs">Type</Label>
-            <Select value={selectedType} onValueChange={handleTypeChange}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Type..." />
+            <Label className="text-xs">3. Type</Label>
+            <Select 
+              value={selectedType} 
+              onValueChange={handleTypeChange}
+              disabled={!selectedMembre}
+            >
+              <SelectTrigger className={`h-9 ${selectedMembre && !selectedType ? 'ring-2 ring-primary' : ''}`}>
+                <SelectValue placeholder={!selectedMembre ? "Choisir membre d'abord" : "Type..."} />
               </SelectTrigger>
               <SelectContent>
                 {types?.map(t => (
                   <SelectItem key={t.id} value={t.id}>
-                    {t.nom} {t.obligatoire && "(Oblig.)"}
+                    {t.nom} {t.obligatoire && "(Oblig.)"} - {formatFCFA(t.montant_defaut || 0)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
+          {/* Étape 4: Montant */}
           <div className="space-y-1">
-            <Label className="text-xs flex items-center gap-1">
-              Exercice
-              {exercices?.find(e => e.id === selectedExercice)?.statut === 'actif' && (
-                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 bg-green-500/10 text-green-600 border-green-500/30">
-                  Actif
-                </Badge>
-              )}
-            </Label>
-            <Select value={selectedExercice} onValueChange={setSelectedExercice}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Exercice..." />
-              </SelectTrigger>
-              <SelectContent>
-                {exercices?.map(e => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.nom}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1">
-            <Label className="text-xs">Montant (€)</Label>
+            <Label className="text-xs">4. Montant (FCFA)</Label>
             <Input
               type="number"
               value={montant}
               onChange={(e) => setMontant(e.target.value)}
               placeholder="0"
-              className="h-9"
+              className={`h-9 ${selectedType && !montant ? 'ring-2 ring-primary' : ''}`}
+              disabled={!selectedType}
             />
           </div>
 
