@@ -1,21 +1,76 @@
-import { Mail, MapPin, Phone, Facebook } from "lucide-react";
+import { useState } from "react";
+import { Mail, MapPin, Phone, Facebook, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useSiteConfig } from "@/hooks/useSiteContent";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
 
 const Contact = () => {
   const { toast } = useToast();
   const { data: config, isLoading } = useSiteConfig();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    nom: "",
+    email: "",
+    telephone: "",
+    objet: "",
+    message: "",
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Message envoyé !",
-      description: "Nous vous répondrons dans les plus brefs délais.",
-    });
+    
+    if (!formData.nom || !formData.email || !formData.objet || !formData.message) {
+      toast({
+        title: "Champs requis",
+        description: "Veuillez remplir tous les champs obligatoires.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from("messages_contact")
+        .insert({
+          nom: formData.nom,
+          email: formData.email,
+          telephone: formData.telephone || null,
+          objet: formData.objet,
+          message: formData.message,
+          statut: "nouveau",
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Message envoyé !",
+        description: "Nous vous répondrons dans les plus brefs délais.",
+      });
+
+      // Reset form
+      setFormData({
+        nom: "",
+        email: "",
+        telephone: "",
+        objet: "",
+        message: "",
+      });
+    } catch (error) {
+      console.error("Erreur envoi message:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue. Veuillez réessayer.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getConfigValue = (key: string) => {
@@ -66,7 +121,7 @@ const Contact = () => {
     <section id="contact" className="py-20 lg:py-32 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-16 animate-in fade-in slide-in-from-bottom duration-700">
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-secondary/10 text-secondary text-sm font-semibold mb-4">
             Contactez-nous
           </div>
@@ -81,61 +136,92 @@ const Contact = () => {
 
         <div className="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
           {/* Contact Form */}
-          <div className="bg-card rounded-2xl p-8 shadow-soft border border-border">
+          <div className="bg-card rounded-2xl p-8 shadow-soft border border-border animate-in fade-in slide-in-from-left duration-700 delay-200">
             <h3 className="text-2xl font-bold text-foreground mb-6">Envoyez-nous un Message</h3>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Prénom
+                    Nom complet *
                   </label>
-                  <Input placeholder="Votre prénom" required />
+                  <Input 
+                    placeholder="Votre nom" 
+                    value={formData.nom}
+                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
+                    required 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Nom
+                    Téléphone
                   </label>
-                  <Input placeholder="Votre nom" required />
+                  <Input 
+                    type="tel" 
+                    placeholder="+33 X XX XX XX XX"
+                    value={formData.telephone}
+                    onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
+                  />
                 </div>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Email
+                  Email *
                 </label>
-                <Input type="email" placeholder="votre.email@exemple.com" required />
+                <Input 
+                  type="email" 
+                  placeholder="votre.email@exemple.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required 
+                />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Téléphone
+                  Objet *
                 </label>
-                <Input type="tel" placeholder="+33 X XX XX XX XX" />
+                <Input 
+                  placeholder="Objet de votre message"
+                  value={formData.objet}
+                  onChange={(e) => setFormData({ ...formData, objet: e.target.value })}
+                  required 
+                />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  Message
+                  Message *
                 </label>
                 <Textarea 
                   placeholder="Parlez-nous de votre projet ou de vos questions..."
                   rows={5}
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   required
                 />
               </div>
 
               <Button 
                 type="submit"
-                className="w-full bg-secondary hover:bg-secondary/90 text-white"
+                className="w-full bg-secondary hover:bg-secondary/90 text-white transition-all duration-300"
                 size="lg"
+                disabled={isSubmitting}
               >
-                Envoyer le Message
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Envoi en cours...
+                  </>
+                ) : (
+                  "Envoyer le Message"
+                )}
               </Button>
             </form>
           </div>
 
           {/* Contact Info */}
-          <div className="space-y-6">
+          <div className="space-y-6 animate-in fade-in slide-in-from-right duration-700 delay-300">
             <div className="bg-gradient-to-br from-primary to-primary/90 rounded-2xl p-8 text-white">
               <h3 className="text-2xl font-bold mb-6">Informations de Contact</h3>
               <div className="space-y-6">
@@ -168,22 +254,22 @@ const Contact = () => {
               <div className="space-y-3">
                 <Button 
                   variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => window.location.href = "/portal"}
+                  className="w-full justify-start hover:translate-x-1 transition-transform"
+                  onClick={() => window.location.href = "/auth"}
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Accès Portail Membre E2D Connect
                 </Button>
                 <Button 
                   variant="outline"
-                  className="w-full justify-start"
+                  className="w-full justify-start hover:translate-x-1 transition-transform"
                   onClick={() => window.location.href = "/adhesion"}
                 >
                   Formulaire d'Adhésion
                 </Button>
                 <Button 
                   variant="outline"
-                  className="w-full justify-start"
+                  className="w-full justify-start hover:translate-x-1 transition-transform"
                   onClick={() => window.location.href = "/don"}
                 >
                   Faire un Don

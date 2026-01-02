@@ -112,10 +112,12 @@ const configItems = [
 // Section Site Web (CMS)
 const siteItems = [
   { title: "Hero", url: "/dashboard/admin/site/hero", icon: Palette, resource: "site" },
+  { title: "À Propos", url: "/dashboard/admin/site/about", icon: Heart, resource: "site" },
   { title: "Activités", url: "/dashboard/admin/site/activities", icon: Heart, resource: "site" },
   { title: "Événements", url: "/dashboard/admin/site/events", icon: Calendar, resource: "site" },
   { title: "Galerie", url: "/dashboard/admin/site/gallery", icon: Camera, resource: "site" },
   { title: "Partenaires", url: "/dashboard/admin/site/partners", icon: Handshake, resource: "site" },
+  { title: "Messages", url: "/dashboard/admin/site/messages", icon: Users, resource: "site" },
   { title: "Configuration", url: "/dashboard/admin/site/config", icon: Settings, resource: "site" },
 ];
 

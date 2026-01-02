@@ -314,6 +314,7 @@ export type Database = {
       }
       cms_events: {
         Row: {
+          auto_sync: boolean | null
           created_at: string | null
           description: string | null
           event_date: string
@@ -323,10 +324,13 @@ export type Database = {
           is_active: boolean | null
           is_featured: boolean | null
           location: string | null
+          match_id: string | null
+          match_type: string | null
           title: string
           updated_at: string | null
         }
         Insert: {
+          auto_sync?: boolean | null
           created_at?: string | null
           description?: string | null
           event_date: string
@@ -336,10 +340,13 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           location?: string | null
+          match_id?: string | null
+          match_type?: string | null
           title: string
           updated_at?: string | null
         }
         Update: {
+          auto_sync?: boolean | null
           created_at?: string | null
           description?: string | null
           event_date?: string
@@ -349,6 +356,8 @@ export type Database = {
           is_active?: boolean | null
           is_featured?: boolean | null
           location?: string | null
+          match_id?: string | null
+          match_type?: string | null
           title?: string
           updated_at?: string | null
         }
@@ -365,6 +374,7 @@ export type Database = {
           order_index: number | null
           thumbnail_url: string | null
           title: string | null
+          video_url: string | null
         }
         Insert: {
           album_name: string
@@ -376,6 +386,7 @@ export type Database = {
           order_index?: number | null
           thumbnail_url?: string | null
           title?: string | null
+          video_url?: string | null
         }
         Update: {
           album_name?: string
@@ -387,6 +398,7 @@ export type Database = {
           order_index?: number | null
           thumbnail_url?: string | null
           title?: string | null
+          video_url?: string | null
         }
         Relationships: []
       }

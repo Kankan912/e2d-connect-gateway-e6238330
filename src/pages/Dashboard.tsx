@@ -21,6 +21,8 @@ import EventsAdmin from "./admin/site/EventsAdmin";
 import GalleryAdmin from "./admin/site/GalleryAdmin";
 import PartnersAdmin from "./admin/site/PartnersAdmin";
 import ConfigAdmin from "./admin/site/ConfigAdmin";
+const AboutAdmin = lazy(() => import("./admin/site/AboutAdmin"));
+const MessagesAdmin = lazy(() => import("./admin/site/MessagesAdmin"));
 
 // Pages originales restaurées depuis GitHub
 import Reunions from "./Reunions";
@@ -384,6 +386,26 @@ const Dashboard = () => {
           element={
             <PermissionRoute resource="site" permission="write">
               <ConfigAdmin />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/site/about"
+          element={
+            <PermissionRoute resource="site" permission="write">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <AboutAdmin />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/site/messages"
+          element={
+            <PermissionRoute resource="site" permission="write">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <MessagesAdmin />
+              </Suspense>
             </PermissionRoute>
           }
         />
