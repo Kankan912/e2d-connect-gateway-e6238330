@@ -768,6 +768,7 @@ export type Database = {
           montant_defaut: number | null
           nom: string
           obligatoire: boolean | null
+          type_saisie: string | null
         }
         Insert: {
           created_at?: string | null
@@ -776,6 +777,7 @@ export type Database = {
           montant_defaut?: number | null
           nom: string
           obligatoire?: boolean | null
+          type_saisie?: string | null
         }
         Update: {
           created_at?: string | null
@@ -784,6 +786,7 @@ export type Database = {
           montant_defaut?: number | null
           nom?: string
           obligatoire?: boolean | null
+          type_saisie?: string | null
         }
         Relationships: []
       }
@@ -984,6 +987,45 @@ export type Database = {
           taux_interet_prets?: number | null
         }
         Relationships: []
+      }
+      exercices_cotisations_types: {
+        Row: {
+          actif: boolean | null
+          created_at: string | null
+          exercice_id: string
+          id: string
+          type_cotisation_id: string
+        }
+        Insert: {
+          actif?: boolean | null
+          created_at?: string | null
+          exercice_id: string
+          id?: string
+          type_cotisation_id: string
+        }
+        Update: {
+          actif?: boolean | null
+          created_at?: string | null
+          exercice_id?: string
+          id?: string
+          type_cotisation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercices_cotisations_types_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercices_cotisations_types_type_cotisation_id_fkey"
+            columns: ["type_cotisation_id"]
+            isOneToOne: false
+            referencedRelation: "cotisations_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       exports_programmes: {
         Row: {
@@ -2886,6 +2928,58 @@ export type Database = {
           {
             foreignKeyName: "reunions_beneficiaire_id_fkey"
             columns: ["beneficiaire_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reunions_huile_savon: {
+        Row: {
+          created_at: string | null
+          id: string
+          membre_id: string
+          reunion_id: string
+          updated_at: string | null
+          valide: boolean | null
+          valide_par: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          membre_id: string
+          reunion_id: string
+          updated_at?: string | null
+          valide?: boolean | null
+          valide_par?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          membre_id?: string
+          reunion_id?: string
+          updated_at?: string | null
+          valide?: boolean | null
+          valide_par?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reunions_huile_savon_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reunions_huile_savon_reunion_id_fkey"
+            columns: ["reunion_id"]
+            isOneToOne: false
+            referencedRelation: "reunions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reunions_huile_savon_valide_par_fkey"
+            columns: ["valide_par"]
             isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]

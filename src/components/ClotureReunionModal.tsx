@@ -115,6 +115,35 @@ export default function ClotureReunionModal({
     enabled: open
   });
 
+  // Récupérer les validations Huile & Savon
+  const { data: huileSavonData } = useQuery({
+    queryKey: ['huile-savon-cloture', reunionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reunions_huile_savon')
+        .select('membre_id, valide')
+        .eq('reunion_id', reunionId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: open
+  });
+
+  // Récupérer la config sanction Huile & Savon
+  const { data: sanctionHuileSavonConfig } = useQuery({
+    queryKey: ['sanction-huile-savon-config'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('configurations')
+        .select('valeur')
+        .eq('cle', 'sanction_huile_savon_montant')
+        .maybeSingle();
+      if (error) throw error;
+      return data ? { montant: parseFloat(data.valeur) } : { montant: 2000 }; // Défaut 2000 FCFA
+    },
+    enabled: open
+  });
+
   const presentsCount = presences?.filter(p => p.statut_presence === 'present').length || 0;
   const pointsCRCount = comptesRendus?.length || 0;
   const canClose = presentsCount > 0 && pointsCRCount > 0;
@@ -126,6 +155,11 @@ export default function ClotureReunionModal({
   // Calculer les membres non marqués (qui n'ont pas d'enregistrement de présence)
   const membresNonMarques = membresE2D?.filter(
     m => !presences?.some(p => p.membre_id === m.id)
+  ) || [];
+
+  // Calculer les membres sans Huile & Savon validé
+  const membresSansHuileSavon = membresE2D?.filter(
+    m => !huileSavonData?.some(hs => hs.membre_id === m.id && hs.valide)
   ) || [];
 
   const handleCloturer = async () => {
@@ -177,7 +211,26 @@ export default function ClotureReunionModal({
         }
       }
 
-      // === ÉTAPE 4: Récupérer les infos des membres présents pour l'envoi du CR ===
+      // === ÉTAPE 3bis: Créer les sanctions pour Huile & Savon non validé ===
+      if (membresSansHuileSavon.length > 0 && sanctionHuileSavonConfig) {
+        const sanctionsHuileSavon = membresSansHuileSavon.map(m => ({
+          reunion_id: reunionId,
+          membre_id: m.id,
+          type_sanction: 'huile_savon',
+          montant_amende: sanctionHuileSavonConfig.montant || 2000,
+          motif: 'Huile & Savon non apporté',
+          statut: 'impaye',
+        }));
+
+        const { error: sanctionHSError } = await supabase
+          .from('reunions_sanctions')
+          .insert(sanctionsHuileSavon);
+
+        if (sanctionHSError) {
+          console.error('Erreur création sanctions Huile & Savon:', sanctionHSError);
+        }
+      }
+
       const { data: presentsData } = await supabase
         .from('reunions_presences')
         .select('membres:membre_id (nom, prenom, email)')
@@ -245,10 +298,13 @@ export default function ClotureReunionModal({
       queryClient.invalidateQueries({ queryKey: ['reunions'] });
       queryClient.invalidateQueries({ queryKey: ['reunions-cloturees'] });
       queryClient.invalidateQueries({ queryKey: ['reunions-sanctions'] });
-      const nbSanctions = tousAbsentsNonExcuses?.length || 0;
+      const nbSanctionsAbsence = tousAbsentsNonExcuses?.length || 0;
+      const nbSanctionsHuileSavon = membresSansHuileSavon.length;
+      const totalSanctions = nbSanctionsAbsence + nbSanctionsHuileSavon;
+      
       toast({
         title: "Réunion clôturée avec succès",
-        description: `CR envoyé à ${destinataires.length} membre(s). ${nbSanctions > 0 ? `${nbSanctions} sanction(s) créée(s) pour absence.` : ''}`,
+        description: `CR envoyé à ${destinataires.length} membre(s). ${totalSanctions > 0 ? `${totalSanctions} sanction(s) créée(s) (${nbSanctionsAbsence} absence${nbSanctionsAbsence > 1 ? 's' : ''}, ${nbSanctionsHuileSavon} Huile & Savon).` : ''}`,
       });
 
       onOpenChange(false);
@@ -359,13 +415,27 @@ export default function ClotureReunionModal({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-orange-600" />
-                    <span className="text-sm">Sanctions à créer</span>
+                    <span className="text-sm">Sanctions absence</span>
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-orange-600">
                       {(membresNonMarques.length * sanctionConfig.montant).toLocaleString()} FCFA
                     </span>
                     <span className="text-xs text-muted-foreground ml-1">({membresNonMarques.length} × {sanctionConfig.montant.toLocaleString()})</span>
+                  </div>
+                </div>
+              )}
+              {membresSansHuileSavon.length > 0 && sanctionHuileSavonConfig && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <span className="text-sm">Sanctions Huile & Savon</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-amber-600">
+                      {(membresSansHuileSavon.length * sanctionHuileSavonConfig.montant).toLocaleString()} FCFA
+                    </span>
+                    <span className="text-xs text-muted-foreground ml-1">({membresSansHuileSavon.length} × {sanctionHuileSavonConfig.montant.toLocaleString()})</span>
                   </div>
                 </div>
               )}
