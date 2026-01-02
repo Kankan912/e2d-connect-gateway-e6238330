@@ -133,7 +133,14 @@ serve(async (req) => {
     if (RESEND_API_KEY) {
       console.log('🔵 Sending welcome email');
       
-      const APP_URL = Deno.env.get('APP_URL') || 'https://e2d-connect.lovable.app';
+      // Fetch app_url from configurations table
+      const { data: appUrlConfig } = await supabaseAdmin
+        .from('configurations')
+        .select('valeur')
+        .eq('cle', 'app_url')
+        .single();
+      
+      const APP_URL = appUrlConfig?.valeur || Deno.env.get('APP_URL') || 'https://e2d-connect.lovable.app';
       
       const emailHtml = `
         <!DOCTYPE html>

@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.send-reunion-cr]
 verify_jwt = false
+
+[functions.send-campaign-emails]
+verify_jwt = true

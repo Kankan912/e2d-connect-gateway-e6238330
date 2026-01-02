@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BackButton from "@/components/BackButton";
-import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download, Banknote, Clock, Mail, Send, Cog } from "lucide-react";
+import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download, Banknote, Clock, Mail, Send, Cog, AtSign } from "lucide-react";
 import { ExercicesManager } from "@/components/config/ExercicesManager";
 import { CotisationsTypesManager } from "@/components/config/CotisationsTypesManager";
 import { SanctionsTarifsManager } from "@/components/config/SanctionsTarifsManager";
@@ -9,6 +9,7 @@ import { GestionGeneraleManager } from "@/components/config/GestionGeneraleManag
 import { SauvegardeManager } from "@/components/config/SauvegardeManager";
 import { SessionsConfigManager } from "@/components/config/SessionsConfigManager";
 import { NotificationsConfigManager } from "@/components/config/NotificationsConfigManager";
+import { EmailConfigManager } from "@/components/config/EmailConfigManager";
 
 // Import des pages existantes pour intégration
 import RolesAdmin from "./RolesAdmin";
@@ -71,6 +72,10 @@ const E2DConfigAdmin = () => {
           <TabsTrigger value="sanctions" className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
             Sanctions
+          </TabsTrigger>
+          <TabsTrigger value="email" className="flex items-center gap-2">
+            <AtSign className="h-4 w-4" />
+            Email
           </TabsTrigger>
           <TabsTrigger value="gestion" className="flex items-center gap-2">
             <Wrench className="h-4 w-4" />
@@ -208,6 +213,23 @@ const E2DConfigAdmin = () => {
 
         <TabsContent value="sanctions">
           <SanctionsTarifsManager />
+        </TabsContent>
+
+        <TabsContent value="email">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AtSign className="h-5 w-5" />
+                Configuration Email
+              </CardTitle>
+              <CardDescription>
+                Configurez le service d'envoi d'emails (Resend ou SMTP) et l'URL de l'application
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EmailConfigManager />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="gestion">

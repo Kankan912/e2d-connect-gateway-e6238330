@@ -1,4 +1,4 @@
-import { Bell, Plus } from "lucide-react";
+import { Bell, Plus, Send, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import BackButton from "@/components/BackButton";
 import NotificationCampagneForm from "@/components/forms/NotificationCampagneForm";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface NotificationsAdminProps {
   embedded?: boolean;
@@ -16,6 +17,7 @@ interface NotificationsAdminProps {
 
 export default function NotificationsAdmin({ embedded = false }: NotificationsAdminProps) {
   const [formOpen, setFormOpen] = useState(false);
+  const [sendingId, setSendingId] = useState<string | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -57,6 +59,26 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications-campagnes'] });
       setFormOpen(false);
+    }
+  });
+
+  const sendCampagne = useMutation({
+    mutationFn: async (campaignId: string) => {
+      setSendingId(campaignId);
+      const { data, error } = await supabase.functions.invoke('send-campaign-emails', {
+        body: { campaignId }
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['notifications-campagnes'] });
+      toast.success(`${data.sent} emails envoyés, ${data.errors} erreurs`);
+      setSendingId(null);
+    },
+    onError: (error) => {
+      toast.error("Erreur lors de l'envoi: " + error.message);
+      setSendingId(null);
     }
   });
 
@@ -132,6 +154,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
                   <TableHead>Envoyés</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Date d'envoi</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -158,6 +181,22 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
                       {campagne.date_envoi_reelle
                         ? new Date(campagne.date_envoi_reelle).toLocaleDateString()
                         : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {campagne.statut !== "envoyee" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => sendCampagne.mutate(campagne.id)}
+                          disabled={sendingId === campagne.id}
+                        >
+                          {sendingId === campagne.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
