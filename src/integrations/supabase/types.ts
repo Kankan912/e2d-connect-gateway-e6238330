@@ -2826,51 +2826,6 @@ export type Database = {
           },
         ]
       }
-      reunion_presences: {
-        Row: {
-          created_at: string
-          date_presence: string
-          id: string
-          membre_id: string
-          notes: string | null
-          present: boolean
-          reunion_id: string
-        }
-        Insert: {
-          created_at?: string
-          date_presence?: string
-          id?: string
-          membre_id: string
-          notes?: string | null
-          present?: boolean
-          reunion_id: string
-        }
-        Update: {
-          created_at?: string
-          date_presence?: string
-          id?: string
-          membre_id?: string
-          notes?: string | null
-          present?: boolean
-          reunion_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reunion_presences_membre_id_fkey"
-            columns: ["membre_id"]
-            isOneToOne: false
-            referencedRelation: "membres"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reunion_presences_reunion_id_fkey"
-            columns: ["reunion_id"]
-            isOneToOne: false
-            referencedRelation: "reunions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       reunions: {
         Row: {
           beneficiaire_id: string | null

@@ -142,7 +142,7 @@ export function useAlertesGlobales() {
       niveau: joursRetard >= 30 ? 'danger' : 'warning',
       titre: `Prêt en retard (${joursRetard}j)`,
       description: `${pret.membre?.prenom} ${pret.membre?.nom} - Reste ${resteDu.toLocaleString('fr-FR')} FCFA`,
-      lien: '/dashboard/prets',
+      lien: '/dashboard/admin/finances/prets',
       dateCreation: new Date(pret.echeance),
       membreId: pret.membre?.id,
       membreNom: `${pret.membre?.prenom} ${pret.membre?.nom}`,
