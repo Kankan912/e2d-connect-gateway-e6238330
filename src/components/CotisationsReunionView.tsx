@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Coins, TrendingUp, CheckCircle, Clock, AlertCircle, AlertTriangle, MinusCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import CotisationSaisieForm from "@/components/forms/CotisationSaisieForm";
+import { formatFCFA } from "@/lib/utils";
 
 interface CotisationsReunionViewProps {
   reunionId: string;
@@ -148,16 +149,16 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
           {/* Résumé avec comparaison */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-warning/10 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-warning">{totalAttendu.toLocaleString()} €</p>
+              <p className="text-2xl font-bold text-warning">{formatFCFA(totalAttendu)}</p>
               <p className="text-sm text-muted-foreground">Total attendu</p>
             </div>
             <div className="bg-success/10 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-success">{totalPaye.toLocaleString()} €</p>
+              <p className="text-2xl font-bold text-success">{formatFCFA(totalPaye)}</p>
               <p className="text-sm text-muted-foreground">Total collecté</p>
             </div>
             <div className={`rounded-lg p-4 text-center ${totalEcart >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
               <p className={`text-2xl font-bold ${totalEcart >= 0 ? 'text-success' : 'text-destructive'}`}>
-                {totalEcart >= 0 ? '+' : ''}{totalEcart.toLocaleString()} €
+                {totalEcart >= 0 ? '+' : ''}{formatFCFA(totalEcart)}
               </p>
               <p className="text-sm text-muted-foreground">Écart</p>
             </div>
@@ -203,13 +204,13 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
                         {row.membre.prenom} {row.membre.nom}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {row.attendu.toLocaleString()} €
+                        {formatFCFA(row.attendu)}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        {row.paye.toLocaleString()} €
+                        {formatFCFA(row.paye)}
                       </TableCell>
                       <TableCell className={`text-right font-semibold ${row.ecart >= 0 ? 'text-success' : 'text-destructive'}`}>
-                        {row.ecart >= 0 ? '+' : ''}{row.ecart.toLocaleString()} €
+                        {row.ecart >= 0 ? '+' : ''}{formatFCFA(row.ecart)}
                       </TableCell>
                       <TableCell>
                         {row.statut === 'complet' && (
@@ -236,10 +237,10 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
                   {/* Ligne totaux */}
                   <TableRow className="bg-muted/50 font-bold">
                     <TableCell>TOTAL</TableCell>
-                    <TableCell className="text-right">{totalAttendu.toLocaleString()} €</TableCell>
-                    <TableCell className="text-right">{totalPaye.toLocaleString()} €</TableCell>
+                    <TableCell className="text-right">{formatFCFA(totalAttendu)}</TableCell>
+                    <TableCell className="text-right">{formatFCFA(totalPaye)}</TableCell>
                     <TableCell className={`text-right ${totalEcart >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {totalEcart >= 0 ? '+' : ''}{totalEcart.toLocaleString()} €
+                      {totalEcart >= 0 ? '+' : ''}{formatFCFA(totalEcart)}
                     </TableCell>
                     <TableCell></TableCell>
                   </TableRow>
@@ -312,12 +313,12 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
             {/* Résumé projection */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-warning/10 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold text-warning">{totalProjection.toLocaleString()} €</p>
+                <p className="text-2xl font-bold text-warning">{formatFCFA(totalProjection)}</p>
                 <p className="text-sm text-muted-foreground">Total attendu</p>
               </div>
               {totalDejaCollecte > 0 && (
                 <div className="bg-success/10 rounded-lg p-4 text-center">
-                  <p className="text-2xl font-bold text-success">{totalDejaCollecte.toLocaleString()} €</p>
+                  <p className="text-2xl font-bold text-success">{formatFCFA(totalDejaCollecte)}</p>
                   <p className="text-sm text-muted-foreground">Déjà collecté</p>
                 </div>
               )}
@@ -338,7 +339,7 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
                 <div className="flex flex-wrap gap-2">
                   {typesObligatoires.map(type => (
                     <Badge key={type.id} variant="outline" className="px-3 py-1">
-                      {type.nom}: {type.montant_defaut?.toLocaleString() || 0} €
+                      {type.nom}: {formatFCFA(type.montant_defaut || 0)}
                     </Badge>
                   ))}
                 </div>
@@ -368,20 +369,20 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
                         {projection.montantsAttendus.map((m, idx) => (
                           <TableCell key={idx} className="text-right">
                             <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30">
-                              {m.montant.toLocaleString()} €
+                              {formatFCFA(m.montant)}
                             </Badge>
                           </TableCell>
                         ))}
                         <TableCell className="text-right">
                           <span className="font-bold text-warning">
-                            {projection.totalAttendu.toLocaleString()} €
+                            {formatFCFA(projection.totalAttendu)}
                           </span>
                         </TableCell>
                         {totalDejaCollecte > 0 && (
                           <TableCell className="text-right">
                             {projection.totalPaye > 0 ? (
                               <Badge className="bg-success text-success-foreground">
-                                {projection.totalPaye.toLocaleString()} €
+                                {formatFCFA(projection.totalPaye)}
                               </Badge>
                             ) : (
                               <span className="text-muted-foreground">-</span>
@@ -400,16 +401,16 @@ export default function CotisationsReunionView({ reunionId, reunionStatut, reuni
                         }, 0);
                         return (
                           <TableCell key={type.id} className="text-right">
-                            {totalType.toLocaleString()} €
+                            {formatFCFA(totalType)}
                           </TableCell>
                         );
                       })}
                       <TableCell className="text-right text-lg text-warning">
-                        {totalProjection.toLocaleString()} €
+                        {formatFCFA(totalProjection)}
                       </TableCell>
                       {totalDejaCollecte > 0 && (
                         <TableCell className="text-right text-success">
-                          {totalDejaCollecte.toLocaleString()} €
+                          {formatFCFA(totalDejaCollecte)}
                         </TableCell>
                       )}
                     </TableRow>
