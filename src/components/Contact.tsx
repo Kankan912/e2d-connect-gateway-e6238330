@@ -7,31 +7,97 @@ import { useToast } from "@/hooks/use-toast";
 import { useSiteConfig } from "@/hooks/useSiteContent";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+// Schéma de validation Zod
+const contactSchema = z.object({
+  nom: z.string()
+    .min(2, "Le nom doit contenir au moins 2 caractères")
+    .max(100, "Le nom ne doit pas dépasser 100 caractères"),
+  email: z.string()
+    .email("Veuillez entrer une adresse email valide")
+    .max(255, "L'email ne doit pas dépasser 255 caractères"),
+  telephone: z.string()
+    .max(20, "Le numéro de téléphone ne doit pas dépasser 20 caractères")
+    .optional()
+    .or(z.literal("")),
+  objet: z.string()
+    .min(5, "L'objet doit contenir au moins 5 caractères")
+    .max(200, "L'objet ne doit pas dépasser 200 caractères"),
+  message: z.string()
+    .min(20, "Le message doit contenir au moins 20 caractères")
+    .max(2000, "Le message ne doit pas dépasser 2000 caractères"),
+});
+
+type ContactFormData = z.infer<typeof contactSchema>;
 
 const Contact = () => {
   const { toast } = useToast();
   const { data: config, isLoading } = useSiteConfig();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    nom: "",
-    email: "",
-    telephone: "",
-    objet: "",
-    message: "",
+
+  const form = useForm<ContactFormData>({
+    resolver: zodResolver(contactSchema),
+    defaultValues: {
+      nom: "",
+      email: "",
+      telephone: "",
+      objet: "",
+      message: "",
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.nom || !formData.email || !formData.objet || !formData.message) {
-      toast({
-        title: "Champs requis",
-        description: "Veuillez remplir tous les champs obligatoires.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const getConfigValue = (key: string) => {
+    return config?.find(c => c.cle === key)?.valeur || '';
+  };
 
+  const sendNotificationEmail = async (formData: ContactFormData) => {
+    try {
+      const adminEmail = getConfigValue('site_email') || 'admin@e2d.com';
+      
+      // Envoi notification à l'admin
+      await supabase.functions.invoke('send-contact-notification', {
+        body: {
+          type: 'admin_notification',
+          to: adminEmail,
+          contactData: {
+            nom: formData.nom,
+            email: formData.email,
+            telephone: formData.telephone || 'Non renseigné',
+            objet: formData.objet,
+            message: formData.message,
+          }
+        }
+      });
+
+      // Envoi confirmation au visiteur
+      await supabase.functions.invoke('send-contact-notification', {
+        body: {
+          type: 'visitor_confirmation',
+          to: formData.email,
+          contactData: {
+            nom: formData.nom,
+            objet: formData.objet,
+          }
+        }
+      });
+    } catch (error) {
+      // Log mais ne pas bloquer - le message est déjà enregistré
+      console.warn("Erreur envoi email notification:", error);
+    }
+  };
+
+  const onSubmit = async (formData: ContactFormData) => {
     setIsSubmitting(true);
 
     try {
@@ -48,19 +114,15 @@ const Contact = () => {
 
       if (error) throw error;
 
+      // Envoi des emails de notification (non bloquant)
+      sendNotificationEmail(formData);
+
       toast({
         title: "Message envoyé !",
-        description: "Nous vous répondrons dans les plus brefs délais.",
+        description: "Nous vous répondrons dans les plus brefs délais. Un email de confirmation vous a été envoyé.",
       });
 
-      // Reset form
-      setFormData({
-        nom: "",
-        email: "",
-        telephone: "",
-        objet: "",
-        message: "",
-      });
+      form.reset();
     } catch (error) {
       console.error("Erreur envoi message:", error);
       toast({
@@ -71,10 +133,6 @@ const Contact = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const getConfigValue = (key: string) => {
-    return config?.find(c => c.cle === key)?.valeur || '';
   };
 
   const contactInfo = [
@@ -138,86 +196,100 @@ const Contact = () => {
           {/* Contact Form */}
           <div className="bg-card rounded-2xl p-8 shadow-soft border border-border animate-in fade-in slide-in-from-left duration-700 delay-200">
             <h3 className="text-2xl font-bold text-foreground mb-6">Envoyez-nous un Message</h3>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Nom complet *
-                  </label>
-                  <Input 
-                    placeholder="Votre nom" 
-                    value={formData.nom}
-                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })}
-                    required 
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="nom"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nom complet *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Votre nom" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="telephone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Téléphone</FormLabel>
+                        <FormControl>
+                          <Input type="tel" placeholder="+33 X XX XX XX XX" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    Téléphone
-                  </label>
-                  <Input 
-                    type="tel" 
-                    placeholder="+33 X XX XX XX XX"
-                    value={formData.telephone}
-                    onChange={(e) => setFormData({ ...formData, telephone: e.target.value })}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Email *
-                </label>
-                <Input 
-                  type="email" 
-                  placeholder="votre.email@exemple.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required 
+                
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email *</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="votre.email@exemple.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Objet *
-                </label>
-                <Input 
-                  placeholder="Objet de votre message"
-                  value={formData.objet}
-                  onChange={(e) => setFormData({ ...formData, objet: e.target.value })}
-                  required 
+                
+                <FormField
+                  control={form.control}
+                  name="objet"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Objet *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Objet de votre message" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Message *
-                </label>
-                <Textarea 
-                  placeholder="Parlez-nous de votre projet ou de vos questions..."
-                  rows={5}
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  required
+                
+                <FormField
+                  control={form.control}
+                  name="message"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Message *</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Parlez-nous de votre projet ou de vos questions..."
+                          rows={5}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <Button 
-                type="submit"
-                className="w-full bg-secondary hover:bg-secondary/90 text-white transition-all duration-300"
-                size="lg"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Envoi en cours...
-                  </>
-                ) : (
-                  "Envoyer le Message"
-                )}
-              </Button>
-            </form>
+                <Button 
+                  type="submit"
+                  className="w-full bg-secondary hover:bg-secondary/90 text-white transition-all duration-300"
+                  size="lg"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    "Envoyer le Message"
+                  )}
+                </Button>
+              </form>
+            </Form>
           </div>
 
           {/* Contact Info */}

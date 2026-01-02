@@ -15,6 +15,9 @@ verify_jwt = false
 [functions.send-email]
 verify_jwt = false
 
+[functions.send-contact-notification]
+verify_jwt = false
+
 [functions.send-presence-reminders]
 verify_jwt = false
 
