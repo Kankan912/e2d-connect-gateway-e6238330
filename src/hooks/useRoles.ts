@@ -36,6 +36,20 @@ export const useRoles = () => {
     });
   };
 
+  // Récupérer TOUTES les permissions de tous les rôles en une seule requête
+  const useAllRolesPermissions = () => {
+    return useQuery({
+      queryKey: ['all-roles-permissions'],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from('role_permissions')
+          .select('*');
+        if (error) throw error;
+        return data;
+      },
+    });
+  };
+
   // Récupérer TOUS les utilisateurs (profiles) avec leurs rôles éventuels
   const useUsersWithRoles = () => {
     return useQuery({
@@ -208,6 +222,7 @@ export const useRoles = () => {
     roles,
     isLoading,
     useRolePermissions,
+    useAllRolesPermissions,
     useUsersWithRoles,
     createRole,
     updateRolePermission,

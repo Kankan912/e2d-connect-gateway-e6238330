@@ -37,16 +37,24 @@ const PERMISSIONS = [
 
 const PermissionsAdmin = () => {
   const { userRole } = useAuth();
-  const { roles, useRolePermissions } = useRoles();
+  const { roles, useRolePermissions, useAllRolesPermissions } = useRoles();
+  const { data: allPermissions, isLoading: permissionsLoading } = useAllRolesPermissions();
   const refreshPermissions = useRefreshPermissions();
   const { toast } = useToast();
   const [selectedRole, setSelectedRole] = useState<string>("");
 
   const isAdmin = userRole === "administrateur";
 
+  // Helper pour vérifier si un rôle a une permission
+  const hasRolePermission = (roleId: string, resource: string, permission: string): boolean => {
+    return allPermissions?.some(
+      p => p.role_id === roleId && p.resource === resource && p.permission === permission && p.granted
+    ) ?? false;
+  };
+
   // Exporter la matrice en Excel
   const handleExport = () => {
-    if (!roles) return;
+    if (!roles || !allPermissions) return;
 
     const data: any[] = [];
     
@@ -60,11 +68,8 @@ const PermissionsAdmin = () => {
         const row = [`${resource.label} - ${perm.label}`];
         
         roles.forEach(role => {
-          const { data: permissions } = useRolePermissions(role.id);
-          const hasPermission = permissions?.some(
-            p => p.resource === resource.id && p.permission === perm.id && p.granted
-          );
-          row.push(hasPermission ? '✓' : '✗');
+          const hasPerm = hasRolePermission(role.id, resource.id, perm.id);
+          row.push(hasPerm ? '✓' : '✗');
         });
         
         data.push(row);
@@ -195,64 +200,65 @@ const PermissionsAdmin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="rounded-md border overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[200px] sticky left-0 bg-background">
-                        Ressource
-                      </TableHead>
-                      <TableHead className="text-center">Permission</TableHead>
-                      {roles?.map(role => (
-                        <TableHead key={role.id} className="text-center min-w-[100px]">
-                          {role.name}
+              {permissionsLoading ? (
+                <div className="py-12 flex justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[200px] sticky left-0 bg-background">
+                          Ressource
                         </TableHead>
-                      ))}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {RESOURCES.map(resource => (
-                      PERMISSIONS.map((perm, permIndex) => (
-                        <TableRow key={`${resource.id}-${perm.id}`}>
-                          {permIndex === 0 && (
-                            <TableCell 
-                              rowSpan={PERMISSIONS.length} 
-                              className="font-medium sticky left-0 bg-background"
-                            >
-                              <span className="flex items-center gap-2">
-                                <span>{resource.icon}</span>
-                                <span>{resource.label}</span>
-                              </span>
-                            </TableCell>
-                          )}
-                          <TableCell className="text-center">
-                            <Badge variant="outline" className={perm.color}>
-                              {perm.label}
-                            </Badge>
-                          </TableCell>
-                          {roles?.map(role => {
-                            const { data: permissions } = useRolePermissions(role.id);
-                            const hasPermission = permissions?.some(
-                              p => p.resource === resource.id && 
-                                   p.permission === perm.id && 
-                                   p.granted
-                            );
-                            return (
-                              <TableCell key={role.id} className="text-center">
-                                {hasPermission ? (
-                                  <span className="text-green-600 text-xl">✓</span>
-                                ) : (
-                                  <span className="text-gray-300 text-xl">✗</span>
-                                )}
+                        <TableHead className="text-center">Permission</TableHead>
+                        {roles?.map(role => (
+                          <TableHead key={role.id} className="text-center min-w-[100px]">
+                            {role.name}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {RESOURCES.map(resource => (
+                        PERMISSIONS.map((perm, permIndex) => (
+                          <TableRow key={`${resource.id}-${perm.id}`}>
+                            {permIndex === 0 && (
+                              <TableCell 
+                                rowSpan={PERMISSIONS.length} 
+                                className="font-medium sticky left-0 bg-background"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <span>{resource.icon}</span>
+                                  <span>{resource.label}</span>
+                                </span>
                               </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      ))
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                            )}
+                            <TableCell className="text-center">
+                              <Badge variant="outline" className={perm.color}>
+                                {perm.label}
+                              </Badge>
+                            </TableCell>
+                            {roles?.map(role => {
+                              const hasPerm = hasRolePermission(role.id, resource.id, perm.id);
+                              return (
+                                <TableCell key={role.id} className="text-center">
+                                  {hasPerm ? (
+                                    <span className="text-green-600 text-xl">✓</span>
+                                  ) : (
+                                    <span className="text-gray-300 text-xl">✗</span>
+                                  )}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
