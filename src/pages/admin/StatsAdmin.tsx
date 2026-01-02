@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BarChart3, TrendingUp, Users, Euro, Calendar } from "lucide-react";
+import { BarChart3, TrendingUp, Users, Coins, Calendar } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import BackButton from "@/components/BackButton";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { chartColors, tooltipStyles } from "@/lib/rechartsConfig";
-
+import { formatFCFA } from "@/lib/utils";
 export default function StatsAdmin() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [stats, setStats] = useState<any>({
@@ -172,11 +172,11 @@ export default function StatsAdmin() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-medium">Donations {selectedYear}</CardTitle>
-                  <Euro className="h-4 w-4 text-muted-foreground" />
+                  <Coins className="h-4 w-4 text-muted-foreground" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.donations.toLocaleString()} €</div>
+                <div className="text-2xl font-bold">{formatFCFA(stats.donations)}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Total collecté cette année
                 </p>
@@ -210,20 +210,20 @@ export default function StatsAdmin() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-3 border rounded">
                   <span className="font-medium">Cotisations</span>
-                  <span className="text-lg font-bold">{(stats.cotisations?.reduce((sum: number, c: any) => sum + parseFloat(c.montant), 0) || 0).toLocaleString()} €</span>
+                  <span className="text-lg font-bold">{formatFCFA(stats.cotisations?.reduce((sum: number, c: any) => sum + parseFloat(c.montant), 0) || 0)}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded">
                   <span className="font-medium">Épargnes</span>
-                  <span className="text-lg font-bold">{(stats.epargnes?.reduce((sum: number, e: any) => sum + parseFloat(e.montant), 0) || 0).toLocaleString()} €</span>
+                  <span className="text-lg font-bold">{formatFCFA(stats.epargnes?.reduce((sum: number, e: any) => sum + parseFloat(e.montant), 0) || 0)}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded">
                   <span className="font-medium">Donations</span>
-                  <span className="text-lg font-bold">{stats.donations.toLocaleString()} €</span>
+                  <span className="text-lg font-bold">{formatFCFA(stats.donations)}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 border rounded bg-primary/10">
                   <span className="font-bold">TOTAL</span>
                   <span className="text-xl font-bold">
-                    {((stats.cotisations?.reduce((sum: number, c: any) => sum + parseFloat(c.montant), 0) || 0) + (stats.epargnes?.reduce((sum: number, e: any) => sum + parseFloat(e.montant), 0) || 0) + stats.donations).toLocaleString()} €
+                    {formatFCFA((stats.cotisations?.reduce((sum: number, c: any) => sum + parseFloat(c.montant), 0) || 0) + (stats.epargnes?.reduce((sum: number, e: any) => sum + parseFloat(e.montant), 0) || 0) + stats.donations)}
                   </span>
                 </div>
               </div>
