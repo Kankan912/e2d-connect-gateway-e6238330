@@ -34,7 +34,7 @@ export const NotificationToaster = () => {
               description: `Un prêt vient de dépasser son échéance`,
               action: {
                 label: "Voir",
-                onClick: () => navigate('/dashboard/prets'),
+                onClick: () => navigate('/dashboard/admin/finances/prets'),
               },
             });
           }
