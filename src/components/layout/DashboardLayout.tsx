@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardHeader } from "./DashboardHeader";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { NotificationToaster } from "@/components/notifications/NotificationToaster";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -19,6 +20,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </main>
         </div>
       </div>
+      <NotificationToaster />
     </SidebarProvider>
   );
 };

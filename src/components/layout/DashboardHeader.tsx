@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User, Home } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 
 export const DashboardHeader = () => {
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ export const DashboardHeader = () => {
       </div>
 
       <div className="flex items-center gap-4">
+        <NotificationCenter />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
