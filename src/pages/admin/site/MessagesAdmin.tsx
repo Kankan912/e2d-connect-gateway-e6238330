@@ -6,22 +6,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Mail, Phone, CheckCircle, Archive, Eye, MessageSquare } from "lucide-react";
+import { Mail, Phone, CheckCircle, Eye, MessageSquare, Trash2, Download, Send, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
+import * as XLSX from "xlsx";
 
 type MessageStatus = "nouveau" | "lu" | "traite";
 
 const MessagesAdmin = () => {
   const queryClient = useQueryClient();
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
-  const [notes, setNotes] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [replyContent, setReplyContent] = useState("");
+  const [isSendingReply, setIsSendingReply] = useState(false);
+  const [showReplyForm, setShowReplyForm] = useState(false);
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ["contact-messages"],
@@ -54,6 +58,25 @@ const MessagesAdmin = () => {
     },
   });
 
+  const deleteMessage = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("messages_contact")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contact-messages"] });
+      toast({ title: "Succès", description: "Message supprimé" });
+      setSelectedMessage(null);
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Échec de la suppression", variant: "destructive" });
+    },
+  });
+
   const filteredMessages = messages?.filter((msg) => {
     if (statusFilter === "all") return true;
     return msg.statut === statusFilter;
@@ -81,12 +104,80 @@ const MessagesAdmin = () => {
 
   const handleViewMessage = (message: any) => {
     setSelectedMessage(message);
-    setNotes("");
+    setReplyContent("");
+    setShowReplyForm(false);
     
     // Marquer comme lu si nouveau
     if (message.statut === "nouveau") {
       updateMessage.mutate({ id: message.id, statut: "lu" });
     }
+  };
+
+  const handleSendReply = async () => {
+    if (!selectedMessage || !replyContent.trim()) return;
+
+    setIsSendingReply(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-contact-notification', {
+        body: {
+          type: 'admin_reply',
+          to: selectedMessage.email,
+          contactData: {
+            nom: selectedMessage.nom,
+            email: selectedMessage.email,
+            objet: selectedMessage.objet,
+          },
+          replyContent: replyContent.trim(),
+        }
+      });
+
+      if (error) throw error;
+
+      // Marquer comme traité après réponse
+      await updateMessage.mutateAsync({ id: selectedMessage.id, statut: "traite" });
+
+      toast({ 
+        title: "Réponse envoyée", 
+        description: `Email envoyé à ${selectedMessage.email}` 
+      });
+      
+      setReplyContent("");
+      setShowReplyForm(false);
+      setSelectedMessage(null);
+    } catch (error) {
+      console.error("Erreur envoi réponse:", error);
+      toast({ 
+        title: "Erreur", 
+        description: "Impossible d'envoyer la réponse. Vérifiez la configuration email.",
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSendingReply(false);
+    }
+  };
+
+  const handleExport = () => {
+    if (!messages || messages.length === 0) {
+      toast({ title: "Aucune donnée", description: "Aucun message à exporter", variant: "destructive" });
+      return;
+    }
+
+    const exportData = messages.map(msg => ({
+      "Date": format(new Date(msg.created_at), "dd/MM/yyyy HH:mm", { locale: fr }),
+      "Nom": msg.nom,
+      "Email": msg.email,
+      "Téléphone": msg.telephone || "",
+      "Objet": msg.objet,
+      "Message": msg.message,
+      "Statut": msg.statut === "nouveau" ? "Nouveau" : msg.statut === "lu" ? "Lu" : "Traité",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Messages");
+    XLSX.writeFile(wb, `messages_contact_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+
+    toast({ title: "Export réussi", description: `${messages.length} messages exportés` });
   };
 
   if (isLoading) {
@@ -100,12 +191,18 @@ const MessagesAdmin = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <BackButton />
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Messages de Contact</h1>
-          <p className="text-muted-foreground">Gérez les messages reçus via le formulaire de contact</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <BackButton />
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Messages de Contact</h1>
+            <p className="text-muted-foreground">Gérez les messages reçus via le formulaire de contact</p>
+          </div>
         </div>
+        <Button variant="outline" onClick={handleExport}>
+          <Download className="h-4 w-4 mr-2" />
+          Exporter Excel
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -193,6 +290,30 @@ const MessagesAdmin = () => {
                               <CheckCircle className="h-4 w-4 text-green-500" />
                             </Button>
                           )}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Supprimer ce message ?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Cette action est irréversible. Le message de {message.nom} sera définitivement supprimé.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => deleteMessage.mutate(message.id)}
+                                >
+                                  Supprimer
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -214,7 +335,7 @@ const MessagesAdmin = () => {
 
       {/* Message Detail Dialog */}
       <Dialog open={!!selectedMessage} onOpenChange={() => setSelectedMessage(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Mail className="h-5 w-5" />
@@ -260,6 +381,40 @@ const MessagesAdmin = () => {
                 </div>
               </div>
 
+              {/* Reply Form */}
+              {showReplyForm && (
+                <div className="border-t pt-4 space-y-3">
+                  <p className="text-sm font-medium">Répondre par email</p>
+                  <Textarea
+                    placeholder="Écrivez votre réponse ici..."
+                    value={replyContent}
+                    onChange={(e) => setReplyContent(e.target.value)}
+                    rows={5}
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setShowReplyForm(false)}>
+                      Annuler
+                    </Button>
+                    <Button 
+                      onClick={handleSendReply} 
+                      disabled={!replyContent.trim() || isSendingReply}
+                    >
+                      {isSendingReply ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Envoi...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4 mr-2" />
+                          Envoyer
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between pt-4 border-t">
                 <div className="flex items-center gap-2">
                   {getStatusBadge(selectedMessage.statut)}
@@ -269,15 +424,12 @@ const MessagesAdmin = () => {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      window.location.href = `mailto:${selectedMessage.email}?subject=Re: ${selectedMessage.objet}`
-                    }
-                  >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Répondre
-                  </Button>
+                  {!showReplyForm && (
+                    <Button variant="outline" onClick={() => setShowReplyForm(true)}>
+                      <Mail className="h-4 w-4 mr-2" />
+                      Répondre
+                    </Button>
+                  )}
                   {selectedMessage.statut !== "traite" && (
                     <Button
                       onClick={() => {
