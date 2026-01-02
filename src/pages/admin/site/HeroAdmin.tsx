@@ -1,22 +1,81 @@
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
-import { useSiteHero, useUpdateHero } from "@/hooks/useSiteContent";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, Trash2, ChevronUp, ChevronDown, ImagePlus } from "lucide-react";
+import { useSiteHero, useUpdateHero, useSiteHeroImages, useCreateHeroImage, useDeleteHeroImage, useUpdateHeroImage } from "@/hooks/useSiteContent";
 import MediaUploader from "@/components/admin/MediaUploader";
+import { toast } from "sonner";
 
 export default function HeroAdmin() {
   const { data: hero, isLoading } = useSiteHero();
+  const { data: heroImages, isLoading: imagesLoading } = useSiteHeroImages(hero?.id);
   const updateHero = useUpdateHero();
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const createHeroImage = useCreateHeroImage();
+  const deleteHeroImage = useDeleteHeroImage();
+  const updateHeroImage = useUpdateHeroImage();
+  
+  const { register, handleSubmit, reset, setValue, watch } = useForm();
+  const [carouselAutoPlay, setCarouselAutoPlay] = useState(true);
+  const [carouselInterval, setCarouselInterval] = useState(5000);
+
+  useEffect(() => {
+    if (hero) {
+      setCarouselAutoPlay(hero.carousel_auto_play ?? true);
+      setCarouselInterval(hero.carousel_interval ?? 5000);
+    }
+  }, [hero]);
 
   const onSubmit = (data: any) => {
     if (hero) {
-      updateHero.mutate({ ...data, id: hero.id });
+      updateHero.mutate({ 
+        ...data, 
+        id: hero.id,
+        carousel_auto_play: carouselAutoPlay,
+        carousel_interval: carouselInterval
+      });
     }
+  };
+
+  const handleAddImage = (url: string) => {
+    if (hero) {
+      createHeroImage.mutate({
+        hero_id: hero.id,
+        image_url: url,
+        ordre: (heroImages?.length || 0) + 1
+      }, {
+        onSuccess: () => toast.success("Image ajoutée au carousel")
+      });
+    }
+  };
+
+  const handleDeleteImage = (id: string) => {
+    if (confirm("Supprimer cette image du carousel ?")) {
+      deleteHeroImage.mutate(id, {
+        onSuccess: () => toast.success("Image supprimée")
+      });
+    }
+  };
+
+  const handleMoveImage = (id: string, direction: 'up' | 'down') => {
+    if (!heroImages) return;
+    
+    const currentIndex = heroImages.findIndex(img => img.id === id);
+    if (currentIndex === -1) return;
+    
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= heroImages.length) return;
+
+    const currentImage = heroImages[currentIndex];
+    const swapImage = heroImages[newIndex];
+
+    // Swap orders
+    updateHeroImage.mutate({ id: currentImage.id, ordre: swapImage.ordre });
+    updateHeroImage.mutate({ id: swapImage.id, ordre: currentImage.ordre });
   };
 
   if (isLoading) {
@@ -36,11 +95,129 @@ export default function HeroAdmin() {
         </p>
       </div>
 
+      {/* Carousel Images Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Carousel d'Images</CardTitle>
+          <CardDescription>
+            Gérez les images de fond du Hero avec défilement automatique
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Carousel Settings */}
+          <div className="flex flex-wrap items-center gap-6 p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Switch 
+                id="carousel-autoplay"
+                checked={carouselAutoPlay} 
+                onCheckedChange={(checked) => {
+                  setCarouselAutoPlay(checked);
+                  if (hero) {
+                    updateHero.mutate({ id: hero.id, carousel_auto_play: checked });
+                  }
+                }}
+              />
+              <Label htmlFor="carousel-autoplay">Défilement automatique</Label>
+            </div>
+            <div className="flex items-center gap-3">
+              <Label htmlFor="carousel-interval">Intervalle (ms)</Label>
+              <Input 
+                id="carousel-interval"
+                type="number" 
+                min={2000}
+                max={10000}
+                step={500}
+                className="w-24"
+                value={carouselInterval}
+                onChange={(e) => setCarouselInterval(Number(e.target.value))}
+                onBlur={() => {
+                  if (hero) {
+                    updateHero.mutate({ id: hero.id, carousel_interval: carouselInterval });
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Images Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {imagesLoading ? (
+              <div className="col-span-full flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+            ) : (
+              <>
+                {heroImages?.map((img, index) => (
+                  <div key={img.id} className="relative group">
+                    <div className="aspect-video bg-muted rounded-lg overflow-hidden border">
+                      <img 
+                        src={img.image_url} 
+                        alt={`Image carousel ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
+                      <Button 
+                        size="icon" 
+                        variant="secondary" 
+                        className="h-8 w-8"
+                        disabled={index === 0}
+                        onClick={() => handleMoveImage(img.id, 'up')}
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="secondary"
+                        className="h-8 w-8"
+                        disabled={index === (heroImages?.length || 0) - 1}
+                        onClick={() => handleMoveImage(img.id, 'down')}
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="destructive"
+                        className="h-8 w-8"
+                        onClick={() => handleDeleteImage(img.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <p className="mt-1 text-xs text-center text-muted-foreground">
+                      Position {index + 1}
+                    </p>
+                  </div>
+                ))}
+                
+                {/* Add New Image */}
+                <div className="aspect-video border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary transition-colors">
+                  <MediaUploader
+                    bucket="site-hero"
+                    accept="image/*"
+                    onUrlChange={(url) => handleAddImage(url)}
+                    label=""
+                    maxSizeMB={10}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+          
+          {heroImages && heroImages.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Aucune image dans le carousel. L'image principale sera utilisée.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Main Content Form */}
       <Card>
         <CardHeader>
           <CardTitle>Contenu du Hero</CardTitle>
           <CardDescription>
-            Modifiez les textes et images de la section hero
+            Modifiez les textes et l'image principale de la section hero
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,7 +258,7 @@ export default function HeroAdmin() {
                 setValue("image_url", url);
                 setValue("media_source", source);
               }}
-              label="Image de fond du Hero"
+              label="Image de fond principale (utilisée si pas de carousel)"
               maxSizeMB={10}
             />
 

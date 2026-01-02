@@ -1,27 +1,48 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Pencil, Trash2, Calendar, Clock, MapPin } from "lucide-react";
-import { useSiteEvents, useCreateEvent, useUpdateEvent, useDeleteEvent } from "@/hooks/useSiteContent";
+import { Loader2, Plus, Pencil, Trash2, Calendar, Clock, MapPin, Settings } from "lucide-react";
+import { useSiteEvents, useCreateEvent, useUpdateEvent, useDeleteEvent, useSiteEventsCarouselConfig, useUpdateEventsCarouselConfig } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import MediaUploader from "@/components/admin/MediaUploader";
+import { toast } from "sonner";
 
 export default function EventsAdmin() {
   const { data: events, isLoading } = useSiteEvents();
+  const { data: carouselConfig, isLoading: configLoading } = useSiteEventsCarouselConfig();
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent();
   const deleteEvent = useDeleteEvent();
+  const updateCarouselConfig = useUpdateEventsCarouselConfig();
+  
   const [open, setOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const { register, handleSubmit, reset, setValue } = useForm();
+
+  // Carousel config state
+  const [autoPlay, setAutoPlay] = useState(true);
+  const [interval, setInterval] = useState(5000);
+  const [showArrows, setShowArrows] = useState(true);
+  const [showIndicators, setShowIndicators] = useState(true);
+
+  useEffect(() => {
+    if (carouselConfig) {
+      setAutoPlay(carouselConfig.auto_play ?? true);
+      setInterval(carouselConfig.interval ?? 5000);
+      setShowArrows(carouselConfig.show_arrows ?? true);
+      setShowIndicators(carouselConfig.show_indicators ?? true);
+    }
+  }, [carouselConfig]);
 
   const onSubmit = (data: any) => {
     if (editingEvent) {
@@ -45,6 +66,20 @@ export default function EventsAdmin() {
   const handleDelete = (id: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cet événement ?")) {
       deleteEvent.mutate(id);
+    }
+  };
+
+  const saveCarouselConfig = () => {
+    if (carouselConfig) {
+      updateCarouselConfig.mutate({
+        id: carouselConfig.id,
+        auto_play: autoPlay,
+        interval: interval,
+        show_arrows: showArrows,
+        show_indicators: showIndicators
+      }, {
+        onSuccess: () => toast.success("Configuration du carousel sauvegardée")
+      });
     }
   };
 
@@ -138,82 +173,195 @@ export default function EventsAdmin() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Liste des événements</CardTitle>
-          <CardDescription>
-            {events?.length || 0} événement(s) actif(s)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Événement</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Date & Heure</TableHead>
-                <TableHead>Lieu</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {events?.map((event) => (
-                <TableRow key={event.id}>
-                  <TableCell>
-                    <div className="font-medium">{event.titre}</div>
-                    {event.description && (
-                      <p className="text-sm text-muted-foreground truncate max-w-xs">
-                        {event.description}
-                      </p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge>{event.type}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Calendar className="w-3 h-3" />
-                        {format(new Date(event.date), "dd MMM yyyy", { locale: fr })}
-                      </div>
-                      {event.heure && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          {event.heure}
+      <Tabs defaultValue="events">
+        <TabsList>
+          <TabsTrigger value="events">
+            <Calendar className="w-4 h-4 mr-2" />
+            Événements
+          </TabsTrigger>
+          <TabsTrigger value="carousel">
+            <Settings className="w-4 h-4 mr-2" />
+            Paramètres Carousel
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="events" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Liste des événements</CardTitle>
+              <CardDescription>
+                {events?.length || 0} événement(s) actif(s)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Événement</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date & Heure</TableHead>
+                    <TableHead>Lieu</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {events?.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell>
+                        <div className="font-medium">{event.titre}</div>
+                        {event.description && (
+                          <p className="text-sm text-muted-foreground truncate max-w-xs">
+                            {event.description}
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge>{event.type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1 text-sm">
+                            <Calendar className="w-3 h-3" />
+                            {format(new Date(event.date), "dd MMM yyyy", { locale: fr })}
+                          </div>
+                          {event.heure && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              {event.heure}
+                            </div>
+                          )}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-sm">
+                          <MapPin className="w-3 h-3" />
+                          {event.lieu}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEdit(event)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(event.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {(!events || events.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        Aucun événement. Cliquez sur "Nouvel Événement" pour en créer un.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="carousel" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuration du Carousel</CardTitle>
+              <CardDescription>
+                Personnalisez l'affichage du carousel d'événements sur la page d'accueil
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {configLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-6">
+                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div>
+                        <Label className="text-base">Défilement automatique</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Active le défilement automatique des événements
+                        </p>
+                      </div>
+                      <Switch 
+                        checked={autoPlay} 
+                        onCheckedChange={setAutoPlay}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div>
+                        <Label className="text-base">Intervalle (ms)</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Durée entre chaque slide (2000-8000ms)
+                        </p>
+                      </div>
+                      <Input 
+                        type="number" 
+                        min={2000}
+                        max={8000}
+                        step={500}
+                        className="w-28"
+                        value={interval}
+                        onChange={(e) => setInterval(Number(e.target.value))}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div>
+                        <Label className="text-base">Afficher les flèches</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Affiche les boutons précédent/suivant
+                        </p>
+                      </div>
+                      <Switch 
+                        checked={showArrows} 
+                        onCheckedChange={setShowArrows}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div>
+                        <Label className="text-base">Afficher les indicateurs</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Affiche les points de navigation en bas
+                        </p>
+                      </div>
+                      <Switch 
+                        checked={showIndicators} 
+                        onCheckedChange={setShowIndicators}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4 border-t">
+                    <Button 
+                      onClick={saveCarouselConfig}
+                      disabled={updateCarouselConfig.isPending}
+                    >
+                      {updateCarouselConfig.isPending && (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm">
-                      <MapPin className="w-3 h-3" />
-                      {event.lieu}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleEdit(event)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDelete(event.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                      Sauvegarder la configuration
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
