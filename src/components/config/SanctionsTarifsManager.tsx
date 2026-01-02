@@ -12,8 +12,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Plus, Edit, Trash2, Loader2, Euro } from "lucide-react";
+import { AlertTriangle, Plus, Edit, Trash2, Loader2, Coins } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { formatFCFA } from "@/lib/utils";
 
 interface SanctionType {
   id: string;
@@ -306,7 +307,7 @@ export function SanctionsTarifsManager() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="montant">Montant par défaut (€)</Label>
+                      <Label htmlFor="montant">Montant par défaut (FCFA)</Label>
                       <Input
                         id="montant"
                         type="number"
@@ -344,7 +345,7 @@ export function SanctionsTarifsManager() {
                       <Badge variant="outline">{getCategorieLabel(type.categorie)}</Badge>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{type.description || "-"}</TableCell>
-                    <TableCell>{type.montant} €</TableCell>
+                    <TableCell>{formatFCFA(type.montant)}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button variant="outline" size="icon" onClick={() => handleEdit(type)}>
                         <Edit className="h-4 w-4" />
@@ -393,7 +394,7 @@ export function SanctionsTarifsManager() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Euro className="h-5 w-5" />
+              <Coins className="h-5 w-5" />
               Tarifs par Catégorie de Membre
             </CardTitle>
             <CardDescription>
@@ -450,7 +451,7 @@ export function SanctionsTarifsManager() {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Montant (€)</Label>
+                        <Label>Montant (FCFA)</Label>
                         <Input
                           type="number"
                           value={tarifFormData.montant}
@@ -485,7 +486,7 @@ export function SanctionsTarifsManager() {
                   {tarifs?.map((tarif) => (
                     <TableRow key={tarif.id}>
                       <TableCell>{getCategorieMembreLabel(tarif.categorie_membre)}</TableCell>
-                      <TableCell>{tarif.montant} €</TableCell>
+                      <TableCell>{formatFCFA(tarif.montant)}</TableCell>
                       <TableCell className="text-right">
                         <Button 
                           variant="outline" 
