@@ -10,7 +10,11 @@ import BackButton from "@/components/BackButton";
 import NotificationCampagneForm from "@/components/forms/NotificationCampagneForm";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function NotificationsAdmin() {
+interface NotificationsAdminProps {
+  embedded?: boolean;
+}
+
+export default function NotificationsAdmin({ embedded = false }: NotificationsAdminProps) {
   const [formOpen, setFormOpen] = useState(false);
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -57,14 +61,16 @@ export default function NotificationsAdmin() {
   });
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <BackButton />
+    <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
+      {!embedded && <BackButton />}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Bell className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Notifications & Campagnes</h1>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
+        {!embedded && (
+          <div className="flex items-center gap-2">
+            <Bell className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold">Notifications & Campagnes</h1>
+          </div>
+        )}
+        <Button onClick={() => setFormOpen(true)} className={embedded ? "ml-auto" : ""}>
           <Plus className="h-4 w-4 mr-2" />
           Nouvelle Campagne
         </Button>

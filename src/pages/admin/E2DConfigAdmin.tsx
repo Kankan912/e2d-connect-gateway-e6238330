@@ -1,18 +1,20 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BackButton from "@/components/BackButton";
-import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download, Banknote, Clock } from "lucide-react";
+import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download, Banknote, Clock, Mail, Send, Cog } from "lucide-react";
 import { ExercicesManager } from "@/components/config/ExercicesManager";
 import { CotisationsTypesManager } from "@/components/config/CotisationsTypesManager";
 import { SanctionsTarifsManager } from "@/components/config/SanctionsTarifsManager";
 import { GestionGeneraleManager } from "@/components/config/GestionGeneraleManager";
 import { SauvegardeManager } from "@/components/config/SauvegardeManager";
 import { SessionsConfigManager } from "@/components/config/SessionsConfigManager";
+import { NotificationsConfigManager } from "@/components/config/NotificationsConfigManager";
 
 // Import des pages existantes pour intégration
 import RolesAdmin from "./RolesAdmin";
 import PermissionsAdmin from "./PermissionsAdmin";
 import NotificationsAdmin from "./NotificationsAdmin";
+import NotificationsTemplatesAdmin from "./NotificationsTemplatesAdmin";
 import TontineConfig from "./TontineConfig";
 import PretsConfigAdmin from "./PretsConfigAdmin";
 
@@ -151,11 +153,38 @@ const E2DConfigAdmin = () => {
                 Configuration des Notifications
               </CardTitle>
               <CardDescription>
-                Gérez les campagnes et templates de notifications
+                Gérez les campagnes, templates et paramètres de notifications
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <NotificationsAdmin />
+              <Tabs defaultValue="campagnes" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 mb-6">
+                  <TabsTrigger value="campagnes" className="flex items-center gap-2">
+                    <Send className="h-4 w-4" />
+                    Campagnes
+                  </TabsTrigger>
+                  <TabsTrigger value="templates" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Modèles Email
+                  </TabsTrigger>
+                  <TabsTrigger value="parametres" className="flex items-center gap-2">
+                    <Cog className="h-4 w-4" />
+                    Paramètres
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="campagnes">
+                  <NotificationsAdmin embedded={true} />
+                </TabsContent>
+
+                <TabsContent value="templates">
+                  <NotificationsTemplatesAdmin embedded={true} />
+                </TabsContent>
+
+                <TabsContent value="parametres">
+                  <NotificationsConfigManager />
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </TabsContent>

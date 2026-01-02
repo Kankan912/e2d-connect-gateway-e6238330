@@ -35,7 +35,11 @@ const VARIABLES_COMMUNES = [
   { var: '{{lien}}', desc: 'Lien de l\'application' },
 ];
 
-export default function NotificationsTemplatesAdmin() {
+interface NotificationsTemplatesAdminProps {
+  embedded?: boolean;
+}
+
+export default function NotificationsTemplatesAdmin({ embedded = false }: NotificationsTemplatesAdminProps) {
   const { templates, isLoading, createTemplate, updateTemplate, toggleTemplateStatus, deleteTemplate } = useNotificationsTemplates();
   
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -153,8 +157,8 @@ export default function NotificationsTemplatesAdmin() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
-        <BackButton />
+      <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
+        {!embedded && <BackButton />}
         <Skeleton className="h-10 w-64" />
         <div className="grid gap-4 md:grid-cols-3">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}
@@ -165,18 +169,20 @@ export default function NotificationsTemplatesAdmin() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <BackButton />
+    <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
+      {!embedded && <BackButton />}
       
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Mail className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">Templates de Notifications</h1>
-            <p className="text-muted-foreground">Gérez les modèles d'emails automatiques</p>
+        {!embedded && (
+          <div className="flex items-center gap-2">
+            <Mail className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-bold">Templates de Notifications</h1>
+              <p className="text-muted-foreground">Gérez les modèles d'emails automatiques</p>
+            </div>
           </div>
-        </div>
-        <Button onClick={() => handleOpenDialog()}>
+        )}
+        <Button onClick={() => handleOpenDialog()} className={embedded ? "ml-auto" : ""}>
           <Plus className="h-4 w-4 mr-2" />
           Nouveau Template
         </Button>
