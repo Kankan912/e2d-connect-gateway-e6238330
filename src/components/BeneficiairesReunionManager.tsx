@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { calculateSoldeNetBeneficiaire } from "@/lib/beneficiairesCalculs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { formatFCFA } from "@/lib/utils";
 
 interface BeneficiairesReunionManagerProps {
   reunionId?: string;
@@ -155,7 +156,7 @@ export default function BeneficiairesReunionManager({ reunionId }: Beneficiaires
       setMontantBenefice(soldeNet.soldeNet.toFixed(2));
       toast({
         title: "Calcul effectué",
-        description: `Montant net après déductions: ${soldeNet.soldeNet.toFixed(2)} €`
+        description: `Montant net après déductions: ${formatFCFA(soldeNet.soldeNet)}`
       });
     } catch (error) {
       console.error('Erreur calcul:', error);
@@ -211,7 +212,7 @@ export default function BeneficiairesReunionManager({ reunionId }: Beneficiaires
 
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <Label>Montant (€)</Label>
+                  <Label>Montant (FCFA)</Label>
                   <Input
                     type="number"
                     placeholder="Montant"
@@ -236,7 +237,7 @@ export default function BeneficiairesReunionManager({ reunionId }: Beneficiaires
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Montant calculé après déductions: <strong>{calculatedAmount.toFixed(2)} €</strong>
+                    Montant calculé après déductions: <strong>{formatFCFA(calculatedAmount)}</strong>
                   </AlertDescription>
                 </Alert>
               )}
@@ -265,7 +266,7 @@ export default function BeneficiairesReunionManager({ reunionId }: Beneficiaires
                       {benef.membres?.nom} {benef.membres?.prenom}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Montant: {benef.montant_benefice.toLocaleString()} €
+                      Montant: {formatFCFA(benef.montant_benefice)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

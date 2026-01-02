@@ -44,6 +44,7 @@ const SportSanctions = lazy(() => import("./admin/SportSanctions"));
 const PretsAdmin = lazy(() => import("./admin/PretsAdmin"));
 const AidesAdmin = lazy(() => import("./admin/AidesAdmin"));
 const NotificationsAdmin = lazy(() => import("./admin/NotificationsAdmin"));
+const NotificationsTemplatesAdmin = lazy(() => import("./admin/NotificationsTemplatesAdmin"));
 const ExportsAdmin = lazy(() => import("./admin/ExportsAdmin"));
 const MatchGalaConfig = lazy(() => import("./admin/MatchGalaConfig"));
 const SportEquipes = lazy(() => import("./SportEquipes"));
@@ -311,6 +312,16 @@ const Dashboard = () => {
             <PermissionRoute resource="notifications" permission="read">
               <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
                 <NotificationsAdmin />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/communication/notifications-templates"
+          element={
+            <PermissionRoute resource="notifications" permission="write">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <NotificationsTemplatesAdmin />
               </Suspense>
             </PermissionRoute>
           }

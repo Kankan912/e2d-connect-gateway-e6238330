@@ -10,6 +10,7 @@ import { Users, Calendar as CalendarIcon, TrendingUp, Check } from "lucide-react
 import { format, startOfYear, endOfYear } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
+import { formatFCFA } from "@/lib/utils";
 
 export default function CalendrierBeneficiaires() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -128,7 +129,7 @@ export default function CalendrierBeneficiaires() {
             <CardTitle className="text-sm text-muted-foreground">Montant Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{stats.montantTotal.toLocaleString()} €</div>
+            <div className="text-xl font-bold">{formatFCFA(stats.montantTotal)}</div>
           </CardContent>
         </Card>
         
@@ -137,7 +138,7 @@ export default function CalendrierBeneficiaires() {
             <CardTitle className="text-sm text-muted-foreground">Payé</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold text-green-600">{stats.montantPaye.toLocaleString()} €</div>
+            <div className="text-xl font-bold text-green-600">{formatFCFA(stats.montantPaye)}</div>
           </CardContent>
         </Card>
       </div>
@@ -193,7 +194,7 @@ export default function CalendrierBeneficiaires() {
                               {format(new Date(beneficiaire.date_benefice_prevue), 'dd MMMM yyyy', { locale: fr })}
                             </p>
                             <p className="text-sm font-semibold mt-1">
-                              {beneficiaire.montant_benefice.toLocaleString()} €
+                              {formatFCFA(beneficiaire.montant_benefice)}
                             </p>
                           </div>
                           <div className="flex flex-col items-end gap-2">

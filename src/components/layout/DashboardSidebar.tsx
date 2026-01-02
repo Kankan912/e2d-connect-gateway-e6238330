@@ -102,6 +102,7 @@ const sportItems = [
 // Section Communication
 const communicationItems = [
   { title: "Notifications", url: "/dashboard/admin/communication/notifications", icon: Bell, resource: "notifications" },
+  { title: "Templates Email", url: "/dashboard/admin/communication/notifications-templates", icon: Bell, resource: "notifications" },
 ];
 
 // Section Configuration

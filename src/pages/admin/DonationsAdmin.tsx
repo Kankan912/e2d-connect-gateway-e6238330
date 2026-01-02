@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { chartColors, tooltipStyles } from "@/lib/rechartsConfig";
+import { formatFCFA } from "@/lib/utils";
 
 export default function DonationsAdmin() {
   const [filters, setFilters] = useState({
@@ -79,14 +80,14 @@ export default function DonationsAdmin() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Total du mois"
-              value={`${stats?.currentMonth?.total || 0} €`}
+              value={formatFCFA(stats?.currentMonth?.total || 0)}
               icon={DollarSign}
               trend={stats?.currentMonth?.trend || 0}
               trendLabel="vs mois dernier"
             />
             <StatCard
               title="Total de l'année"
-              value={`${stats?.currentYear?.total || 0} €`}
+              value={formatFCFA(stats?.currentYear?.total || 0)}
               icon={TrendingUp}
               trend={stats?.currentYear?.trend || 0}
               trendLabel="vs année dernière"
@@ -99,7 +100,7 @@ export default function DonationsAdmin() {
             />
             <StatCard
               title="Montant moyen"
-              value={`${stats?.currentMonth?.average || 0} €`}
+              value={formatFCFA(stats?.currentMonth?.average || 0)}
               icon={BarChart3}
               trend={stats?.currentMonth?.averageTrend || 0}
               trendLabel="vs mois dernier"
@@ -124,7 +125,7 @@ export default function DonationsAdmin() {
                     stroke={chartColors.blue} 
                     fill={chartColors.blue} 
                     fillOpacity={0.3}
-                    name="Montant (€)"
+                    name="Montant (FCFA)"
                   />
                 </AreaChart>
               </ResponsiveContainer>

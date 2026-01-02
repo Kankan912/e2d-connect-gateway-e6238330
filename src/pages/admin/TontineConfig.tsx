@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
+import { formatFCFA } from "@/lib/utils";
 
 interface TontineConfig {
   id: string;
@@ -280,7 +281,7 @@ export default function TontineConfig() {
                         </div>
                       ) : (
                         <div>
-                          <Label>Montant Fixe (€)</Label>
+                          <Label>Montant Fixe (FCFA)</Label>
                           <Input
                             type="number"
                             value={formData.montant_fixe}
@@ -317,7 +318,7 @@ export default function TontineConfig() {
                       <p className="text-sm text-muted-foreground mt-1">
                         {config.mode_calcul === 'pourcentage'
                           ? `${config.pourcentage_cotisations}% des cotisations`
-                          : `Montant fixe: ${config.montant_fixe} €`}
+                          : `Montant fixe: ${formatFCFA(config.montant_fixe || 0)}`}
                       </p>
                       {config.description && (
                         <p className="text-xs text-muted-foreground mt-1">{config.description}</p>

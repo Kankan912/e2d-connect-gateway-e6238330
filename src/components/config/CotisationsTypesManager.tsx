@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Receipt, Plus, Edit, Trash2, Loader2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { formatFCFA } from "@/lib/utils";
 
 interface CotisationType {
   id: string;
@@ -199,7 +200,7 @@ export function CotisationsTypesManager() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="montant">Montant par défaut (€)</Label>
+                  <Label htmlFor="montant">Montant par défaut (FCFA)</Label>
                   <Input
                     id="montant"
                     type="number"
@@ -251,7 +252,7 @@ export function CotisationsTypesManager() {
                 <TableCell className="max-w-xs truncate">
                   {type.description || "-"}
                 </TableCell>
-                <TableCell>{type.montant_defaut?.toLocaleString()} €</TableCell>
+                <TableCell>{formatFCFA(type.montant_defaut || 0)}</TableCell>
                 <TableCell>
                   <Badge variant={type.obligatoire ? "default" : "secondary"}>
                     {type.obligatoire ? "Oui" : "Non"}
