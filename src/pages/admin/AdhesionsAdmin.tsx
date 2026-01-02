@@ -1,17 +1,42 @@
-import { useState } from "react";
-import { UserPlus, Check, X, Clock, Download } from "lucide-react";
+import { useState, useMemo } from "react";
+import { UserPlus, Check, X, Clock, Download, Search, Filter } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import * as XLSX from "xlsx";
 
 export default function AdhesionsAdmin() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const { data: adhesions = [], isLoading } = useQuery({
     queryKey: ['adhesions'],
@@ -25,6 +50,65 @@ export default function AdhesionsAdmin() {
       return data;
     }
   });
+
+  // Mutation pour valider une adhésion
+  const validateMutation = useMutation({
+    mutationFn: async (adhesionId: string) => {
+      const { error } = await supabase
+        .from('adhesions')
+        .update({ 
+          payment_status: 'completed', 
+          processed: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', adhesionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adhesions'] });
+      toast({ title: "Adhésion validée avec succès" });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de valider l'adhésion", variant: "destructive" });
+    }
+  });
+
+  // Mutation pour rejeter une adhésion
+  const rejectMutation = useMutation({
+    mutationFn: async (adhesionId: string) => {
+      const { error } = await supabase
+        .from('adhesions')
+        .update({ 
+          payment_status: 'failed', 
+          processed: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', adhesionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adhesions'] });
+      toast({ title: "Adhésion rejetée" });
+    },
+    onError: () => {
+      toast({ title: "Erreur", description: "Impossible de rejeter l'adhésion", variant: "destructive" });
+    }
+  });
+
+  // Filtrage des adhésions
+  const filteredAdhesions = useMemo(() => {
+    return adhesions.filter(adhesion => {
+      const matchesSearch = searchTerm === "" || 
+        adhesion.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        adhesion.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        adhesion.email.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesType = typeFilter === "all" || adhesion.type_adhesion === typeFilter;
+      const matchesStatus = statusFilter === "all" || adhesion.payment_status === statusFilter;
+      
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [adhesions, searchTerm, typeFilter, statusFilter]);
 
   const stats = {
     total: adhesions.length,
@@ -49,6 +133,43 @@ export default function AdhesionsAdmin() {
     }
   };
 
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'e2d': return 'E2D';
+      case 'phoenix': return 'Phoenix';
+      case 'both': return 'E2D + Phoenix';
+      default: return type;
+    }
+  };
+
+  const handleExport = () => {
+    const dataToExport = filteredAdhesions.map(a => ({
+      'Nom': a.nom,
+      'Prénom': a.prenom,
+      'Email': a.email,
+      'Téléphone': a.telephone,
+      'Type': getTypeLabel(a.type_adhesion),
+      'Montant (FCFA)': a.montant_paye,
+      'Méthode': a.payment_method,
+      'Statut': a.payment_status === 'completed' ? 'Complétée' : 
+               a.payment_status === 'pending' ? 'En attente' : 'Échouée',
+      'Date': format(new Date(a.created_at), 'dd/MM/yyyy HH:mm', { locale: fr })
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Adhésions");
+    XLSX.writeFile(wb, `adhesions_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    
+    toast({ title: "Export réussi", description: `${dataToExport.length} adhésion(s) exportée(s)` });
+  };
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setTypeFilter("all");
+    setStatusFilter("all");
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -62,9 +183,9 @@ export default function AdhesionsAdmin() {
             Suivre et gérer les adhésions à l'association
           </p>
         </div>
-        <Button variant="outline">
+        <Button onClick={handleExport}>
           <Download className="w-4 h-4 mr-2" />
-          Exporter
+          Exporter Excel
         </Button>
       </div>
 
@@ -112,24 +233,72 @@ export default function AdhesionsAdmin() {
         </Card>
       </div>
 
+      {/* Filtres */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtres
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher par nom, prénom, email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Type d'adhésion" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les types</SelectItem>
+                <SelectItem value="e2d">E2D</SelectItem>
+                <SelectItem value="phoenix">Phoenix</SelectItem>
+                <SelectItem value="both">E2D + Phoenix</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="completed">Complétée</SelectItem>
+                <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="failed">Échouée</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={resetFilters}>
+              Réinitialiser
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Liste des adhésions */}
       <Card>
         <CardHeader>
-          <CardTitle>Adhésions Récentes</CardTitle>
+          <CardTitle>Adhésions</CardTitle>
           <CardDescription>
-            {adhesions.length} adhésion(s) enregistrée(s)
+            {filteredAdhesions.length} adhésion(s) trouvée(s)
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">Chargement...</div>
-          ) : adhesions.length === 0 ? (
+          ) : filteredAdhesions.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              Aucune adhésion enregistrée
+              Aucune adhésion trouvée
             </p>
           ) : (
             <div className="space-y-3">
-              {adhesions.map((adhesion) => (
+              {filteredAdhesions.map((adhesion) => (
                 <div
                   key={adhesion.id}
                   className="flex items-center justify-between p-4 border rounded-lg"
@@ -141,7 +310,7 @@ export default function AdhesionsAdmin() {
                     <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
                       <span>{adhesion.email}</span>
                       <span>{adhesion.telephone}</span>
-                      <span>Type: {adhesion.type_adhesion}</span>
+                      <Badge variant="outline">{getTypeLabel(adhesion.type_adhesion)}</Badge>
                     </div>
                     <div className="flex gap-4 mt-1 text-sm">
                       <span>Montant: {adhesion.montant_paye.toLocaleString('fr-FR')} FCFA</span>
@@ -153,6 +322,61 @@ export default function AdhesionsAdmin() {
                   </div>
                   <div className="flex items-center gap-2">
                     {getStatusBadge(adhesion.payment_status)}
+                    
+                    {adhesion.payment_status === 'pending' && (
+                      <>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="default">
+                              <Check className="w-4 h-4 mr-1" />
+                              Valider
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Valider l'adhésion ?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Confirmer la validation de l'adhésion de {adhesion.nom} {adhesion.prenom}.
+                                Cette action marquera l'adhésion comme complétée.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => validateMutation.mutate(adhesion.id)}>
+                                Valider
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive">
+                              <X className="w-4 h-4 mr-1" />
+                              Rejeter
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Rejeter l'adhésion ?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Êtes-vous sûr de vouloir rejeter l'adhésion de {adhesion.nom} {adhesion.prenom} ?
+                                Cette action est irréversible.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annuler</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => rejectMutation.mutate(adhesion.id)}
+                                className="bg-destructive text-destructive-foreground"
+                              >
+                                Rejeter
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
