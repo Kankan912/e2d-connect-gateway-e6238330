@@ -36,22 +36,44 @@ export const useRoles = () => {
     });
   };
 
-  // Récupérer les utilisateurs avec leurs rôles
+  // Récupérer TOUS les utilisateurs (profiles) avec leurs rôles éventuels
   const useUsersWithRoles = () => {
     return useQuery({
       queryKey: ['users-with-roles'],
       queryFn: async () => {
-        const { data: userRoles, error } = await supabase
+        // Récupérer tous les profils
+        const { data: profiles, error: profError } = await supabase
+          .from('profiles')
+          .select('id, nom, prenom, telephone, photo_url')
+          .order('nom');
+        
+        if (profError) throw profError;
+
+        // Récupérer les rôles assignés
+        const { data: userRoles, error: rolesError } = await supabase
           .from('user_roles')
           .select(`
-            *,
-            roles:role_id(id, name, description),
-            profiles:user_id(id, nom, prenom, telephone, avatar_url)
-          `)
-          .order('created_at', { ascending: false });
+            id,
+            user_id,
+            role_id,
+            roles:role_id(id, name, description)
+          `);
         
-        if (error) throw error;
-        return userRoles;
+        if (rolesError) throw rolesError;
+
+        // Combiner les données - chaque profil avec son rôle éventuel
+        return profiles?.map(profile => {
+          const userRole = userRoles?.find(ur => ur.user_id === profile.id);
+          return {
+            user_id: profile.id,
+            role_id: userRole?.id || null,
+            profiles: {
+              ...profile,
+              avatar_url: profile.photo_url // alias pour compatibilité
+            },
+            roles: userRole?.roles || null
+          };
+        }) || [];
       },
     });
   };

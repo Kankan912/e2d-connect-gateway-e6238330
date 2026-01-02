@@ -1,20 +1,21 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRoles } from "@/hooks/useRoles";
-import { Plus, Shield, UserPlus, Trash2, Users, Search } from "lucide-react";
+import { Plus, Shield, UserPlus, Trash2, Users, Search, Info } from "lucide-react";
 import { PermissionsMatrix } from "@/components/admin/PermissionsMatrix";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { StatCard } from "@/components/admin/StatCard";
-
+import { Alert, AlertDescription } from "@/components/ui/alert";
 export default function RolesAdmin() {
   const { roles, isLoading, useUsersWithRoles, assignRole, removeRole } = useRoles();
   const [selectedRole, setSelectedRole] = useState<any>(null);
@@ -203,6 +204,17 @@ export default function RolesAdmin() {
               icon={Shield}
             />
           </div>
+
+          {/* Info Alert */}
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Pour créer un nouveau compte utilisateur, rendez-vous dans{" "}
+              <Link to="/admin/membres" className="font-medium underline hover:text-primary">
+                Administration &gt; Membres &gt; Onglet Comptes
+              </Link>
+            </AlertDescription>
+          </Alert>
 
           {/* Search and Filters */}
           <Card>
