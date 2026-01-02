@@ -3,49 +3,118 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Pencil, Trash2, Image as ImageIcon, Video } from "lucide-react";
-import { useSiteGallery, useCreateGalleryItem, useUpdateGalleryItem, useDeleteGalleryItem } from "@/hooks/useSiteContent";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Plus, Pencil, Trash2, Image as ImageIcon, Video, FolderPlus, Folder } from "lucide-react";
+import { useSiteGallery, useCreateGalleryItem, useUpdateGalleryItem, useDeleteGalleryItem, useSiteGalleryAlbums, useCreateGalleryAlbum, useUpdateGalleryAlbum, useDeleteGalleryAlbum } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
 import MediaUploader from "@/components/admin/MediaUploader";
+import { toast } from "sonner";
 
 export default function GalleryAdmin() {
   const { data: gallery, isLoading } = useSiteGallery();
+  const { data: albums, isLoading: albumsLoading } = useSiteGalleryAlbums();
   const createItem = useCreateGalleryItem();
   const updateItem = useUpdateGalleryItem();
   const deleteItem = useDeleteGalleryItem();
+  const createAlbum = useCreateGalleryAlbum();
+  const updateAlbum = useUpdateGalleryAlbum();
+  const deleteAlbum = useDeleteGalleryAlbum();
+  
   const [open, setOpen] = useState(false);
+  const [albumOpen, setAlbumOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingAlbum, setEditingAlbum] = useState<any>(null);
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
+  
   const { register, handleSubmit, reset, setValue, watch } = useForm();
+  const { register: registerAlbum, handleSubmit: handleSubmitAlbum, reset: resetAlbum, setValue: setValueAlbum } = useForm();
   const watchCategorie = watch("categorie", "Photo");
 
   const photos = gallery?.filter(item => item.categorie === "Photo") || [];
   const videos = gallery?.filter(item => item.categorie === "Vidéo") || [];
 
+  // Group photos by album
+  const groupedPhotos = photos.reduce((acc, photo) => {
+    const albumId = photo.album_id || "sans-album";
+    if (!acc[albumId]) acc[albumId] = [];
+    acc[albumId].push(photo);
+    return acc;
+  }, {} as Record<string, typeof photos>);
+
   const onSubmit = (data: any) => {
+    const payload = {
+      ...data,
+      album_id: selectedAlbumId || null
+    };
+    
     if (editingItem) {
-      updateItem.mutate({ ...data, id: editingItem.id });
+      updateItem.mutate({ ...payload, id: editingItem.id });
     } else {
-      createItem.mutate(data);
+      createItem.mutate(payload);
     }
     setOpen(false);
     reset();
     setEditingItem(null);
+    setSelectedAlbumId("");
+  };
+
+  const onSubmitAlbum = (data: any) => {
+    if (editingAlbum) {
+      updateAlbum.mutate({ ...data, id: editingAlbum.id }, {
+        onSuccess: () => toast.success("Album mis à jour")
+      });
+    } else {
+      createAlbum.mutate(data, {
+        onSuccess: () => toast.success("Album créé")
+      });
+    }
+    setAlbumOpen(false);
+    resetAlbum();
+    setEditingAlbum(null);
   };
 
   const handleEdit = (item: any) => {
     setEditingItem(item);
+    setSelectedAlbumId(item.album_id || "");
     Object.keys(item).forEach(key => {
       setValue(key, item[key]);
     });
     setOpen(true);
   };
 
+  const handleEditAlbum = (album: any) => {
+    setEditingAlbum(album);
+    Object.keys(album).forEach(key => {
+      setValueAlbum(key, album[key]);
+    });
+    setAlbumOpen(true);
+  };
+
   const handleDelete = (id: string) => {
     if (confirm("Êtes-vous sûr de vouloir supprimer cet élément ?")) {
       deleteItem.mutate(id);
     }
+  };
+
+  const handleDeleteAlbum = (id: string) => {
+    if (confirm("Êtes-vous sûr de vouloir supprimer cet album ? Les médias associés ne seront pas supprimés.")) {
+      deleteAlbum.mutate(id, {
+        onSuccess: () => toast.success("Album supprimé")
+      });
+    }
+  };
+
+  const getAlbumName = (albumId: string | null) => {
+    if (!albumId) return "Sans album";
+    const album = albums?.find(a => a.id === albumId);
+    return album?.titre || "Album inconnu";
+  };
+
+  const getMediaCountForAlbum = (albumId: string) => {
+    return gallery?.filter(item => item.album_id === albumId).length || 0;
   };
 
   if (isLoading) {
@@ -62,12 +131,12 @@ export default function GalleryAdmin() {
         <div>
           <h1 className="text-3xl font-bold">Gestion de la Galerie</h1>
           <p className="text-muted-foreground">
-            Gérez les photos et vidéos de l'association
+            Gérez les photos, vidéos et albums de l'association
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { reset(); setEditingItem(null); }}>
+            <Button onClick={() => { reset(); setEditingItem(null); setSelectedAlbumId(""); }}>
               <Plus className="w-4 h-4 mr-2" />
               Ajouter un média
             </Button>
@@ -100,6 +169,25 @@ export default function GalleryAdmin() {
                   <Input id="ordre" type="number" defaultValue={0} {...register("ordre")} />
                 </div>
               </div>
+              
+              {/* Album Selection */}
+              <div className="space-y-2">
+                <Label>Album (optionnel)</Label>
+                <Select value={selectedAlbumId} onValueChange={setSelectedAlbumId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un album" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Aucun album</SelectItem>
+                    {albums?.map(album => (
+                      <SelectItem key={album.id} value={album.id}>
+                        {album.titre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <MediaUploader
                 bucket="site-gallery"
                 accept={watchCategorie === "Photo" ? "image/*" : "video/*"}
@@ -143,39 +231,59 @@ export default function GalleryAdmin() {
             <Video className="w-4 h-4 mr-2" />
             Vidéos ({videos.length})
           </TabsTrigger>
+          <TabsTrigger value="albums">
+            <Folder className="w-4 h-4 mr-2" />
+            Albums ({albums?.length || 0})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="photos">
           <Card>
             <CardHeader>
               <CardTitle>Photos</CardTitle>
-              <CardDescription>{photos.length} photo(s)</CardDescription>
+              <CardDescription>{photos.length} photo(s) groupées par album</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                {photos.map((item) => (
-                  <div key={item.id} className="relative group">
-                    <div className="aspect-square bg-muted rounded-lg overflow-hidden">
-                      {item.image_url && (
-                        <img
-                          src={item.image_url}
-                          alt={item.titre}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => handleEdit(item)}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="secondary" onClick={() => handleDelete(item.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <p className="mt-2 text-sm font-medium text-center">{item.titre}</p>
+            <CardContent className="space-y-8">
+              {Object.entries(groupedPhotos).map(([albumId, albumPhotos]) => (
+                <div key={albumId}>
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Folder className="w-5 h-5 text-muted-foreground" />
+                    {getAlbumName(albumId === "sans-album" ? null : albumId)}
+                    <span className="text-sm font-normal text-muted-foreground">
+                      ({albumPhotos.length})
+                    </span>
+                  </h3>
+                  <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
+                    {albumPhotos.map((item) => (
+                      <div key={item.id} className="relative group">
+                        <div className="aspect-square bg-muted rounded-lg overflow-hidden">
+                          {item.image_url && (
+                            <img
+                              src={item.image_url}
+                              alt={item.titre}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => handleEdit(item)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="secondary" onClick={() => handleDelete(item.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <p className="mt-2 text-sm font-medium text-center truncate">{item.titre}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+              {photos.length === 0 && (
+                <p className="text-center text-muted-foreground py-8">
+                  Aucune photo. Cliquez sur "Ajouter un média" pour commencer.
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -202,9 +310,136 @@ export default function GalleryAdmin() {
                       </Button>
                     </div>
                     <p className="mt-2 text-sm font-medium">{item.titre}</p>
+                    {item.album_id && (
+                      <p className="text-xs text-muted-foreground">{getAlbumName(item.album_id)}</p>
+                    )}
                   </div>
                 ))}
+                {videos.length === 0 && (
+                  <p className="col-span-full text-center text-muted-foreground py-8">
+                    Aucune vidéo. Cliquez sur "Ajouter un média" pour commencer.
+                  </p>
+                )}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="albums">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Gestion des Albums</CardTitle>
+                  <CardDescription>Organisez vos médias en albums</CardDescription>
+                </div>
+                <Dialog open={albumOpen} onOpenChange={setAlbumOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => { resetAlbum(); setEditingAlbum(null); }}>
+                      <FolderPlus className="w-4 h-4 mr-2" />
+                      Nouvel Album
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingAlbum ? "Modifier" : "Créer"} un album
+                      </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmitAlbum(onSubmitAlbum)} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="album-titre">Titre de l'album</Label>
+                        <Input id="album-titre" {...registerAlbum("titre", { required: true })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="album-description">Description</Label>
+                        <Textarea id="album-description" {...registerAlbum("description")} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="album-ordre">Ordre d'affichage</Label>
+                        <Input id="album-ordre" type="number" defaultValue={0} {...registerAlbum("ordre")} />
+                      </div>
+                      <MediaUploader
+                        bucket="site-gallery"
+                        accept="image/*"
+                        currentUrl={editingAlbum?.cover_image_url}
+                        onUrlChange={(url) => setValueAlbum("cover_image_url", url)}
+                        label="Image de couverture"
+                        maxSizeMB={5}
+                      />
+                      <div className="flex justify-end gap-4">
+                        <Button type="button" variant="outline" onClick={() => setAlbumOpen(false)}>
+                          Annuler
+                        </Button>
+                        <Button type="submit" disabled={createAlbum.isPending || updateAlbum.isPending}>
+                          {(createAlbum.isPending || updateAlbum.isPending) && (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          )}
+                          {editingAlbum ? "Mettre à jour" : "Créer"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {albumsLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {albums?.map(album => (
+                    <Card key={album.id} className="overflow-hidden">
+                      <div className="aspect-video bg-muted relative">
+                        {album.cover_image_url ? (
+                          <img 
+                            src={album.cover_image_url} 
+                            alt={album.titre}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Folder className="w-12 h-12 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 bg-background/80 rounded-full px-2 py-1 text-xs font-medium">
+                          {getMediaCountForAlbum(album.id)} média(s)
+                        </div>
+                      </div>
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold">{album.titre}</h3>
+                        {album.description && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {album.description}
+                          </p>
+                        )}
+                        <div className="flex gap-2 mt-4">
+                          <Button size="sm" variant="outline" onClick={() => handleEditAlbum(album)}>
+                            <Pencil className="w-4 h-4 mr-1" />
+                            Modifier
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-destructive"
+                            onClick={() => handleDeleteAlbum(album.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Supprimer
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {(!albums || albums.length === 0) && (
+                    <p className="col-span-full text-center text-muted-foreground py-8">
+                      Aucun album. Cliquez sur "Nouvel Album" pour créer votre premier album.
+                    </p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
