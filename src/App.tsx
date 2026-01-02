@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Don from "./pages/Don";
 import Adhesion from "./pages/Adhesion";
 import NotFound from "./pages/NotFound";
+import FirstPasswordChange from "./pages/FirstPasswordChange";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/dashboard/*" element={<Dashboard />} />
             <Route path="/don" element={<Don />} />
             <Route path="/adhesion" element={<Adhesion />} />
+            <Route path="/change-password" element={<FirstPasswordChange />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

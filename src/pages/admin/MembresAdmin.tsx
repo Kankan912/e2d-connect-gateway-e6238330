@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Plus, Edit, Trash2, Search, Download, Mail, Phone, CheckCircle, Clock } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Search, Download, Mail, Phone, CheckCircle, Clock, UserPlus } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
@@ -14,6 +15,7 @@ import BackButton from "@/components/BackButton";
 import { useToast } from "@/hooks/use-toast";
 import MemberForm from "@/components/forms/MemberForm";
 import MemberDetailSheet from "@/components/MemberDetailSheet";
+import UserMemberLinkManager from "@/components/UserMemberLinkManager";
 import { ExportService } from "@/lib/exportService";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -61,6 +63,7 @@ export default function MembresAdmin() {
   const [showForm, setShowForm] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [selectedMemberForDetail, setSelectedMemberForDetail] = useState<Member | null>(null);
+  const [activeTab, setActiveTab] = useState("membres");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -227,123 +230,143 @@ export default function MembresAdmin() {
         </Card>
       </div>
 
-      {/* Section Liste des Membres */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Liste des Membres
-            </CardTitle>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher un membre..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-          <CardDescription>
-            {filteredMembres.length} membre(s) trouvé(s)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">Chargement...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom Complet</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Cotisations</TableHead>
-                    <TableHead>Types</TableHead>
-                    <TableHead>Date d'inscription</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMembres.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        Aucun membre trouvé
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredMembres.map((membre) => (
-                    <TableRow 
-                      key={membre.id} 
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setSelectedMemberForDetail(membre)}
-                    >
-                      <TableCell className="font-medium">
-                        {membre.nom} {membre.prenom}
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Mail className="h-3 w-3" />
-                            {membre.email || "Non renseigné"}
-                          </div>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Phone className="h-3 w-3" />
-                            {membre.telephone}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={membre.statut === 'actif' ? 'default' : 'secondary'} className="flex items-center gap-1 w-fit">
-                          {membre.statut === 'actif' ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-                          {membre.statut}
-                        </Badge>
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <MemberCotisationCell membreId={membre.id} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {membre.est_membre_e2d && (
-                            <Badge variant="outline" className="bg-cyan-50 border-cyan-300 text-cyan-700 text-xs">
-                              E2D
+      {/* Tabs for Members and Accounts */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="membres" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Liste des membres
+          </TabsTrigger>
+          <TabsTrigger value="comptes" className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4" />
+            Comptes utilisateurs
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="membres">
+          {/* Section Liste des Membres */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Liste des Membres
+                </CardTitle>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher un membre..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <CardDescription>
+                {filteredMembres.length} membre(s) trouvé(s)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="text-center py-8">Chargement...</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nom Complet</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Cotisations</TableHead>
+                        <TableHead>Types</TableHead>
+                        <TableHead>Date d'inscription</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredMembres.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            Aucun membre trouvé
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredMembres.map((membre) => (
+                        <TableRow 
+                          key={membre.id} 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setSelectedMemberForDetail(membre)}
+                        >
+                          <TableCell className="font-medium">
+                            {membre.nom} {membre.prenom}
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Mail className="h-3 w-3" />
+                                {membre.email || "Non renseigné"}
+                              </div>
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <Phone className="h-3 w-3" />
+                                {membre.telephone}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={membre.statut === 'actif' ? 'default' : 'secondary'} className="flex items-center gap-1 w-fit">
+                              {membre.statut === 'actif' ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                              {membre.statut}
                             </Badge>
-                          )}
-                          {membre.est_adherent_phoenix && (
-                            <Badge variant="outline" className="bg-red-50 border-red-300 text-red-700 text-xs">
-                              Phoenix
-                            </Badge>
-                          )}
-                          {!membre.est_membre_e2d && !membre.est_adherent_phoenix && (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {membre.date_inscription 
-                          ? format(new Date(membre.date_inscription), 'dd/MM/yyyy', { locale: fr })
-                          : '-'
-                        }
-                      </TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(membre)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(membre.id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                          </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <MemberCotisationCell membreId={membre.id} />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {membre.est_membre_e2d && (
+                                <Badge variant="outline" className="bg-cyan-50 border-cyan-300 text-cyan-700 text-xs">
+                                  E2D
+                                </Badge>
+                              )}
+                              {membre.est_adherent_phoenix && (
+                                <Badge variant="outline" className="bg-red-50 border-red-300 text-red-700 text-xs">
+                                  Phoenix
+                                </Badge>
+                              )}
+                              {!membre.est_membre_e2d && !membre.est_adherent_phoenix && (
+                                <span className="text-muted-foreground text-xs">-</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {membre.date_inscription 
+                              ? format(new Date(membre.date_inscription), 'dd/MM/yyyy', { locale: fr })
+                              : '-'
+                            }
+                          </TableCell>
+                          <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-end gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => handleEdit(membre)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(membre.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="comptes">
+          <UserMemberLinkManager />
+        </TabsContent>
+      </Tabs>
 
       {/* Fiche membre détaillée */}
       <MemberDetailSheet

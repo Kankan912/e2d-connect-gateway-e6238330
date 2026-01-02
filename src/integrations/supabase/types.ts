@@ -2571,7 +2571,9 @@ export type Database = {
           est_adherent_phoenix: boolean | null
           est_membre_e2d: boolean | null
           id: string
+          must_change_password: boolean | null
           nom: string
+          password_changed: boolean | null
           photo_url: string | null
           prenom: string
           statut: string | null
@@ -2584,7 +2586,9 @@ export type Database = {
           est_adherent_phoenix?: boolean | null
           est_membre_e2d?: boolean | null
           id: string
+          must_change_password?: boolean | null
           nom: string
+          password_changed?: boolean | null
           photo_url?: string | null
           prenom: string
           statut?: string | null
@@ -2597,7 +2601,9 @@ export type Database = {
           est_adherent_phoenix?: boolean | null
           est_membre_e2d?: boolean | null
           id?: string
+          must_change_password?: boolean | null
           nom?: string
+          password_changed?: boolean | null
           photo_url?: string | null
           prenom?: string
           statut?: string | null

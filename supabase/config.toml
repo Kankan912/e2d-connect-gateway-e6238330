@@ -1,5 +1,8 @@
 project_id = "piyvinbuxpnquwzyugdj"
 
+[functions.create-user-account]
+verify_jwt = false
+
 [functions.donations-stats]
 verify_jwt = false
 

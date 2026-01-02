@@ -10,7 +10,7 @@ import logoE2D from "@/assets/logo-e2d.png";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, mustChangePassword } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
@@ -28,9 +28,14 @@ const Auth = () => {
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate("/dashboard");
+      // Redirect to password change if required
+      if (mustChangePassword) {
+        navigate("/change-password");
+      } else {
+        navigate("/dashboard");
+      }
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, mustChangePassword, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();

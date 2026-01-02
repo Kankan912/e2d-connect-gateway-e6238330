@@ -16,6 +16,8 @@ interface Profile {
   est_membre_e2d: boolean;
   est_adherent_phoenix: boolean;
   statut: string;
+  must_change_password?: boolean;
+  password_changed?: boolean;
 }
 
 interface Permission {
@@ -29,6 +31,7 @@ interface AuthContextType {
   profile: Profile | null;
   userRole: string | null;
   loading: boolean;
+  mustChangePassword: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -43,11 +46,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [memberBlocked, setMemberBlocked] = useState(false);
 
-  // Fetch user permissions - utilise deux requêtes séparées car la FK role_permissions→roles n'existe pas encore
+  // Fetch user permissions
   const fetchUserPermissions = async (userId: string): Promise<Permission[]> => {
     try {
-      // 1. Récupérer les role_ids de l'utilisateur
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('role_id')
@@ -56,7 +60,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (rolesError) throw rolesError;
       if (!userRoles?.length) return [];
       
-      // 2. Récupérer les permissions pour ces rôles
       const roleIds = userRoles.map(r => r.role_id).filter(Boolean);
       if (!roleIds.length) return [];
 
@@ -78,6 +81,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Check member status
+  const checkMemberStatus = async (userId: string): Promise<boolean> => {
+    try {
+      const { data: membre, error } = await supabase
+        .from('membres')
+        .select('statut')
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('❌ [AuthContext] Error checking member status:', error);
+        return true; // Allow access if we can't check
+      }
+      
+      if (!membre) {
+        // No member linked, allow access (new user)
+        return true;
+      }
+      
+      if (membre.statut !== 'actif') {
+        console.log('⚠️ [AuthContext] Member status is not active:', membre.statut);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ [AuthContext] Error in checkMemberStatus:', error);
+      return true;
+    }
+  };
+
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -94,6 +128,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setProfile(null);
           setUserRole(null);
           setPermissions([]);
+          setMustChangePassword(false);
+          setMemberBlocked(false);
         }
       }
     );
@@ -119,10 +155,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log('🔍 [AuthContext] Fetching profile for user:', userId);
       
-      // Invalider le cache des permissions pour forcer un rafraîchissement
+      // Invalidate permissions cache
       queryClient.invalidateQueries({ 
         queryKey: ['user-permissions', userId] 
       });
+
+      // Check member status first
+      const isAllowed = await checkMemberStatus(userId);
+      if (!isAllowed) {
+        setMemberBlocked(true);
+        toast({
+          title: "Compte bloqué",
+          description: "Votre compte membre est inactif ou suspendu. Contactez l'administrateur.",
+          variant: "destructive"
+        });
+        await signOut();
+        return;
+      }
 
       // Fetch profile
       const { data: profileData, error: profileError } = await supabase
@@ -135,7 +184,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('✅ [AuthContext] Profile loaded:', profileData?.nom, profileData?.prenom);
       setProfile(profileData);
 
-      // Fetch role (avec jointure sur la table roles) - Syntaxe corrigée
+      // Check if password change is required
+      if (profileData?.must_change_password === true) {
+        console.log('⚠️ [AuthContext] User must change password');
+        setMustChangePassword(true);
+      } else {
+        setMustChangePassword(false);
+      }
+
+      // Fetch role
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role_id, roles(name)')
@@ -150,11 +207,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       console.log('✅ [AuthContext] Role data received:', roleData);
-      console.log('✅ [AuthContext] Role name extracted:', roleData?.roles?.name);
-      
       setUserRole(roleData?.roles?.name || null);
 
-      // Fetch permissions for session manager
+      // Fetch permissions
       const userPerms = await fetchUserPermissions(userId);
       setPermissions(userPerms);
       console.log('✅ [AuthContext] Permissions loaded:', userPerms.length);
@@ -173,6 +228,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setProfile(null);
     setUserRole(null);
     setPermissions([]);
+    setMustChangePassword(false);
+    setMemberBlocked(false);
   };
 
   // Session manager integration
@@ -184,7 +241,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const reason = sessionManager.logoutReason;
       await signOut();
       
-      // Afficher un toast explicatif
       toast({
         title: reason === 'inactivity' 
           ? 'Session expirée pour inactivité' 
@@ -197,7 +253,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   });
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, userRole, loading, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, userRole, loading, mustChangePassword, signOut }}>
       {children}
       
       {/* Modal d'avertissement de session */}
