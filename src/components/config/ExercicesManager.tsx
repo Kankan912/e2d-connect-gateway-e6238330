@@ -9,10 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Plus, Edit, Lock, Trash2, Loader2, Percent } from "lucide-react";
+import { Calendar, Plus, Edit, Lock, Trash2, Loader2, Percent, ClipboardCheck } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { CotisationsClotureExerciceCheck } from "@/components/CotisationsClotureExerciceCheck";
 
 interface Exercice {
   id: string;
@@ -39,6 +40,8 @@ export function ExercicesManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [clotureCheckDialogOpen, setClotureCheckDialogOpen] = useState(false);
+  const [selectedExerciceForCloture, setSelectedExerciceForCloture] = useState<Exercice | null>(null);
   const [editingExercice, setEditingExercice] = useState<Exercice | null>(null);
   const [formData, setFormData] = useState<ExerciceFormData>({
     nom: "",
@@ -357,28 +360,44 @@ export function ExercicesManager() {
                     <Edit className="h-4 w-4" />
                   </Button>
                   {exercice.statut === "actif" && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" size="icon">
-                          <Lock className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Clôturer l'exercice ?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Cette action est irréversible. L'exercice "{exercice.nom}" sera 
-                            définitivement clôturé et ne pourra plus être modifié.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => closeMutation.mutate(exercice.id)}>
-                            Clôturer
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <>
+                      {/* Bouton vérification cotisations */}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          setSelectedExerciceForCloture(exercice);
+                          setClotureCheckDialogOpen(true);
+                        }}
+                        title="Vérifier les cotisations avant clôture"
+                      >
+                        <ClipboardCheck className="h-4 w-4" />
+                      </Button>
+                      
+                      {/* Bouton clôture */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="icon">
+                            <Lock className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Clôturer l'exercice ?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Cette action est irréversible. L'exercice "{exercice.nom}" sera 
+                              définitivement clôturé et ne pourra plus être modifié.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => closeMutation.mutate(exercice.id)}>
+                              Clôturer
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
                   )}
                   {exercice.statut === "cloture" && (
                     <AlertDialog>
@@ -419,6 +438,28 @@ export function ExercicesManager() {
           </TableBody>
         </Table>
       </CardContent>
+      
+      {/* Dialog de vérification des cotisations avant clôture */}
+      <Dialog open={clotureCheckDialogOpen} onOpenChange={setClotureCheckDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Vérification avant clôture - {selectedExerciceForCloture?.nom}
+            </DialogTitle>
+            <DialogDescription>
+              Vérifiez que toutes les cotisations obligatoires sont soldées avant de clôturer l'exercice.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedExerciceForCloture && (
+            <CotisationsClotureExerciceCheck exerciceId={selectedExerciceForCloture.id} />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setClotureCheckDialogOpen(false)}>
+              Fermer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

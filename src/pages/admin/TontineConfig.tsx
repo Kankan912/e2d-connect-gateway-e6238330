@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
 import { formatFCFA } from "@/lib/utils";
+import { ExercicesCotisationsTypesManager } from "@/components/config/ExercicesCotisationsTypesManager";
 
 interface TontineConfig {
   id: string;
@@ -201,6 +202,7 @@ export default function TontineConfig() {
       <Tabs defaultValue="beneficiaires" className="space-y-6">
         <TabsList>
           <TabsTrigger value="beneficiaires">Configurations Bénéficiaires</TabsTrigger>
+          <TabsTrigger value="cotisations-exercice">Types Cotisations / Exercice</TabsTrigger>
           <TabsTrigger value="general">Paramètres Généraux</TabsTrigger>
         </TabsList>
 
@@ -350,6 +352,10 @@ export default function TontineConfig() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="cotisations-exercice" className="space-y-6">
+          <ExercicesCotisationsTypesManager />
         </TabsContent>
 
         <TabsContent value="general">
