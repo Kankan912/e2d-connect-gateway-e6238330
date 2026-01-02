@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Heart } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { formatFCFA } from "@/lib/utils";
 
 const MyDonations = () => {
   const { user } = useAuth();
@@ -85,7 +86,7 @@ const MyDonations = () => {
             <Heart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalDonations.toFixed(2)} €</div>
+            <div className="text-2xl font-bold">{formatFCFA(totalDonations)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Tous statuts confondus
             </p>
@@ -142,7 +143,7 @@ const MyDonations = () => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-lg">
-                        {Number(donation.amount).toFixed(2)} {donation.currency}
+                        {formatFCFA(Number(donation.amount))}
                       </p>
                       {getStatusBadge(donation.payment_status)}
                     </div>

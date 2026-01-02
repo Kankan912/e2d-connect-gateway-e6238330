@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { formatFCFA } from "@/lib/utils";
 
 const sanctionSchema = z.object({
   membre_id: z.string().min(1, "Membre requis"),
@@ -155,7 +156,7 @@ export default function SportSanctions() {
                     <TableCell>{new Date(sanction.date_sanction).toLocaleDateString()}</TableCell>
                     <TableCell>{sanction.membre?.nom} {sanction.membre?.prenom}</TableCell>
                     <TableCell>{sanction.type?.nom}</TableCell>
-                    <TableCell>{sanction.montant} €</TableCell>
+                    <TableCell>{formatFCFA(sanction.montant)}</TableCell>
                     <TableCell>
                       <Badge variant={sanction.statut === "paye" ? "default" : "secondary"}>
                         {sanction.statut}
@@ -223,7 +224,7 @@ export default function SportSanctions() {
                       <SelectContent>
                         {typesSanctions?.map((t) => (
                           <SelectItem key={t.id} value={t.id}>
-                            {t.nom} ({t.montant} €)
+                            {t.nom} ({formatFCFA(t.montant || 0)})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -250,7 +251,7 @@ export default function SportSanctions() {
                 name="montant"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Montant (€)</FormLabel>
+                    <FormLabel>Montant (FCFA)</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
