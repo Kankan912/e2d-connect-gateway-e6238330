@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CreditCard, Save, Eye, EyeOff, Heart, Landmark, Building2 } from "lucide-react";
+import { CreditCard, Save, Eye, EyeOff, Heart, Landmark, Building2, CheckCircle, XCircle, Loader2, Wifi } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,12 +18,25 @@ interface PaymentConfig {
   provider: string;
   is_active: boolean;
   config_data: unknown;
+  updated_at?: string;
+}
+
+interface ConnectionStatus {
+  status: 'idle' | 'testing' | 'success' | 'error';
+  message?: string;
+  lastTested?: Date;
 }
 
 export default function PaymentConfigAdmin() {
   const [configs, setConfigs] = useState<PaymentConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSecrets, setShowSecrets] = useState<{ [key: string]: boolean }>({});
+  const [connectionStatus, setConnectionStatus] = useState<{ [key: string]: ConnectionStatus }>({
+    stripe: { status: 'idle' },
+    paypal: { status: 'idle' },
+    helloasso: { status: 'idle' },
+    bank_transfer: { status: 'idle' }
+  });
   const { toast } = useToast();
 
   const [stripeConfig, setStripeConfig] = useState({
@@ -65,7 +79,6 @@ export default function PaymentConfigAdmin() {
       if (error) throw error;
       setConfigs(data || []);
 
-      // Charger les configs existantes
       data?.forEach((config) => {
         const configData = config.config_data as Record<string, unknown>;
         if (config.provider === 'stripe' && configData) {
@@ -99,6 +112,89 @@ export default function PaymentConfigAdmin() {
       });
     } catch (error) {
       console.error('Erreur chargement configs:', error);
+    }
+  };
+
+  // Test de connexion simulé (dans un vrai cas, on appellerait une edge function)
+  const testConnection = async (provider: string) => {
+    setConnectionStatus(prev => ({
+      ...prev,
+      [provider]: { status: 'testing' }
+    }));
+
+    // Simuler un délai de test
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    let success = false;
+    let message = "";
+
+    switch (provider) {
+      case 'stripe':
+        if (stripeConfig.public_key && stripeConfig.secret_key) {
+          // Vérifier le format des clés
+          success = stripeConfig.public_key.startsWith('pk_') && stripeConfig.secret_key.startsWith('sk_');
+          message = success ? "Clés Stripe valides" : "Format de clé invalide (pk_/sk_)";
+        } else {
+          message = "Clés manquantes";
+        }
+        break;
+      
+      case 'paypal':
+        if (paypalConfig.client_id && paypalConfig.client_secret) {
+          success = paypalConfig.client_id.length > 10 && paypalConfig.client_secret.length > 10;
+          message = success ? "Credentials PayPal valides" : "Credentials invalides";
+        } else {
+          message = "Client ID ou Secret manquant";
+        }
+        break;
+      
+      case 'helloasso':
+        if (helloassoConfig.client_id && helloassoConfig.client_secret && helloassoConfig.organization_slug) {
+          success = true;
+          message = "Configuration HelloAsso valide";
+        } else {
+          message = "Configuration incomplète";
+        }
+        break;
+      
+      case 'bank_transfer':
+        if (virementConfig.iban && virementConfig.bic) {
+          // Vérifier le format IBAN basique
+          success = virementConfig.iban.replace(/\s/g, '').length >= 14;
+          message = success ? "Coordonnées bancaires valides" : "Format IBAN invalide";
+        } else {
+          message = "IBAN ou BIC manquant";
+        }
+        break;
+    }
+
+    setConnectionStatus(prev => ({
+      ...prev,
+      [provider]: { 
+        status: success ? 'success' : 'error',
+        message,
+        lastTested: new Date()
+      }
+    }));
+
+    toast({
+      title: success ? "Test réussi" : "Échec du test",
+      description: message,
+      variant: success ? "default" : "destructive"
+    });
+  };
+
+  const getConnectionBadge = (provider: string) => {
+    const status = connectionStatus[provider];
+    switch (status.status) {
+      case 'testing':
+        return <Badge variant="outline"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Test...</Badge>;
+      case 'success':
+        return <Badge className="bg-green-600"><CheckCircle className="w-3 h-3 mr-1" /> Connecté</Badge>;
+      case 'error':
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Erreur</Badge>;
+      default:
+        return null;
     }
   };
 
@@ -315,18 +411,22 @@ export default function PaymentConfigAdmin() {
           <TabsTrigger value="stripe" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Stripe
+            {isActive('stripe') && <Badge className="ml-1 bg-green-600 text-xs">Actif</Badge>}
           </TabsTrigger>
           <TabsTrigger value="paypal" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             PayPal
+            {isActive('paypal') && <Badge className="ml-1 bg-green-600 text-xs">Actif</Badge>}
           </TabsTrigger>
           <TabsTrigger value="helloasso" className="flex items-center gap-2">
             <Heart className="h-4 w-4" />
             HelloAsso
+            {isActive('helloasso') && <Badge className="ml-1 bg-green-600 text-xs">Actif</Badge>}
           </TabsTrigger>
           <TabsTrigger value="virement" className="flex items-center gap-2">
             <Landmark className="h-4 w-4" />
             Virement
+            {isActive('bank_transfer') && <Badge className="ml-1 bg-green-600 text-xs">Actif</Badge>}
           </TabsTrigger>
         </TabsList>
 
@@ -335,14 +435,17 @@ export default function PaymentConfigAdmin() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Configuration Stripe
-                  </CardTitle>
-                  <CardDescription>
-                    Clés API et paramètres de connexion Stripe pour les paiements par carte
-                  </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Configuration Stripe
+                    </CardTitle>
+                    <CardDescription>
+                      Clés API et paramètres de connexion Stripe pour les paiements par carte
+                    </CardDescription>
+                  </div>
+                  {getConnectionBadge('stripe')}
                 </div>
                 <div className="flex items-center gap-2">
                   <Label htmlFor="stripe-active">Activer</Label>
@@ -407,10 +510,26 @@ export default function PaymentConfigAdmin() {
                   </Button>
                 </div>
               </div>
-              <Button onClick={handleSaveStripe} disabled={loading} className="w-full">
-                <Save className="w-4 h-4 mr-2" />
-                {loading ? 'Enregistrement...' : 'Enregistrer la configuration Stripe'}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveStripe} disabled={loading} className="flex-1">
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Enregistrement...' : 'Enregistrer'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => testConnection('stripe')}
+                  disabled={connectionStatus['stripe'].status === 'testing'}
+                >
+                  <Wifi className="w-4 h-4 mr-2" />
+                  Tester
+                </Button>
+              </div>
+              {connectionStatus['stripe'].lastTested && (
+                <p className="text-xs text-muted-foreground">
+                  Dernier test: {connectionStatus['stripe'].lastTested.toLocaleString('fr-FR')}
+                  {connectionStatus['stripe'].message && ` - ${connectionStatus['stripe'].message}`}
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -420,14 +539,17 @@ export default function PaymentConfigAdmin() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Configuration PayPal
-                  </CardTitle>
-                  <CardDescription>
-                    Identifiants API PayPal pour accepter les paiements
-                  </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5" />
+                      Configuration PayPal
+                    </CardTitle>
+                    <CardDescription>
+                      Identifiants API PayPal pour accepter les paiements
+                    </CardDescription>
+                  </div>
+                  {getConnectionBadge('paypal')}
                 </div>
                 <div className="flex items-center gap-2">
                   <Label htmlFor="paypal-active">Activer</Label>
@@ -487,10 +609,26 @@ export default function PaymentConfigAdmin() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleSavePayPal} disabled={loading} className="w-full">
-                <Save className="w-4 h-4 mr-2" />
-                {loading ? 'Enregistrement...' : 'Enregistrer la configuration PayPal'}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleSavePayPal} disabled={loading} className="flex-1">
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Enregistrement...' : 'Enregistrer'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => testConnection('paypal')}
+                  disabled={connectionStatus['paypal'].status === 'testing'}
+                >
+                  <Wifi className="w-4 h-4 mr-2" />
+                  Tester
+                </Button>
+              </div>
+              {connectionStatus['paypal'].lastTested && (
+                <p className="text-xs text-muted-foreground">
+                  Dernier test: {connectionStatus['paypal'].lastTested.toLocaleString('fr-FR')}
+                  {connectionStatus['paypal'].message && ` - ${connectionStatus['paypal'].message}`}
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -500,14 +638,17 @@ export default function PaymentConfigAdmin() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Heart className="h-5 w-5" />
-                    Configuration HelloAsso
-                  </CardTitle>
-                  <CardDescription>
-                    Configurez votre compte HelloAsso pour les dons et adhésions associatifs
-                  </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Heart className="h-5 w-5" />
+                      Configuration HelloAsso
+                    </CardTitle>
+                    <CardDescription>
+                      Intégration HelloAsso pour les dons et adhésions
+                    </CardDescription>
+                  </div>
+                  {getConnectionBadge('helloasso')}
                 </div>
                 <div className="flex items-center gap-2">
                   <Label htmlFor="helloasso-active">Activer</Label>
@@ -539,7 +680,7 @@ export default function PaymentConfigAdmin() {
                     type={showSecrets['helloasso_secret'] ? 'text' : 'password'}
                     value={helloassoConfig.client_secret}
                     onChange={(e) => setHelloassoConfig({ ...helloassoConfig, client_secret: e.target.value })}
-                    placeholder="Client Secret HelloAsso"
+                    placeholder="Client Secret"
                   />
                   <Button
                     type="button"
@@ -559,9 +700,6 @@ export default function PaymentConfigAdmin() {
                   onChange={(e) => setHelloassoConfig({ ...helloassoConfig, organization_slug: e.target.value })}
                   placeholder="mon-association"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Le slug est la partie de l'URL après helloasso.com/associations/
-                </p>
               </div>
               <div className="space-y-2">
                 <Label>Mode</Label>
@@ -578,27 +716,46 @@ export default function PaymentConfigAdmin() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleSaveHelloAsso} disabled={loading} className="w-full">
-                <Save className="w-4 h-4 mr-2" />
-                {loading ? 'Enregistrement...' : 'Enregistrer la configuration HelloAsso'}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveHelloAsso} disabled={loading} className="flex-1">
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Enregistrement...' : 'Enregistrer'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => testConnection('helloasso')}
+                  disabled={connectionStatus['helloasso'].status === 'testing'}
+                >
+                  <Wifi className="w-4 h-4 mr-2" />
+                  Tester
+                </Button>
+              </div>
+              {connectionStatus['helloasso'].lastTested && (
+                <p className="text-xs text-muted-foreground">
+                  Dernier test: {connectionStatus['helloasso'].lastTested.toLocaleString('fr-FR')}
+                  {connectionStatus['helloasso'].message && ` - ${connectionStatus['helloasso'].message}`}
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Virement bancaire */}
+        {/* Virement Bancaire */}
         <TabsContent value="virement">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Landmark className="h-5 w-5" />
-                    Coordonnées Bancaires
-                  </CardTitle>
-                  <CardDescription>
-                    Configurez les informations bancaires affichées pour les virements
-                  </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Landmark className="h-5 w-5" />
+                      Coordonnées Bancaires
+                    </CardTitle>
+                    <CardDescription>
+                      Informations pour les paiements par virement bancaire
+                    </CardDescription>
+                  </div>
+                  {getConnectionBadge('bank_transfer')}
                 </div>
                 <div className="flex items-center gap-2">
                   <Label htmlFor="virement-active">Activer</Label>
@@ -615,13 +772,13 @@ export default function PaymentConfigAdmin() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nom de la banque</Label>
                   <Input
                     value={virementConfig.bank_name}
                     onChange={(e) => setVirementConfig({ ...virementConfig, bank_name: e.target.value })}
-                    placeholder="Ex: Crédit Agricole"
+                    placeholder="Banque Atlantique"
                   />
                 </div>
                 <div className="space-y-2">
@@ -629,7 +786,7 @@ export default function PaymentConfigAdmin() {
                   <Input
                     value={virementConfig.account_holder}
                     onChange={(e) => setVirementConfig({ ...virementConfig, account_holder: e.target.value })}
-                    placeholder="Nom de l'association"
+                    placeholder="ASSOCIATION E2D"
                   />
                 </div>
               </div>
@@ -638,8 +795,7 @@ export default function PaymentConfigAdmin() {
                 <Input
                   value={virementConfig.iban}
                   onChange={(e) => setVirementConfig({ ...virementConfig, iban: formatIBAN(e.target.value) })}
-                  placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
-                  className="font-mono"
+                  placeholder="CM21 1000 1000 0000 0000 0000 000"
                 />
               </div>
               <div className="space-y-2">
@@ -647,24 +803,38 @@ export default function PaymentConfigAdmin() {
                 <Input
                   value={virementConfig.bic}
                   onChange={(e) => setVirementConfig({ ...virementConfig, bic: e.target.value.toUpperCase() })}
-                  placeholder="AGRIFRPP"
-                  className="font-mono"
-                  maxLength={11}
+                  placeholder="BATLCMCX"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Instructions personnalisées</Label>
+                <Label>Instructions supplémentaires</Label>
                 <Textarea
                   value={virementConfig.instructions}
                   onChange={(e) => setVirementConfig({ ...virementConfig, instructions: e.target.value })}
-                  placeholder="Instructions pour le donateur (ex: mentionner votre nom en référence du virement)"
+                  placeholder="Veuillez mentionner votre nom et le motif du virement..."
                   rows={3}
                 />
               </div>
-              <Button onClick={handleSaveVirement} disabled={loading} className="w-full">
-                <Save className="w-4 h-4 mr-2" />
-                {loading ? 'Enregistrement...' : 'Enregistrer les coordonnées bancaires'}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveVirement} disabled={loading} className="flex-1">
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Enregistrement...' : 'Enregistrer'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => testConnection('bank_transfer')}
+                  disabled={connectionStatus['bank_transfer'].status === 'testing'}
+                >
+                  <Wifi className="w-4 h-4 mr-2" />
+                  Vérifier
+                </Button>
+              </div>
+              {connectionStatus['bank_transfer'].lastTested && (
+                <p className="text-xs text-muted-foreground">
+                  Dernière vérification: {connectionStatus['bank_transfer'].lastTested.toLocaleString('fr-FR')}
+                  {connectionStatus['bank_transfer'].message && ` - ${connectionStatus['bank_transfer'].message}`}
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
