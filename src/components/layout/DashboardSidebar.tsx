@@ -1,6 +1,8 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Home,
   User,
@@ -128,6 +130,21 @@ export function DashboardSidebar() {
   const { open } = useSidebar();
   const location = useLocation();
 
+  // Compter les prêts en retard pour le badge
+  const { data: pretsEnRetardCount } = useQuery({
+    queryKey: ["prets-en-retard-count"],
+    queryFn: async () => {
+      const today = new Date().toISOString().split("T")[0];
+      const { count, error } = await supabase
+        .from("prets")
+        .select("*", { count: "exact", head: true })
+        .lt("echeance", today)
+        .neq("statut", "rembourse");
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
   const isActive = (path: string) => {
     if (path === "/dashboard") {
       return location.pathname === path;
@@ -181,16 +198,33 @@ export function DashboardSidebar() {
 
   const renderMenuItems = (items: typeof memberItems) => (
     <SidebarMenu>
-      {items.map((item) => (
-        <SidebarMenuItem key={item.title}>
-          <SidebarMenuButton asChild isActive={isActive(item.url)}>
-            <NavLink to={item.url} className="flex items-center gap-3">
-              <item.icon className="h-4 w-4" />
-              {open && <span>{item.title}</span>}
-            </NavLink>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ))}
+      {items.map((item) => {
+        const isPrets = item.url === "/dashboard/admin/finances/prets";
+        const showBadge = isPrets && pretsEnRetardCount && pretsEnRetardCount > 0;
+        
+        return (
+          <SidebarMenuItem key={item.title}>
+            <SidebarMenuButton asChild isActive={isActive(item.url)}>
+              <NavLink to={item.url} className="flex items-center gap-3">
+                <item.icon className="h-4 w-4" />
+                {open && (
+                  <span className="flex items-center gap-2">
+                    {item.title}
+                    {showBadge && (
+                      <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                        {pretsEnRetardCount}
+                      </Badge>
+                    )}
+                  </span>
+                )}
+                {!open && showBadge && (
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-destructive" />
+                )}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        );
+      })}
     </SidebarMenu>
   );
 

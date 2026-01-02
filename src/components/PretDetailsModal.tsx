@@ -3,15 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { 
   User, Calendar, Banknote, Percent, RefreshCw, 
-  CheckCircle, Clock, AlertTriangle, FileText, Building
+  CheckCircle, Clock, AlertTriangle, FileText, Building, Download
 } from "lucide-react";
 import { formatFCFA } from "@/lib/utils";
+import { exportPretPDF } from "@/lib/pret-pdf-export";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { toast } from "@/hooks/use-toast";
 
 interface PretDetailsModalProps {
   pretId: string;
@@ -116,14 +119,27 @@ export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsM
     }
   };
 
+  const handleExportPDF = () => {
+    if (pret) {
+      exportPretPDF(pret, paiements || [], reconductions || []);
+      toast({ title: "PDF exporté avec succès" });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <FileText className="h-6 w-6 text-primary" />
-            Fiche Prêt Détaillée
-            {getStatutBadge()}
+          <DialogTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileText className="h-6 w-6 text-primary" />
+              Fiche Prêt Détaillée
+              {getStatutBadge()}
+            </div>
+            <Button variant="outline" size="sm" onClick={handleExportPDF} className="mr-8">
+              <Download className="h-4 w-4 mr-2" />
+              Exporter PDF
+            </Button>
           </DialogTitle>
         </DialogHeader>
 

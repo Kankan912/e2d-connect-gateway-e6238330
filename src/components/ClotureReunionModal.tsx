@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle, AlertCircle, Users, FileText, Send, Lock, AlertTriangle } from 'lucide-react';
+import { CheckCircle, AlertCircle, Users, FileText, Send, Lock, AlertTriangle, Wallet, Receipt } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -100,9 +100,28 @@ export default function ClotureReunionModal({
     enabled: open
   });
 
+  // Récupérer les cotisations de la réunion
+  const { data: cotisationsReunion } = useQuery({
+    queryKey: ['cotisations-reunion', reunionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cotisations')
+        .select('montant, statut')
+        .eq('reunion_id', reunionId)
+        .eq('statut', 'paye');
+      if (error) throw error;
+      return data;
+    },
+    enabled: open
+  });
+
   const presentsCount = presences?.filter(p => p.statut_presence === 'present').length || 0;
   const pointsCRCount = comptesRendus?.length || 0;
   const canClose = presentsCount > 0 && pointsCRCount > 0;
+  
+  // Calculer le total des cotisations collectées
+  const totalCotisations = cotisationsReunion?.reduce((sum, c) => sum + c.montant, 0) || 0;
+  const nbCotisations = cotisationsReunion?.length || 0;
 
   // Calculer les membres non marqués (qui n'ont pas d'enregistrement de présence)
   const membresNonMarques = membresE2D?.filter(
@@ -313,6 +332,46 @@ export default function ClotureReunionModal({
                 <Badge variant={pointsCRCount > 0 ? 'default' : 'destructive'}>
                   {pointsCRCount}
                 </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Résumé Financier */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-primary" />
+                Résumé Financier
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-green-600" />
+                  <span className="text-sm">Cotisations collectées</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-green-600">{totalCotisations.toLocaleString()} FCFA</span>
+                  <span className="text-xs text-muted-foreground ml-1">({nbCotisations} paiement{nbCotisations > 1 ? 's' : ''})</span>
+                </div>
+              </div>
+              {membresNonMarques.length > 0 && sanctionConfig && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                    <span className="text-sm">Sanctions à créer</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-orange-600">
+                      {(membresNonMarques.length * sanctionConfig.montant).toLocaleString()} FCFA
+                    </span>
+                    <span className="text-xs text-muted-foreground ml-1">({membresNonMarques.length} × {sanctionConfig.montant.toLocaleString()})</span>
+                  </div>
+                </div>
+              )}
+              <div className="pt-2 border-t text-xs text-muted-foreground flex items-center gap-1">
+                <CheckCircle className="h-3 w-3 text-green-500" />
+                Ces montants seront synchronisés automatiquement avec la caisse
               </div>
             </CardContent>
           </Card>

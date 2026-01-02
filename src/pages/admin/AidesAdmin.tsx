@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Plus, Edit, Trash2, Settings, HandHeart } from "lucide-react";
+import { Heart, Plus, Edit, Trash2, Settings, HandHeart, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -231,6 +231,7 @@ export default function AidesAdmin() {
                       <TableHead>Bénéficiaire</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Montant</TableHead>
+                      <TableHead>Réunion</TableHead>
                       <TableHead>Contexte</TableHead>
                       <TableHead>Statut</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -247,6 +248,16 @@ export default function AidesAdmin() {
                           <Badge variant="outline">{aide.type_aide?.nom}</Badge>
                         </TableCell>
                         <TableCell>{aide.montant.toLocaleString()} FCFA</TableCell>
+                        <TableCell>
+                          {aide.reunion ? (
+                            <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(aide.reunion.date_reunion).toLocaleDateString("fr-FR")}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
                         <TableCell>{getContexteBadge(aide.contexte_aide)}</TableCell>
                         <TableCell>{getStatutBadge(aide.statut)}</TableCell>
                         <TableCell className="text-right">
@@ -271,7 +282,7 @@ export default function AidesAdmin() {
                     ))}
                     {filteredAides?.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           Aucune aide trouvée
                         </TableCell>
                       </TableRow>

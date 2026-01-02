@@ -16,6 +16,7 @@ import FileUploadField from "@/components/forms/FileUploadField";
 const aideSchema = z.object({
   type_aide_id: z.string().min(1, "Sélectionnez un type d'aide"),
   beneficiaire_id: z.string().min(1, "Sélectionnez un bénéficiaire"),
+  reunion_id: z.string().optional(),
   montant: z.number().positive("Le montant doit être positif"),
   date_allocation: z.string().min(1, "Date d'allocation requise"),
   contexte_aide: z.string().min(1, "Contexte requis"),
@@ -50,6 +51,22 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
     },
   });
 
+  // Récupérer les réunions récentes (6 derniers mois)
+  const { data: reunions } = useQuery({
+    queryKey: ["reunions-recentes"],
+    queryFn: async () => {
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      const { data, error } = await supabase
+        .from("reunions")
+        .select("id, date_reunion, ordre_du_jour")
+        .gte("date_reunion", sixMonthsAgo.toISOString().split("T")[0])
+        .order("date_reunion", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<AideFormData>({
     resolver: zodResolver(aideSchema),
     defaultValues: {
@@ -62,8 +79,19 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
 
   const typeAideId = watch("type_aide_id");
   const beneficiaireId = watch("beneficiaire_id");
+  const reunionId = watch("reunion_id");
   const statut = watch("statut");
   const contexte = watch("contexte_aide");
+
+  // Auto-remplir la date d'allocation avec la date de réunion
+  useEffect(() => {
+    if (reunionId && reunions) {
+      const selectedReunion = reunions.find(r => r.id === reunionId);
+      if (selectedReunion && !initialData) {
+        setValue("date_allocation", selectedReunion.date_reunion);
+      }
+    }
+  }, [reunionId, reunions, setValue, initialData]);
 
   // Auto-remplir le montant selon le type d'aide sélectionné
   useEffect(() => {
@@ -82,6 +110,7 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
         reset({
           type_aide_id: initialData.type_aide_id,
           beneficiaire_id: initialData.beneficiaire_id,
+          reunion_id: initialData.reunion_id || undefined,
           montant: initialData.montant,
           date_allocation: initialData.date_allocation,
           contexte_aide: initialData.contexte_aide,
@@ -104,6 +133,7 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
   const handleFormSubmit = (data: AideFormData) => {
     onSubmit({
       ...data,
+      reunion_id: data.reunion_id || null,
       justificatif_url: justificatifUrl,
     });
   };
@@ -153,6 +183,23 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
                 <p className="text-sm text-destructive mt-1">{errors.beneficiaire_id.message}</p>
               )}
             </div>
+          </div>
+
+          <div>
+            <Label>Réunion (optionnel)</Label>
+            <Select value={reunionId} onValueChange={(val) => setValue("reunion_id", val === "none" ? undefined : val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner une réunion" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Aucune réunion</SelectItem>
+                {reunions?.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {new Date(r.date_reunion).toLocaleDateString("fr-FR")} - {r.ordre_du_jour || "Réunion"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
