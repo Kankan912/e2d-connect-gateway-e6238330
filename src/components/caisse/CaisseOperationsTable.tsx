@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Trash2, ArrowUpCircle, ArrowDownCircle, Link } from "lucide-react";
 import { CaisseOperation, CAISSE_CATEGORIES, useDeleteCaisseOperation } from "@/hooks/useCaisse";
+import { formatFCFA } from "@/lib/utils";
 
 interface CaisseOperationsTableProps {
   operations: CaisseOperation[];
@@ -33,8 +34,6 @@ export const CaisseOperationsTable = ({ operations, isLoading }: CaisseOperation
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const deleteMutation = useDeleteCaisseOperation();
 
-  const formatMontant = (montant: number) =>
-    new Intl.NumberFormat("fr-FR").format(montant) + " FCFA";
 
   const handleDelete = async () => {
     if (deleteId) {
@@ -116,7 +115,7 @@ export const CaisseOperationsTable = ({ operations, isLoading }: CaisseOperation
                       : "-"}
                   </TableCell>
                   <TableCell className={`text-right font-medium whitespace-nowrap ${isEntree ? "text-emerald-600" : "text-red-600"}`}>
-                    {isEntree ? "+" : "-"}{formatMontant(operation.montant)}
+                    {isEntree ? "+" : "-"}{formatFCFA(operation.montant)}
                   </TableCell>
                   <TableCell>
                     {operation.source_table ? (

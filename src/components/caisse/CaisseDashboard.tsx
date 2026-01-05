@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Wallet, TrendingUp, TrendingDown, PiggyBank, AlertTriangle, AlertCircle } from "lucide-react";
 import { useCaisseStats, useCaisseConfig } from "@/hooks/useCaisse";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatFCFA } from "@/lib/utils";
 
 export const CaisseDashboard = () => {
   const { data: stats, isLoading } = useCaisseStats();
@@ -25,9 +26,6 @@ export const CaisseDashboard = () => {
       </div>
     );
   }
-
-  const formatMontant = (montant: number) => 
-    new Intl.NumberFormat('fr-FR').format(montant) + ' FCFA';
 
   return (
     <div className="space-y-4">
@@ -56,7 +54,7 @@ export const CaisseDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${(stats?.solde_global || 0) >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
-              {formatMontant(stats?.solde_global || 0)}
+              {formatFCFA(stats?.solde_global || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               Balance totale de la caisse
@@ -71,7 +69,7 @@ export const CaisseDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {formatMontant(stats?.solde_empruntable || 0)}
+              {formatFCFA(stats?.solde_empruntable || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               {config?.pourcentage_empruntable || 80}% du solde disponible pour prêts
@@ -86,10 +84,10 @@ export const CaisseDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              +{formatMontant(stats?.total_entrees_mois || 0)}
+              +{formatFCFA(stats?.total_entrees_mois || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Total: {formatMontant(stats?.total_entrees || 0)}
+              Total: {formatFCFA(stats?.total_entrees || 0)}
             </p>
           </CardContent>
         </Card>
@@ -101,10 +99,10 @@ export const CaisseDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              -{formatMontant(stats?.total_sorties_mois || 0)}
+              -{formatFCFA(stats?.total_sorties_mois || 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Total: {formatMontant(stats?.total_sorties || 0)}
+              Total: {formatFCFA(stats?.total_sorties || 0)}
             </p>
           </CardContent>
         </Card>
@@ -113,10 +111,10 @@ export const CaisseDashboard = () => {
       {/* Badges récapitulatifs */}
       <div className="flex flex-wrap gap-2">
         <Badge variant="outline" className="text-sm">
-          Seuil alerte solde: {formatMontant(config?.seuil_alerte_solde || 50000)}
+          Seuil alerte solde: {formatFCFA(config?.seuil_alerte_solde || 50000)}
         </Badge>
         <Badge variant="outline" className="text-sm">
-          Seuil empruntable: {formatMontant(config?.seuil_alerte_empruntable || 20000)}
+          Seuil empruntable: {formatFCFA(config?.seuil_alerte_empruntable || 20000)}
         </Badge>
         <Badge variant={stats?.alertes?.length ? "destructive" : "secondary"} className="text-sm">
           {stats?.alertes?.length || 0} alerte(s)
