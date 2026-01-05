@@ -1,13 +1,15 @@
 import { ArrowRight, Heart, Users, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSiteHero, useSiteHeroImages } from "@/hooks/useSiteContent";
+import { useSiteHero, useSiteHeroImages, useSiteConfig } from "@/hooks/useSiteContent";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import { useRef } from "react";
-import heroImage from "@/assets/hero-sports.jpg";
+import heroImageFallback from "@/assets/hero-sports.jpg";
 
 const Hero = () => {
+  const { data: siteConfig } = useSiteConfig();
+  const heroFallback = siteConfig?.find(c => c.cle === 'hero_fallback_image')?.valeur || heroImageFallback;
   const { data: hero, isLoading } = useSiteHero();
   const { data: heroImages = [] } = useSiteHeroImages(hero?.id);
   
@@ -35,7 +37,7 @@ const Hero = () => {
 
   // Use carousel images if available, otherwise fallback to single hero image
   const hasMultipleImages = heroImages.length > 0;
-  const backgroundImage = hero?.image_url || heroImage;
+  const backgroundImage = hero?.image_url || heroFallback;
 
   return (
     <section id="accueil" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16 lg:pt-20">

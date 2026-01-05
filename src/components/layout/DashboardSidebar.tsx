@@ -119,6 +119,7 @@ const siteItems = [
   { title: "Événements", url: "/dashboard/admin/site/events", icon: Calendar, resource: "site" },
   { title: "Galerie", url: "/dashboard/admin/site/gallery", icon: Camera, resource: "site" },
   { title: "Partenaires", url: "/dashboard/admin/site/partners", icon: Handshake, resource: "site" },
+  { title: "Images", url: "/dashboard/admin/site/images", icon: Camera, resource: "site" },
   { title: "Messages", url: "/dashboard/admin/site/messages", icon: Users, resource: "site" },
   { title: "Configuration", url: "/dashboard/admin/site/config", icon: Settings, resource: "site" },
 ];
