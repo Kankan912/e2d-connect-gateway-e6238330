@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { formatFCFA } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -287,7 +288,7 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
                         </div>
                         {types.map((type) => (
                           <SelectItem key={type.id} value={type.id}>
-                            {type.nom} {type.montant > 0 && `(${type.montant.toLocaleString()} FCFA)`}
+                            {type.nom} {type.montant > 0 && `(${formatFCFA(type.montant)})`}
                           </SelectItem>
                         ))}
                       </div>
@@ -364,7 +365,7 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
                     </TableCell>
                     <TableCell>
                       {sanction.montant_amende 
-                        ? `${parseFloat(sanction.montant_amende).toLocaleString()} FCFA`
+                        ? formatFCFA(parseFloat(sanction.montant_amende))
                         : '-'
                       }
                     </TableCell>

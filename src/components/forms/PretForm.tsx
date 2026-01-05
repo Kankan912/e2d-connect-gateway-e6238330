@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { formatFCFA } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -327,7 +328,7 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
               <Label>Intérêt initial</Label>
               <Input
                 type="text"
-                value={`${interetInitial.toLocaleString()} FCFA`}
+                value={formatFCFA(interetInitial)}
                 disabled
                 className="bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400"
               />
@@ -360,7 +361,7 @@ export default function PretForm({ open, onClose, onSubmit, initialData }: PretF
               <Label>Montant total dû</Label>
               <Input
                 type="text"
-                value={`${montantTotalDu.toLocaleString()} FCFA`}
+                value={formatFCFA(montantTotalDu)}
                 disabled
                 className="bg-muted font-semibold"
               />

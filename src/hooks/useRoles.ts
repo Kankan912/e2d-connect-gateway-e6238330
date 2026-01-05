@@ -155,6 +155,7 @@ export const useRoles = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['role-permissions', variables.roleId] });
+      queryClient.invalidateQueries({ queryKey: ['all-roles-permissions'] });
       queryClient.invalidateQueries({ queryKey: ['user-permissions'] });
       toast({ title: "Permission mise à jour" });
     },
