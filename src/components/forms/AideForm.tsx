@@ -185,22 +185,37 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
             </div>
           </div>
 
-          <div>
-            <Label>Réunion (optionnel)</Label>
-            <Select value={reunionId} onValueChange={(val) => setValue("reunion_id", val === "none" ? undefined : val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner une réunion" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Aucune réunion</SelectItem>
-                {reunions?.map((r) => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {new Date(r.date_reunion).toLocaleDateString("fr-FR")} - {r.ordre_du_jour || "Réunion"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Afficher le champ Réunion uniquement si contexte = "reunion" */}
+          {contexte === "reunion" && (
+            <div>
+              <Label>Réunion associée</Label>
+              <Select value={reunionId} onValueChange={(val) => setValue("reunion_id", val === "none" ? undefined : val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une réunion" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucune réunion</SelectItem>
+                  {reunions?.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {new Date(r.date_reunion).toLocaleDateString("fr-FR")} - {r.ordre_du_jour || "Réunion"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                La date d'allocation sera automatiquement remplie avec la date de la réunion.
+              </p>
+            </div>
+          )}
+
+          {/* Message informatif si contexte urgent/exceptionnel */}
+          {(contexte === "urgent" || contexte === "exceptionnel") && (
+            <div className="p-3 bg-muted/50 rounded-md text-sm">
+              <p className="text-muted-foreground">
+                ℹ️ Cette aide ne sera pas liée à une réunion spécifique ({contexte === "urgent" ? "Aide urgente" : "Aide exceptionnelle"}).
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
