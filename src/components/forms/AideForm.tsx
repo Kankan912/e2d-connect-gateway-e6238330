@@ -103,6 +103,13 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
     }
   }, [typeAideId, typesAide, setValue, initialData]);
 
+  // Réinitialiser reunion_id si le contexte change et n'est plus "reunion"
+  useEffect(() => {
+    if (contexte !== "reunion") {
+      setValue("reunion_id", undefined);
+    }
+  }, [contexte, setValue]);
+
   // Reset form when dialog opens with initialData
   useEffect(() => {
     if (open) {
