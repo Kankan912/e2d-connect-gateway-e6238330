@@ -19,6 +19,7 @@ interface CotisationCellModalProps {
   type: { id: string; nom: string; montant_defaut: number | null; obligatoire: boolean } | null;
   existingCotisation?: { id: string; montant: number; date_paiement: string; statut: string };
   defaultMontant: number;
+  cumulPaye?: number; // Montant cumulé déjà payé pour ce type
 }
 
 export default function CotisationCellModal({
@@ -29,24 +30,32 @@ export default function CotisationCellModal({
   membre,
   type,
   existingCotisation,
-  defaultMontant
+  defaultMontant,
+  cumulPaye = 0
 }: CotisationCellModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [montant, setMontant] = useState<string>('');
   const [datePaiement, setDatePaiement] = useState<string>(new Date().toISOString().split('T')[0]);
 
+  // Calculer le reste à payer (uniquement pour les nouvelles saisies)
+  const resteAPayer = existingCotisation 
+    ? defaultMontant - cumulPaye  // En mode édition, on garde le calcul normal
+    : Math.max(0, defaultMontant - cumulPaye);
+  
   useEffect(() => {
     if (open) {
       if (existingCotisation) {
         setMontant(existingCotisation.montant.toString());
         setDatePaiement(existingCotisation.date_paiement || new Date().toISOString().split('T')[0]);
       } else {
-        setMontant(defaultMontant.toString());
+        // Pour une nouvelle saisie, proposer le reste à payer (si non nul)
+        const montantSuggere = resteAPayer > 0 ? resteAPayer : defaultMontant;
+        setMontant(montantSuggere.toString());
         setDatePaiement(new Date().toISOString().split('T')[0]);
       }
     }
-  }, [open, existingCotisation, defaultMontant]);
+  }, [open, existingCotisation, defaultMontant, resteAPayer]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -151,13 +160,34 @@ export default function CotisationCellModal({
             <div>
               <p className="font-medium">{type.nom}</p>
               <p className="text-xs text-muted-foreground">
-                Montant par défaut : {formatFCFA(defaultMontant)}
+                Montant attendu : {formatFCFA(defaultMontant)}
               </p>
             </div>
             {type.obligatoire && (
               <Badge variant="secondary">Obligatoire</Badge>
             )}
           </div>
+
+          {/* Affichage du cumul payé et reste à payer */}
+          {cumulPaye > 0 && !existingCotisation && (
+            <div className="p-3 bg-muted rounded-lg space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Déjà payé (cumul) :</span>
+                <span className="font-medium text-success">{formatFCFA(cumulPaye)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Reste à payer :</span>
+                <span className={`font-medium ${resteAPayer > 0 ? 'text-warning' : 'text-success'}`}>
+                  {formatFCFA(resteAPayer)}
+                </span>
+              </div>
+              {resteAPayer <= 0 && (
+                <p className="text-xs text-success mt-2">
+                  ✓ Ce type de cotisation est déjà intégralement payé.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Montant */}
           <div className="space-y-2">

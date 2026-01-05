@@ -214,6 +214,9 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
     );
   }
 
+  // Vérifier si un exercice est sélectionné - condition obligatoire pour la saisie
+  const canEdit = isEditable && !!exerciceId;
+
   return (
     <>
       <Card>
@@ -237,6 +240,17 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          {/* Message d'alerte si aucun exercice n'est sélectionné */}
+          {isEditable && !exerciceId && (
+            <div className="p-4 bg-warning/10 border border-warning/30 rounded-md m-4">
+              <p className="text-sm font-medium text-warning">
+                ⚠️ Veuillez sélectionner un exercice pour pouvoir saisir les cotisations.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                La saisie des cotisations nécessite un contexte d'exercice pour assurer la traçabilité comptable.
+              </p>
+            </div>
+          )}
           <ScrollArea className="w-full">
             <div className="min-w-max">
               <Table>
@@ -299,7 +313,7 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
                             {isPaid ? (
                               <button
                                 onClick={() => handleCellClick(membre, type)}
-                                disabled={!isEditable}
+                                disabled={!canEdit}
                                 className="w-full"
                               >
                                 <Badge className="bg-success text-success-foreground hover:bg-success/90 cursor-pointer">
@@ -319,7 +333,7 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                disabled={!isEditable}
+                                disabled={!canEdit}
                                 onClick={() => handleCellClick(membre, type)}
                                 className="h-10 w-10 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/10"
                               >
@@ -339,7 +353,7 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
                             <div className="flex justify-center">
                               <Checkbox
                                 checked={isValide}
-                                disabled={!isEditable || toggleHuileSavon.isPending}
+                                disabled={!canEdit || toggleHuileSavon.isPending}
                                 onCheckedChange={(checked) => {
                                   toggleHuileSavon.mutate({ 
                                     membreId: membre.id, 
