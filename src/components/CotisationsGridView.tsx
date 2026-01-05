@@ -175,6 +175,14 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
     return cotisations?.find(c => c.membre_id === membreId && c.type_cotisation_id === typeId);
   };
 
+  // Helper: get cumul payé pour ce membre/type (toutes réunions confondues de l'exercice)
+  const getCumulPaye = (membreId: string, typeId: string): number => {
+    if (!cotisations) return 0;
+    return cotisations
+      .filter(c => c.membre_id === membreId && c.type_cotisation_id === typeId && c.statut === 'paye')
+      .reduce((sum, c) => sum + c.montant, 0);
+  };
+
   // Helper: get montant for membre/type
   const getMontant = (membreId: string, typeId: string): number => {
     const perso = cotisationsMembres?.find(
@@ -397,6 +405,7 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
         type={selectedCell?.type || null}
         existingCotisation={selectedCell ? getCotisation(selectedCell.membre.id, selectedCell.type.id) : undefined}
         defaultMontant={selectedCell ? getMontant(selectedCell.membre.id, selectedCell.type.id) : 0}
+        cumulPaye={selectedCell ? getCumulPaye(selectedCell.membre.id, selectedCell.type.id) : 0}
       />
 
       {/* Modal États */}
