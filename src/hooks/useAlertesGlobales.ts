@@ -114,7 +114,7 @@ export function useAlertesGlobales() {
 
       const { data, error } = await supabase
         .from('reunions')
-        .select('id, date_reunion, ordre_du_jour, lieu')
+        .select('id, date_reunion, ordre_du_jour, lieu_description')
         .gte('date_reunion', today.toISOString().split('T')[0])
         .lte('date_reunion', nextWeek.toISOString().split('T')[0])
         .eq('statut', 'planifiee');
@@ -193,7 +193,7 @@ export function useAlertesGlobales() {
       type: 'reunion_proche',
       niveau: 'info',
       titre: joursRestants === 0 ? "Réunion aujourd'hui" : `Réunion dans ${joursRestants}j`,
-      description: reunion.ordre_du_jour || reunion.lieu || 'Réunion à venir',
+      description: reunion.ordre_du_jour || reunion.lieu_description || 'Réunion à venir',
       lien: '/dashboard/reunions',
       dateCreation: dateReunion,
     });
