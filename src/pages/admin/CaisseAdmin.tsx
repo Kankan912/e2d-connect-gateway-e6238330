@@ -115,10 +115,10 @@ const CaisseAdmin = () => {
     doc.text("Résumé", 14, 40);
 
     doc.setFontSize(10);
-    doc.text(`Total Entrées: ${new Intl.NumberFormat("fr-FR").format(totalEntrees)} FCFA`, 14, 48);
-    doc.text(`Total Sorties: ${new Intl.NumberFormat("fr-FR").format(totalSorties)} FCFA`, 14, 54);
+    doc.text(`Total Entrées: ${formatFCFA(totalEntrees)}`, 14, 48);
+    doc.text(`Total Sorties: ${formatFCFA(totalSorties)}`, 14, 54);
     doc.setTextColor(solde >= 0 ? 0 : 200, solde >= 0 ? 128 : 0, solde >= 0 ? 0 : 0);
-    doc.text(`Solde: ${new Intl.NumberFormat("fr-FR").format(solde)} FCFA`, 14, 60);
+    doc.text(`Solde: ${formatFCFA(solde)}`, 14, 60);
 
     // Tableau des opérations
     const tableData = operations.map(op => [
@@ -126,7 +126,7 @@ const CaisseAdmin = () => {
       op.type_operation === "entree" ? "Entrée" : "Sortie",
       CAISSE_CATEGORIES[op.categorie as keyof typeof CAISSE_CATEGORIES]?.label || op.categorie || "-",
       op.libelle,
-      `${new Intl.NumberFormat("fr-FR").format(Number(op.montant))} FCFA`
+      formatFCFA(Number(op.montant))
     ]);
 
     autoTable(doc, {
