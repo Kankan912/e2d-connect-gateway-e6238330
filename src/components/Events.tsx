@@ -1,15 +1,17 @@
 import { Calendar, Clock, MapPin, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSiteEvents, useSiteEventsCarouselConfig } from "@/hooks/useSiteContent";
+import { useSiteEvents, useSiteEventsCarouselConfig, useSiteConfig } from "@/hooks/useSiteContent";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRef } from "react";
-import teamImage from "@/assets/team-celebration.jpg";
+import teamImageFallback from "@/assets/team-celebration.jpg";
 
 const Events = () => {
+  const { data: siteConfig } = useSiteConfig();
+  const eventsFallbackImage = siteConfig?.find(c => c.cle === 'events_fallback_image')?.valeur || teamImageFallback;
   const { data: events, isLoading } = useSiteEvents();
   const { data: carouselConfig } = useSiteEventsCarouselConfig();
   
@@ -161,7 +163,7 @@ const Events = () => {
             ) : (
               <div className="w-full h-full">
                 <img
-                  src={teamImage}
+                  src={eventsFallbackImage}
                   alt="Team Celebration"
                   className="w-full h-full object-cover"
                 />

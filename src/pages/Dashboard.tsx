@@ -23,6 +23,7 @@ import PartnersAdmin from "./admin/site/PartnersAdmin";
 import ConfigAdmin from "./admin/site/ConfigAdmin";
 const AboutAdmin = lazy(() => import("./admin/site/AboutAdmin"));
 const MessagesAdmin = lazy(() => import("./admin/site/MessagesAdmin"));
+const ImagesAdmin = lazy(() => import("./admin/site/ImagesAdmin"));
 
 // Pages originales restaurées depuis GitHub
 import Reunions from "./Reunions";
@@ -416,6 +417,16 @@ const Dashboard = () => {
             <PermissionRoute resource="site" permission="write">
               <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
                 <MessagesAdmin />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/site/images"
+          element={
+            <PermissionRoute resource="site" permission="write">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <ImagesAdmin />
               </Suspense>
             </PermissionRoute>
           }
