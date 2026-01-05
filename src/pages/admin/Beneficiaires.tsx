@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import BackButton from "@/components/BackButton";
 import { useEpargnantsBenefices } from "@/hooks/useEpargnantsBenefices";
+import { formatFCFA } from "@/lib/utils";
 
 export default function Beneficiaires() {
   const {
@@ -27,10 +28,6 @@ export default function Beneficiaires() {
   const handleExportPDF = () => {
     // TODO: Implémenter l'export PDF
     console.log('Export PDF - À implémenter');
-  };
-
-  const formatMontant = (montant: number) => {
-    return new Intl.NumberFormat('fr-FR').format(Math.round(montant)) + ' FCFA';
   };
 
   return (
@@ -103,7 +100,7 @@ export default function Beneficiaires() {
             {loading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
-              <div className="text-2xl font-bold text-primary">{formatMontant(stats.totalEpargnes)}</div>
+              <div className="text-2xl font-bold text-primary">{formatFCFA(stats.totalEpargnes)}</div>
             )}
           </CardContent>
         </Card>
@@ -119,7 +116,7 @@ export default function Beneficiaires() {
             {loading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
-              <div className="text-2xl font-bold text-green-600">{formatMontant(stats.totalInteretsPrets)}</div>
+              <div className="text-2xl font-bold text-green-600">{formatFCFA(stats.totalInteretsPrets)}</div>
             )}
           </CardContent>
         </Card>
@@ -222,7 +219,7 @@ export default function Beneficiaires() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatMontant(epargnant.montantEpargne)}
+                        {formatFCFA(epargnant.montantEpargne)}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20">
@@ -230,10 +227,10 @@ export default function Beneficiaires() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right text-green-600 font-medium">
-                        +{formatMontant(epargnant.gainsEstimes)}
+                        +{formatFCFA(epargnant.gainsEstimes)}
                       </TableCell>
                       <TableCell className="text-right font-bold text-primary">
-                        {formatMontant(epargnant.totalAttendu)}
+                        {formatFCFA(epargnant.totalAttendu)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -245,16 +242,16 @@ export default function Beneficiaires() {
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Total épargné:</span>
-                    <span className="ml-2 font-bold">{formatMontant(stats.totalEpargnes)}</span>
+                    <span className="ml-2 font-bold">{formatFCFA(stats.totalEpargnes)}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Intérêts à distribuer:</span>
-                    <span className="ml-2 font-bold text-green-600">{formatMontant(stats.totalInteretsPrets)}</span>
+                    <span className="ml-2 font-bold text-green-600">{formatFCFA(stats.totalInteretsPrets)}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Total à verser:</span>
                     <span className="ml-2 font-bold text-primary">
-                      {formatMontant(stats.totalEpargnes + stats.totalInteretsPrets)}
+                      {formatFCFA(stats.totalEpargnes + stats.totalInteretsPrets)}
                     </span>
                   </div>
                 </div>

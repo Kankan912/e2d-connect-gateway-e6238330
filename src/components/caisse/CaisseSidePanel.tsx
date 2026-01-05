@@ -19,9 +19,7 @@ import {
 import { useCaisseSynthese } from "@/hooks/useCaisseSynthese";
 import { CaisseSyntheseDetailModal } from "./CaisseSyntheseDetailModal";
 import { DetailType } from "@/hooks/useCaisseDetails";
-
-const formatMontant = (montant: number) =>
-  new Intl.NumberFormat("fr-FR").format(montant) + " FCFA";
+import { formatFCFA } from "@/lib/utils";
 
 interface SynthWidgetProps {
   title: string;
@@ -59,7 +57,7 @@ const SynthWidget = ({ title, value, icon, variant = "default", subtitle, onClic
           <div className="space-y-1 flex-1">
             <p className="text-xs font-medium text-muted-foreground">{title}</p>
             <p className={`text-lg font-bold ${valueStyles[variant]}`}>
-              {formatMontant(value)}
+              {formatFCFA(value)}
             </p>
             {subtitle && (
               <p className="text-xs text-muted-foreground">{subtitle}</p>
@@ -186,7 +184,7 @@ export const CaisseSidePanel = () => {
               <div className="space-y-1 flex-1">
                 <p className="text-xs font-medium text-muted-foreground">Sanctions Impayées</p>
                 <p className="text-lg font-bold text-destructive">
-                  {formatMontant(synthese?.sanctionsImpayees || 0)}
+                  {formatFCFA(synthese?.sanctionsImpayees || 0)}
                 </p>
                 <Badge variant="destructive" className="text-xs">À recouvrer</Badge>
               </div>
