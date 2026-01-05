@@ -73,6 +73,8 @@ const Hero = () => {
         ) : (
           <div
             className="w-full h-full"
+            role="img"
+            aria-label="Image de fond représentant l'Association E2D"
             style={{
               backgroundImage: `url(${backgroundImage})`,
               backgroundSize: "cover",

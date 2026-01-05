@@ -72,6 +72,7 @@ const Gallery = () => {
                     <img
                       src={coverImage}
                       alt={album.titre}
+                      loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                   ) : (
@@ -110,11 +111,12 @@ const Gallery = () => {
                       <>
                         {isVideo ? (
                           <div className="w-full h-full relative">
-                            <img
-                              src={mediaUrl}
-                              alt={item.titre}
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            />
+                          <img
+                            src={mediaUrl}
+                            alt={item.titre}
+                            loading="lazy"
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          />
                             <div className="absolute inset-0 flex items-center justify-center">
                               <Play className="w-16 h-16 text-white/80" />
                             </div>
@@ -123,6 +125,7 @@ const Gallery = () => {
                           <img
                             src={mediaUrl}
                             alt={item.titre}
+                            loading="lazy"
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           />
                         )}
@@ -193,6 +196,7 @@ const Gallery = () => {
                           <img
                             src={mediaUrl}
                             alt={item.titre}
+                            loading="lazy"
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           />
                           <div className="absolute inset-0 flex items-center justify-center">
@@ -203,6 +207,7 @@ const Gallery = () => {
                         <img
                           src={mediaUrl}
                           alt={item.titre}
+                          loading="lazy"
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         />
                       )}
