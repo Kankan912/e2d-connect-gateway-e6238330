@@ -2997,6 +2997,7 @@ export type Database = {
       }
       reunions_sanctions: {
         Row: {
+          contexte: string | null
           created_at: string
           date_levee: string | null
           id: string
@@ -3010,6 +3011,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          contexte?: string | null
           created_at?: string
           date_levee?: string | null
           id?: string
@@ -3023,6 +3025,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          contexte?: string | null
           created_at?: string
           date_levee?: string | null
           id?: string
