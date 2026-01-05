@@ -156,7 +156,13 @@ Accessibles via le portail interne `/dashboard/admin/site/` :
 - Édition par catégorie (général, contact, social)
 - Clés : `site_name`, `site_email`, `site_telephone`, `site_adresse`, `site_description`, `facebook_url`, `site_year`, etc.
 
-**H. Messages Contact Admin (`/messages`)** [À CRÉER]
+**H. Images du Site Admin (`/images`)** ✨ NOUVEAU
+- Gestion des images par défaut du site
+- Upload/lien pour : Hero fallback, Events fallback, Logo
+- Preview et réinitialisation possible
+- Stockage dans `site_config` catégorie 'images'
+
+**I. Messages Contact Admin (`/messages`)** [À CRÉER]
 - Liste des messages du formulaire de contact
 - Statut : nouveau, lu, traité
 - Actions : répondre, archiver
@@ -285,10 +291,11 @@ src/lib/
 - [x] Utilitaires storage et médias
 
 #### Admin CMS
-- [x] 6 pages admin fonctionnelles
+- [x] 7 pages admin fonctionnelles ✨ (ajout ImagesAdmin)
 - [x] Composant `MediaUploader` réutilisable
 - [x] Routes protégées (`AdminRoute`)
 - [x] Section "Site Web" dans sidebar admin
+- [x] **Images du site configurables via CMS** ✨ NOUVEAU
 
 #### Frontend Public
 - [x] 8 composants dynamiques connectés à la DB
@@ -296,6 +303,7 @@ src/lib/
 - [x] Footer dynamique avec `useSiteConfig()`
 - [x] Contact dynamique avec `useSiteConfig()`
 - [x] Skeleton loaders sur toutes les sections
+- [x] Images fallback Hero/Events configurables ✨ NOUVEAU
 
 #### Système Dons/Adhésions
 - [x] Page `/don` avec sélection montant
@@ -303,6 +311,9 @@ src/lib/
 - [x] 4 méthodes de paiement intégrées
 - [x] Edge Functions backend
 - [x] Validation Zod
+
+#### Architecture v2.2
+> ⚠️ **NOTE** : La table `reunion_presences` (legacy) a été supprimée. Toutes les données de présence utilisent désormais la table unifiée `reunions_presences`.
 
 ---
 
@@ -427,5 +438,5 @@ src/lib/
 ---
 
 **Document créé le** : 2025-11-01  
-**Dernière mise à jour** : 2025-11-01  
-**Version** : 1.0
+**Dernière mise à jour** : 2026-01-05  
+**Version** : 2.2

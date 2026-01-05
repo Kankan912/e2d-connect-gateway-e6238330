@@ -1,14 +1,18 @@
 # 📋 CAHIER DES CHARGES - PROJET COMPLET
 ## Plateforme Web E2D Connect - Site Vitrine + Intégration Portail Existant
 
-**Version:** 2.1 - MISE À JOUR ✨  
-**Date:** Janvier 2025  
+**Version:** 2.2 - MISE À JOUR ✨  
+**Date:** Janvier 2026  
 **Type:** Application Web - Site Public + CMS Intégré  
 **Portail Membre Existant:** https://github.com/Kankan912/e2d-connect.git
 
 > ⚠️ **NOTE IMPORTANTE** : Le portail membre E2D Connect est déjà développé et fonctionnel. Ce cahier des charges se concentre sur la création du **Site Web Public** et son intégration avec le portail existant.
 
-> ✨ **MISE À JOUR v2.1** : Ajout de 3 fonctionnalités avancées pour améliorer l'expérience utilisateur : carousel Hero, albums galerie, et carousel événements.
+> ✨ **MISE À JOUR v2.2** : 
+> - Ajout de la gestion des images du site configurables via CMS (Hero fallback, Events fallback, Logo)
+> - Nouvelle page admin "Images du Site" (`/dashboard/admin/site/images`)
+> - Unification architecture : suppression table obsolète `reunion_presences`
+> - Correction liens navigation prêts
 
 ---
 
