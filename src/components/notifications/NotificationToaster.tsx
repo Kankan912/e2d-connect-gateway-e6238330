@@ -54,7 +54,7 @@ export const NotificationToaster = () => {
               description: `Une nouvelle sanction de ${Number(sanction.montant).toLocaleString('fr-FR')} FCFA a été créée`,
               action: {
                 label: "Voir",
-                onClick: () => navigate('/dashboard/reunions'),
+                onClick: () => navigate('/dashboard/admin/reunions'),
               },
             });
           }

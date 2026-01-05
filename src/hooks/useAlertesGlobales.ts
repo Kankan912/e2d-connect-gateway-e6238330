@@ -159,7 +159,7 @@ export function useAlertesGlobales() {
       niveau: 'warning',
       titre: 'Sanction impayée',
       description: `${sanction.membre?.prenom} ${sanction.membre?.nom} - ${formatFCFA(Number(sanction.montant))}`,
-      lien: '/dashboard/reunions',
+      lien: '/dashboard/admin/reunions',
       dateCreation: new Date(sanction.created_at),
       membreId: sanction.membre?.id,
       membreNom: `${sanction.membre?.prenom} ${sanction.membre?.nom}`,
@@ -176,7 +176,7 @@ export function useAlertesGlobales() {
       niveau: soldeCaisse < seuilAlerte / 2 ? 'danger' : 'warning',
       titre: 'Solde caisse bas',
       description: `Solde actuel: ${formatFCFA(soldeCaisse)} (seuil: ${formatFCFA(seuilAlerte)})`,
-      lien: '/dashboard/caisse',
+      lien: '/dashboard/admin/caisse',
       dateCreation: new Date(),
       montant: soldeCaisse,
     });
@@ -195,7 +195,7 @@ export function useAlertesGlobales() {
       niveau: 'info',
       titre: joursRestants === 0 ? "Réunion aujourd'hui" : `Réunion dans ${joursRestants}j`,
       description: reunion.ordre_du_jour || reunion.lieu_description || 'Réunion à venir',
-      lien: '/dashboard/reunions',
+      lien: '/dashboard/admin/reunions',
       dateCreation: dateReunion,
     });
   });
