@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield, Users, Trophy } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import SEOHead from "@/components/SEOHead";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -131,6 +132,11 @@ const Adhesion = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead 
+        title="Devenir Membre | Association E2D"
+        description="Rejoignez l'Association E2D ou le club Phoenix. Adhésion simple et rapide pour accéder à tous nos avantages."
+        keywords="adhésion E2D, devenir membre, Phoenix football, inscription association"
+      />
       <Navbar />
 
       {/* Hero Section */}

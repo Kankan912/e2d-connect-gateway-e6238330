@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Heart, TrendingUp, Users, CheckCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import SEOHead from "@/components/SEOHead";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -115,6 +116,11 @@ const Don = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead 
+        title="Faire un Don | Association E2D"
+        description="Soutenez l'Association E2D avec votre don. Contribuez au développement sportif et solidaire de notre communauté."
+        keywords="don association, soutenir E2D, donation, solidarité, football camerounais"
+      />
       <Navbar />
       
       {/* Hero Section */}
