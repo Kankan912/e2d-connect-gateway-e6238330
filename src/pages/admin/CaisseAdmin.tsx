@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { formatFCFA } from "@/lib/utils";
 
 const CaisseAdmin = () => {
   const queryClient = useQueryClient();
@@ -438,8 +439,6 @@ const VentilationTable = ({ operations }: { operations: CaisseOperation[] }) => 
   const totalEntrees = Object.values(groupedEntrees).reduce((a: number, b: number) => a + b, 0);
   const totalSorties = Object.values(groupedSorties).reduce((a: number, b: number) => a + b, 0);
 
-  const formatMontant = (montant: number) =>
-    new Intl.NumberFormat("fr-FR").format(montant) + " FCFA";
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
@@ -458,7 +457,7 @@ const VentilationTable = ({ operations }: { operations: CaisseOperation[] }) => 
                     <span>{catInfo.label}</span>
                   </div>
                   <div className="text-right">
-                    <span className="font-medium">{formatMontant(montant as number)}</span>
+                    <span className="font-medium">{formatFCFA(montant as number)}</span>
                     <span className="text-xs text-muted-foreground ml-2">({percentage}%)</span>
                   </div>
                 </div>
@@ -466,7 +465,7 @@ const VentilationTable = ({ operations }: { operations: CaisseOperation[] }) => 
             })}
           <div className="flex items-center justify-between p-2 rounded bg-emerald-100 font-semibold">
             <span>Total Entrées</span>
-            <span>{formatMontant(totalEntrees)}</span>
+            <span>{formatFCFA(totalEntrees)}</span>
           </div>
         </div>
       </div>
@@ -486,7 +485,7 @@ const VentilationTable = ({ operations }: { operations: CaisseOperation[] }) => 
                     <span>{catInfo.label}</span>
                   </div>
                   <div className="text-right">
-                    <span className="font-medium">{formatMontant(montant as number)}</span>
+                    <span className="font-medium">{formatFCFA(montant as number)}</span>
                     <span className="text-xs text-muted-foreground ml-2">({percentage}%)</span>
                   </div>
                 </div>
@@ -494,7 +493,7 @@ const VentilationTable = ({ operations }: { operations: CaisseOperation[] }) => 
             })}
           <div className="flex items-center justify-between p-2 rounded bg-red-100 font-semibold">
             <span>Total Sorties</span>
-            <span>{formatMontant(totalSorties)}</span>
+            <span>{formatFCFA(totalSorties)}</span>
           </div>
         </div>
       </div>

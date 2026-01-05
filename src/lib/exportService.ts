@@ -72,10 +72,122 @@ export class ExportService {
           break;
 
         case 'presences_mensuel':
+          // Export des présences sur un mois donné
+          const targetMonth = options.configuration?.mois || new Date().getMonth() + 1;
+          const targetYear = options.configuration?.annee || new Date().getFullYear();
+          const startOfMonth = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
+          const endOfMonth = new Date(targetYear, targetMonth, 0).toISOString().split('T')[0];
+          
+          const { data: reunionsMensuel } = await supabase
+            .from('reunions')
+            .select('id, date_reunion, ordre_du_jour')
+            .gte('date_reunion', startOfMonth)
+            .lte('date_reunion', endOfMonth)
+            .order('date_reunion');
+          
+          const { data: presencesMensuel } = await supabase
+            .from('reunions_presences')
+            .select(`
+              *,
+              membre:membres!inner(nom, prenom, est_membre_e2d),
+              reunion:reunions!inner(date_reunion)
+            `)
+            .eq('membre.est_membre_e2d', true)
+            .gte('reunion.date_reunion', startOfMonth)
+            .lte('reunion.date_reunion', endOfMonth);
+          
+          data = presencesMensuel?.map(p => ({
+            date: p.reunion?.date_reunion,
+            membre: `${p.membre?.prenom} ${p.membre?.nom}`,
+            statut: this.formatStatut(p.statut_presence),
+            statut_raw: p.statut_presence,
+            heure_arrivee: p.heure_arrivee || '-',
+            observations: p.observations || '-'
+          })) || [];
+          columns = ['Date', 'Membre', 'Statut', 'Heure d\'arrivée', 'Observations'];
+          break;
+
         case 'presences_annuel':
+          // Export récapitulatif annuel des présences par membre
+          const annee = options.configuration?.annee || new Date().getFullYear();
+          const startOfYear = `${annee}-01-01`;
+          const endOfYear = `${annee}-12-31`;
+          
+          const { data: membresAnnuel } = await supabase
+            .from('membres')
+            .select('id, nom, prenom')
+            .eq('statut', 'actif')
+            .eq('est_membre_e2d', true);
+          
+          const { data: reunionsAnnuel } = await supabase
+            .from('reunions')
+            .select('id')
+            .gte('date_reunion', startOfYear)
+            .lte('date_reunion', endOfYear)
+            .in('statut', ['cloturee', 'validee']);
+          
+          const { data: presencesAnnuel } = await supabase
+            .from('reunions_presences')
+            .select('membre_id, statut_presence, reunion:reunions!inner(date_reunion)')
+            .gte('reunion.date_reunion', startOfYear)
+            .lte('reunion.date_reunion', endOfYear);
+          
+          const totalReunionsAnnuel = reunionsAnnuel?.length || 1;
+          
+          data = membresAnnuel?.map(m => {
+            const presencesMembre = presencesAnnuel?.filter(p => p.membre_id === m.id) || [];
+            const presents = presencesMembre.filter(p => p.statut_presence === 'present').length;
+            const absentsExcuses = presencesMembre.filter(p => p.statut_presence === 'absent_excuse').length;
+            const absentsNonExcuses = presencesMembre.filter(p => p.statut_presence === 'absent_non_excuse').length;
+            const taux = ((presents / totalReunionsAnnuel) * 100).toFixed(1);
+            return {
+              membre: `${m.prenom} ${m.nom}`,
+              presents,
+              absents_excuses: absentsExcuses,
+              absents_non_excuses: absentsNonExcuses,
+              total_reunions: totalReunionsAnnuel,
+              taux: `${taux}%`
+            };
+          }).sort((a, b) => parseFloat(b.taux) - parseFloat(a.taux)) || [];
+          columns = ['Membre', 'Présences', 'Abs. Excusées', 'Abs. Non Excusées', 'Total Réunions', 'Taux'];
+          break;
+
         case 'presences_membre':
-          data = [{ message: 'Export à implémenter côté serveur' }];
-          columns = ['Message'];
+          // Export détaillé pour un membre spécifique
+          const membreId = options.configuration?.membre_id;
+          if (!membreId) {
+            throw new Error('membre_id requis pour cet export');
+          }
+          
+          const { data: membreInfo } = await supabase
+            .from('membres')
+            .select('nom, prenom')
+            .eq('id', membreId)
+            .single();
+          
+          const { data: presencesMembre } = await supabase
+            .from('reunions_presences')
+            .select(`
+              *,
+              reunion:reunions!inner(date_reunion, ordre_du_jour, lieu_description)
+            `)
+            .eq('membre_id', membreId)
+            .order('reunion(date_reunion)', { ascending: false });
+          
+          data = presencesMembre?.map(p => ({
+            date: p.reunion?.date_reunion,
+            sujet: p.reunion?.ordre_du_jour || p.reunion?.lieu_description || '-',
+            statut: this.formatStatut(p.statut_presence),
+            statut_raw: p.statut_presence,
+            heure_arrivee: p.heure_arrivee || '-',
+            observations: p.observations || '-'
+          })) || [];
+          columns = ['Date', 'Sujet', 'Statut', 'Heure d\'arrivée', 'Observations'];
+          
+          // Ajouter le nom du membre dans le nom du fichier
+          if (membreInfo) {
+            options.nom = `${options.nom}_${membreInfo.prenom}_${membreInfo.nom}`;
+          }
           break;
 
         case 'membres':

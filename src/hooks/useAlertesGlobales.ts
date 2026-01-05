@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatFCFA } from "@/lib/utils";
 
 export interface Alerte {
   id: string;
@@ -141,7 +142,7 @@ export function useAlertesGlobales() {
       type: 'pret_retard',
       niveau: joursRetard >= 30 ? 'danger' : 'warning',
       titre: `Prêt en retard (${joursRetard}j)`,
-      description: `${pret.membre?.prenom} ${pret.membre?.nom} - Reste ${resteDu.toLocaleString('fr-FR')} FCFA`,
+      description: `${pret.membre?.prenom} ${pret.membre?.nom} - Reste ${formatFCFA(resteDu)}`,
       lien: '/dashboard/admin/finances/prets',
       dateCreation: new Date(pret.echeance),
       membreId: pret.membre?.id,
@@ -157,7 +158,7 @@ export function useAlertesGlobales() {
       type: 'sanction_impayee',
       niveau: 'warning',
       titre: 'Sanction impayée',
-      description: `${sanction.membre?.prenom} ${sanction.membre?.nom} - ${Number(sanction.montant).toLocaleString('fr-FR')} FCFA`,
+      description: `${sanction.membre?.prenom} ${sanction.membre?.nom} - ${formatFCFA(Number(sanction.montant))}`,
       lien: '/dashboard/reunions',
       dateCreation: new Date(sanction.created_at),
       membreId: sanction.membre?.id,
@@ -174,7 +175,7 @@ export function useAlertesGlobales() {
       type: 'caisse_bas',
       niveau: soldeCaisse < seuilAlerte / 2 ? 'danger' : 'warning',
       titre: 'Solde caisse bas',
-      description: `Solde actuel: ${soldeCaisse.toLocaleString('fr-FR')} FCFA (seuil: ${seuilAlerte.toLocaleString('fr-FR')} FCFA)`,
+      description: `Solde actuel: ${formatFCFA(soldeCaisse)} (seuil: ${formatFCFA(seuilAlerte)})`,
       lien: '/dashboard/caisse',
       dateCreation: new Date(),
       montant: soldeCaisse,

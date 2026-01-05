@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCaisseDetails, DetailType, getDetailTitle } from "@/hooks/useCaisseDetails";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { formatFCFA } from "@/lib/utils";
 
 interface CaisseSyntheseDetailModalProps {
   type: DetailType | null;
@@ -25,8 +26,6 @@ interface CaisseSyntheseDetailModalProps {
   onClose: () => void;
 }
 
-const formatMontant = (montant: number) =>
-  new Intl.NumberFormat("fr-FR").format(montant) + " FCFA";
 
 export const CaisseSyntheseDetailModal = ({
   type,
@@ -112,7 +111,7 @@ export const CaisseSyntheseDetailModal = ({
                         <TableCell className={`text-right font-medium ${
                           item.montant < 0 ? 'text-destructive' : 'text-emerald-600'
                         }`}>
-                          {formatMontant(item.montant)}
+                          {formatFCFA(item.montant)}
                         </TableCell>
                       </TableRow>
                     ))
@@ -131,7 +130,7 @@ export const CaisseSyntheseDetailModal = ({
                 <span className={`text-lg font-bold ${
                   total < 0 ? 'text-destructive' : 'text-emerald-600'
                 }`}>
-                  {formatMontant(total)}
+                  {formatFCFA(total)}
                 </span>
               </div>
             </div>
