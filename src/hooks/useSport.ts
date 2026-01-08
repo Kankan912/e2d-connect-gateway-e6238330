@@ -16,6 +16,7 @@ export interface E2DMatch {
   logo_equipe_adverse: string | null;
   nom_complet_equipe_adverse: string | null;
   created_at: string;
+  statut_publication: 'brouillon' | 'publie' | 'archive';
 }
 
 export interface PhoenixEntrainement {
