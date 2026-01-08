@@ -55,7 +55,7 @@ export function useUtilisateurs() {
 
         return {
           id: profile.id,
-          email: (profile as any).email || profile.telephone || `ID: ${profile.id.slice(0, 8)}`,
+          email: profile.email || "Email non synchronisé",
           nom: profile.nom,
           prenom: profile.prenom,
           telephone: profile.telephone,

@@ -2902,6 +2902,7 @@ export type Database = {
         Row: {
           created_at: string | null
           date_inscription: string | null
+          email: string | null
           est_adherent_phoenix: boolean | null
           est_membre_e2d: boolean | null
           id: string
@@ -2919,6 +2920,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           date_inscription?: string | null
+          email?: string | null
           est_adherent_phoenix?: boolean | null
           est_membre_e2d?: boolean | null
           id: string
@@ -2936,6 +2938,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           date_inscription?: string | null
+          email?: string | null
           est_adherent_phoenix?: boolean | null
           est_membre_e2d?: boolean | null
           id?: string
