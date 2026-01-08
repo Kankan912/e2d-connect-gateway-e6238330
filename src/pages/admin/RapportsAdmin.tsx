@@ -131,9 +131,13 @@ const RapportsAdmin = () => {
       const { data, error } = await supabase
         .from("reunions_sanctions")
         .select(`
-          id, montant_amende, statut, motif, created_at,
-          membres(id, nom, prenom),
-          reunions(id, date_reunion)
+          id,
+          montant_amende,
+          statut,
+          motif,
+          created_at,
+          membre_id,
+          membres(id, nom, prenom)
         `)
         .order("created_at", { ascending: false });
 
