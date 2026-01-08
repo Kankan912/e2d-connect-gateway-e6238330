@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Sheet, SheetContent, SheetHeader, SheetTitle 
 } from "@/components/ui/sheet";
@@ -16,11 +18,44 @@ import {
 } from "@/components/ui/table";
 import { 
   ArrowLeft, Edit, Users, PiggyBank, Banknote, AlertTriangle, 
-  Wallet, History, BarChart3, Phone, Mail, CheckCircle, XCircle, Clock
+  Wallet, History, BarChart3, Phone, Mail, CheckCircle, XCircle, Clock, UserCircle, Shield
 } from "lucide-react";
 import { Member } from "@/hooks/useMembers";
 import { useMemberDetails } from "@/hooks/useMemberDetails";
 import logoE2D from "@/assets/logo-e2d.png";
+
+// Hook pour récupérer les infos du compte utilisateur lié au membre
+function useLinkedUserAccount(userId: string | null) {
+  return useQuery({
+    queryKey: ["linked-user-account", userId],
+    queryFn: async () => {
+      if (!userId) return null;
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, nom, prenom, telephone, status, last_login, password_changed")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      if (!profile) return null;
+
+      // Get user roles
+      const { data: userRoles } = await supabase
+        .from("user_roles")
+        .select("roles(name)")
+        .eq("user_id", userId);
+
+      const roles = userRoles?.map((ur: any) => ur.roles?.name).filter(Boolean) || [];
+
+      return {
+        ...profile,
+        roles,
+      };
+    },
+    enabled: !!userId,
+  });
+}
 
 interface MemberDetailSheetProps {
   member: Member | null;
@@ -35,6 +70,7 @@ const formatCurrency = (amount: number) => {
 
 export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }: MemberDetailSheetProps) {
   const { cotisations, epargnes, prets, sanctions, operations, stats, isLoading } = useMemberDetails(member?.id || null);
+  const { data: linkedAccount, isLoading: isLoadingAccount } = useLinkedUserAccount(member?.user_id || null);
   const [activeTab, setActiveTab] = useState("cotisations");
 
   if (!member) return null;
@@ -91,6 +127,50 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
               </div>
             </div>
           </div>
+
+          {/* Encart Compte Utilisateur (lecture seule) */}
+          <Card className="mt-4 bg-muted/50">
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <UserCircle className="h-4 w-4" />
+                Compte Utilisateur
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-2 px-3">
+              {isLoadingAccount ? (
+                <Skeleton className="h-8 w-full" />
+              ) : linkedAccount ? (
+                <div className="flex items-center justify-between gap-4 text-sm">
+                  <div className="flex items-center gap-3">
+                    <Badge 
+                      variant={linkedAccount.status === 'actif' ? 'default' : linkedAccount.status === 'desactive' ? 'secondary' : 'destructive'}
+                      className="text-xs"
+                    >
+                      {linkedAccount.status === 'actif' ? 'Actif' : linkedAccount.status === 'desactive' ? 'Désactivé' : 'Supprimé'}
+                    </Badge>
+                    {linkedAccount.roles.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <Shield className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">
+                          {linkedAccount.roles.join(', ')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {linkedAccount.last_login 
+                      ? `Dernière connexion: ${format(new Date(linkedAccount.last_login), 'dd/MM/yyyy HH:mm', { locale: fr })}`
+                      : 'Jamais connecté'
+                    }
+                  </span>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  Aucun compte utilisateur lié à ce membre
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Statistiques rapides */}
           {isLoading ? (

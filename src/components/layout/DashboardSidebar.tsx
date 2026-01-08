@@ -78,7 +78,6 @@ const e2dTontineItems = [
 
 const e2dGestionItems = [
   { title: "Membres", url: "/dashboard/admin/membres", icon: Users, resource: "membres" },
-  { title: "Utilisateurs", url: "/dashboard/admin/utilisateurs", icon: UserPlus, resource: "roles" },
   { title: "Rôles & Permissions", url: "/dashboard/admin/roles", icon: Shield, resource: "roles" },
   { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3, resource: "stats" },
   { title: "Rapports Financiers", url: "/dashboard/admin/rapports", icon: FileText, resource: "stats" },
@@ -111,6 +110,7 @@ const communicationItems = [
 
 // Section Configuration
 const configItems = [
+  { title: "Utilisateurs", url: "/dashboard/admin/utilisateurs", icon: UserPlus, resource: "roles" },
   { title: "Exports Programmés", url: "/dashboard/admin/config/exports", icon: Download, resource: "config" },
 ];
 
