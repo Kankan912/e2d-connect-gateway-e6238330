@@ -134,7 +134,6 @@ const RapportsAdmin = () => {
           id, montant_amende, statut, motif, created_at,
           membres(id, nom, prenom),
           reunions(id, date_reunion)
-          reunions(id, date_reunion)
         `)
         .order("created_at", { ascending: false });
 
