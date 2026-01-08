@@ -128,6 +128,18 @@ serve(async (req) => {
       console.log('⚠️ Role "membre" not found, skipping role assignment');
     }
 
+    // Mettre à jour le profil pour forcer le changement de mot de passe à la première connexion
+    const { error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .update({ must_change_password: true })
+      .eq('id', newUser.user?.id);
+
+    if (profileError) {
+      console.error('⚠️ Error setting must_change_password:', profileError);
+    } else {
+      console.log('✅ Profile updated: must_change_password = true');
+    }
+
     // Send welcome email with credentials
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
     if (RESEND_API_KEY) {
@@ -170,8 +182,8 @@ serve(async (req) => {
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${APP_URL}/auth" style="background-color: #0B6B7C; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              Se connecter
+            <a href="${APP_URL}/change-password" style="background-color: #0B6B7C; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Changer mon mot de passe
             </a>
           </div>
           
