@@ -8,12 +8,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface PresenceInfo {
+  presents: string[];
+  excuses: string[];
+  absentsNonExcuses: string[];
+  retards: string[];
+  tauxPresence: number;
+}
+
 interface SendReunionCRRequest {
   reunionId: string;
   destinataires: Array<{ email: string; nom: string; prenom: string }>;
   sujet: string;
   contenu: string;
   dateReunion: string;
+  lieu?: string;
+  presences?: PresenceInfo;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -23,7 +33,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { reunionId, destinataires, sujet, contenu, dateReunion }: SendReunionCRRequest = await req.json();
+    const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, presences }: SendReunionCRRequest = await req.json();
 
     console.log(`Sending reunion CR for reunion ${reunionId} to ${destinataires.length} recipients`);
 
@@ -45,6 +55,17 @@ const handler = async (req: Request): Promise<Response> => {
       }
 
       try {
+        // Build presences section HTML if available
+        const presencesHtml = presences ? `
+          <div class="presences-section">
+            <h2>Présences - Taux: ${presences.tauxPresence}%</h2>
+            <p><strong>Présents (${presences.presents.length}):</strong> ${presences.presents.length > 0 ? presences.presents.join(', ') : 'Aucun'}</p>
+            ${presences.excuses.length > 0 ? `<p><em>Excusés (${presences.excuses.length}):</em> ${presences.excuses.join(', ')}</p>` : ''}
+            ${presences.retards.length > 0 ? `<p><em>Retards (${presences.retards.length}):</em> ${presences.retards.join(', ')}</p>` : ''}
+            ${presences.absentsNonExcuses.length > 0 ? `<p style="color: #dc2626;"><strong>Absents non excusés (${presences.absentsNonExcuses.length}):</strong> ${presences.absentsNonExcuses.join(', ')}</p>` : ''}
+          </div>
+        ` : '';
+
         const htmlContent = `
           <!DOCTYPE html>
           <html>
@@ -52,12 +73,14 @@ const handler = async (req: Request): Promise<Response> => {
             <meta charset="utf-8">
             <style>
               body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .header { background: #1e40af; color: white; padding: 20px; text-align: center; }
+              .header { background: #0B6B7C; color: white; padding: 20px; text-align: center; }
               .content { padding: 20px; }
               .footer { background: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #666; }
               h1 { margin: 0; font-size: 24px; }
-              h2 { color: #1e40af; border-bottom: 2px solid #1e40af; padding-bottom: 5px; }
-              .info-box { background: #eff6ff; border-left: 4px solid #1e40af; padding: 15px; margin: 15px 0; }
+              h2 { color: #0B6B7C; border-bottom: 2px solid #0B6B7C; padding-bottom: 5px; margin-top: 20px; }
+              .info-box { background: #e6f4f6; border-left: 4px solid #0B6B7C; padding: 15px; margin: 15px 0; }
+              .presences-section { background: #f9fafb; padding: 15px; border-radius: 8px; margin: 15px 0; }
+              .presences-section h2 { margin-top: 0; }
             </style>
           </head>
           <body>
@@ -69,7 +92,10 @@ const handler = async (req: Request): Promise<Response> => {
               
               <div class="info-box">
                 <strong>Date de la réunion :</strong> ${dateReunion}
+                ${lieu ? `<br/><strong>Lieu :</strong> ${lieu}` : ''}
               </div>
+              
+              ${presencesHtml}
               
               <h2>${sujet}</h2>
               
@@ -78,7 +104,7 @@ ${contenu}
               </div>
             </div>
             <div class="footer">
-              <p>Ce message a été envoyé automatiquement par l'application E2D.</p>
+              <p>Ce message a été envoyé automatiquement par l'application E2D Connect.</p>
               <p>© ${new Date().getFullYear()} Ensemble pour le Développement de la Diaspora</p>
             </div>
           </body>

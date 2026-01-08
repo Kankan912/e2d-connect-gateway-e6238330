@@ -55,13 +55,15 @@ const CaisseAdmin = lazy(() => import("./admin/CaisseAdmin"));
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, mustChangePassword } = useAuth();
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
+    } else if (!loading && user && mustChangePassword) {
+      navigate("/change-password");
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, mustChangePassword, navigate]);
 
   if (loading) {
     return (

@@ -263,13 +263,46 @@ export default function ClotureReunionModal({
         )
         .join('\n\n') || 'Aucun point à l\'ordre du jour';
 
+      // Préparer les données de présences pour l'email
+      const presentsNoms = presentsData?.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).filter(Boolean) || [];
+      
+      const { data: excusesData } = await supabase
+        .from('reunions_presences')
+        .select('membres:membre_id (nom, prenom)')
+        .eq('reunion_id', reunionId)
+        .eq('statut_presence', 'absent_excuse');
+      const excusesNoms = excusesData?.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).filter(Boolean) || [];
+      
+      const absentsNonExcusesNoms = tousAbsentsNonExcuses?.length 
+        ? membresE2D?.filter(m => tousAbsentsNonExcuses.some(a => a.membre_id === m.id))
+            .map(m => `${m.prenom} ${m.nom}`) || []
+        : [];
+      
+      const { data: retardsData } = await supabase
+        .from('reunions_presences')
+        .select('membres:membre_id (nom, prenom)')
+        .eq('reunion_id', reunionId)
+        .eq('statut_presence', 'present')
+        .not('heure_arrivee', 'is', null);
+      const retardsNoms = retardsData?.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).filter(Boolean) || [];
+
+      const totalMembresCalcul = presentsNoms.length + excusesNoms.length + absentsNonExcusesNoms.length;
+      const tauxPresenceEmail = totalMembresCalcul > 0 ? Math.round((presentsNoms.length / totalMembresCalcul) * 100) : 0;
+
       const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
         body: {
           reunionId,
           destinataires,
           sujet: reunionData.sujet || 'Réunion',
           contenu: contenuCR,
-          dateReunion: reunionData.date_reunion
+          dateReunion: reunionData.date_reunion,
+          presences: {
+            presents: presentsNoms,
+            excuses: excusesNoms,
+            absentsNonExcuses: absentsNonExcusesNoms,
+            retards: retardsNoms,
+            tauxPresence: tauxPresenceEmail
+          }
         }
       });
 
