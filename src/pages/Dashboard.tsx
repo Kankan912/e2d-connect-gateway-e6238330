@@ -52,6 +52,7 @@ const SportEquipes = lazy(() => import("./SportEquipes"));
 const E2DConfigAdmin = lazy(() => import("./admin/E2DConfigAdmin"));
 const PretsConfigAdmin = lazy(() => import("./admin/PretsConfigAdmin"));
 const CaisseAdmin = lazy(() => import("./admin/CaisseAdmin"));
+const RapportsAdmin = lazy(() => import("./admin/RapportsAdmin"));
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -337,6 +338,18 @@ const Dashboard = () => {
             <PermissionRoute resource="config" permission="write">
               <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
                 <ExportsAdmin />
+              </Suspense>
+            </PermissionRoute>
+          }
+        />
+        
+        {/* Route Rapports Financiers */}
+        <Route
+          path="/admin/rapports"
+          element={
+            <PermissionRoute resource="stats" permission="read">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <RapportsAdmin />
               </Suspense>
             </PermissionRoute>
           }
