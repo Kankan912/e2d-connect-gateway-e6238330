@@ -26,3 +26,12 @@ verify_jwt = false
 
 [functions.send-campaign-emails]
 verify_jwt = true
+
+[functions.send-cotisation-reminders]
+verify_jwt = false
+
+[functions.send-pret-echeance-reminders]
+verify_jwt = false
+
+[functions.send-sanction-notification]
+verify_jwt = false
