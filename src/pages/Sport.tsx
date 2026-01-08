@@ -11,7 +11,10 @@ import {
   Activity,
   Target,
   BarChart3,
-  Gauge
+  Gauge,
+  Crosshair,
+  Crown,
+  AlertTriangle
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +35,13 @@ import SportPhoenix from "./SportPhoenix";
 import SportEquipes from "./SportEquipes";
 import SportAnalyticsAvancees from "@/components/SportAnalyticsAvancees";
 import SportDashboardTempsReel from "@/components/SportDashboardTempsReel";
+
+// Import des nouveaux composants E2D Stats
+import E2DClassementButeurs from "@/components/E2DClassementButeurs";
+import E2DClassementPasseurs from "@/components/E2DClassementPasseurs";
+import E2DClassementGeneral from "@/components/E2DClassementGeneral";
+import E2DTableauDiscipline from "@/components/E2DTableauDiscipline";
+import E2DDashboardAnalytics from "@/components/E2DDashboardAnalytics";
 
 export default function Sport() {
   const navigate = useNavigate();
@@ -331,11 +341,29 @@ export default function Sport() {
         {/* E2D - Matchs + Résultats + Stats */}
         <TabsContent value="e2d" className="mt-6">
           <Tabs defaultValue="e2d-gestion" className="w-full">
-            <TabsList className="w-full justify-start">
+            <TabsList className="w-full justify-start flex-wrap">
               <TabsTrigger value="e2d-gestion">Gestion E2D</TabsTrigger>
               <TabsTrigger value="e2d-resultats">Résultats</TabsTrigger>
-              <TabsTrigger value="e2d-stats">Statistiques</TabsTrigger>
-              <TabsTrigger value="e2d-classements">Classements</TabsTrigger>
+              <TabsTrigger value="e2d-stats" className="flex items-center gap-1">
+                <BarChart3 className="w-3 h-3" />
+                Analytics
+              </TabsTrigger>
+              <TabsTrigger value="e2d-buteurs" className="flex items-center gap-1">
+                <Trophy className="w-3 h-3" />
+                Buteurs
+              </TabsTrigger>
+              <TabsTrigger value="e2d-passeurs" className="flex items-center gap-1">
+                <Crosshair className="w-3 h-3" />
+                Passeurs
+              </TabsTrigger>
+              <TabsTrigger value="e2d-classements" className="flex items-center gap-1">
+                <Crown className="w-3 h-3" />
+                Général
+              </TabsTrigger>
+              <TabsTrigger value="e2d-discipline" className="flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Discipline
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="e2d-gestion" className="mt-6">
@@ -347,13 +375,23 @@ export default function Sport() {
             </TabsContent>
 
             <TabsContent value="e2d-stats" className="mt-6">
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Les statistiques détaillées sont accessibles via le bouton "Stats" sur chaque match</p>
-              </div>
+              <E2DDashboardAnalytics />
+            </TabsContent>
+
+            <TabsContent value="e2d-buteurs" className="mt-6">
+              <E2DClassementButeurs />
+            </TabsContent>
+
+            <TabsContent value="e2d-passeurs" className="mt-6">
+              <E2DClassementPasseurs />
             </TabsContent>
 
             <TabsContent value="e2d-classements" className="mt-6">
-              <ClassementJoueurs />
+              <E2DClassementGeneral />
+            </TabsContent>
+
+            <TabsContent value="e2d-discipline" className="mt-6">
+              <E2DTableauDiscipline />
             </TabsContent>
           </Tabs>
         </TabsContent>
