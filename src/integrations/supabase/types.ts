@@ -3815,6 +3815,7 @@ export type Database = {
           score_adverse: number | null
           score_e2d: number | null
           statut: string
+          statut_publication: string | null
           type_match: string
         }
         Insert: {
@@ -3830,6 +3831,7 @@ export type Database = {
           score_adverse?: number | null
           score_e2d?: number | null
           statut?: string
+          statut_publication?: string | null
           type_match?: string
         }
         Update: {
@@ -3845,6 +3847,7 @@ export type Database = {
           score_adverse?: number | null
           score_e2d?: number | null
           statut?: string
+          statut_publication?: string | null
           type_match?: string
         }
         Relationships: []

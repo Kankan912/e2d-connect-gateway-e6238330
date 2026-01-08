@@ -1,11 +1,45 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
+ * Supprime un événement du CMS associé à un match E2D
+ */
+export async function removeE2DEventFromCMS(matchId: string) {
+  try {
+    // Récupérer les infos du match pour identifier l'événement
+    const { data: match, error: matchError } = await supabase
+      .from('sport_e2d_matchs')
+      .select('equipe_adverse, date_match')
+      .eq('id', matchId)
+      .single();
+
+    if (matchError || !match) return { success: false };
+
+    const eventTitle = `Match E2D vs ${match.equipe_adverse || 'Adversaire'}`;
+    
+    // Supprimer l'événement correspondant
+    const { error: deleteError } = await supabase
+      .from('cms_events')
+      .delete()
+      .eq('title', eventTitle)
+      .eq('event_date', match.date_match);
+
+    if (deleteError) throw deleteError;
+
+    console.log('Événement E2D retiré du site:', eventTitle);
+    return { success: true };
+  } catch (error) {
+    console.error('Erreur lors de la suppression événement E2D:', error);
+    return { success: false, error };
+  }
+}
+
+/**
  * Synchronise un match E2D vers les événements du site web
+ * Uniquement si statut_publication = 'publie'
  */
 export async function syncE2DMatchToEvent(matchId: string) {
   try {
-    // Récupérer le match
+    // Récupérer le match avec statut_publication
     const { data: match, error: matchError } = await supabase
       .from('sport_e2d_matchs')
       .select('*')
@@ -15,8 +49,22 @@ export async function syncE2DMatchToEvent(matchId: string) {
     if (matchError) throw matchError;
     if (!match) return;
 
+    // Vérifier le statut de publication
+    const statutPublication = (match as any).statut_publication || 'brouillon';
+    
+    // Si non publié, retirer du site web
+    if (statutPublication !== 'publie') {
+      await removeE2DEventFromCMS(matchId);
+      return { success: true, action: 'removed' };
+    }
+
     const eventTitle = `Match E2D vs ${match.equipe_adverse || 'Adversaire'}`;
-    const eventDescription = `${match.type_match || 'Match'} - ${match.statut}`;
+    
+    // Construire la description avec score si terminé
+    let eventDescription = `${match.type_match || 'Match'} - ${match.statut}`;
+    if (match.statut === 'termine' && match.score_e2d !== null && match.score_adverse !== null) {
+      eventDescription = `Terminé: ${match.score_e2d} - ${match.score_adverse}`;
+    }
     
     // Vérifier si l'événement existe déjà
     const { data: existingEvent } = await supabase
@@ -37,6 +85,9 @@ export async function syncE2DMatchToEvent(matchId: string) {
           event_time: match.heure_match,
           location: match.lieu,
           is_active: match.statut !== 'annule',
+          match_id: matchId,
+          match_type: 'e2d',
+          auto_sync: true,
         })
         .eq('id', existingEvent.id);
 
@@ -53,12 +104,16 @@ export async function syncE2DMatchToEvent(matchId: string) {
           location: match.lieu,
           is_active: match.statut !== 'annule',
           is_featured: false,
+          match_id: matchId,
+          match_type: 'e2d',
+          auto_sync: true,
         }]);
 
       if (insertError) throw insertError;
     }
 
-    return { success: true };
+    console.log('Match E2D synchronisé vers le site:', eventTitle);
+    return { success: true, action: 'synced' };
   } catch (error) {
     console.error('Erreur lors de la synchronisation E2D:', error);
     return { success: false, error };
@@ -66,160 +121,23 @@ export async function syncE2DMatchToEvent(matchId: string) {
 }
 
 /**
- * Synchronise un match Phoenix vers les événements du site web
- */
-export async function syncPhoenixMatchToEvent(matchId: string) {
-  try {
-    const { data: match, error: matchError } = await supabase
-      .from('sport_phoenix_matchs')
-      .select('*')
-      .eq('id', matchId)
-      .single();
-
-    if (matchError) throw matchError;
-    if (!match) return;
-
-    const eventTitle = `Match Phoenix vs ${match.equipe_adverse || 'Adversaire'}`;
-    const eventDescription = `${match.type_match || 'Match'} - ${match.statut}`;
-    
-    const { data: existingEvent } = await supabase
-      .from('cms_events')
-      .select('id')
-      .eq('title', eventTitle)
-      .eq('event_date', match.date_match)
-      .maybeSingle();
-
-    if (existingEvent) {
-      const { error: updateError } = await supabase
-        .from('cms_events')
-        .update({
-          title: eventTitle,
-          description: eventDescription,
-          event_date: match.date_match,
-          event_time: match.heure_match,
-          location: match.lieu,
-          is_active: match.statut !== 'annule',
-        })
-        .eq('id', existingEvent.id);
-
-      if (updateError) throw updateError;
-    } else {
-      const { error: insertError } = await supabase
-        .from('cms_events')
-        .insert([{
-          title: eventTitle,
-          description: eventDescription,
-          event_date: match.date_match,
-          event_time: match.heure_match,
-          location: match.lieu,
-          is_active: match.statut !== 'annule',
-          is_featured: false,
-        }]);
-
-      if (insertError) throw insertError;
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Erreur lors de la synchronisation Phoenix:', error);
-    return { success: false, error };
-  }
-}
-
-/**
- * Synchronise un entraînement Phoenix vers les événements du site web
- */
-export async function syncPhoenixEntrainementToEvent(entrainementId: string) {
-  try {
-    const { data: entrainement, error: entrainementError } = await supabase
-      .from('phoenix_entrainements')
-      .select('*')
-      .eq('id', entrainementId)
-      .single();
-
-    if (entrainementError) throw entrainementError;
-    if (!entrainement) return;
-
-    const eventTitle = `Entraînement Phoenix - ${entrainement.type_entrainement || 'Général'}`;
-    const eventDescription = entrainement.notes || 'Entraînement de l\'équipe Phoenix';
-    
-    const { data: existingEvent } = await supabase
-      .from('cms_events')
-      .select('id')
-      .eq('title', eventTitle)
-      .eq('event_date', entrainement.date_entrainement)
-      .maybeSingle();
-
-    if (existingEvent) {
-      const { error: updateError } = await supabase
-        .from('cms_events')
-        .update({
-          title: eventTitle,
-          description: eventDescription,
-          event_date: entrainement.date_entrainement,
-          event_time: entrainement.heure_debut,
-          location: entrainement.lieu,
-          is_active: true,
-        })
-        .eq('id', existingEvent.id);
-
-      if (updateError) throw updateError;
-    } else {
-      const { error: insertError } = await supabase
-        .from('cms_events')
-        .insert([{
-          title: eventTitle,
-          description: eventDescription,
-          event_date: entrainement.date_entrainement,
-          event_time: entrainement.heure_debut,
-          location: entrainement.lieu,
-          is_active: true,
-          is_featured: false,
-        }]);
-
-      if (insertError) throw insertError;
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Erreur lors de la synchronisation entraînement:', error);
-    return { success: false, error };
-  }
-}
-
-/**
- * Synchronise tous les matchs et entraînements futurs vers les événements
+ * Synchronise tous les matchs E2D publiés vers les événements du site
+ * Les matchs Phoenix ne sont plus synchronisés (internes uniquement)
  */
 export async function syncAllSportEventsToWebsite() {
   const today = new Date().toISOString().split('T')[0];
   
   try {
-    // Récupérer tous les matchs E2D futurs
+    // Récupérer uniquement les matchs E2D publiés
     const { data: e2dMatches } = await supabase
       .from('sport_e2d_matchs')
       .select('id')
       .gte('date_match', today)
-      .neq('statut', 'annule');
+      .neq('statut', 'annule')
+      .eq('statut_publication', 'publie');
 
-    // Récupérer tous les matchs Phoenix futurs
-    const { data: phoenixMatches } = await supabase
-      .from('sport_phoenix_matchs')
-      .select('id')
-      .gte('date_match', today)
-      .neq('statut', 'annule');
-
-    // Récupérer tous les entraînements futurs
-    const { data: entrainements } = await supabase
-      .from('phoenix_entrainements')
-      .select('id')
-      .gte('date_entrainement', today);
-
-    // Synchroniser tous les événements
-    const promises = [
-      ...(e2dMatches || []).map(m => syncE2DMatchToEvent(m.id)),
-      ...(phoenixMatches || []).map(m => syncPhoenixMatchToEvent(m.id)),
-      ...(entrainements || []).map(e => syncPhoenixEntrainementToEvent(e.id)),
-    ];
+    // Synchroniser tous les matchs E2D publiés
+    const promises = (e2dMatches || []).map(m => syncE2DMatchToEvent(m.id));
 
     await Promise.all(promises);
 
@@ -227,8 +145,6 @@ export async function syncAllSportEventsToWebsite() {
       success: true, 
       synced: {
         e2d: e2dMatches?.length || 0,
-        phoenix: phoenixMatches?.length || 0,
-        entrainements: entrainements?.length || 0,
       }
     };
   } catch (error) {
