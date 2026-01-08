@@ -1271,6 +1271,56 @@ export type Database = {
         }
         Relationships: []
       }
+      match_compte_rendus: {
+        Row: {
+          ambiance: string | null
+          arbitrage_commentaire: string | null
+          conditions_jeu: string | null
+          created_at: string | null
+          created_by: string | null
+          faits_marquants: string | null
+          id: string
+          match_id: string
+          resume: string | null
+          score_mi_temps: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ambiance?: string | null
+          arbitrage_commentaire?: string | null
+          conditions_jeu?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          faits_marquants?: string | null
+          id?: string
+          match_id: string
+          resume?: string | null
+          score_mi_temps?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ambiance?: string | null
+          arbitrage_commentaire?: string | null
+          conditions_jeu?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          faits_marquants?: string | null
+          id?: string
+          match_id?: string
+          resume?: string | null
+          score_mi_temps?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_compte_rendus_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: true
+            referencedRelation: "sport_e2d_matchs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_gala_config: {
         Row: {
           actif: boolean | null
@@ -1303,6 +1353,47 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      match_medias: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          legende: string | null
+          match_id: string
+          ordre: number | null
+          type: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          legende?: string | null
+          match_id: string
+          ordre?: number | null
+          type?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          legende?: string | null
+          match_id?: string
+          ordre?: number | null
+          type?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_medias_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "sport_e2d_matchs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       match_presences: {
         Row: {
