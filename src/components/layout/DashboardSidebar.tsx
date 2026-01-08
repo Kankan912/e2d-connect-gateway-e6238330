@@ -31,6 +31,7 @@ import {
   Building2,
   HandHeart,
   Wallet,
+  FileText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -79,6 +80,7 @@ const e2dGestionItems = [
   { title: "Membres", url: "/dashboard/admin/membres", icon: Users, resource: "membres" },
   { title: "Rôles & Permissions", url: "/dashboard/admin/roles", icon: Shield, resource: "roles" },
   { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3, resource: "stats" },
+  { title: "Rapports Financiers", url: "/dashboard/admin/rapports", icon: FileText, resource: "stats" },
   { title: "Configuration E2D", url: "/dashboard/admin/e2d-config", icon: Settings, resource: "config" },
 ];
 
