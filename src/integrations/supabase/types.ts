@@ -53,6 +53,13 @@ export type Database = {
             foreignKeyName: "fk_activites_membres_membre"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "fk_activites_membres_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -115,6 +122,13 @@ export type Database = {
             foreignKeyName: "adhesions_membre_id_fkey"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "adhesions_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -167,6 +181,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "reunions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_aides_beneficiaire"
+            columns: ["beneficiaire_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
           },
           {
             foreignKeyName: "fk_aides_beneficiaire"
@@ -659,6 +680,13 @@ export type Database = {
             foreignKeyName: "cotisations_membre_id_fkey"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "cotisations_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -716,6 +744,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "exercices"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotisations_membres_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
           },
           {
             foreignKeyName: "cotisations_membres_membre_id_fkey"
@@ -947,6 +982,13 @@ export type Database = {
             foreignKeyName: "fk_epargnes_membre"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "fk_epargnes_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -1153,6 +1195,13 @@ export type Database = {
             foreignKeyName: "fk_fond_caisse_clotures_cloture_par"
             columns: ["cloture_par"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "fk_fond_caisse_clotures_cloture_par"
+            columns: ["cloture_par"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -1218,8 +1267,22 @@ export type Database = {
             foreignKeyName: "fk_fond_caisse_operations_beneficiaire"
             columns: ["beneficiaire_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "fk_fond_caisse_operations_beneficiaire"
+            columns: ["beneficiaire_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_fond_caisse_operations_operateur"
+            columns: ["operateur_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
           },
           {
             foreignKeyName: "fk_fond_caisse_operations_operateur"
@@ -1428,8 +1491,22 @@ export type Database = {
             foreignKeyName: "fk_match_presences_membre"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "fk_match_presences_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_match_presences_membre_id"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
           },
           {
             foreignKeyName: "fk_match_presences_membre_id"
@@ -1449,6 +1526,7 @@ export type Database = {
           man_of_match: boolean
           match_id: string
           match_type: string
+          membre_id: string | null
           player_name: string
           red_cards: number
           updated_at: string
@@ -1462,6 +1540,7 @@ export type Database = {
           man_of_match?: boolean
           match_id: string
           match_type: string
+          membre_id?: string | null
           player_name: string
           red_cards?: number
           updated_at?: string
@@ -1475,12 +1554,28 @@ export type Database = {
           man_of_match?: boolean
           match_id?: string
           match_type?: string
+          membre_id?: string | null
           player_name?: string
           red_cards?: number
           updated_at?: string
           yellow_cards?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "match_statistics_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "match_statistics_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       membres: {
         Row: {
@@ -1575,6 +1670,13 @@ export type Database = {
             foreignKeyName: "membres_cotisations_config_membre_id_fkey"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "membres_cotisations_config_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -1607,6 +1709,13 @@ export type Database = {
           role_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "membres_roles_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
           {
             foreignKeyName: "membres_roles_membre_id_fkey"
             columns: ["membre_id"]
@@ -1716,6 +1825,13 @@ export type Database = {
             foreignKeyName: "fk_notifications_campagnes_created_by"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "fk_notifications_campagnes_created_by"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -1792,6 +1908,13 @@ export type Database = {
           statut?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_notifications_envois_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
           {
             foreignKeyName: "fk_notifications_envois_membre"
             columns: ["membre_id"]
@@ -2005,6 +2128,13 @@ export type Database = {
             foreignKeyName: "phoenix_adherents_membre_id_fkey"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "phoenix_adherents_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -2050,6 +2180,13 @@ export type Database = {
             foreignKeyName: "fk_phoenix_compositions_membre"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "fk_phoenix_compositions_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -2090,6 +2227,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_phoenix_cotisations_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
           {
             foreignKeyName: "fk_phoenix_cotisations_membre"
             columns: ["membre_id"]
@@ -2244,6 +2388,13 @@ export type Database = {
             foreignKeyName: "fk_phoenix_evenements_membre"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "fk_phoenix_evenements_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -2316,6 +2467,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "phoenix_entrainements"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_phoenix_presences_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
           },
           {
             foreignKeyName: "fk_phoenix_presences_membre"
@@ -2435,6 +2593,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_phoenix_statistiques_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
           {
             foreignKeyName: "fk_phoenix_statistiques_membre"
             columns: ["membre_id"]
@@ -2570,8 +2735,22 @@ export type Database = {
             foreignKeyName: "fk_prets_membre"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "fk_prets_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prets_avaliste_id_fkey"
+            columns: ["avaliste_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
           },
           {
             foreignKeyName: "prets_avaliste_id_fkey"
@@ -2905,6 +3084,13 @@ export type Database = {
             foreignKeyName: "reunion_beneficiaires_membre_id_fkey"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "reunion_beneficiaires_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -2968,8 +3154,22 @@ export type Database = {
             foreignKeyName: "fk_reunions_lieu_membre"
             columns: ["lieu_membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "fk_reunions_lieu_membre"
+            columns: ["lieu_membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reunions_beneficiaire_id_fkey"
+            columns: ["beneficiaire_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
           },
           {
             foreignKeyName: "reunions_beneficiaire_id_fkey"
@@ -3013,6 +3213,13 @@ export type Database = {
             foreignKeyName: "reunions_huile_savon_membre_id_fkey"
             columns: ["membre_id"]
             isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "reunions_huile_savon_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
@@ -3022,6 +3229,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "reunions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reunions_huile_savon_valide_par_fkey"
+            columns: ["valide_par"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
           },
           {
             foreignKeyName: "reunions_huile_savon_valide_par_fkey"
@@ -3070,6 +3284,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reunions_presences_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
           {
             foreignKeyName: "reunions_presences_membre_id_fkey"
             columns: ["membre_id"]
@@ -3130,6 +3351,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reunions_sanctions_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
           {
             foreignKeyName: "reunions_sanctions_membre_id_fkey"
             columns: ["membre_id"]
@@ -3240,6 +3468,13 @@ export type Database = {
           type_sanction_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_sanctions_membre"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
           {
             foreignKeyName: "fk_sanctions_membre"
             columns: ["membre_id"]
@@ -4259,7 +4494,25 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      e2d_player_stats_view: {
+        Row: {
+          equipe_e2d: string | null
+          matchs_joues: number | null
+          membre_id: string | null
+          moyenne_buts: number | null
+          moyenne_passes: number | null
+          nom: string | null
+          photo_url: string | null
+          prenom: string | null
+          score_general: number | null
+          total_buts: number | null
+          total_cartons_jaunes: number | null
+          total_cartons_rouges: number | null
+          total_motm: number | null
+          total_passes: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_total_pret_amount: {
