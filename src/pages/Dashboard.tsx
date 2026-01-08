@@ -53,6 +53,7 @@ const E2DConfigAdmin = lazy(() => import("./admin/E2DConfigAdmin"));
 const PretsConfigAdmin = lazy(() => import("./admin/PretsConfigAdmin"));
 const CaisseAdmin = lazy(() => import("./admin/CaisseAdmin"));
 const RapportsAdmin = lazy(() => import("./admin/RapportsAdmin"));
+const UtilisateursAdmin = lazy(() => import("./admin/UtilisateursAdmin"));
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -131,6 +132,16 @@ const Dashboard = () => {
           element={
             <PermissionRoute resource="roles" permission="write">
               <RolesAdmin />
+            </PermissionRoute>
+          }
+        />
+        <Route
+          path="/admin/utilisateurs"
+          element={
+            <PermissionRoute resource="roles" permission="write">
+              <Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
+                <UtilisateursAdmin />
+              </Suspense>
             </PermissionRoute>
           }
         />
