@@ -54,7 +54,7 @@ export function CotisationsClotureExerciceCheck({ exerciceId }: CotisationsClotu
     },
   });
 
-  // Charger les montants personnalisés
+  // Charger les montants personnalisés (pour types autres que mensuelle)
   const { data: cotisationsMembres = [] } = useQuery<CotisationMembre[]>({
     queryKey: ["cotisations-membres-clot", exerciceId],
     queryFn: async () => {
@@ -66,6 +66,22 @@ export function CotisationsClotureExerciceCheck({ exerciceId }: CotisationsClotu
       
       if (error) throw error;
       return (data || []) as CotisationMembre[];
+    },
+    enabled: !!exerciceId,
+  });
+
+  // Charger les cotisations mensuelles dédiées par membre
+  const { data: cotisationsMensuelles = [] } = useQuery<{ membre_id: string; montant: number }[]>({
+    queryKey: ["cotisations-mensuelles-clot", exerciceId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cotisations_mensuelles_exercice")
+        .select("membre_id, montant")
+        .eq("exercice_id", exerciceId)
+        .eq("actif", true);
+      
+      if (error) throw error;
+      return (data || []) as { membre_id: string; montant: number }[];
     },
     enabled: !!exerciceId,
   });
@@ -115,16 +131,27 @@ export function CotisationsClotureExerciceCheck({ exerciceId }: CotisationsClotu
   }
 
   // Calculer le statut de chaque membre
+  // Utilise cotisations_mensuelles_exercice pour la cotisation mensuelle
   const getMontantAttendu = (membreId: string): number => {
     const nbReunions = reunions.length;
     let totalMontant = 0;
     
     for (const type of typesObligatoires) {
-      const configPerso = cotisationsMembres.find(
-        (cm) => cm.membre_id === membreId && cm.type_cotisation_id === type.id
-      );
-      const montantParReunion = configPerso?.montant_personnalise || type.montant_defaut || 0;
-      totalMontant += montantParReunion * nbReunions;
+      const isCotisationMensuelle = type.nom.toLowerCase().includes('cotisation mensuelle');
+      
+      if (isCotisationMensuelle) {
+        // Utiliser la table dédiée cotisations_mensuelles_exercice
+        const configMensuelle = cotisationsMensuelles.find(cm => cm.membre_id === membreId);
+        const montantParReunion = configMensuelle?.montant ?? type.montant_defaut ?? 0;
+        totalMontant += montantParReunion * nbReunions;
+      } else {
+        // Utiliser cotisations_membres pour les autres types
+        const configPerso = cotisationsMembres.find(
+          (cm) => cm.membre_id === membreId && cm.type_cotisation_id === type.id
+        );
+        const montantParReunion = configPerso?.montant_personnalise ?? type.montant_defaut ?? 0;
+        totalMontant += montantParReunion * nbReunions;
+      }
     }
     
     return totalMontant;

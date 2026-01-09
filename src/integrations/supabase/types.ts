@@ -771,6 +771,105 @@ export type Database = {
           },
         ]
       }
+      cotisations_mensuelles_audit: {
+        Row: {
+          cotisation_mensuelle_id: string | null
+          created_at: string
+          exercice_id: string
+          id: string
+          membre_id: string
+          modifie_par: string | null
+          montant_apres: number | null
+          montant_avant: number | null
+          raison: string | null
+        }
+        Insert: {
+          cotisation_mensuelle_id?: string | null
+          created_at?: string
+          exercice_id: string
+          id?: string
+          membre_id: string
+          modifie_par?: string | null
+          montant_apres?: number | null
+          montant_avant?: number | null
+          raison?: string | null
+        }
+        Update: {
+          cotisation_mensuelle_id?: string | null
+          created_at?: string
+          exercice_id?: string
+          id?: string
+          membre_id?: string
+          modifie_par?: string | null
+          montant_apres?: number | null
+          montant_avant?: number | null
+          raison?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotisations_mensuelles_audit_cotisation_mensuelle_id_fkey"
+            columns: ["cotisation_mensuelle_id"]
+            isOneToOne: false
+            referencedRelation: "cotisations_mensuelles_exercice"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cotisations_mensuelles_exercice: {
+        Row: {
+          actif: boolean
+          created_at: string
+          exercice_id: string
+          id: string
+          membre_id: string
+          montant: number
+          updated_at: string
+          verrouille: boolean
+        }
+        Insert: {
+          actif?: boolean
+          created_at?: string
+          exercice_id: string
+          id?: string
+          membre_id: string
+          montant?: number
+          updated_at?: string
+          verrouille?: boolean
+        }
+        Update: {
+          actif?: boolean
+          created_at?: string
+          exercice_id?: string
+          id?: string
+          membre_id?: string
+          montant?: number
+          updated_at?: string
+          verrouille?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotisations_mensuelles_exercice_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cotisations_mensuelles_exercice_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "cotisations_mensuelles_exercice_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cotisations_minimales: {
         Row: {
           actif: boolean
@@ -4533,6 +4632,10 @@ export type Database = {
           reconductions?: number
           taux_interet: number
         }
+        Returns: number
+      }
+      get_cotisation_mensuelle_membre: {
+        Args: { _exercice_id: string; _membre_id: string }
         Returns: number
       }
       get_current_user_role: { Args: never; Returns: string }
