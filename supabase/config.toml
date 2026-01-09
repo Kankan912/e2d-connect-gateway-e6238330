@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.sync-user-emails]
 verify_jwt = false
+
+[functions.create-platform-user]
+verify_jwt = false
