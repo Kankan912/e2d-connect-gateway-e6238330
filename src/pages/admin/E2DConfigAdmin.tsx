@@ -4,6 +4,7 @@ import BackButton from "@/components/BackButton";
 import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download, Banknote, Clock, Mail, Send, Cog, AtSign } from "lucide-react";
 import { ExercicesManager } from "@/components/config/ExercicesManager";
 import { CotisationsTypesManager } from "@/components/config/CotisationsTypesManager";
+import { CotisationsMembresManager } from "@/components/config/CotisationsMembresManager";
 import { SanctionsTarifsManager } from "@/components/config/SanctionsTarifsManager";
 import { GestionGeneraleManager } from "@/components/config/GestionGeneraleManager";
 import { SauvegardeManager } from "@/components/config/SauvegardeManager";
@@ -12,12 +13,13 @@ import { NotificationsConfigManager } from "@/components/config/NotificationsCon
 import { EmailConfigManager } from "@/components/config/EmailConfigManager";
 
 // Import des pages existantes pour intégration
-import RolesAdmin from "./RolesAdmin";
+import UtilisateursAdmin from "./UtilisateursAdmin";
 import PermissionsAdmin from "./PermissionsAdmin";
 import NotificationsAdmin from "./NotificationsAdmin";
 import NotificationsTemplatesAdmin from "./NotificationsTemplatesAdmin";
 import TontineConfig from "./TontineConfig";
 import PretsConfigAdmin from "./PretsConfigAdmin";
+import ExportsAdmin from "./ExportsAdmin";
 
 const E2DConfigAdmin = () => {
   return (
@@ -85,6 +87,10 @@ const E2DConfigAdmin = () => {
             <Download className="h-4 w-4" />
             Sauvegarde
           </TabsTrigger>
+          <TabsTrigger value="exports" className="flex items-center gap-2">
+            <Download className="h-4 w-4" />
+            Exports
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="exercices">
@@ -99,11 +105,11 @@ const E2DConfigAdmin = () => {
                 Gestion des Utilisateurs
               </CardTitle>
               <CardDescription>
-                Gérez les rôles et les accès des membres
+                Créez des comptes, assignez des rôles et gérez les accès
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <RolesAdmin />
+              <UtilisateursAdmin embedded={true} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -130,7 +136,31 @@ const E2DConfigAdmin = () => {
         </TabsContent>
 
         <TabsContent value="cotisations">
-          <CotisationsTypesManager />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5" />
+                Gestion des Cotisations
+              </CardTitle>
+              <CardDescription>
+                Types de cotisations et montants personnalisés par membre
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="types" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="types">Types de Cotisations</TabsTrigger>
+                  <TabsTrigger value="montants">Montants par Membre</TabsTrigger>
+                </TabsList>
+                <TabsContent value="types">
+                  <CotisationsTypesManager />
+                </TabsContent>
+                <TabsContent value="montants">
+                  <CotisationsMembresManager />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="prets">
@@ -238,6 +268,23 @@ const E2DConfigAdmin = () => {
 
         <TabsContent value="sauvegarde">
           <SauvegardeManager />
+        </TabsContent>
+
+        <TabsContent value="exports">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                Exports Programmés
+              </CardTitle>
+              <CardDescription>
+                Configurez des exports automatiques de vos données
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ExportsAdmin embedded={true} />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

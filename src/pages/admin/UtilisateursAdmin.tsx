@@ -68,7 +68,11 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-export default function UtilisateursAdmin() {
+interface UtilisateursAdminProps {
+  embedded?: boolean;
+}
+
+export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdminProps) {
   const { data: utilisateurs, isLoading, error, refetch } = useUtilisateurs();
   const { roles } = useRoles();
   const { members: membres } = useMembers();
@@ -197,21 +201,31 @@ export default function UtilisateursAdmin() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Users className="h-8 w-8 text-primary" />
-            Gestion des Utilisateurs
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Gérez les comptes utilisateurs, leurs rôles et leurs accès
-          </p>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <Users className="h-8 w-8 text-primary" />
+              Gestion des Utilisateurs
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Gérez les comptes utilisateurs, leurs rôles et leurs accès
+            </p>
+          </div>
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Créer un utilisateur
+          </Button>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Créer un utilisateur
-        </Button>
-      </div>
+      )}
+      {embedded && (
+        <div className="flex justify-end">
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Créer un utilisateur
+          </Button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
