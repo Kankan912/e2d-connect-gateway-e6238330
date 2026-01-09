@@ -14,10 +14,12 @@ import {
 import { useRoles } from "@/hooks/useRoles";
 import { useMembers } from "@/hooks/useMembers";
 import { useLinkMembre } from "@/hooks/useUtilisateurs";
+import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -61,10 +63,13 @@ import {
   Clock,
   Loader2,
   UserCircle,
+  UserPlus,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 
 export default function UtilisateursAdmin() {
-  const { data: utilisateurs, isLoading } = useUtilisateurs();
+  const { data: utilisateurs, isLoading, error, refetch } = useUtilisateurs();
   const { roles } = useRoles();
   const { members: membres } = useMembers();
   const updateStatus = useUpdateUtilisateurStatus();
@@ -79,14 +84,17 @@ export default function UtilisateursAdmin() {
   const [selectedUser, setSelectedUser] = useState<Utilisateur | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [selectedMembreId, setSelectedMembreId] = useState<string>("");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const { data: userConnections } = useUserConnections(selectedUser?.id || null);
 
-  // Filter utilisateurs
+  // Filter utilisateurs - include phone in search
   const filtered = utilisateurs?.filter((u) => {
+    const searchLower = search.toLowerCase();
     const matchesSearch =
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      `${u.prenom} ${u.nom}`.toLowerCase().includes(search.toLowerCase());
+      u.email.toLowerCase().includes(searchLower) ||
+      `${u.prenom} ${u.nom}`.toLowerCase().includes(searchLower) ||
+      (u.telephone && u.telephone.toLowerCase().includes(searchLower));
     const matchesStatus = statusFilter === "all" || u.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -158,16 +166,51 @@ export default function UtilisateursAdmin() {
     );
   }
 
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <Users className="h-8 w-8 text-primary" />
+              Gestion des Utilisateurs
+            </h1>
+          </div>
+        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erreur d'accès</AlertTitle>
+          <AlertDescription>
+            {error instanceof Error && error.message.includes("permission")
+              ? "Vous n'avez pas les droits nécessaires pour accéder à cette page. Vérifiez que votre rôle (administrateur, trésorier) est correctement assigné."
+              : `Impossible de charger les utilisateurs: ${error instanceof Error ? error.message : "Erreur inconnue"}`}
+          </AlertDescription>
+        </Alert>
+        <Button onClick={() => refetch()} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-3">
-          <Users className="h-8 w-8 text-primary" />
-          Gestion des Utilisateurs
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Gérez les comptes utilisateurs, leurs rôles et leurs accès
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Users className="h-8 w-8 text-primary" />
+            Gestion des Utilisateurs
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Gérez les comptes utilisateurs, leurs rôles et leurs accès
+          </p>
+        </div>
+        <Button onClick={() => setShowCreateDialog(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Créer un utilisateur
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -213,7 +256,7 @@ export default function UtilisateursAdmin() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher par email ou nom..."
+                placeholder="Rechercher par email, nom ou téléphone..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -352,6 +395,26 @@ export default function UtilisateursAdmin() {
                   </TableCell>
                 </TableRow>
               ))}
+              {(!filtered || filtered.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <div className="flex flex-col items-center gap-2">
+                      <Users className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-muted-foreground">
+                        {utilisateurs && utilisateurs.length > 0
+                          ? "Aucun utilisateur ne correspond à vos critères de recherche"
+                          : "Aucun utilisateur trouvé. Créez le premier compte !"}
+                      </p>
+                      {utilisateurs && utilisateurs.length === 0 && (
+                        <Button onClick={() => setShowCreateDialog(true)} variant="outline" className="mt-2">
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Créer un utilisateur
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -511,6 +574,9 @@ export default function UtilisateursAdmin() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Create User Dialog */}
+      <CreateUserDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
     </div>
   );
 }
