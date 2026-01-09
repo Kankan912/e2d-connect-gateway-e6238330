@@ -53,7 +53,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
     password: generatePassword(),
     sendEmail: true,
     selectedRoles: [] as string[],
-    membreId: "",
+    membreId: "none",
   });
 
   // Members not linked to any user
@@ -88,7 +88,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
           password: formData.password,
           sendEmail: formData.sendEmail,
           roleIds: formData.selectedRoles,
-          membreId: formData.membreId || null,
+          membreId: formData.membreId === "none" ? null : formData.membreId,
         },
       });
 
@@ -108,7 +108,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         password: generatePassword(),
         sendEmail: true,
         selectedRoles: [],
-        membreId: "",
+        membreId: "none",
       });
       onOpenChange(false);
     } catch (error: any) {
@@ -241,7 +241,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                 <SelectValue placeholder="Sélectionner un membre..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Aucun</SelectItem>
+                <SelectItem value="none">Aucun</SelectItem>
                 {availableMembers.map((membre) => (
                   <SelectItem key={membre.id} value={membre.id}>
                     {membre.prenom} {membre.nom}
