@@ -27,7 +27,7 @@ export default function GalleryAdmin() {
   const [albumOpen, setAlbumOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editingAlbum, setEditingAlbum] = useState<any>(null);
-  const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string>("none");
   
   const { register, handleSubmit, reset, setValue, watch } = useForm();
   const { register: registerAlbum, handleSubmit: handleSubmitAlbum, reset: resetAlbum, setValue: setValueAlbum } = useForm();
@@ -47,7 +47,7 @@ export default function GalleryAdmin() {
   const onSubmit = (data: any) => {
     const payload = {
       ...data,
-      album_id: selectedAlbumId || null
+      album_id: selectedAlbumId === "none" ? null : selectedAlbumId
     };
     
     if (editingItem) {
@@ -58,7 +58,7 @@ export default function GalleryAdmin() {
     setOpen(false);
     reset();
     setEditingItem(null);
-    setSelectedAlbumId("");
+    setSelectedAlbumId("none");
   };
 
   const onSubmitAlbum = (data: any) => {
@@ -78,7 +78,7 @@ export default function GalleryAdmin() {
 
   const handleEdit = (item: any) => {
     setEditingItem(item);
-    setSelectedAlbumId(item.album_id || "");
+    setSelectedAlbumId(item.album_id || "none");
     Object.keys(item).forEach(key => {
       setValue(key, item[key]);
     });
@@ -136,7 +136,7 @@ export default function GalleryAdmin() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { reset(); setEditingItem(null); setSelectedAlbumId(""); }}>
+            <Button onClick={() => { reset(); setEditingItem(null); setSelectedAlbumId("none"); }}>
               <Plus className="w-4 h-4 mr-2" />
               Ajouter un média
             </Button>
@@ -178,7 +178,7 @@ export default function GalleryAdmin() {
                     <SelectValue placeholder="Sélectionner un album" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Aucun album</SelectItem>
+                    <SelectItem value="none">Aucun album</SelectItem>
                     {albums?.map(album => (
                       <SelectItem key={album.id} value={album.id}>
                         {album.titre}
