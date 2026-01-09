@@ -37,32 +37,36 @@ serve(async (req) => {
 
     console.log("User authenticated:", user.id);
 
-    // Check user role from user_roles table (uses app_role enum)
-    const { data: userRoleData, error: roleError } = await supabaseClient
+    // Check user role from user_roles table joined with roles
+    const { data: userRolesData, error: roleError } = await supabaseClient
       .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
+      .select("role_id, roles(name)")
+      .eq("user_id", user.id);
 
     if (roleError) {
       console.log("Role query error:", roleError);
     }
 
-    console.log("User role data:", userRoleData);
+    console.log("User roles data:", userRolesData);
 
     // Check if user has admin or tresorier role
-    const userRole = userRoleData?.role?.toLowerCase();
     const allowedRoles = ["admin", "tresorier", "administrateur"];
+    const userRoleNames = userRolesData?.map((ur) => {
+      // deno-lint-ignore no-explicit-any
+      const roleData = ur.roles as any;
+      return roleData?.name?.toLowerCase() as string | undefined;
+    }).filter(Boolean) as string[] || [];
+    const hasAllowedRole = userRoleNames.some((role) => allowedRoles.includes(role));
     
-    if (!userRoleData || !allowedRoles.includes(userRole)) {
-      console.log("User role not allowed:", userRole);
-      return new Response(JSON.stringify({ error: "Forbidden", role: userRole }), {
+    if (!hasAllowedRole) {
+      console.log("User roles not allowed:", userRoleNames);
+      return new Response(JSON.stringify({ error: "Forbidden", roles: userRoleNames }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("User authorized with role:", userRole);
+    console.log("User authorized with roles:", userRoleNames);
 
     const { period } = await req.json();
 

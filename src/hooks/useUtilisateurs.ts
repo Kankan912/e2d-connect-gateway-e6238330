@@ -28,21 +28,21 @@ export function useUtilisateurs() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (profilesError) throw profilesError;
+      if (profilesError) throw new Error(profilesError.message || "Erreur lors du chargement des profils");
 
       // Fetch user_roles with role details
       const { data: userRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("user_id, role_id, roles(id, name)");
 
-      if (rolesError) throw rolesError;
+      if (rolesError) throw new Error(rolesError.message || "Erreur lors du chargement des rôles");
 
       // Fetch membres to find linked members
       const { data: membres, error: membresError } = await supabase
         .from("membres")
         .select("id, user_id, nom, prenom");
 
-      if (membresError) throw membresError;
+      if (membresError) throw new Error(membresError.message || "Erreur lors du chargement des membres");
 
       // Map profiles with roles and linked member
       const utilisateurs: Utilisateur[] = profiles.map((profile) => {
