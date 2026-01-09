@@ -113,7 +113,7 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
     }
   });
 
-  // Fetch montants personnalisés - exerciceId OBLIGATOIRE
+  // Fetch montants personnalisés - exerciceId OBLIGATOIRE (pour types autres que mensuelle)
   const { data: cotisationsMembres } = useQuery({
     queryKey: ['cotisations-membres-config-grid', exerciceId],
     queryFn: async () => {
@@ -121,6 +121,22 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
       const { data, error } = await supabase
         .from('cotisations_membres')
         .select('membre_id, type_cotisation_id, montant_personnalise')
+        .eq('actif', true)
+        .eq('exercice_id', exerciceId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!exerciceId
+  });
+
+  // Fetch cotisations mensuelles dédiées par membre
+  const { data: cotisationsMensuelles } = useQuery({
+    queryKey: ['cotisations-mensuelles-grid', exerciceId],
+    queryFn: async () => {
+      if (!exerciceId) return [];
+      const { data, error } = await supabase
+        .from('cotisations_mensuelles_exercice')
+        .select('membre_id, montant')
         .eq('actif', true)
         .eq('exercice_id', exerciceId);
       if (error) throw error;
@@ -181,13 +197,23 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
   };
 
   // Helper: get montant for membre/type
+  // Utilise cotisations_mensuelles_exercice pour la cotisation mensuelle
   const getMontant = (membreId: string, typeId: string): number => {
-    const perso = cotisationsMembres?.find(
-      cm => cm.membre_id === membreId && cm.type_cotisation_id === typeId
-    );
-    if (perso) return perso.montant_personnalise;
     const type = types?.find(t => t.id === typeId);
-    return type?.montant_defaut || 0;
+    const isCotisationMensuelle = type?.nom.toLowerCase().includes('cotisation mensuelle');
+    
+    if (isCotisationMensuelle) {
+      // Utiliser la table dédiée cotisations_mensuelles_exercice
+      const configMensuelle = cotisationsMensuelles?.find(cm => cm.membre_id === membreId);
+      return configMensuelle?.montant ?? type?.montant_defaut ?? 0;
+    } else {
+      // Utiliser cotisations_membres pour les autres types
+      const perso = cotisationsMembres?.find(
+        cm => cm.membre_id === membreId && cm.type_cotisation_id === typeId
+      );
+      if (perso) return perso.montant_personnalise;
+      return type?.montant_defaut ?? 0;
+    }
   };
 
   // Helper: is huile savon validé

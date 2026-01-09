@@ -17,8 +17,9 @@ interface CotisationsReunionViewProps {
 /**
  * Vue du bilan des cotisations pour les réunions TERMINÉES uniquement.
  * Pour les réunions planifiées/en cours, utiliser CotisationsGridView.
+ * IMPORTANT: Utilise exerciceId pour filtrer les montants par exercice.
  */
-export default function CotisationsReunionView({ reunionId }: CotisationsReunionViewProps) {
+export default function CotisationsReunionView({ reunionId, exerciceId }: CotisationsReunionViewProps) {
   // Charger les cotisations de la réunion
   const { data: cotisationsPayees, isLoading: loadingCotisations } = useQuery({
     queryKey: ['cotisations-reunion', reunionId],
@@ -70,18 +71,38 @@ export default function CotisationsReunionView({ reunionId }: CotisationsReunion
     }
   });
 
-  // Charger les montants personnalisés par membre
+  // Charger les montants personnalisés par membre - FILTRÉ PAR EXERCICE
   const { data: cotisationsMembres } = useQuery({
-    queryKey: ['cotisations-membres-config'],
+    queryKey: ['cotisations-membres-config', exerciceId],
     queryFn: async () => {
+      if (!exerciceId) return [];
       const { data, error } = await supabase
         .from('cotisations_membres')
         .select('membre_id, type_cotisation_id, montant_personnalise')
-        .eq('actif', true);
+        .eq('actif', true)
+        .eq('exercice_id', exerciceId);
       
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!exerciceId
+  });
+
+  // Charger les cotisations mensuelles dédiées par membre - FILTRÉ PAR EXERCICE
+  const { data: cotisationsMensuelles } = useQuery({
+    queryKey: ['cotisations-mensuelles-reunion', exerciceId],
+    queryFn: async () => {
+      if (!exerciceId) return [];
+      const { data, error } = await supabase
+        .from('cotisations_mensuelles_exercice')
+        .select('membre_id, montant')
+        .eq('actif', true)
+        .eq('exercice_id', exerciceId);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!exerciceId
   });
 
   const isLoading = loadingCotisations || loadingMembres || loadingTypes;
@@ -101,12 +122,23 @@ export default function CotisationsReunionView({ reunionId }: CotisationsReunion
   }
 
   // Calculer le montant attendu pour un membre
+  // Utilise cotisations_mensuelles_exercice pour la cotisation mensuelle,
+  // et cotisations_membres pour les autres types
   const getMontantAttendu = (membreId: string) => {
     return typesObligatoires?.reduce((total, type) => {
-      const configPerso = cotisationsMembres?.find(
-        cm => cm.membre_id === membreId && cm.type_cotisation_id === type.id
-      );
-      return total + (configPerso?.montant_personnalise || type.montant_defaut || 0);
+      const isCotisationMensuelle = type.nom.toLowerCase().includes('cotisation mensuelle');
+      
+      if (isCotisationMensuelle) {
+        // Utiliser la table dédiée cotisations_mensuelles_exercice
+        const configMensuelle = cotisationsMensuelles?.find(cm => cm.membre_id === membreId);
+        return total + (configMensuelle?.montant ?? type.montant_defaut ?? 0);
+      } else {
+        // Utiliser cotisations_membres pour les autres types
+        const configPerso = cotisationsMembres?.find(
+          cm => cm.membre_id === membreId && cm.type_cotisation_id === type.id
+        );
+        return total + (configPerso?.montant_personnalise ?? type.montant_defaut ?? 0);
+      }
     }, 0) || 0;
   };
 

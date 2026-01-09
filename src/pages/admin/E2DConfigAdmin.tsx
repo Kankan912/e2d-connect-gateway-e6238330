@@ -1,10 +1,11 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BackButton from "@/components/BackButton";
-import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download, Banknote, Clock, Mail, Send, Cog, AtSign } from "lucide-react";
+import { Settings, Calendar, Users, Shield, Receipt, Bell, Gift, AlertTriangle, Wrench, Download, Banknote, Clock, Mail, Send, Cog, AtSign, Coins } from "lucide-react";
 import { ExercicesManager } from "@/components/config/ExercicesManager";
 import { CotisationsTypesManager } from "@/components/config/CotisationsTypesManager";
 import { CotisationsMembresManager } from "@/components/config/CotisationsMembresManager";
+import { CotisationsMensuellesExerciceManager } from "@/components/config/CotisationsMensuellesExerciceManager";
 import { SanctionsTarifsManager } from "@/components/config/SanctionsTarifsManager";
 import { GestionGeneraleManager } from "@/components/config/GestionGeneraleManager";
 import { SauvegardeManager } from "@/components/config/SauvegardeManager";
@@ -143,15 +144,22 @@ const E2DConfigAdmin = () => {
                 Gestion des Cotisations
               </CardTitle>
               <CardDescription>
-                Types de cotisations et montants personnalisés par membre
+                Types de cotisations, cotisation mensuelle par membre et montants personnalisés
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="types" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-6">
+              <Tabs defaultValue="mensuelle" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 mb-6">
+                  <TabsTrigger value="mensuelle" className="flex items-center gap-2">
+                    <Coins className="h-4 w-4" />
+                    Cotisation Mensuelle
+                  </TabsTrigger>
                   <TabsTrigger value="types">Types de Cotisations</TabsTrigger>
-                  <TabsTrigger value="montants">Montants par Membre</TabsTrigger>
+                  <TabsTrigger value="montants">Autres Montants</TabsTrigger>
                 </TabsList>
+                <TabsContent value="mensuelle">
+                  <CotisationsMensuellesExerciceManager />
+                </TabsContent>
                 <TabsContent value="types">
                   <CotisationsTypesManager />
                 </TabsContent>
