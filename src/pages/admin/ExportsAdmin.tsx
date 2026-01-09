@@ -11,7 +11,11 @@ import ExportConfigForm from "@/components/forms/ExportConfigForm";
 import { toast } from "@/hooks/use-toast";
 import { ExportService } from "@/lib/exportService";
 
-export default function ExportsAdmin() {
+interface ExportsAdminProps {
+  embedded?: boolean;
+}
+
+export default function ExportsAdmin({ embedded = false }: ExportsAdminProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedExport, setSelectedExport] = useState<any>(null);
   const queryClient = useQueryClient();
@@ -101,22 +105,33 @@ export default function ExportsAdmin() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <BackButton />
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Download className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Exports Programmés</h1>
+    <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
+      {!embedded && (
+        <>
+          <BackButton />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Download className="h-8 w-8 text-primary" />
+              <h1 className="text-3xl font-bold">Exports Programmés</h1>
+            </div>
+            <Button onClick={() => { setSelectedExport(null); setFormOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvel Export
+            </Button>
+          </div>
+          <p className="text-muted-foreground">
+            Configurez des exports automatiques de vos données (membres, finances, matchs, etc.)
+          </p>
+        </>
+      )}
+      {embedded && (
+        <div className="flex justify-end">
+          <Button onClick={() => { setSelectedExport(null); setFormOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvel Export
+          </Button>
         </div>
-        <Button onClick={() => { setSelectedExport(null); setFormOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvel Export
-        </Button>
-      </div>
-
-      <p className="text-muted-foreground">
-        Configurez des exports automatiques de vos données (membres, finances, matchs, etc.)
-      </p>
+      )}
 
       <Card>
         <CardHeader>

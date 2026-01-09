@@ -716,6 +716,7 @@ export type Database = {
           montant_personnalise: number
           type_cotisation_id: string
           updated_at: string
+          verrouille: boolean | null
         }
         Insert: {
           actif?: boolean
@@ -726,6 +727,7 @@ export type Database = {
           montant_personnalise?: number
           type_cotisation_id: string
           updated_at?: string
+          verrouille?: boolean | null
         }
         Update: {
           actif?: boolean
@@ -736,6 +738,7 @@ export type Database = {
           montant_personnalise?: number
           type_cotisation_id?: string
           updated_at?: string
+          verrouille?: boolean | null
         }
         Relationships: [
           {

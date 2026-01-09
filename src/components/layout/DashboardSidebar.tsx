@@ -108,11 +108,7 @@ const communicationItems = [
   { title: "Notifications", url: "/dashboard/admin/communication/notifications", icon: Bell, resource: "notifications" },
 ];
 
-// Section Configuration
-const configItems = [
-  { title: "Utilisateurs", url: "/dashboard/admin/utilisateurs", icon: UserPlus, resource: "roles" },
-  { title: "Exports Programmés", url: "/dashboard/admin/config/exports", icon: Download, resource: "config" },
-];
+// Section Configuration - Supprimée, maintenant intégrée dans Configuration E2D
 
 // Section Site Web (CMS)
 const siteItems = [
@@ -180,9 +176,6 @@ export function DashboardSidebar() {
   const visibleCommunicationItems = communicationItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
-  const visibleConfigItems = configItems.filter(item => 
-    !item.resource || hasPermission(item.resource, 'read')
-  );
   const visibleSiteItems = siteItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
@@ -196,7 +189,6 @@ export function DashboardSidebar() {
   const hasAdminPublicAccess = visibleAdminPublicItems.length > 0;
   const hasSportAccess = visibleSportItems.length > 0;
   const hasCommunicationAccess = visibleCommunicationItems.length > 0;
-  const hasConfigAccess = visibleConfigItems.length > 0;
   const hasSiteAccess = visibleSiteItems.length > 0;
 
   const renderMenuItems = (items: typeof memberItems) => (
@@ -334,16 +326,6 @@ export function DashboardSidebar() {
             <SidebarGroupLabel>Communication</SidebarGroupLabel>
             <SidebarGroupContent>
               {renderMenuItems(visibleCommunicationItems)}
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {/* Configuration */}
-        {hasConfigAccess && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Configuration</SidebarGroupLabel>
-            <SidebarGroupContent>
-              {renderMenuItems(visibleConfigItems)}
             </SidebarGroupContent>
           </SidebarGroup>
         )}

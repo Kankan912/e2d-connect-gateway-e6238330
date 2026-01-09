@@ -113,23 +113,20 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
     }
   });
 
-  // Fetch montants personnalisés
+  // Fetch montants personnalisés - exerciceId OBLIGATOIRE
   const { data: cotisationsMembres } = useQuery({
     queryKey: ['cotisations-membres-config-grid', exerciceId],
     queryFn: async () => {
-      let query = supabase
+      if (!exerciceId) return [];
+      const { data, error } = await supabase
         .from('cotisations_membres')
         .select('membre_id, type_cotisation_id, montant_personnalise')
-        .eq('actif', true);
-      
-      if (exerciceId) {
-        query = query.eq('exercice_id', exerciceId);
-      }
-      
-      const { data, error } = await query;
+        .eq('actif', true)
+        .eq('exercice_id', exerciceId);
       if (error) throw error;
       return data;
-    }
+    },
+    enabled: !!exerciceId
   });
 
   // Mutation pour toggle Huile & Savon
