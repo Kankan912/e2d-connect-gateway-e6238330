@@ -4802,6 +4802,39 @@ export type Database = {
           },
         ]
       }
+      utilisateurs_actions_log: {
+        Row: {
+          action: string
+          details: Json | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          performed_at: string | null
+          performed_by: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          details?: Json | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          performed_at?: string | null
+          performed_by?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          details?: Json | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          performed_at?: string | null
+          performed_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       e2d_player_stats_view: {

@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
+import { addE2DLogo, addE2DFooter } from '@/lib/pdf-utils';
 
 interface Reunion {
   id: string;
@@ -142,6 +143,9 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       const margin = 20;
       let yPosition = 20;
 
+      // Ajouter le logo E2D en haut à droite
+      await addE2DLogo(doc);
+
       const checkNewPage = (neededSpace: number = 30) => {
         if (yPosition > 260 - neededSpace) {
           doc.addPage();
@@ -152,7 +156,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       // Titre principal
       doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.text('COMPTE-RENDU DE RÉUNION', pageWidth / 2, yPosition, { align: 'center' });
+      doc.text('COMPTE-RENDU DE RÉUNION', margin, yPosition);
       yPosition += 15;
 
       // Ligne de séparation
@@ -381,19 +385,8 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
         yPosition += 5;
       }
 
-      // Pied de page
-      const totalPages = doc.internal.pages.length - 1;
-      for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'italic');
-        doc.text(
-          `Page ${i} sur ${totalPages} - Généré le ${format(new Date(), 'PPP à HH:mm', { locale: fr })}`,
-          pageWidth / 2,
-          290,
-          { align: 'center' }
-        );
-      }
+      // Pied de page avec logo E2D
+      addE2DFooter(doc);
 
       // Télécharger le PDF
       const fileName = `CR_${reunion.sujet?.replace(/[^a-zA-Z0-9]/g, '_') || 'reunion'}_${format(new Date(reunion.date_reunion), 'yyyy-MM-dd')}.pdf`;

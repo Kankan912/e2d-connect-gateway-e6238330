@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { formatFCFA } from './utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { addE2DLogo, addE2DFooter } from './pdf-utils';
 
 interface Pret {
   id: string;
@@ -45,7 +46,7 @@ interface Reconduction {
   notes?: string;
 }
 
-export function exportPretPDF(
+export async function exportPretPDF(
   pret: Pret,
   paiements?: Paiement[],
   reconductions?: Reconduction[]
@@ -54,16 +55,19 @@ export function exportPretPDF(
   const pageWidth = doc.internal.pageSize.getWidth();
   let yPosition = 20;
 
+  // Ajouter le logo E2D en haut à droite
+  await addE2DLogo(doc);
+
   // En-tête
   doc.setFontSize(20);
   doc.setTextColor(11, 107, 124); // #0B6B7C
-  doc.text('FICHE DE PRÊT E2D', pageWidth / 2, yPosition, { align: 'center' });
+  doc.text('FICHE DE PRÊT E2D', 14, yPosition);
   yPosition += 10;
 
   doc.setFontSize(10);
   doc.setTextColor(100);
-  doc.text(`Généré le ${format(new Date(), 'dd MMMM yyyy à HH:mm', { locale: fr })}`, pageWidth / 2, yPosition, { align: 'center' });
-  yPosition += 15;
+  doc.text(`Généré le ${format(new Date(), 'dd MMMM yyyy à HH:mm', { locale: fr })}`, 14, yPosition);
+  yPosition += 10;
 
   // Ligne de séparation
   doc.setDrawColor(11, 107, 124);
@@ -220,19 +224,8 @@ export function exportPretPDF(
     doc.text(splitNotes, 25, yPosition);
   }
 
-  // Pied de page
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(150);
-    doc.text(
-      `E2D Connect - Page ${i}/${pageCount}`,
-      pageWidth / 2,
-      doc.internal.pageSize.getHeight() - 10,
-      { align: 'center' }
-    );
-  }
+  // Pied de page avec logo E2D
+  addE2DFooter(doc);
 
   // Télécharger
   const fileName = `Pret_${pret.emprunteur?.nom || 'Inconnu'}_${format(new Date(pret.date_pret), 'yyyy-MM-dd')}.pdf`;
