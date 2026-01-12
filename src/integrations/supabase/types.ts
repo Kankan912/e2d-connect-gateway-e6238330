@@ -316,6 +316,99 @@ export type Database = {
         }
         Relationships: []
       }
+      beneficiaires_paiements_audit: {
+        Row: {
+          action: string
+          created_at: string
+          deductions: Json | null
+          effectue_par: string | null
+          exercice_id: string | null
+          id: string
+          ip_address: unknown
+          membre_id: string
+          montant_brut: number | null
+          montant_final: number | null
+          notes: string | null
+          reunion_beneficiaire_id: string | null
+          reunion_id: string | null
+          statut_apres: string | null
+          statut_avant: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          deductions?: Json | null
+          effectue_par?: string | null
+          exercice_id?: string | null
+          id?: string
+          ip_address?: unknown
+          membre_id: string
+          montant_brut?: number | null
+          montant_final?: number | null
+          notes?: string | null
+          reunion_beneficiaire_id?: string | null
+          reunion_id?: string | null
+          statut_apres?: string | null
+          statut_avant?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          deductions?: Json | null
+          effectue_par?: string | null
+          exercice_id?: string | null
+          id?: string
+          ip_address?: unknown
+          membre_id?: string
+          montant_brut?: number | null
+          montant_final?: number | null
+          notes?: string | null
+          reunion_beneficiaire_id?: string | null
+          reunion_id?: string | null
+          statut_apres?: string | null
+          statut_avant?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beneficiaires_paiements_audit_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beneficiaires_paiements_audit_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "beneficiaires_paiements_audit_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beneficiaires_paiements_audit_reunion_beneficiaire_id_fkey"
+            columns: ["reunion_beneficiaire_id"]
+            isOneToOne: false
+            referencedRelation: "reunion_beneficiaires"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beneficiaires_paiements_audit_reunion_id_fkey"
+            columns: ["reunion_id"]
+            isOneToOne: false
+            referencedRelation: "reunions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caisse_config: {
         Row: {
           created_at: string | null
@@ -342,6 +435,70 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      calendrier_beneficiaires: {
+        Row: {
+          created_at: string
+          date_prevue: string | null
+          exercice_id: string
+          id: string
+          membre_id: string
+          mois_benefice: number | null
+          montant_mensuel: number
+          montant_total: number | null
+          notes: string | null
+          rang: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_prevue?: string | null
+          exercice_id: string
+          id?: string
+          membre_id: string
+          mois_benefice?: number | null
+          montant_mensuel?: number
+          montant_total?: number | null
+          notes?: string | null
+          rang: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_prevue?: string | null
+          exercice_id?: string
+          id?: string
+          membre_id?: string
+          mois_benefice?: number | null
+          montant_mensuel?: number
+          montant_total?: number | null
+          notes?: string | null
+          rang?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendrier_beneficiaires_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendrier_beneficiaires_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "calendrier_beneficiaires_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cms_events: {
         Row: {
@@ -3151,39 +3308,67 @@ export type Database = {
       }
       reunion_beneficiaires: {
         Row: {
+          calendrier_id: string | null
           config_id: string | null
           created_at: string
           date_benefice_prevue: string
+          date_paiement: string | null
+          deductions: Json | null
           id: string
           membre_id: string
           montant_benefice: number
+          montant_brut: number | null
+          montant_final: number | null
+          notes_paiement: string | null
+          paye_par: string | null
           reunion_id: string
           statut: string
           updated_at: string
         }
         Insert: {
+          calendrier_id?: string | null
           config_id?: string | null
           created_at?: string
           date_benefice_prevue: string
+          date_paiement?: string | null
+          deductions?: Json | null
           id?: string
           membre_id: string
           montant_benefice?: number
+          montant_brut?: number | null
+          montant_final?: number | null
+          notes_paiement?: string | null
+          paye_par?: string | null
           reunion_id: string
           statut?: string
           updated_at?: string
         }
         Update: {
+          calendrier_id?: string | null
           config_id?: string | null
           created_at?: string
           date_benefice_prevue?: string
+          date_paiement?: string | null
+          deductions?: Json | null
           id?: string
           membre_id?: string
           montant_benefice?: number
+          montant_brut?: number | null
+          montant_final?: number | null
+          notes_paiement?: string | null
+          paye_par?: string | null
           reunion_id?: string
           statut?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reunion_beneficiaires_calendrier_id_fkey"
+            columns: ["calendrier_id"]
+            isOneToOne: false
+            referencedRelation: "calendrier_beneficiaires"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reunion_beneficiaires_config_id_fkey"
             columns: ["config_id"]
@@ -3201,6 +3386,20 @@ export type Database = {
           {
             foreignKeyName: "reunion_beneficiaires_membre_id_fkey"
             columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reunion_beneficiaires_paye_par_fkey"
+            columns: ["paye_par"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "reunion_beneficiaires_paye_par_fkey"
+            columns: ["paye_par"]
             isOneToOne: false
             referencedRelation: "membres"
             referencedColumns: ["id"]
@@ -4633,6 +4832,10 @@ export type Database = {
           taux_interet: number
         }
         Returns: number
+      }
+      calculer_montant_beneficiaire: {
+        Args: { p_exercice_id: string; p_membre_id: string }
+        Returns: Json
       }
       get_cotisation_mensuelle_membre: {
         Args: { _exercice_id: string; _membre_id: string }

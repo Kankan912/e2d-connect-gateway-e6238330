@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
 import { formatFCFA } from "@/lib/utils";
 import { ExercicesCotisationsTypesManager } from "@/components/config/ExercicesCotisationsTypesManager";
+import CalendrierBeneficiairesManager from "@/components/config/CalendrierBeneficiairesManager";
 
 interface TontineConfig {
   id: string;
@@ -199,12 +200,17 @@ export default function TontineConfig() {
         </div>
       </div>
 
-      <Tabs defaultValue="beneficiaires" className="space-y-6">
+      <Tabs defaultValue="calendrier" className="space-y-6">
         <TabsList>
+          <TabsTrigger value="calendrier">Calendrier des Bénéficiaires</TabsTrigger>
           <TabsTrigger value="beneficiaires">Configurations Bénéficiaires</TabsTrigger>
           <TabsTrigger value="cotisations-exercice">Types Cotisations / Exercice</TabsTrigger>
           <TabsTrigger value="general">Paramètres Généraux</TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="calendrier">
+          <CalendrierBeneficiairesManager />
+        </TabsContent>
 
         <TabsContent value="beneficiaires" className="space-y-6">
           <Card>
