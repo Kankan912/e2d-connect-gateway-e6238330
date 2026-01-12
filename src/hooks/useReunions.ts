@@ -42,6 +42,8 @@ export const useReunions = () => {
       if (error) throw error;
       return data as Reunion[];
     },
+    staleTime: 2 * 60 * 1000, // 2 minutes - données de réunions
+    gcTime: 10 * 60 * 1000, // 10 minutes de cache
   });
 };
 
@@ -72,6 +74,8 @@ export const usePresences = (reunionId: string | null) => {
       })) as Presence[];
     },
     enabled: !!reunionId,
+    staleTime: 60 * 1000, // 1 minute - données de présences
+    gcTime: 5 * 60 * 1000, // 5 minutes de cache
   });
 };
 

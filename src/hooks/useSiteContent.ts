@@ -20,6 +20,8 @@ export const useSiteHero = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 10 * 60 * 1000, // 10 minutes - contenu CMS stable
+    gcTime: 30 * 60 * 1000,
   });
 };
 
@@ -59,6 +61,8 @@ export const useSiteAbout = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 };
 
@@ -98,6 +102,8 @@ export const useSiteActivities = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 };
 
@@ -177,6 +183,8 @@ export const useSiteEvents = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes - événements changent plus souvent
+    gcTime: 15 * 60 * 1000,
   });
 };
 
@@ -256,6 +264,8 @@ export const useSiteGallery = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 };
 
@@ -335,6 +345,8 @@ export const useSitePartners = () => {
       if (error) throw error;
       return data;
     },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 };
 

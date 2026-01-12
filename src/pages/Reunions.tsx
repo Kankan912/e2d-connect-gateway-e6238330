@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import CompteRenduActions from "@/components/CompteRenduActions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle, AlertCircle, Send } from "lucide-react";
+import { useMembers } from "@/hooks/useMembers";
 
 // Composant pour l'onglet Rappels
 function RappelsTab() {
@@ -515,27 +516,19 @@ export default function Reunions() {
   const [showHistoriqueMembre, setShowHistoriqueMembre] = useState(false);
   const { toast } = useToast();
 
-  // Composant pour afficher le nom du bénéficiaire
-  const BeneficiaireName = ({ beneficiaireId }: { beneficiaireId: string }) => {
-    const { data: membre } = useQuery({
-      queryKey: ['membre', beneficiaireId],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from('membres')
-          .select('nom, prenom')
-          .eq('id', beneficiaireId)
-          .single();
-        if (error) throw error;
-        return data;
-      },
-      enabled: !!beneficiaireId
-    });
+  // Charger tous les membres une fois pour éviter N+1 queries
+  const { members } = useMembers();
+  
+  // Créer une Map pour lookups O(1) au lieu de requêtes individuelles
+  const membresMap = useMemo(() => {
+    return new Map(members?.map(m => [m.id, m]) || []);
+  }, [members]);
 
-    return (
-      <span className="text-sm">
-        {membre ? `${membre.prenom} ${membre.nom}` : 'Chargement...'}
-      </span>
-    );
+  // Fonction helper pour afficher le nom d'un membre
+  const getMemberName = (memberId: string | undefined | null) => {
+    if (!memberId) return null;
+    const membre = membresMap.get(memberId);
+    return membre ? `${membre.prenom} ${membre.nom}` : null;
   };
 
   useEffect(() => {
@@ -856,7 +849,9 @@ export default function Reunions() {
                         
                         <TableCell>
                           {reunion.lieu_membre_id ? (
-                            <BeneficiaireName beneficiaireId={reunion.lieu_membre_id} />
+                            <span className="text-sm">
+                              {getMemberName(reunion.lieu_membre_id) || 'Non défini'}
+                            </span>
                           ) : (
                             <span className="text-muted-foreground text-sm">Non défini</span>
                           )}
@@ -864,7 +859,9 @@ export default function Reunions() {
                         
                         <TableCell>
                           {reunion.beneficiaire_id ? (
-                            <BeneficiaireName beneficiaireId={reunion.beneficiaire_id} />
+                            <span className="text-sm">
+                              {getMemberName(reunion.beneficiaire_id) || 'Non défini'}
+                            </span>
                           ) : (
                             <span className="text-muted-foreground text-sm">Non défini</span>
                           )}

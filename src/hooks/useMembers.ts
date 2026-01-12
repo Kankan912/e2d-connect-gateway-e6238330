@@ -36,6 +36,8 @@ export const useMembers = () => {
       if (error) throw error;
       return data as Member[];
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes - données membres stables
+    gcTime: 30 * 60 * 1000, // 30 minutes de cache
   });
 
   const createMember = useMutation({
