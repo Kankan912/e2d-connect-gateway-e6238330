@@ -23,6 +23,7 @@ import { fr } from "date-fns/locale";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+import { addE2DHeader, addE2DFooter } from "@/lib/pdf-utils";
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -333,20 +334,17 @@ const RapportsAdmin = () => {
   }, [caisseOps]);
 
   // Export PDF
-  const exportPDF = (type: string) => {
+  const exportPDF = async (type: string) => {
     const doc = new jsPDF();
-    const title = `Rapport ${type} - E2D`;
+    const title = `Rapport ${type.charAt(0).toUpperCase() + type.slice(1)}`;
     const periode = selectedExercice !== "all" 
       ? exercices?.find(e => e.id === selectedExercice)?.nom 
       : dateDebut && dateFin 
         ? `${dateDebut} au ${dateFin}`
         : "Toutes périodes";
     
-    doc.setFontSize(18);
-    doc.text(title, 14, 22);
-    doc.setFontSize(11);
-    doc.text(`Période : ${periode}`, 14, 32);
-    doc.text(`Généré le : ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: fr })}`, 14, 40);
+    // Ajouter l'en-tête E2D avec logo
+    const startY = await addE2DHeader(doc, title, `Période : ${periode}`);
 
     let tableData: any[] = [];
     let columns: string[] = [];
@@ -391,8 +389,12 @@ const RapportsAdmin = () => {
     autoTable(doc, {
       head: [columns],
       body: tableData,
-      startY: 50,
+      startY: startY,
+      headStyles: { fillColor: [30, 64, 175] },
     });
+
+    // Ajouter le pied de page E2D
+    addE2DFooter(doc);
 
     doc.save(`rapport-${type}-${format(new Date(), "yyyy-MM-dd")}.pdf`);
   };

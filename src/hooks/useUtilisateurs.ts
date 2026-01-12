@@ -22,10 +22,11 @@ export function useUtilisateurs() {
   return useQuery({
     queryKey: ["utilisateurs"],
     queryFn: async () => {
-      // Fetch profiles
+      // Fetch profiles - exclure les utilisateurs supprimés
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
+        .neq("status", "supprime")
         .order("created_at", { ascending: false });
 
       if (profilesError) throw new Error(profilesError.message || "Erreur lors du chargement des profils");
@@ -79,13 +80,25 @@ export function useUpdateUtilisateurStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ userId, status }: { userId: string; status: string }) => {
+    mutationFn: async ({ userId, status, oldStatus }: { userId: string; status: string; oldStatus?: string }) => {
+      // Mettre à jour le statut
       const { error } = await supabase
         .from("profiles")
         .update({ status })
         .eq("id", userId);
 
       if (error) throw error;
+
+      // Logger l'action dans la table d'audit
+      const { data: currentUser } = await supabase.auth.getUser();
+      await supabase.from("utilisateurs_actions_log").insert({
+        user_id: userId,
+        action: "status_change",
+        old_value: oldStatus || null,
+        new_value: status,
+        performed_by: currentUser.user?.id || null,
+        details: { action_type: "status_update" }
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["utilisateurs"] });

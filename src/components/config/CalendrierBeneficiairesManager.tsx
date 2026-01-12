@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatFCFA } from "@/lib/utils";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { addE2DLogo, addE2DFooter } from "@/lib/pdf-utils";
 
 const MOIS = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -129,22 +130,30 @@ export default function CalendrierBeneficiairesManager() {
   };
 
   // Exporter en PDF
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!calendrier.length || !selectedExerciceData) return;
 
     const doc = new jsPDF();
     
-    // Logo et en-tête
-    doc.setFontSize(20);
-    doc.setTextColor(0, 100, 0);
-    doc.text("E2D - Calendrier des Bénéficiaires", 105, 20, { align: "center" });
+    // Ajouter le logo E2D en haut à droite
+    await addE2DLogo(doc);
     
-    doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Exercice: ${selectedExerciceData.nom}`, 105, 30, { align: "center" });
+    // En-tête
+    doc.setFontSize(18);
+    doc.setTextColor(30, 64, 175);
+    doc.text("Calendrier des Bénéficiaires", 14, 20);
+    
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Exercice: ${selectedExerciceData.nom}`, 14, 28);
     
     doc.setFontSize(10);
-    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 105, 38, { align: "center" });
+    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 14, 35);
+
+    // Ligne de séparation
+    doc.setDrawColor(30, 64, 175);
+    doc.setLineWidth(0.5);
+    doc.line(14, 40, doc.internal.pageSize.getWidth() - 14, 40);
 
     // Tableau
     const tableData = calendrier.map(b => [
@@ -160,7 +169,7 @@ export default function CalendrierBeneficiairesManager() {
       head: [['Rang', 'Membre', 'Mois', 'Montant Mensuel', 'Montant Total (×12)']],
       body: tableData,
       theme: 'striped',
-      headStyles: { fillColor: [0, 100, 0] },
+      headStyles: { fillColor: [30, 64, 175] },
       styles: { fontSize: 10 }
     });
 
@@ -170,6 +179,9 @@ export default function CalendrierBeneficiairesManager() {
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text(`Total Annuel: ${formatFCFA(totalAnnuel)}`, 14, finalY);
+
+    // Pied de page E2D
+    addE2DFooter(doc);
 
     doc.save(`calendrier-beneficiaires-${selectedExerciceData.nom}.pdf`);
     toast({ title: "PDF exporté avec succès" });
