@@ -81,8 +81,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Check member status
-  const checkMemberStatus = async (userId: string): Promise<boolean> => {
+  // Check member status - returns { allowed: boolean, status: string | null }
+  const checkMemberStatus = async (userId: string): Promise<{ allowed: boolean; status: string | null }> => {
     try {
       const { data: membre, error } = await supabase
         .from('membres')
@@ -92,23 +92,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (error) {
         console.error('❌ [AuthContext] Error checking member status:', error);
-        return true; // Allow access if we can't check
+        return { allowed: true, status: null }; // Allow access if we can't check
       }
       
       if (!membre) {
         // No member linked, allow access (new user)
-        return true;
+        return { allowed: true, status: null };
       }
       
       if (membre.statut !== 'actif') {
         console.log('⚠️ [AuthContext] Member status is not active:', membre.statut);
-        return false;
+        
+        // Log blocked login attempt
+        try {
+          await supabase.from('historique_connexion').insert({
+            user_id: userId,
+            statut: 'bloque',
+            ip_address: '0.0.0.0'
+          });
+        } catch (logError) {
+          console.error('⚠️ [AuthContext] Failed to log blocked attempt:', logError);
+        }
+        
+        return { allowed: false, status: membre.statut };
       }
       
-      return true;
+      return { allowed: true, status: membre.statut };
     } catch (error) {
       console.error('❌ [AuthContext] Error in checkMemberStatus:', error);
-      return true;
+      return { allowed: true, status: null };
     }
   };
 
@@ -161,12 +173,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       // Check member status first
-      const isAllowed = await checkMemberStatus(userId);
-      if (!isAllowed) {
+      const { allowed, status } = await checkMemberStatus(userId);
+      if (!allowed) {
         setMemberBlocked(true);
+        
+        // Display specific message based on status
+        const statusMessages: Record<string, { title: string; description: string }> = {
+          inactif: {
+            title: "Compte inactif",
+            description: "Votre compte est actuellement inactif. Contactez l'association pour le réactiver."
+          },
+          suspendu: {
+            title: "Compte suspendu",
+            description: "Votre compte a été suspendu. Veuillez contacter l'administrateur pour plus d'informations."
+          }
+        };
+        
+        const message = statusMessages[status || ''] || {
+          title: "Accès refusé",
+          description: "Votre compte ne vous permet pas d'accéder à l'application. Contactez l'administrateur."
+        };
+        
         toast({
-          title: "Compte bloqué",
-          description: "Votre compte membre est inactif ou suspendu. Contactez l'administrateur.",
+          title: message.title,
+          description: message.description,
           variant: "destructive"
         });
         await signOut();

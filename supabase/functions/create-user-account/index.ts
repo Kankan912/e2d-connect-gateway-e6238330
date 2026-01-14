@@ -67,6 +67,26 @@ serve(async (req) => {
       );
     }
 
+    // Check if member already has an account
+    const { data: existingMember, error: checkError } = await supabaseAdmin
+      .from('membres')
+      .select('user_id, statut')
+      .eq('id', memberId)
+      .single();
+
+    if (checkError) {
+      console.error('❌ Error checking member:', checkError);
+      throw new Error('Membre non trouvé');
+    }
+
+    if (existingMember?.user_id) {
+      console.error('❌ Member already has an account');
+      return new Response(
+        JSON.stringify({ error: 'Ce membre possède déjà un compte utilisateur' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
     // Generate password if not provided
     const password = tempPassword || Math.random().toString(36).slice(-8) + 'A1!';
 
@@ -104,7 +124,7 @@ serve(async (req) => {
       console.log('✅ Member linked to user');
     }
 
-    // Récupérer l'ID du rôle "membre" et l'assigner automatiquement
+    // Récupérer l'ID du rôle "membre" et l'assigner automatiquement dans BOTH tables
     const { data: roleMembre } = await supabaseAdmin
       .from('roles')
       .select('id')
@@ -112,6 +132,7 @@ serve(async (req) => {
       .single();
 
     if (roleMembre) {
+      // Assigner dans membres_roles
       const { error: roleError } = await supabaseAdmin
         .from('membres_roles')
         .insert({
@@ -120,9 +141,23 @@ serve(async (req) => {
         });
       
       if (roleError) {
-        console.error('⚠️ Error assigning member role:', roleError);
+        console.error('⚠️ Error assigning member role to membres_roles:', roleError);
       } else {
-        console.log('✅ Role "membre" assigned to member');
+        console.log('✅ Role "membre" assigned in membres_roles');
+      }
+
+      // Assigner dans user_roles aussi
+      const { error: userRoleError } = await supabaseAdmin
+        .from('user_roles')
+        .insert({
+          user_id: newUser.user?.id,
+          role_id: roleMembre.id
+        });
+      
+      if (userRoleError) {
+        console.error('⚠️ Error assigning member role to user_roles:', userRoleError);
+      } else {
+        console.log('✅ Role "membre" assigned in user_roles');
       }
     } else {
       console.log('⚠️ Role "membre" not found, skipping role assignment');
