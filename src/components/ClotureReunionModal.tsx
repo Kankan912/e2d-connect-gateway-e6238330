@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle, AlertCircle, Users, FileText, Send, Lock, AlertTriangle, Wallet, Receipt } from 'lucide-react';
+import { CheckCircle, AlertCircle, Users, FileText, Send, Lock, AlertTriangle, Wallet, Receipt, Gift } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -115,6 +115,20 @@ export default function ClotureReunionModal({
     enabled: open
   });
 
+  // Récupérer les bénéficiaires de la réunion
+  const { data: beneficiairesReunion } = useQuery({
+    queryKey: ['beneficiaires-reunion-cloture', reunionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reunion_beneficiaires')
+        .select('*, membres:membre_id(nom, prenom)')
+        .eq('reunion_id', reunionId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: open
+  });
+
   // Récupérer les validations Huile & Savon
   const { data: huileSavonData } = useQuery({
     queryKey: ['huile-savon-cloture', reunionId],
@@ -151,6 +165,10 @@ export default function ClotureReunionModal({
   // Calculer le total des cotisations collectées
   const totalCotisations = cotisationsReunion?.reduce((sum, c) => sum + c.montant, 0) || 0;
   const nbCotisations = cotisationsReunion?.length || 0;
+
+  // Bénéficiaires impayés
+  const beneficiairesImpayes = beneficiairesReunion?.filter((b: any) => b.statut !== 'paye') || [];
+  const totalBeneficiairesImpayes = beneficiairesImpayes.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0);
 
   // Calculer les membres non marqués (qui n'ont pas d'enregistrement de présence)
   const membresNonMarques = membresE2D?.filter(
@@ -289,6 +307,47 @@ export default function ClotureReunionModal({
       const totalMembresCalcul = presentsNoms.length + excusesNoms.length + absentsNonExcusesNoms.length;
       const tauxPresenceEmail = totalMembresCalcul > 0 ? Math.round((presentsNoms.length / totalMembresCalcul) * 100) : 0;
 
+      // Récupérer les données financières pour l'email
+      const { data: epargnesReunion } = await supabase
+        .from('epargnes')
+        .select('montant')
+        .eq('reunion_id', reunionId);
+      
+      const { data: sanctionsReunion } = await supabase
+        .from('reunions_sanctions')
+        .select('montant_amende')
+        .eq('reunion_id', reunionId);
+
+      const { data: beneficiairesData } = await supabase
+        .from('reunion_beneficiaires')
+        .select('*, membres:membre_id(nom, prenom)')
+        .eq('reunion_id', reunionId);
+
+      // Construire le résumé financier
+      const financials = {
+        cotisations: { 
+          count: nbCotisations, 
+          total: totalCotisations 
+        },
+        epargnes: { 
+          count: epargnesReunion?.length || 0, 
+          total: epargnesReunion?.reduce((sum, e) => sum + (e.montant || 0), 0) || 0 
+        },
+        sanctions: { 
+          count: sanctionsReunion?.length || 0, 
+          total: sanctionsReunion?.reduce((sum, s) => sum + (s.montant_amende || 0), 0) || 0 
+        },
+        beneficiaires: beneficiairesData && beneficiairesData.length > 0 ? {
+          count: beneficiairesData.length,
+          total: beneficiairesData.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0),
+          details: beneficiairesData.map((b: any) => ({
+            nom: `${b.membres?.prenom} ${b.membres?.nom}`,
+            montant: b.montant_final || 0,
+            statut: b.statut
+          }))
+        } : undefined
+      };
+
       const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
         body: {
           reunionId,
@@ -302,7 +361,8 @@ export default function ClotureReunionModal({
             absentsNonExcuses: absentsNonExcusesNoms,
             retards: retardsNoms,
             tauxPresence: tauxPresenceEmail
-          }
+          },
+          financials
         }
       });
 
@@ -472,6 +532,22 @@ export default function ClotureReunionModal({
                   </div>
                 </div>
               )}
+              {beneficiairesReunion && beneficiairesReunion.length > 0 && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Gift className="h-4 w-4 text-primary" />
+                    <span className="text-sm">Bénéficiaires du mois</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-primary">
+                      {beneficiairesReunion.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0).toLocaleString()} FCFA
+                    </span>
+                    <span className="text-xs text-muted-foreground ml-1">
+                      ({beneficiairesReunion.filter((b: any) => b.statut === 'paye').length}/{beneficiairesReunion.length} payé)
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className="pt-2 border-t text-xs text-muted-foreground flex items-center gap-1">
                 <CheckCircle className="h-3 w-3 text-green-500" />
                 Ces montants seront synchronisés automatiquement avec la caisse
@@ -494,6 +570,28 @@ export default function ClotureReunionModal({
                     <div className="mt-2 text-xs">
                       {membresNonMarques.slice(0, 5).map(m => m.prenom + ' ' + m.nom).join(', ')}
                       {membresNonMarques.length > 5 && ` et ${membresNonMarques.length - 5} autre(s)...`}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Avertissement bénéficiaires impayés */}
+          {beneficiairesImpayes.length > 0 && (
+            <Card className="border-primary/50 bg-primary/5">
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-2">
+                  <Gift className="h-5 w-5 text-primary mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium mb-1">{beneficiairesImpayes.length} bénéficiaire(s) non payé(s)</p>
+                    <p className="text-muted-foreground">
+                      Montant total impayé: <strong>{totalBeneficiairesImpayes.toLocaleString()} FCFA</strong>
+                    </p>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      {beneficiairesImpayes.map((b: any) => 
+                        `${b.membres?.prenom} ${b.membres?.nom}`
+                      ).join(', ')}
                     </div>
                   </div>
                 </div>

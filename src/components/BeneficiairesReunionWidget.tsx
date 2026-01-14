@@ -186,68 +186,86 @@ export default function BeneficiairesReunionWidget({
           {/* Liste des bénéficiaires assignés */}
           {beneficiaires.length > 0 ? (
             <div className="space-y-3">
-              {beneficiaires.map((benef: any) => (
-                <div
-                  key={benef.id}
-                  className={`p-4 rounded-lg border ${
-                    benef.statut === 'paye' 
-                      ? 'bg-success/10 border-success/30' 
-                      : 'bg-muted/50 border-border'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <p className="font-semibold">
-                        {benef.membres?.nom} {benef.membres?.prenom}
-                      </p>
-                      <div className="text-sm space-y-1">
-                        <p>
-                          <span className="text-muted-foreground">Montant brut:</span>{' '}
-                          {formatFCFA(benef.montant_brut || benef.montant_benefice)}
+              {beneficiaires.map((benef: any) => {
+                // Calculer le délai depuis l'assignation
+                const joursDepuisAssignation = benef.created_at 
+                  ? Math.floor((Date.now() - new Date(benef.created_at).getTime()) / (1000 * 60 * 60 * 24))
+                  : 0;
+                const isOverdue = benef.statut !== 'paye' && joursDepuisAssignation > 7;
+                
+                return (
+                  <div
+                    key={benef.id}
+                    className={`p-4 rounded-lg border ${
+                      benef.statut === 'paye' 
+                        ? 'bg-success/10 border-success/30' 
+                        : isOverdue
+                          ? 'bg-destructive/10 border-destructive/30'
+                          : 'bg-muted/50 border-border'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <p className="font-semibold">
+                          {benef.membres?.nom} {benef.membres?.prenom}
                         </p>
-                        {benef.deductions && Object.keys(benef.deductions).length > 0 && (
-                          <p className="text-destructive">
-                            <span className="text-muted-foreground">Déductions:</span>{' '}
-                            -{formatFCFA(Object.values(benef.deductions as Record<string, number>).reduce((a, b) => a + b, 0))}
+                        <div className="text-sm space-y-1">
+                          <p>
+                            <span className="text-muted-foreground">Montant brut:</span>{' '}
+                            {formatFCFA(benef.montant_brut || benef.montant_benefice)}
                           </p>
+                          {benef.deductions && Object.keys(benef.deductions).length > 0 && (
+                            <p className="text-destructive">
+                              <span className="text-muted-foreground">Déductions:</span>{' '}
+                              -{formatFCFA(Object.values(benef.deductions as Record<string, number>).reduce((a, b) => a + b, 0))}
+                            </p>
+                          )}
+                          <p className="font-semibold text-primary">
+                            <span className="text-muted-foreground">Montant net:</span>{' '}
+                            {formatFCFA(benef.montant_final || benef.montant_benefice)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <Badge 
+                          variant={benef.statut === 'paye' ? 'default' : isOverdue ? 'destructive' : 'secondary'}
+                          className={benef.statut === 'paye' ? 'bg-success' : ''}
+                        >
+                          {benef.statut === 'paye' ? (
+                            <><Check className="w-3 h-3 mr-1" />Payé</>
+                          ) : benef.statut === 'partiel' ? (
+                            'Partiel'
+                          ) : isOverdue ? (
+                            <><AlertCircle className="w-3 h-3 mr-1" />En retard</>
+                          ) : (
+                            'Impayé'
+                          )}
+                        </Badge>
+                        {benef.statut !== 'paye' && !isReadOnly && (
+                          <Button
+                            size="sm"
+                            onClick={() => openPayDialog(benef.id)}
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            Marquer payé
+                          </Button>
                         )}
-                        <p className="font-semibold text-primary">
-                          <span className="text-muted-foreground">Montant net:</span>{' '}
-                          {formatFCFA(benef.montant_final || benef.montant_benefice)}
-                        </p>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <Badge 
-                        variant={benef.statut === 'paye' ? 'default' : 'secondary'}
-                        className={benef.statut === 'paye' ? 'bg-success' : ''}
-                      >
-                        {benef.statut === 'paye' ? (
-                          <><Check className="w-3 h-3 mr-1" />Payé</>
-                        ) : benef.statut === 'partiel' ? (
-                          'Partiel'
-                        ) : (
-                          'Impayé'
-                        )}
-                      </Badge>
-                      {benef.statut !== 'paye' && !isReadOnly && (
-                        <Button
-                          size="sm"
-                          onClick={() => openPayDialog(benef.id)}
-                        >
-                          <Check className="w-4 h-4 mr-1" />
-                          Marquer payé
-                        </Button>
-                      )}
-                    </div>
+                    {benef.date_paiement && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Payé le {new Date(benef.date_paiement).toLocaleDateString('fr-FR')}
+                        {benef.notes && ` - ${benef.notes}`}
+                      </p>
+                    )}
+                    {isOverdue && !benef.date_paiement && (
+                      <p className="text-xs text-destructive mt-2">
+                        ⚠️ En attente depuis {joursDepuisAssignation} jours
+                      </p>
+                    )}
                   </div>
-                  {benef.date_paiement && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Payé le {new Date(benef.date_paiement).toLocaleDateString('fr-FR')}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-4 text-muted-foreground">
