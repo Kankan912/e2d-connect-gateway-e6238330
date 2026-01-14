@@ -1,6 +1,7 @@
 import { Shield, Plus } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,7 @@ type SanctionFormData = z.infer<typeof sanctionSchema>;
 export default function SportSanctions() {
   const [showForm, setShowForm] = useState(false);
   const queryClient = useQueryClient();
+  const { hasPermission } = usePermissions();
 
   const { data: sanctions, isLoading } = useQuery({
     queryKey: ["sanctions"],
@@ -125,10 +127,12 @@ export default function SportSanctions() {
           <Shield className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold">Sanctions Sportives</h1>
         </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvelle Sanction
-        </Button>
+        {hasPermission('sanctions', 'create') && (
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvelle Sanction
+          </Button>
+        )}
       </div>
 
       <Card>

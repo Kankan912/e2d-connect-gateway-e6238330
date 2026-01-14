@@ -1,9 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export const usePermissions = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: permissions, isLoading } = useQuery({
     queryKey: ['user-permissions', user?.id],
@@ -50,11 +52,30 @@ export const usePermissions = () => {
     return permissions.some(p => p.resource === resource && p.granted);
   };
 
+  /**
+   * Vérifie la permission ET affiche un toast d'erreur si refusé
+   * @param resource - La ressource à vérifier (ex: 'membres', 'prets')
+   * @param permission - La permission à vérifier (ex: 'create', 'update', 'delete')
+   * @returns boolean - true si autorisé, false sinon
+   */
+  const enforcePermission = (resource: string, permission: string): boolean => {
+    const allowed = hasPermission(resource, permission);
+    if (!allowed) {
+      toast({
+        title: "Accès refusé",
+        description: `Vous n'avez pas la permission "${permission}" sur la ressource "${resource}"`,
+        variant: "destructive"
+      });
+    }
+    return allowed;
+  };
+
   return { 
     permissions, 
     hasPermission, 
     hasAnyPermission, 
     canAccessResource,
+    enforcePermission,
     isLoading 
   };
 };

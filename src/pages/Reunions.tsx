@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import CompteRenduActions from "@/components/CompteRenduActions";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -515,6 +516,7 @@ export default function Reunions() {
   const [selectedMembreNom, setSelectedMembreNom] = useState<string>("");
   const [showHistoriqueMembre, setShowHistoriqueMembre] = useState(false);
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
 
   // Charger tous les membres une fois pour éviter N+1 queries
   const { members } = useMembers();
@@ -712,13 +714,15 @@ export default function Reunions() {
             subtitle="Planification et suivi des réunions"
           />
         </div>
-        <Button 
-          className="bg-gradient-to-r from-primary to-secondary"
-          onClick={() => setShowForm(true)}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nouvelle réunion
-        </Button>
+        {hasPermission('reunions', 'create') && (
+          <Button 
+            className="bg-gradient-to-r from-primary to-secondary"
+            onClick={() => setShowForm(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nouvelle réunion
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}

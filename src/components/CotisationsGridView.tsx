@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +58,7 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
   const [cellModalOpen, setCellModalOpen] = useState(false);
   const [etatsModalOpen, setEtatsModalOpen] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ membre: Membre; type: CotisationType } | null>(null);
+  const { hasPermission } = usePermissions();
 
   // Fetch types de cotisations
   const { data: types, isLoading: loadingTypes } = useQuery({
@@ -246,7 +248,8 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
   }
 
   // Vérifier si un exercice est sélectionné - condition obligatoire pour la saisie
-  const canEdit = isEditable && !!exerciceId;
+  // Et vérifier la permission de création/modification
+  const canEdit = isEditable && !!exerciceId && hasPermission('cotisations', 'create');
 
   return (
     <>
