@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Plus, Edit, Trash2, Search, Download, Mail, Phone, CheckCircle, Clock, UserPlus } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Search, Download, Mail, Phone, CheckCircle, Clock, UserPlus, Ban, UserX } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useMembers, Member } from "@/hooks/useMembers";
 import { useMemberCotisationStats } from "@/hooks/useMemberDetails";
 import BackButton from "@/components/BackButton";
@@ -66,8 +72,59 @@ export default function MembresAdmin() {
   const [selectedMemberForDetail, setSelectedMemberForDetail] = useState<Member | null>(null);
   const [activeTab, setActiveTab] = useState("membres");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [statusChangeDialog, setStatusChangeDialog] = useState<{ memberId: string; newStatus: string; memberName: string } | null>(null);
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
+
+  // Handle status change with confirmation
+  const handleStatusChange = async (memberId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('membres')
+        .update({ statut: newStatus })
+        .eq('id', memberId);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Statut modifié",
+        description: `Le statut du membre a été changé en "${newStatus}".`
+      });
+      
+      // Invalidate and refetch
+      updateMember.mutate({ id: memberId, data: { statut: newStatus } });
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de modifier le statut",
+        variant: "destructive"
+      });
+    } finally {
+      setStatusChangeDialog(null);
+    }
+  };
+
+  const openStatusChangeDialog = (membre: Member, newStatus: string) => {
+    setStatusChangeDialog({
+      memberId: membre.id,
+      newStatus,
+      memberName: `${membre.prenom} ${membre.nom}`
+    });
+  };
+
+  // Get status badge variant and icon
+  const getStatusBadge = (statut: string | null) => {
+    switch (statut) {
+      case 'actif':
+        return { variant: 'default' as const, icon: CheckCircle, className: 'bg-green-100 text-green-800 hover:bg-green-100' };
+      case 'inactif':
+        return { variant: 'secondary' as const, icon: Clock, className: 'bg-orange-100 text-orange-800' };
+      case 'suspendu':
+        return { variant: 'destructive' as const, icon: Ban, className: 'bg-red-100 text-red-800' };
+      default:
+        return { variant: 'secondary' as const, icon: Clock, className: '' };
+    }
+  };
 
   const filteredMembres = membres.filter((membre) =>
     `${membre.nom} ${membre.prenom}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -315,11 +372,57 @@ export default function MembresAdmin() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <Badge variant={membre.statut === 'actif' ? 'default' : 'secondary'} className="flex items-center gap-1 w-fit">
-                              {membre.statut === 'actif' ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-                              {membre.statut}
-                            </Badge>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            {hasPermission('membres', 'update') ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="p-0 h-auto">
+                                    {(() => {
+                                      const { icon: StatusIcon, className } = getStatusBadge(membre.statut);
+                                      return (
+                                        <Badge variant="outline" className={`flex items-center gap-1 w-fit cursor-pointer ${className}`}>
+                                          <StatusIcon className="h-3 w-3" />
+                                          {membre.statut || 'inconnu'}
+                                        </Badge>
+                                      );
+                                    })()}
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                  <DropdownMenuItem 
+                                    onClick={() => openStatusChangeDialog(membre, 'actif')}
+                                    className="text-green-700"
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Actif
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => openStatusChangeDialog(membre, 'inactif')}
+                                    className="text-orange-700"
+                                  >
+                                    <UserX className="h-4 w-4 mr-2" />
+                                    Inactif
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    onClick={() => openStatusChangeDialog(membre, 'suspendu')}
+                                    className="text-red-700"
+                                  >
+                                    <Ban className="h-4 w-4 mr-2" />
+                                    Suspendu
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            ) : (
+                              (() => {
+                                const { icon: StatusIcon, className } = getStatusBadge(membre.statut);
+                                return (
+                                  <Badge variant="outline" className={`flex items-center gap-1 w-fit ${className}`}>
+                                    <StatusIcon className="h-3 w-3" />
+                                    {membre.statut || 'inconnu'}
+                                  </Badge>
+                                );
+                              })()
+                            )}
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <MemberCotisationCell membreId={membre.id} />
@@ -403,6 +506,47 @@ export default function MembresAdmin() {
           <AlertDialogFooter>
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete}>Supprimer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Status change confirmation dialog */}
+      <AlertDialog open={!!statusChangeDialog} onOpenChange={() => setStatusChangeDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer le changement de statut</AlertDialogTitle>
+            <AlertDialogDescription>
+              {statusChangeDialog?.newStatus === 'inactif' && (
+                <span className="text-orange-700">
+                  <strong>⚠️ Attention :</strong> En passant {statusChangeDialog?.memberName} en <strong>inactif</strong>, 
+                  ce membre ne pourra plus se connecter à l'application.
+                </span>
+              )}
+              {statusChangeDialog?.newStatus === 'suspendu' && (
+                <span className="text-red-700">
+                  <strong>⚠️ Attention :</strong> En <strong>suspendant</strong> {statusChangeDialog?.memberName}, 
+                  ce membre sera immédiatement déconnecté et ne pourra plus accéder à l'application jusqu'à réactivation.
+                </span>
+              )}
+              {statusChangeDialog?.newStatus === 'actif' && (
+                <span className="text-green-700">
+                  {statusChangeDialog?.memberName} pourra à nouveau se connecter à l'application.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => statusChangeDialog && handleStatusChange(statusChangeDialog.memberId, statusChangeDialog.newStatus)}
+              className={
+                statusChangeDialog?.newStatus === 'suspendu' ? 'bg-red-600 hover:bg-red-700' :
+                statusChangeDialog?.newStatus === 'inactif' ? 'bg-orange-600 hover:bg-orange-700' :
+                'bg-green-600 hover:bg-green-700'
+              }
+            >
+              Confirmer
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

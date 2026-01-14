@@ -9,8 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Link2, Unlink, Mail, Search, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { UserPlus, Link2, Unlink, Mail, Search, Loader2, AlertCircle, CheckCircle, RefreshCw, Ban, Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Member {
   id: string;
@@ -28,6 +29,28 @@ interface Profile {
   prenom: string;
   telephone: string | null;
 }
+
+// Helper function to check data desynchronization
+const isDesynchronized = (member: Member, profile: Profile | null): boolean => {
+  if (!profile) return false;
+  return member.nom !== profile.nom || 
+         member.prenom !== profile.prenom || 
+         member.telephone !== profile.telephone;
+};
+
+// Get status badge styling
+const getStatusStyle = (statut: string | null) => {
+  switch (statut) {
+    case 'actif':
+      return { className: 'bg-green-100 text-green-800', icon: CheckCircle };
+    case 'inactif':
+      return { className: 'bg-orange-100 text-orange-800', icon: Clock };
+    case 'suspendu':
+      return { className: 'bg-red-100 text-red-800', icon: Ban };
+    default:
+      return { className: 'bg-gray-100 text-gray-800', icon: AlertCircle };
+  }
+};
 
 export default function UserMemberLinkManager() {
   const { toast } = useToast();
@@ -74,6 +97,49 @@ export default function UserMemberLinkManager() {
       return (profiles || []).filter(p => !linkedUserIds.includes(p.id)) as Profile[];
     }
   });
+
+  // Fetch all profiles for sync check
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ['all-profiles'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, nom, prenom, telephone');
+      if (error) throw error;
+      return data as Profile[];
+    }
+  });
+
+  // Sync member data to profile
+  const syncMemberMutation = useMutation({
+    mutationFn: async (member: Member) => {
+      if (!member.user_id) throw new Error('Membre non lié à un compte');
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          nom: member.nom, 
+          prenom: member.prenom, 
+          telephone: member.telephone 
+        })
+        .eq('id', member.user_id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-profiles'] });
+      toast({ title: "Synchronisé", description: "Les données du profil ont été mises à jour." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    }
+  });
+
+  // Get profile for a member
+  const getProfileForMember = (member: Member): Profile | null => {
+    if (!member.user_id) return null;
+    return allProfiles.find(p => p.id === member.user_id) || null;
+  };
 
   // Link member to existing profile
   const linkMemberMutation = useMutation({
@@ -262,6 +328,7 @@ export default function UserMemberLinkManager() {
                 <TableRow>
                   <TableHead>Membre</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Statut membre</TableHead>
                   <TableHead>Statut compte</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -269,20 +336,47 @@ export default function UserMemberLinkManager() {
               <TableBody>
                 {filteredMembers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       Aucun membre trouvé
                     </TableCell>
                   </TableRow>
-                ) : filteredMembers.map((member) => (
+                ) : filteredMembers.map((member) => {
+                  const profile = getProfileForMember(member);
+                  const desync = isDesynchronized(member, profile);
+                  const { className: statusClass, icon: StatusIcon } = getStatusStyle(member.statut);
+                  
+                  return (
                   <TableRow key={member.id}>
                     <TableCell className="font-medium">
-                      {member.nom} {member.prenom}
+                      <div className="flex items-center gap-2">
+                        {member.nom} {member.prenom}
+                        {desync && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Badge variant="outline" className="bg-yellow-100 text-yellow-800 text-xs">
+                                  <RefreshCw className="h-3 w-3" />
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Données désynchronisées avec le profil</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Mail className="h-3 w-3" />
                         {member.email || "Non renseigné"}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`flex items-center gap-1 w-fit ${statusClass}`}>
+                        <StatusIcon className="h-3 w-3" />
+                        {member.statut || 'inconnu'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {member.user_id ? (
@@ -299,17 +393,44 @@ export default function UserMemberLinkManager() {
                     </TableCell>
                     <TableCell className="text-right">
                       {member.user_id ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => unlinkMemberMutation.mutate(member.id)}
-                        >
-                          <Unlink className="h-4 w-4 mr-1" />
-                          Délier
-                        </Button>
+                        <div className="flex gap-1 justify-end">
+                          {desync && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => syncMemberMutation.mutate(member)}
+                              disabled={syncMemberMutation.isPending}
+                            >
+                              <RefreshCw className={`h-4 w-4 mr-1 ${syncMemberMutation.isPending ? 'animate-spin' : ''}`} />
+                              Sync
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => unlinkMemberMutation.mutate(member.id)}
+                          >
+                            <Unlink className="h-4 w-4 mr-1" />
+                            Délier
+                          </Button>
+                        </div>
                       ) : (
                         <div className="flex gap-1 justify-end">
+                          {member.statut !== 'actif' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <Badge variant="outline" className="bg-orange-100 text-orange-700 text-xs">
+                                    <AlertCircle className="h-3 w-3" />
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Ce membre est {member.statut}. Le compte ne pourra pas se connecter.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
@@ -329,7 +450,7 @@ export default function UserMemberLinkManager() {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                )})}
               </TableBody>
             </Table>
           )}
