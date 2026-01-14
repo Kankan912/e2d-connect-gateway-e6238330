@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Edit, TrendingUp, PiggyBank, DollarSign, Calculator, Download, Filter, X, Search, Trash2 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,7 @@ export default function Epargnes() {
   const createEpargne = useCreateEpargne();
   const updateEpargne = useUpdateEpargne();
   const deleteEpargne = useDeleteEpargne();
+  const { hasPermission } = usePermissions();
   
   const [membres, setMembres] = useState<Membre[]>([]);
   const [reunions, setReunions] = useState<Reunion[]>([]);
@@ -504,17 +506,18 @@ export default function Epargnes() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button onClick={() => {
-              setSelectedEpargne(null);
-              setFormData({ membre_id: "", montant: "", reunion_id: "", exercice_id: "", notes: "" });
-            }}>
-              <Plus className="w-4 h-4 mr-2" />
-              Nouvelle Épargne
-            </Button>
-          </DialogTrigger>
+      {hasPermission('epargnes', 'create') && (
+        <div className="flex justify-end">
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button onClick={() => {
+                setSelectedEpargne(null);
+                setFormData({ membre_id: "", montant: "", reunion_id: "", exercice_id: "", notes: "" });
+              }}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nouvelle Épargne
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>
@@ -621,6 +624,7 @@ export default function Epargnes() {
           </DialogContent>
         </Dialog>
       </div>
+    )}
 
       {/* Statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -730,19 +734,23 @@ export default function Epargnes() {
                 )}
                 
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" size="sm" onClick={() => openEditDialog(epargne)}>
-                    <Edit className="w-4 h-4 mr-1" />
-                    Modifier
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleDelete(epargne.id)}
-                    className="text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    Supprimer
-                  </Button>
+                  {hasPermission('epargnes', 'update') && (
+                    <Button variant="outline" size="sm" onClick={() => openEditDialog(epargne)}>
+                      <Edit className="w-4 h-4 mr-1" />
+                      Modifier
+                    </Button>
+                  )}
+                  {hasPermission('epargnes', 'delete') && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleDelete(epargne.id)}
+                      className="text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Supprimer
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

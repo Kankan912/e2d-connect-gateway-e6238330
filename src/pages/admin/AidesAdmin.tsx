@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Heart, Plus, Edit, Trash2, Settings, HandHeart, Calendar } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -51,6 +52,8 @@ export default function AidesAdmin() {
   const [newTypeDescription, setNewTypeDescription] = useState("");
   const [newTypeMontant, setNewTypeMontant] = useState("");
   const [newTypeMode, setNewTypeMode] = useState("equitable");
+  
+  const { hasPermission } = usePermissions();
 
   const { data: aides, isLoading } = useAides();
   const { data: typesAide } = useAidesTypes();
@@ -134,10 +137,12 @@ export default function AidesAdmin() {
           <HandHeart className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold">Gestion des Aides</h1>
         </div>
-        <Button onClick={() => { setSelectedAide(null); setFormOpen(true); }}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvelle Aide
-        </Button>
+        {hasPermission('aides', 'create') && (
+          <Button onClick={() => { setSelectedAide(null); setFormOpen(true); }}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvelle Aide
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -262,20 +267,24 @@ export default function AidesAdmin() {
                         <TableCell>{getStatutBadge(aide.statut)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => { setSelectedAide(aide); setFormOpen(true); }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => { setAideToDelete(aide.id); setDeleteDialogOpen(true); }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {hasPermission('aides', 'update') && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => { setSelectedAide(aide); setFormOpen(true); }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {hasPermission('aides', 'delete') && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => { setAideToDelete(aide.id); setDeleteDialogOpen(true); }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

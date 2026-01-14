@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, Plus, Edit, Trash2, Search, Download, Mail, Phone, CheckCircle, Clock, UserPlus } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,7 @@ export default function MembresAdmin() {
   const [activeTab, setActiveTab] = useState("membres");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
 
   const filteredMembres = membres.filter((membre) =>
     `${membre.nom} ${membre.prenom}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -175,10 +177,12 @@ export default function MembresAdmin() {
             <Download className="w-4 h-4 mr-2" />
             Exporter
           </Button>
-          <Button onClick={handleCreate} className="bg-[#0B6B7C] hover:bg-[#0a5a68]">
-            <Plus className="w-4 h-4 mr-2" />
-            Nouveau membre
-          </Button>
+          {hasPermission('membres', 'create') && (
+            <Button onClick={handleCreate} className="bg-[#0B6B7C] hover:bg-[#0a5a68]">
+              <Plus className="w-4 h-4 mr-2" />
+              Nouveau membre
+            </Button>
+          )}
         </div>
       </div>
 
@@ -345,12 +349,16 @@ export default function MembresAdmin() {
                           </TableCell>
                           <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => handleEdit(membre)}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(membre.id)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              {hasPermission('membres', 'update') && (
+                                <Button size="sm" variant="ghost" onClick={() => handleEdit(membre)}>
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {hasPermission('membres', 'delete') && (
+                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(membre.id)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>

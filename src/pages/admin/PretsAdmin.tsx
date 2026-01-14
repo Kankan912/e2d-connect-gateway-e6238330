@@ -1,6 +1,7 @@
 import { DollarSign, Plus, Edit, Trash2, CreditCard, FileText, RefreshCw, Search, LayoutDashboard, CheckCircle, AlertTriangle, Clock, Banknote, Eye, Settings, Download } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +52,7 @@ export default function PretsAdmin() {
   const [statutFilter, setStatutFilter] = useState<StatutFilter>('tous');
   const [showDashboard, setShowDashboard] = useState(false);
   const queryClient = useQueryClient();
+  const { hasPermission, enforcePermission } = usePermissions();
 
   const { data: prets, isLoading } = useQuery({
     queryKey: ["prets"],
@@ -391,10 +393,12 @@ export default function PretsAdmin() {
             <LayoutDashboard className="h-4 w-4 mr-2" />
             Tableau de Bord
           </Button>
-          <Button onClick={() => { setSelectedPret(null); setFormOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouveau Prêt
-          </Button>
+          {hasPermission('prets', 'create') && (
+            <Button onClick={() => { setSelectedPret(null); setFormOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau Prêt
+            </Button>
+          )}
         </div>
       </div>
 
@@ -725,24 +729,28 @@ export default function PretsAdmin() {
                             </TooltipProvider>
                             
                             {/* Éditer */}
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="h-7 w-7"
-                              onClick={() => { setSelectedPret(pret); setFormOpen(true); }}
-                            >
-                              <Edit className="h-3.5 w-3.5" />
-                            </Button>
+                            {hasPermission('prets', 'update') && (
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-7 w-7"
+                                onClick={() => { setSelectedPret(pret); setFormOpen(true); }}
+                              >
+                                <Edit className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             
                             {/* Supprimer */}
-                            <Button
-                              size="icon"
-                              variant="destructive"
-                              className="h-7 w-7"
-                              onClick={() => { setPretToDelete(pret.id); setDeleteDialogOpen(true); }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {hasPermission('prets', 'delete') && (
+                              <Button
+                                size="icon"
+                                variant="destructive"
+                                className="h-7 w-7"
+                                onClick={() => { setPretToDelete(pret.id); setDeleteDialogOpen(true); }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
