@@ -16,6 +16,13 @@ interface PresenceInfo {
   tauxPresence: number;
 }
 
+interface FinancialSummary {
+  cotisations?: { count: number; total: number };
+  epargnes?: { count: number; total: number };
+  sanctions?: { count: number; total: number };
+  beneficiaires?: { count: number; total: number; details?: Array<{ nom: string; montant: number; statut: string }> };
+}
+
 interface SendReunionCRRequest {
   reunionId: string;
   destinataires: Array<{ email: string; nom: string; prenom: string }>;
@@ -24,6 +31,7 @@ interface SendReunionCRRequest {
   dateReunion: string;
   lieu?: string;
   presences?: PresenceInfo;
+  financials?: FinancialSummary;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -33,7 +41,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, presences }: SendReunionCRRequest = await req.json();
+    const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, presences, financials }: SendReunionCRRequest = await req.json();
 
     console.log(`Sending reunion CR for reunion ${reunionId} to ${destinataires.length} recipients`);
 
@@ -66,6 +74,59 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
         ` : '';
 
+        // Build financials section HTML if available
+        let financialsHtml = '';
+        if (financials) {
+          const items: string[] = [];
+          
+          if (financials.cotisations && financials.cotisations.count > 0) {
+            items.push(`<div class="financial-item">
+              <span class="label">💰 Cotisations collectées:</span>
+              <span class="value">${financials.cotisations.total.toLocaleString('fr-FR')} FCFA (${financials.cotisations.count} paiement(s))</span>
+            </div>`);
+          }
+          
+          if (financials.epargnes && financials.epargnes.count > 0) {
+            items.push(`<div class="financial-item">
+              <span class="label">🏦 Épargnes déposées:</span>
+              <span class="value">${financials.epargnes.total.toLocaleString('fr-FR')} FCFA (${financials.epargnes.count} dépôt(s))</span>
+            </div>`);
+          }
+          
+          if (financials.sanctions && financials.sanctions.count > 0) {
+            items.push(`<div class="financial-item">
+              <span class="label">⚠️ Sanctions:</span>
+              <span class="value">${financials.sanctions.total.toLocaleString('fr-FR')} FCFA (${financials.sanctions.count} sanction(s))</span>
+            </div>`);
+          }
+          
+          if (financials.beneficiaires && financials.beneficiaires.count > 0) {
+            let benefHtml = `<div class="financial-item">
+              <span class="label">🎁 Bénéficiaires du mois:</span>
+              <span class="value">${financials.beneficiaires.total.toLocaleString('fr-FR')} FCFA</span>
+            </div>`;
+            
+            if (financials.beneficiaires.details && financials.beneficiaires.details.length > 0) {
+              benefHtml += `<ul style="margin: 5px 0 0 20px; padding: 0;">`;
+              for (const b of financials.beneficiaires.details) {
+                const statutIcon = b.statut === 'paye' ? '✅' : '⏳';
+                benefHtml += `<li>${statutIcon} ${b.nom}: ${b.montant.toLocaleString('fr-FR')} FCFA</li>`;
+              }
+              benefHtml += `</ul>`;
+            }
+            items.push(benefHtml);
+          }
+          
+          if (items.length > 0) {
+            financialsHtml = `
+              <div class="financials-section">
+                <h2>Résumé Financier</h2>
+                ${items.join('')}
+              </div>
+            `;
+          }
+        }
+
         const htmlContent = `
           <!DOCTYPE html>
           <html>
@@ -81,6 +142,12 @@ const handler = async (req: Request): Promise<Response> => {
               .info-box { background: #e6f4f6; border-left: 4px solid #0B6B7C; padding: 15px; margin: 15px 0; }
               .presences-section { background: #f9fafb; padding: 15px; border-radius: 8px; margin: 15px 0; }
               .presences-section h2 { margin-top: 0; }
+              .financials-section { background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #22c55e; }
+              .financials-section h2 { margin-top: 0; color: #166534; }
+              .financial-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+              .financial-item:last-child { border-bottom: none; }
+              .financial-item .label { font-weight: 500; }
+              .financial-item .value { font-weight: bold; color: #0B6B7C; }
             </style>
           </head>
           <body>
@@ -96,6 +163,8 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               
               ${presencesHtml}
+              
+              ${financialsHtml}
               
               <h2>${sujet}</h2>
               

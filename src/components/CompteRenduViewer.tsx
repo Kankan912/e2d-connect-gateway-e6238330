@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Edit, Download, FileText, Calendar, Users, Clock, Loader2, AlertTriangle, Coins, PiggyBank, HandHeart } from 'lucide-react';
+import { Edit, Download, FileText, Calendar, Users, Clock, Loader2, AlertTriangle, Coins, PiggyBank, HandHeart, Gift } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -127,6 +127,21 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
         .from('aides')
         .select('*, beneficiaire:beneficiaire_id(nom, prenom), type:type_aide_id(nom)')
         .eq('date_allocation', reunion.date_reunion);
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!reunion?.id
+  });
+
+  // Récupérer les bénéficiaires de la réunion
+  const { data: beneficiairesReunion } = useQuery({
+    queryKey: ['reunion-beneficiaires-cr', reunion?.id],
+    queryFn: async () => {
+      if (!reunion?.id) return [];
+      const { data, error } = await supabase
+        .from('reunion_beneficiaires')
+        .select('*, membres:membre_id(nom, prenom)')
+        .eq('reunion_id', reunion.id);
       if (error) throw error;
       return data;
     },
@@ -385,6 +400,29 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
         yPosition += 5;
       }
 
+      // === SECTION BÉNÉFICIAIRES ===
+      if (beneficiairesReunion && beneficiairesReunion.length > 0) {
+        checkNewPage();
+        const totalBeneficiaires = beneficiairesReunion.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(`BÉNÉFICIAIRES DU MOIS (${beneficiairesReunion.length}) - Total: ${totalBeneficiaires.toLocaleString()} FCFA`, margin, yPosition);
+        yPosition += 8;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        beneficiairesReunion.forEach((b: any) => {
+          checkNewPage(10);
+          const statut = b.statut === 'paye' ? '✓' : '○';
+          const details = b.deductions && Object.keys(b.deductions).length > 0
+            ? ` (Brut: ${(b.montant_brut || 0).toLocaleString()}, Déductions: -${Object.values(b.deductions as Record<string, number>).reduce((a, c) => a + c, 0).toLocaleString()})`
+            : '';
+          doc.text(`${statut} ${b.membres?.prenom} ${b.membres?.nom}: ${(b.montant_final || 0).toLocaleString()} FCFA${details}`, margin + 5, yPosition);
+          yPosition += 5;
+        });
+        yPosition += 5;
+      }
+
       // Pied de page avec logo E2D
       addE2DFooter(doc);
 
@@ -416,6 +454,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
   const cotisationsCount = cotisationsReunion?.length || 0;
   const epargnesCount = epargnesReunion?.length || 0;
   const aidesCount = aidesReunion?.length || 0;
+  const beneficiairesCount = beneficiairesReunion?.length || 0;
   
   const totalMembresPresence = presentsCount + excusesCount + absentsNonExcusesCount;
   const tauxPresenceCalcule = totalMembresPresence > 0 ? Math.round((presentsCount / totalMembresPresence) * 100) : 0;
@@ -424,6 +463,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
   const totalEpargnes = epargnesReunion?.reduce((sum: number, e: any) => sum + (e.montant || 0), 0) || 0;
   const totalSanctions = sanctionsReunion?.reduce((sum: number, s: any) => sum + (s.montant_amende || 0), 0) || 0;
   const totalAides = aidesReunion?.reduce((sum: number, a: any) => sum + (a.montant || 0), 0) || 0;
+  const totalBeneficiaires = beneficiairesReunion?.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0) || 0;
 
   if (!reunion) {
     return null;
@@ -707,6 +747,41 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{a.type?.nom || 'Aide'}</Badge>
                           <span className="font-medium">{a.montant?.toLocaleString()} FCFA</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Bénéficiaires du mois */}
+            {beneficiairesCount > 0 && (
+              <Card className="border-primary/50">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Gift className="h-4 w-4 text-primary" />
+                    Bénéficiaires du Mois ({beneficiairesCount})
+                    <Badge className="ml-auto bg-primary">{totalBeneficiaires.toLocaleString()} FCFA</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {beneficiairesReunion?.map((b: any) => (
+                      <div key={b.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
+                        <div className="flex items-center gap-2">
+                          <span>{b.membres?.prenom} {b.membres?.nom}</span>
+                          {b.deductions && Object.keys(b.deductions).length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              (Déductions: -{Object.values(b.deductions as Record<string, number>).reduce((a, c) => a + c, 0).toLocaleString()})
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={b.statut === 'paye' ? 'default' : 'outline'}>
+                            {b.statut === 'paye' ? 'Payé' : 'Impayé'}
+                          </Badge>
+                          <span className="font-medium">{(b.montant_final || 0).toLocaleString()} FCFA</span>
                         </div>
                       </div>
                     ))}
