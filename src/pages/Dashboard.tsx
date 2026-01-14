@@ -10,6 +10,11 @@ import DashboardHome from "./dashboard/DashboardHome";
 import Profile from "./dashboard/Profile";
 import MyDonations from "./dashboard/MyDonations";
 import MyCotisations from "./dashboard/MyCotisations";
+const MyEpargnes = lazy(() => import("./dashboard/MyEpargnes"));
+const MySanctions = lazy(() => import("./dashboard/MySanctions"));
+const MyPrets = lazy(() => import("./dashboard/MyPrets"));
+const MyPresences = lazy(() => import("./dashboard/MyPresences"));
+const MyAides = lazy(() => import("./dashboard/MyAides"));
 
 // Admin Pages
 import DonationsAdmin from "./admin/DonationsAdmin";
@@ -86,6 +91,11 @@ const Dashboard = () => {
         <Route path="/" element={<DashboardHome />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/my-donations" element={<MyDonations />} />
+        <Route path="/my-epargnes" element={<Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}><MyEpargnes /></Suspense>} />
+        <Route path="/my-sanctions" element={<Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}><MySanctions /></Suspense>} />
+        <Route path="/my-prets" element={<Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}><MyPrets /></Suspense>} />
+        <Route path="/my-presences" element={<Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}><MyPresences /></Suspense>} />
+        <Route path="/my-aides" element={<Suspense fallback={<div className="flex items-center justify-center p-8"><Loader2 className="w-8 h-8 animate-spin" /></div>}><MyAides /></Suspense>} />
         <Route path="/my-cotisations" element={<MyCotisations />} />
         
         {/* Admin Routes - Finance */}

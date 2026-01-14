@@ -1,35 +1,26 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePersonalSummary } from "@/hooks/usePersonalData";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Heart, Receipt, Settings } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { User, Heart, Receipt, Settings, PiggyBank, AlertTriangle, Wallet, Calendar, HandHeart } from "lucide-react";
 
 const DashboardHome = () => {
   const navigate = useNavigate();
   const { profile, userRole } = useAuth();
+  const { membre, summary, isLoading } = usePersonalSummary();
 
   const quickActions = [
-    {
-      title: "Mon Profil",
-      description: "Gérer mes informations personnelles",
-      icon: User,
-      href: "/dashboard/profile",
-      color: "text-blue-500",
-    },
-    {
-      title: "Mes Dons",
-      description: "Consulter l'historique de mes dons",
-      icon: Heart,
-      href: "/dashboard/my-donations",
-      color: "text-red-500",
-    },
-    {
-      title: "Mes Cotisations",
-      description: "Voir mes cotisations et paiements",
-      icon: Receipt,
-      href: "/dashboard/my-cotisations",
-      color: "text-green-500",
-    },
+    { title: "Mon Profil", description: "Informations personnelles", icon: User, href: "/dashboard/profile", color: "text-blue-500" },
+    { title: "Mes Dons", description: "Historique des dons", icon: Heart, href: "/dashboard/my-donations", color: "text-red-500" },
+    { title: "Mes Cotisations", description: "Cotisations et paiements", icon: Receipt, href: "/dashboard/my-cotisations", color: "text-green-500" },
+    { title: "Mes Épargnes", description: "Dépôts d'épargne", icon: PiggyBank, href: "/dashboard/my-epargnes", color: "text-emerald-500" },
+    { title: "Mes Présences", description: "Historique des réunions", icon: Calendar, href: "/dashboard/my-presences", color: "text-purple-500" },
+    { title: "Mes Sanctions", description: "Sanctions et pénalités", icon: AlertTriangle, href: "/dashboard/my-sanctions", color: "text-orange-500" },
+    { title: "Mes Prêts", description: "Prêts et remboursements", icon: Wallet, href: "/dashboard/my-prets", color: "text-cyan-500" },
+    { title: "Mes Aides", description: "Aides reçues", icon: HandHeart, href: "/dashboard/my-aides", color: "text-pink-500" },
   ];
 
   const isAdmin = userRole === "administrateur";
@@ -41,78 +32,122 @@ const DashboardHome = () => {
         <h1 className="text-3xl font-bold text-foreground">
           Bienvenue, {profile?.prenom} {profile?.nom} !
         </h1>
-        <p className="text-muted-foreground mt-2">
-          Votre tableau de bord E2D Connect
-        </p>
+        <p className="text-muted-foreground mt-2">Votre tableau de bord E2D Connect</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rôle</CardTitle>
-            <Settings className="h-4 w-4 text-muted-foreground" />
+      {/* Résumé Personnel */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <PiggyBank className="h-4 w-4 text-green-500" />
+              Total Épargnes
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            {isLoading ? <Skeleton className="h-8 w-24" /> : (
+              <div className="text-2xl font-bold text-green-600">
+                {summary.totalEpargnes.toLocaleString('fr-FR')} FCFA
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-blue-500" />
+              Taux de Présence
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-16" /> : (
+              <div className="text-2xl font-bold text-blue-600">{summary.tauxPresence}%</div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className={`border-l-4 ${summary.sanctionsImpayees > 0 ? 'border-l-red-500' : 'border-l-gray-300'}`}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertTriangle className={`h-4 w-4 ${summary.sanctionsImpayees > 0 ? 'text-red-500' : ''}`} />
+              Sanctions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-20" /> : (
+              summary.sanctionsImpayees > 0 ? (
+                <div className="text-2xl font-bold text-red-600">
+                  {summary.sanctionsImpayees} impayée(s)
+                </div>
+              ) : (
+                <div className="text-2xl font-bold text-green-600">Aucune</div>
+              )
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-cyan-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-cyan-500" />
+              Prêts en cours
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-16" /> : (
+              <div className="text-2xl font-bold text-cyan-600">{summary.pretsEnCours}</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Statut membre */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Rôle</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold">
               {userRole === 'administrateur' && '👑 Super Administrateur'}
               {userRole === 'tresorier' && '💰 Trésorier'}
               {userRole === 'secretaire_general' && '📝 Secrétaire Général'}
               {userRole === 'responsable_sportif' && '⚽ Responsable Sportif'}
               {userRole === 'censeur' && '⚖️ Censeur'}
               {userRole === 'commissaire_comptes' && '🔍 Commissaire aux Comptes'}
+              {userRole === 'membre' && '👤 Membre'}
               {!userRole && '👤 Membre'}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Votre niveau d'accès actuel
-            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Statut</CardTitle>
-            <User className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Statut Membre</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Actif</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Votre compte est actif
-            </p>
+            {isLoading ? <Skeleton className="h-8 w-20" /> : (
+              <Badge variant={membre?.statut === 'actif' ? 'default' : 'secondary'} className="text-lg px-3 py-1">
+                {membre?.statut === 'actif' ? '✅ Actif' : membre?.statut || 'Non lié'}
+              </Badge>
+            )}
           </CardContent>
         </Card>
-
-        {profile?.telephone && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Contact</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-semibold">{profile.telephone}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Votre numéro de téléphone
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
+      {/* Actions rapides */}
       <div>
         <h2 className="text-2xl font-semibold mb-4">Actions rapides</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action) => (
-            <Card
-              key={action.href}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => navigate(action.href)}
-            >
-              <CardHeader>
+            <Card key={action.href} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate(action.href)}>
+              <CardHeader className="pb-2">
                 <div className="flex items-center gap-3">
-                  <action.icon className={`h-8 w-8 ${action.color}`} />
+                  <action.icon className={`h-6 w-6 ${action.color}`} />
                   <div>
-                    <CardTitle className="text-lg">{action.title}</CardTitle>
-                    <CardDescription className="text-sm">
-                      {action.description}
-                    </CardDescription>
+                    <CardTitle className="text-base">{action.title}</CardTitle>
+                    <CardDescription className="text-xs">{action.description}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -124,29 +159,17 @@ const DashboardHome = () => {
       {hasAdminAccess && (
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader>
-            <CardTitle>
-              {isAdmin ? '👑 Accès Super Administrateur' : '💰 Accès Administration'}
-            </CardTitle>
+            <CardTitle>{isAdmin ? '👑 Accès Super Administrateur' : '💰 Accès Administration'}</CardTitle>
             <CardDescription>
-              {isAdmin 
-                ? 'Vous avez un accès complet à toutes les fonctionnalités' 
-                : 'Vous avez accès aux fonctionnalités d\'administration financière'
-              }
+              {isAdmin ? 'Accès complet à toutes les fonctionnalités' : 'Accès aux fonctionnalités financières'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <Button 
-              onClick={() => navigate("/dashboard/admin/permissions")} 
-              className="w-full"
-              variant={isAdmin ? "default" : "outline"}
-            >
-              {isAdmin ? 'Gérer les Permissions' : 'Voir mes Permissions'}
+          <CardContent className="flex gap-2">
+            <Button onClick={() => navigate("/dashboard/admin/permissions")} variant={isAdmin ? "default" : "outline"}>
+              <Settings className="h-4 w-4 mr-2" />
+              Permissions
             </Button>
-            <Button 
-              onClick={() => navigate("/dashboard/admin/donations")} 
-              className="w-full"
-              variant="outline"
-            >
+            <Button onClick={() => navigate("/dashboard/admin/donations")} variant="outline">
               Gérer les Dons
             </Button>
           </CardContent>
