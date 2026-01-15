@@ -1,9 +1,17 @@
-type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'audit';
 
 interface LogContext {
   component?: string;
   action?: string;
   data?: unknown;
+}
+
+interface AuditContext {
+  userId?: string;
+  resource: string;
+  action: 'create' | 'update' | 'delete' | 'view' | 'export' | 'login' | 'logout' | 'permission_change';
+  details?: Record<string, unknown>;
+  ip?: string;
 }
 
 class Logger {
@@ -25,7 +33,11 @@ class Logger {
   error(message: string, error?: unknown, context?: LogContext) {
     // Toujours logger les erreurs, même en production
     console.error(`❌ [ERROR] ${message}`, error || '', context || '');
-    // TODO: Envoyer à un service de monitoring (Sentry, LogRocket, etc.)
+    
+    // En production, envoyer à Sentry si disponible
+    if (!this.isDevelopment) {
+      this.sendToSentry('error', message, error, context);
+    }
   }
 
   debug(message: string, data?: unknown) {
@@ -41,10 +53,32 @@ class Logger {
     }
   }
 
-  // CORRECTION #16: Logger structuré avec contexte
+  /**
+   * Méthode d'audit pour les actions critiques (permissions, données sensibles, etc.)
+   * Ces logs sont toujours enregistrés, en dev et en production
+   */
+  audit(message: string, context: AuditContext) {
+    const timestamp = new Date().toISOString();
+    const auditLog = {
+      timestamp,
+      level: 'audit' as LogLevel,
+      message,
+      ...context
+    };
+
+    // Toujours logger les audits
+    console.log(`🔐 [AUDIT] ${message}`, auditLog);
+
+    // En production, envoyer à un service d'audit
+    if (!this.isDevelopment) {
+      this.sendToAuditService(auditLog);
+    }
+  }
+
+  // Logger structuré avec contexte
   logWithContext(level: LogLevel, message: string, context: LogContext) {
     const timestamp = new Date().toISOString();
-    const emoji = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : level === 'debug' ? '🐛' : 'ℹ️';
+    const emoji = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : level === 'debug' ? '🐛' : level === 'audit' ? '🔐' : 'ℹ️';
 
     const formattedLog = {
       timestamp,
@@ -55,7 +89,7 @@ class Logger {
       data: context.data
     };
 
-    if (this.isDevelopment || this.debugMode || level === 'error') {
+    if (this.isDevelopment || this.debugMode || level === 'error' || level === 'audit') {
       const consoleMethod = level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log';
       console[consoleMethod](
         `${emoji} [${level.toUpperCase()}] [${context.component || 'UNKNOWN'}] ${message}`,
@@ -63,11 +97,45 @@ class Logger {
       );
     }
 
-    // En production, envoyer les erreurs à un service externe (Sentry, LogRocket)
+    // En production, envoyer les erreurs à Sentry
     if (!this.isDevelopment && level === 'error') {
-      // TODO: Intégration Sentry
-      console.error('[PRODUCTION ERROR]', formattedLog);
+      this.sendToSentry(level, message, null, context);
     }
+  }
+
+  /**
+   * Placeholder pour intégration Sentry
+   * TODO: Installer @sentry/browser et configurer
+   * npm install @sentry/browser
+   * 
+   * import * as Sentry from '@sentry/browser';
+   * Sentry.init({ dsn: 'YOUR_SENTRY_DSN' });
+   */
+  private sendToSentry(level: string, message: string, error?: unknown, context?: LogContext) {
+    // Placeholder pour Sentry
+    // Décommenter après installation de @sentry/browser:
+    // 
+    // if (typeof Sentry !== 'undefined') {
+    //   Sentry.captureMessage(message, {
+    //     level: level as Sentry.SeverityLevel,
+    //     extra: { error, context }
+    //   });
+    // }
+    console.error('[SENTRY PLACEHOLDER]', { level, message, error, context });
+  }
+
+  /**
+   * Placeholder pour service d'audit externe
+   * TODO: Envoyer les audits à un service comme LogRocket, Datadog, ou table Supabase
+   */
+  private sendToAuditService(auditLog: Record<string, unknown>) {
+    // Placeholder - envoyer à Supabase ou service externe
+    // 
+    // supabase.from('audit_logs').insert(auditLog);
+    // 
+    // ou LogRocket:
+    // LogRocket.track('audit', auditLog);
+    console.log('[AUDIT SERVICE PLACEHOLDER]', auditLog);
   }
 }
 
