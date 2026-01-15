@@ -1,4 +1,4 @@
-import { PiggyBank, DollarSign, TrendingUp, Download, Calculator, Users } from "lucide-react";
+import { PiggyBank, DollarSign, TrendingUp, Download, Calculator, Users, Loader2 } from "lucide-react";
 import logoE2D from "@/assets/logo-e2d.png";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,11 @@ import { fr } from "date-fns/locale";
 import BackButton from "@/components/BackButton";
 import { useEpargnantsBenefices } from "@/hooks/useEpargnantsBenefices";
 import { formatFCFA } from "@/lib/utils";
+import { useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { addE2DHeader, addE2DFooter } from "@/lib/pdf-utils";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Beneficiaires() {
   const {
@@ -24,10 +29,111 @@ export default function Beneficiaires() {
     stats,
     loading
   } = useEpargnantsBenefices();
+  
+  const [exporting, setExporting] = useState(false);
+  const { toast } = useToast();
 
-  const handleExportPDF = () => {
-    // TODO: Implémenter l'export PDF
-    console.log('Export PDF - À implémenter');
+  const handleExportPDF = async () => {
+    if (epargnants.length === 0) {
+      toast({
+        title: "Export impossible",
+        description: "Aucun épargnant à exporter pour cette période",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const doc = new jsPDF();
+      
+      // En-tête E2D avec logo
+      const exerciceName = selectedExerciceId !== 'all' 
+        ? exercices.find(e => e.id === selectedExerciceId)?.nom 
+        : 'Tous exercices';
+      const subtitle = `Exercice: ${exerciceName || 'Non spécifié'}`;
+      const yStart = await addE2DHeader(doc, 'Répartition des Bénéfices Épargnants', subtitle);
+      
+      // Statistiques résumées
+      doc.setFontSize(10);
+      doc.setTextColor(60, 60, 60);
+      doc.text(`Total Épargnes: ${formatFCFA(stats.totalEpargnes)}`, 14, yStart + 2);
+      doc.text(`Intérêts à Distribuer: ${formatFCFA(stats.totalInteretsPrets)}`, 14, yStart + 7);
+      doc.text(`Nombre d'Épargnants: ${stats.nombreEpargnants}`, 14, yStart + 12);
+      
+      // Tableau des bénéficiaires
+      const tableData = epargnants.map((ep, index) => [
+        (index + 1).toString(),
+        `${ep.prenom} ${ep.nom}`,
+        formatFCFA(ep.montantEpargne),
+        `${ep.part.toFixed(2)}%`,
+        formatFCFA(ep.gainsEstimes),
+        formatFCFA(ep.totalAttendu)
+      ]);
+      
+      autoTable(doc, {
+        startY: yStart + 18,
+        head: [['#', 'Épargnant', 'Montant Épargné', 'Part (%)', 'Gains Estimés', 'Total Attendu']],
+        body: tableData,
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { 
+          fillColor: [30, 64, 175], 
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 12 },
+          2: { halign: 'right' },
+          3: { halign: 'center' },
+          4: { halign: 'right' },
+          5: { halign: 'right', fontStyle: 'bold' }
+        },
+        foot: [[
+          '', 
+          'TOTAL', 
+          formatFCFA(stats.totalEpargnes), 
+          '100%', 
+          formatFCFA(stats.totalInteretsPrets),
+          formatFCFA(stats.totalEpargnes + stats.totalInteretsPrets)
+        ]],
+        footStyles: { 
+          fillColor: [240, 240, 240], 
+          textColor: [30, 64, 175],
+          fontStyle: 'bold'
+        }
+      });
+      
+      // Méthode de calcul
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text('Méthode de calcul:', 14, finalY);
+      doc.setFontSize(9);
+      doc.text('• Gain = (Montant épargné / Total épargnes) × Total des intérêts', 14, finalY + 5);
+      doc.text('• Les intérêts proviennent des remboursements de prêts', 14, finalY + 10);
+      
+      // Pied de page
+      addE2DFooter(doc);
+      
+      // Télécharger
+      const fileName = `beneficiaires_${exerciceName?.replace(/\s+/g, '_') || 'export'}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      doc.save(fileName);
+      
+      toast({
+        title: "✅ Export réussi",
+        description: `Le fichier ${fileName} a été téléchargé`
+      });
+    } catch (error) {
+      console.error('Erreur export PDF:', error);
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible de générer le fichier PDF",
+        variant: "destructive"
+      });
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -80,9 +186,18 @@ export default function Beneficiaires() {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" onClick={handleExportPDF} className="gap-2">
-            <Download className="h-4 w-4" />
-            Exporter PDF
+          <Button 
+            variant="outline" 
+            onClick={handleExportPDF} 
+            className="gap-2"
+            disabled={exporting || loading || epargnants.length === 0}
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {exporting ? 'Export...' : 'Exporter PDF'}
           </Button>
         </div>
       </div>
