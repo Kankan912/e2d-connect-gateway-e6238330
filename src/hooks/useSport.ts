@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { syncE2DMatchToEvent, removeE2DEventFromCMS } from "@/lib/sync-events";
 
 export interface E2DMatch {
   id: string;
@@ -61,8 +62,14 @@ export const useCreateE2DMatch = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ["e2d-matchs"] });
+      
+      // Synchroniser vers le site si publié
+      if (data && (data as any).statut_publication === 'publie') {
+        await syncE2DMatchToEvent((data as any).id);
+      }
+      
       toast({
         title: "Succès",
         description: "Match créé avec succès",
@@ -93,8 +100,19 @@ export const useUpdateE2DMatch = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ["e2d-matchs"] });
+      
+      // Synchroniser vers le site selon le statut
+      if (data) {
+        const match = data as any;
+        if (match.statut_publication === 'publie') {
+          await syncE2DMatchToEvent(match.id);
+        } else {
+          await removeE2DEventFromCMS(match.id);
+        }
+      }
+      
       toast({
         title: "Succès",
         description: "Match mis à jour",
@@ -115,6 +133,9 @@ export const useDeleteE2DMatch = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Retirer du site avant suppression
+      await removeE2DEventFromCMS(id);
+      
       const { error } = await supabase.from("sport_e2d_matchs").delete().eq("id", id);
       if (error) throw error;
     },

@@ -32,6 +32,7 @@ interface SendReunionCRRequest {
   lieu?: string;
   presences?: PresenceInfo;
   financials?: FinancialSummary;
+  isPreview?: boolean; // Si true, ajoute [APERÇU] au sujet
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -41,9 +42,10 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, presences, financials }: SendReunionCRRequest = await req.json();
+    const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, presences, financials, isPreview }: SendReunionCRRequest = await req.json();
 
-    console.log(`Sending reunion CR for reunion ${reunionId} to ${destinataires.length} recipients`);
+    const previewLabel = isPreview ? "[APERÇU] " : "";
+    console.log(`Sending reunion CR for reunion ${reunionId} to ${destinataires.length} recipients (preview: ${isPreview})`);
 
     if (!destinataires || destinataires.length === 0) {
       return new Response(
@@ -183,7 +185,7 @@ ${contenu}
         const emailResponse = await resend.emails.send({
           from: "E2D <onboarding@resend.dev>",
           to: [destinataire.email],
-          subject: `[E2D] Compte-Rendu: ${sujet}`,
+          subject: `[E2D] ${previewLabel}Compte-Rendu: ${sujet}`,
           html: htmlContent,
         });
 

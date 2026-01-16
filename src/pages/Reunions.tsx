@@ -33,7 +33,8 @@ import {
   Mail,
   Coins,
   Lock,
-  Gift
+  Gift,
+  Unlock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +42,8 @@ import ReunionForm from "@/components/forms/ReunionForm";
 import CompteRenduForm from "@/components/forms/CompteRenduForm";
 import CompteRenduViewer from "@/components/CompteRenduViewer";
 import ClotureReunionModal from "@/components/ClotureReunionModal";
+import ReouvrirReunionModal from "@/components/ReouvrirReunionModal";
+import NotifierReunionModal from "@/components/NotifierReunionModal";
 import CalendrierBeneficiaires from "@/components/CalendrierBeneficiaires";
 import BeneficiairesReunionWidget from "@/components/BeneficiairesReunionWidget";
 import ReunionSanctionsManager from "@/components/ReunionSanctionsManager";
@@ -510,6 +513,8 @@ export default function Reunions() {
   const [showCompteRenduForm, setShowCompteRenduForm] = useState(false);
   const [showCompteRenduViewer, setShowCompteRenduViewer] = useState(false);
   const [showClotureModal, setShowClotureModal] = useState(false);
+  const [showReouvrirModal, setShowReouvrirModal] = useState(false);
+  const [showNotifierModal, setShowNotifierModal] = useState(false);
   const [selectedReunion, setSelectedReunion] = useState<Reunion | null>(null);
   const [editingReunion, setEditingReunion] = useState<Reunion | null>(null);
   const [selectedMembreId, setSelectedMembreId] = useState<string | null>(null);
@@ -942,7 +947,8 @@ export default function Reunions() {
                         </TableCell>
                         
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
+                            {/* Éditer */}
                             <Button
                               variant="outline"
                               size="sm"
@@ -952,6 +958,8 @@ export default function Reunions() {
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
+                            
+                            {/* Supprimer */}
                             <Button
                               variant="outline"
                               size="sm"
@@ -962,6 +970,38 @@ export default function Reunions() {
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
+                            
+                            {/* Notifier sans clôturer (réunions non terminées) */}
+                            {reunion.statut !== 'terminee' && hasPermission('reunions', 'update') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedReunion(reunion);
+                                  setShowNotifierModal(true);
+                                }}
+                                title="Notifier sans clôturer"
+                                className="text-primary"
+                              >
+                                <Mail className="w-4 h-4" />
+                              </Button>
+                            )}
+                            
+                            {/* Rouvrir (réunions terminées) */}
+                            {reunion.statut === 'terminee' && hasPermission('reunions', 'update') && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedReunion(reunion);
+                                  setShowReouvrirModal(true);
+                                }}
+                                title="Rouvrir la réunion"
+                                className="text-warning hover:bg-warning/10"
+                              >
+                                <Unlock className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -1205,6 +1245,36 @@ export default function Reunions() {
           reunionData={{
             sujet: selectedReunion.sujet || '',
             date_reunion: selectedReunion.date_reunion
+          }}
+          onSuccess={loadReunions}
+        />
+      )}
+
+      {/* Modal Rouvrir Réunion */}
+      {selectedReunion && (
+        <ReouvrirReunionModal
+          open={showReouvrirModal}
+          onOpenChange={setShowReouvrirModal}
+          reunionId={selectedReunion.id}
+          reunionData={{
+            sujet: selectedReunion.sujet || selectedReunion.ordre_du_jour,
+            date_reunion: selectedReunion.date_reunion
+          }}
+          onSuccess={loadReunions}
+        />
+      )}
+
+      {/* Modal Notifier sans clôturer */}
+      {selectedReunion && (
+        <NotifierReunionModal
+          open={showNotifierModal}
+          onOpenChange={setShowNotifierModal}
+          reunionId={selectedReunion.id}
+          reunionData={{
+            sujet: selectedReunion.sujet,
+            date_reunion: selectedReunion.date_reunion,
+            ordre_du_jour: selectedReunion.ordre_du_jour,
+            lieu_description: selectedReunion.lieu_description
           }}
         />
       )}
