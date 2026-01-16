@@ -11,7 +11,9 @@ import {
   Clock,
   Shirt,
   User,
-  Plus
+  Plus,
+  RefreshCw,
+  Globe
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,13 +24,17 @@ import E2DMatchForm from "@/components/forms/E2DMatchForm";
 import MatchDetailsModal from "@/components/MatchDetailsModal";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 import { useSportEventSync } from "@/hooks/useSportEventSync";
+import { syncAllSportEventsToWebsite } from "@/lib/sync-events";
+import { useToast } from "@/hooks/use-toast";
 
 export default function SportE2D() {
   const navigate = useNavigate();
   const [showMatchForm, setShowMatchForm] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<any>(null);
   const [showMatchDetails, setShowMatchDetails] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: membres } = useQuery({
     queryKey: ['membres'],
@@ -86,7 +92,31 @@ export default function SportE2D() {
   // Synchronisation automatique vers le site web
   useSportEventSync();
 
+  const handleSyncToWebsite = async () => {
+    setSyncing(true);
+    try {
+      const result = await syncAllSportEventsToWebsite();
+      if (result.success) {
+        toast({
+          title: "Synchronisation réussie",
+          description: `${result.synced?.e2d || 0} match(s) synchronisé(s) vers le site`,
+        });
+      } else {
+        throw new Error("Échec de la synchronisation");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible de synchroniser",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const totalMembres = membres?.length || 0;
+  const matchsPublies = matchs?.filter(m => m.statut_publication === 'publie').length || 0;
 
   return (
     <div className="space-y-6">
@@ -128,7 +158,7 @@ export default function SportE2D() {
                   <span className="text-sm">Maillot: {config.couleur_maillot}</span>
                 </div>
               )}
-              <div className="col-span-2">
+              <div className="flex items-center gap-2">
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -136,6 +166,20 @@ export default function SportE2D() {
                 >
                   <Settings className="h-4 w-4 mr-1" />
                   Modifier la config
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSyncToWebsite}
+                  disabled={syncing}
+                  className="text-primary"
+                >
+                  {syncing ? (
+                    <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Globe className="h-4 w-4 mr-1" />
+                  )}
+                  Synchroniser site ({matchsPublies})
                 </Button>
               </div>
             </div>
