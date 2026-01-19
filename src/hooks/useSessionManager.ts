@@ -28,6 +28,9 @@ interface SessionManagerState {
   isLoading: boolean;
 }
 
+// Clé localStorage pour le début de session
+const SESSION_START_KEY = 'lovable_session_start';
+
 export const useSessionManager = ({
   session,
   userRole,
@@ -50,9 +53,43 @@ export const useSessionManager = ({
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const validityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Déterminer le type de session
   const sessionType = getRoleSessionType(userRole, permissions);
+
+  // Récupérer ou initialiser le début de session depuis localStorage
+  const getSessionStart = useCallback((userId: string): Date => {
+    const storageKey = `${SESSION_START_KEY}_${userId}`;
+    const stored = localStorage.getItem(storageKey);
+    
+    if (stored) {
+      const storedDate = new Date(stored);
+      // Vérifier que la date stockée est valide et pas trop ancienne (ex: 24h max)
+      const maxAge = 24 * 60 * 60 * 1000; // 24 heures
+      if (!isNaN(storedDate.getTime()) && (Date.now() - storedDate.getTime()) < maxAge) {
+        console.log('🕐 [SessionManager] Session start restored from localStorage:', storedDate.toISOString());
+        return storedDate;
+      }
+    }
+    
+    // Nouvelle session
+    const now = new Date();
+    localStorage.setItem(storageKey, now.toISOString());
+    console.log('🆕 [SessionManager] New session start saved:', now.toISOString());
+    return now;
+  }, []);
+
+  // Nettoyer le localStorage lors de la déconnexion
+  const clearSessionStorage = useCallback((userId?: string) => {
+    if (userId) {
+      localStorage.removeItem(`${SESSION_START_KEY}_${userId}`);
+    }
+    // Nettoyer toutes les clés de session si pas d'userId
+    const keys = Object.keys(localStorage).filter(k => k.startsWith(SESSION_START_KEY));
+    keys.forEach(k => localStorage.removeItem(k));
+    console.log('🧹 [SessionManager] Session storage cleared');
+  }, []);
 
   // Charger la configuration de session
   useEffect(() => {
@@ -75,14 +112,14 @@ export const useSessionManager = ({
         isLoading: false
       }));
 
-      // Initialiser le début de session
-      if (session.access_token) {
-        sessionStartRef.current = new Date();
+      // Récupérer le début de session depuis localStorage
+      if (session.user?.id) {
+        sessionStartRef.current = getSessionStart(session.user.id);
       }
     };
 
     loadConfig();
-  }, [session, sessionType, enabled]);
+  }, [session, sessionType, enabled, getSessionStart]);
 
   // Fonction pour déclencher la déconnexion
   const triggerLogout = useCallback(async (reason: 'inactivity' | 'session_expired') => {
@@ -94,9 +131,15 @@ export const useSessionManager = ({
     if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    if (validityCheckIntervalRef.current) clearInterval(validityCheckIntervalRef.current);
+    
+    // Nettoyer le localStorage de session
+    if (session?.user?.id) {
+      clearSessionStorage(session.user.id);
+    }
     
     await onLogout();
-  }, [onLogout]);
+  }, [onLogout, session?.user?.id, clearSessionStorage]);
 
   // Afficher le warning avec countdown
   const showWarningModal = useCallback((reason: 'inactivity' | 'session_expired') => {
@@ -157,32 +200,60 @@ export const useSessionManager = ({
     enabled: enabled && !!session && !!state.sessionConfig && !state.showWarning
   });
 
-  // Timer de durée maximale de session
+  // Timer de durée maximale de session + vérification périodique
   useEffect(() => {
     const config = state.sessionConfig;
     if (!config || !session || !enabled || !sessionStartRef.current) return;
 
+    const checkSessionValidity = () => {
+      if (!sessionStartRef.current) return;
+      
+      const remainingMinutes = calculateRemainingTime(
+        sessionStartRef.current,
+        config.session_duration_minutes
+      );
+
+      console.log(`⏱️ [SessionManager] Remaining session time: ${remainingMinutes.toFixed(1)} minutes`);
+
+      if (remainingMinutes <= 0) {
+        console.log('⏰ [SessionManager] Session expired!');
+        triggerLogout('session_expired');
+        return true; // Session expirée
+      }
+
+      // Si proche de l'expiration, afficher le warning
+      const warningThresholdMinutes = config.warning_before_logout_seconds / 60;
+      if (remainingMinutes <= warningThresholdMinutes && !state.showWarning) {
+        showWarningModal('session_expired');
+      }
+
+      return false;
+    };
+
+    // Vérifier immédiatement
+    if (checkSessionValidity()) return;
+
+    // Timer pour la fin de session
     const remainingMinutes = calculateRemainingTime(
       sessionStartRef.current,
       config.session_duration_minutes
     );
-
-    if (remainingMinutes <= 0) {
-      triggerLogout('session_expired');
-      return;
-    }
-
-    // Timer pour la fin de session
     const timeoutMs = (remainingMinutes * 60 - config.warning_before_logout_seconds) * 1000;
     
     sessionTimerRef.current = setTimeout(() => {
       showWarningModal('session_expired');
     }, Math.max(0, timeoutMs));
 
+    // Vérification périodique toutes les 60 secondes (pour gérer la veille PC)
+    validityCheckIntervalRef.current = setInterval(() => {
+      checkSessionValidity();
+    }, 60 * 1000);
+
     return () => {
       if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
+      if (validityCheckIntervalRef.current) clearInterval(validityCheckIntervalRef.current);
     };
-  }, [state.sessionConfig, session, enabled, showWarningModal, triggerLogout]);
+  }, [state.sessionConfig, session, enabled, showWarningModal, triggerLogout, state.showWarning]);
 
   // Initialiser le timer d'inactivité au chargement de la config
   useEffect(() => {
@@ -226,6 +297,7 @@ export const useSessionManager = ({
       if (sessionTimerRef.current) clearTimeout(sessionTimerRef.current);
       if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (validityCheckIntervalRef.current) clearInterval(validityCheckIntervalRef.current);
     };
   }, []);
 

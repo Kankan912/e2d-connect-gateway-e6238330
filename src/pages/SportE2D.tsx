@@ -13,7 +13,8 @@ import {
   User,
   Plus,
   RefreshCw,
-  Globe
+  Globe,
+  Pencil
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +22,7 @@ import LogoHeader from "@/components/LogoHeader";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import E2DMatchForm from "@/components/forms/E2DMatchForm";
+import E2DMatchEditForm from "@/components/forms/E2DMatchEditForm";
 import MatchDetailsModal from "@/components/MatchDetailsModal";
 import { useRealtimeUpdates } from "@/hooks/useRealtimeUpdates";
 import { useSportEventSync } from "@/hooks/useSportEventSync";
@@ -30,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function SportE2D() {
   const navigate = useNavigate();
   const [showMatchForm, setShowMatchForm] = useState(false);
+  const [showMatchEditForm, setShowMatchEditForm] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<any>(null);
   const [showMatchDetails, setShowMatchDetails] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -239,7 +242,7 @@ export default function SportE2D() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {matchs.slice(0, 3).map((match) => (
+              {matchs.slice(0, 5).map((match) => (
                 <div 
                   key={match.id} 
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -251,12 +254,20 @@ export default function SportE2D() {
                       setShowMatchDetails(true);
                     }}
                   >
-                    <p className="font-medium">{config?.nom_equipe || 'E2D'} vs {match.equipe_adverse}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{config?.nom_equipe || 'E2D'} vs {match.equipe_adverse}</p>
+                      {match.statut_publication === 'publie' && (
+                        <Badge variant="outline" className="text-green-600 border-green-300">
+                          <Globe className="h-3 w-3 mr-1" />
+                          Publié
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">
                       {new Date(match.date_match).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <div className="text-right">
                       {match.score_e2d !== null && match.score_adverse !== null ? (
                         <p className="text-lg font-bold">
@@ -266,6 +277,18 @@ export default function SportE2D() {
                         <Badge variant="outline">{match.statut}</Badge>
                       )}
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedMatch(match);
+                        setShowMatchEditForm(true);
+                      }}
+                      title="Modifier le match"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
@@ -290,9 +313,17 @@ export default function SportE2D() {
         open={showMatchForm}
         onOpenChange={setShowMatchForm}
         onSuccess={() => {
-          // Rafraîchir les données des matchs
           queryClient.invalidateQueries({ queryKey: ['sport-e2d-matchs'] });
           setShowMatchForm(false);
+        }}
+      />
+
+      <E2DMatchEditForm
+        open={showMatchEditForm}
+        onOpenChange={setShowMatchEditForm}
+        match={selectedMatch}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['sport-e2d-matchs'] });
         }}
       />
 

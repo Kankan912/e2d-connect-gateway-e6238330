@@ -123,23 +123,33 @@ export async function syncE2DMatchToEvent(matchId: string) {
 /**
  * Synchronise tous les matchs E2D publiés vers les événements du site
  * Les matchs Phoenix ne sont plus synchronisés (internes uniquement)
+ * @param includeAll - Si true, inclut tous les matchs (passés et futurs). Sinon, uniquement les matchs futurs.
  */
-export async function syncAllSportEventsToWebsite() {
-  const today = new Date().toISOString().split('T')[0];
-  
+export async function syncAllSportEventsToWebsite(includeAll: boolean = true) {
   try {
-    // Récupérer uniquement les matchs E2D publiés
-    const { data: e2dMatches } = await supabase
+    // Construire la requête de base
+    let query = supabase
       .from('sport_e2d_matchs')
       .select('id')
-      .gte('date_match', today)
       .neq('statut', 'annule')
       .eq('statut_publication', 'publie');
+
+    // Filtrer par date seulement si includeAll est false
+    if (!includeAll) {
+      const today = new Date().toISOString().split('T')[0];
+      query = query.gte('date_match', today);
+    }
+
+    const { data: e2dMatches, error } = await query;
+
+    if (error) throw error;
 
     // Synchroniser tous les matchs E2D publiés
     const promises = (e2dMatches || []).map(m => syncE2DMatchToEvent(m.id));
 
     await Promise.all(promises);
+
+    console.log(`✅ Synchronisation terminée: ${e2dMatches?.length || 0} matchs E2D`);
 
     return { 
       success: true, 
