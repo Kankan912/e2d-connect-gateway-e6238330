@@ -33,17 +33,24 @@ export default function MatchStatsForm({ matchId, matchType = 'phoenix' }: Match
   const [redCards, setRedCards] = useState("0");
   const [manOfMatch, setManOfMatch] = useState(false);
 
-  // Charger les membres Phoenix actifs
+  // Charger les membres selon le type de match (E2D ou Phoenix)
   const { data: membres } = useQuery({
-    queryKey: ['membres-phoenix-stats'],
+    queryKey: ['membres-match-stats', matchType],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('membres')
         .select('id, nom, prenom')
-        .eq('est_adherent_phoenix', true)
         .eq('statut', 'actif')
         .order('nom');
       
+      // Filtrer selon le type de match
+      if (matchType === 'e2d') {
+        query = query.eq('est_membre_e2d', true);
+      } else {
+        query = query.eq('est_adherent_phoenix', true);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     }
