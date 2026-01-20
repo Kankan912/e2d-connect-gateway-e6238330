@@ -14,6 +14,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Don = lazy(() => import("./pages/Don"));
 const Adhesion = lazy(() => import("./pages/Adhesion"));
 const FirstPasswordChange = lazy(() => import("./pages/FirstPasswordChange"));
+const EventDetail = lazy(() => import("./pages/EventDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Configuration optimisée du QueryClient
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/don" element={<Don />} />
               <Route path="/adhesion" element={<Adhesion />} />
               <Route path="/change-password" element={<FirstPasswordChange />} />
+              <Route path="/evenements/:id" element={<EventDetail />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

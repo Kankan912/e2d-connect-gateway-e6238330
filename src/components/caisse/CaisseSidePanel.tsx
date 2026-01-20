@@ -143,7 +143,31 @@ export const CaisseSidePanel = () => {
         onClick={() => openDetail('cotisations')}
       />
 
-      {/* 4. Total Prêts Décaissés */}
+      {/* 4. Solde Empruntable - NOUVEAU */}
+      <Card 
+        className="border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] active:scale-[0.98]"
+        onClick={() => openDetail('prets_en_cours')}
+      >
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1 flex-1">
+              <p className="text-xs font-medium text-muted-foreground">💰 Solde Empruntable</p>
+              <p className={`text-lg font-bold ${(synthese?.soldeEmpruntable || 0) > 0 ? 'text-primary' : 'text-destructive'}`}>
+                {formatFCFA(synthese?.soldeEmpruntable || 0)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {synthese?.pourcentageEmpruntable || 80}% du fond total - Prêts en cours
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              <Banknote className="h-5 w-5 text-primary" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 5. Total Prêts Décaissés */}
       <SynthWidget
         title="Total Prêts Décaissés"
         value={synthese?.pretsDecaisses || 0}
@@ -153,7 +177,7 @@ export const CaisseSidePanel = () => {
         onClick={() => openDetail('prets_decaisses')}
       />
 
-      {/* 5. Prêts en Cours (capital restant) */}
+      {/* 6. Prêts en Cours (capital restant) */}
       <SynthWidget
         title="Prêts en Cours"
         value={synthese?.pretsEnCours || 0}

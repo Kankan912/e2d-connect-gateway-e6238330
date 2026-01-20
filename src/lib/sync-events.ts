@@ -1,31 +1,20 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Supprime un événement du CMS associé à un match E2D
+ * Supprime un événement du site associé à un match E2D
+ * Utilise site_events (table correcte pour le site public)
  */
 export async function removeE2DEventFromCMS(matchId: string) {
   try {
-    // Récupérer les infos du match pour identifier l'événement
-    const { data: match, error: matchError } = await supabase
-      .from('sport_e2d_matchs')
-      .select('equipe_adverse, date_match')
-      .eq('id', matchId)
-      .single();
-
-    if (matchError || !match) return { success: false };
-
-    const eventTitle = `Match E2D vs ${match.equipe_adverse || 'Adversaire'}`;
-    
-    // Supprimer l'événement correspondant
+    // Supprimer directement par match_id
     const { error: deleteError } = await supabase
-      .from('cms_events')
+      .from('site_events')
       .delete()
-      .eq('title', eventTitle)
-      .eq('event_date', match.date_match);
+      .eq('match_id', matchId);
 
     if (deleteError) throw deleteError;
 
-    console.log('Événement E2D retiré du site:', eventTitle);
+    console.log('Événement E2D retiré du site, match_id:', matchId);
     return { success: true };
   } catch (error) {
     console.error('Erreur lors de la suppression événement E2D:', error);
@@ -34,7 +23,7 @@ export async function removeE2DEventFromCMS(matchId: string) {
 }
 
 /**
- * Synchronise un match E2D vers les événements du site web
+ * Synchronise un match E2D vers les événements du site web (site_events)
  * Uniquement si statut_publication = 'publie'
  */
 export async function syncE2DMatchToEvent(matchId: string) {
@@ -58,61 +47,62 @@ export async function syncE2DMatchToEvent(matchId: string) {
       return { success: true, action: 'removed' };
     }
 
-    const eventTitle = `Match E2D vs ${match.equipe_adverse || 'Adversaire'}`;
+    const eventTitre = `Match E2D vs ${match.equipe_adverse || 'Adversaire'}`;
     
     // Construire la description avec score si terminé
     let eventDescription = `${match.type_match || 'Match'} - ${match.statut}`;
     if (match.statut === 'termine' && match.score_e2d !== null && match.score_adverse !== null) {
       eventDescription = `Terminé: ${match.score_e2d} - ${match.score_adverse}`;
     }
+
+    // Déterminer le type d'événement
+    const eventType = match.type_match === 'amical' ? 'Match Amical' : 
+                      match.type_match === 'championnat' ? 'Championnat' : 
+                      match.type_match === 'coupe' ? 'Coupe' : 'Match';
+
+    // Calculer l'ordre (les événements futurs d'abord)
+    const eventDate = new Date(match.date_match);
+    const ordre = Math.floor(eventDate.getTime() / 1000000);
     
-    // Vérifier si l'événement existe déjà
+    // Vérifier si l'événement existe déjà par match_id
     const { data: existingEvent } = await supabase
-      .from('cms_events')
+      .from('site_events')
       .select('id')
-      .eq('title', eventTitle)
-      .eq('event_date', match.date_match)
+      .eq('match_id', matchId)
       .maybeSingle();
+
+    const eventData = {
+      titre: eventTitre,
+      description: eventDescription,
+      date: match.date_match,
+      heure: match.heure_match,
+      lieu: match.lieu || 'À définir',
+      type: eventType,
+      actif: match.statut !== 'annule',
+      match_id: matchId,
+      match_type: 'e2d',
+      auto_sync: true,
+      ordre: ordre,
+    };
 
     if (existingEvent) {
       // Mettre à jour l'événement existant
       const { error: updateError } = await supabase
-        .from('cms_events')
-        .update({
-          title: eventTitle,
-          description: eventDescription,
-          event_date: match.date_match,
-          event_time: match.heure_match,
-          location: match.lieu,
-          is_active: match.statut !== 'annule',
-          match_id: matchId,
-          match_type: 'e2d',
-          auto_sync: true,
-        })
+        .from('site_events')
+        .update(eventData)
         .eq('id', existingEvent.id);
 
       if (updateError) throw updateError;
     } else {
       // Créer un nouvel événement
       const { error: insertError } = await supabase
-        .from('cms_events')
-        .insert([{
-          title: eventTitle,
-          description: eventDescription,
-          event_date: match.date_match,
-          event_time: match.heure_match,
-          location: match.lieu,
-          is_active: match.statut !== 'annule',
-          is_featured: false,
-          match_id: matchId,
-          match_type: 'e2d',
-          auto_sync: true,
-        }]);
+        .from('site_events')
+        .insert([eventData]);
 
       if (insertError) throw insertError;
     }
 
-    console.log('Match E2D synchronisé vers le site:', eventTitle);
+    console.log('Match E2D synchronisé vers site_events:', eventTitre);
     return { success: true, action: 'synced' };
   } catch (error) {
     console.error('Erreur lors de la synchronisation E2D:', error);
@@ -122,12 +112,11 @@ export async function syncE2DMatchToEvent(matchId: string) {
 
 /**
  * Synchronise tous les matchs E2D publiés vers les événements du site
- * Les matchs Phoenix ne sont plus synchronisés (internes uniquement)
  * @param includeAll - Si true, inclut tous les matchs (passés et futurs). Sinon, uniquement les matchs futurs.
  */
 export async function syncAllSportEventsToWebsite(includeAll: boolean = true) {
   try {
-    // Construire la requête de base
+    // Construire la requête de base - tous les matchs publiés
     let query = supabase
       .from('sport_e2d_matchs')
       .select('id')
@@ -144,12 +133,12 @@ export async function syncAllSportEventsToWebsite(includeAll: boolean = true) {
 
     if (error) throw error;
 
-    // Synchroniser tous les matchs E2D publiés
+    // Synchroniser tous les matchs E2D publiés vers site_events
     const promises = (e2dMatches || []).map(m => syncE2DMatchToEvent(m.id));
 
     await Promise.all(promises);
 
-    console.log(`✅ Synchronisation terminée: ${e2dMatches?.length || 0} matchs E2D`);
+    console.log(`✅ Synchronisation terminée: ${e2dMatches?.length || 0} matchs E2D vers site_events`);
 
     return { 
       success: true, 
@@ -159,6 +148,44 @@ export async function syncAllSportEventsToWebsite(includeAll: boolean = true) {
     };
   } catch (error) {
     console.error('Erreur lors de la synchronisation globale:', error);
+    return { success: false, error };
+  }
+}
+
+/**
+ * Nettoie les événements auto-sync orphelins (match supprimé ou dépublié)
+ */
+export async function cleanupOrphanedEvents() {
+  try {
+    // Récupérer tous les événements auto-sync
+    const { data: autoSyncEvents } = await supabase
+      .from('site_events')
+      .select('id, match_id')
+      .eq('auto_sync', true)
+      .not('match_id', 'is', null);
+
+    if (!autoSyncEvents || autoSyncEvents.length === 0) return { success: true, cleaned: 0 };
+
+    let cleaned = 0;
+    for (const event of autoSyncEvents) {
+      // Vérifier si le match existe encore et est publié
+      const { data: match } = await supabase
+        .from('sport_e2d_matchs')
+        .select('id, statut_publication')
+        .eq('id', event.match_id)
+        .maybeSingle();
+
+      // Si le match n'existe plus ou n'est plus publié, supprimer l'événement
+      if (!match || (match as any).statut_publication !== 'publie') {
+        await supabase.from('site_events').delete().eq('id', event.id);
+        cleaned++;
+      }
+    }
+
+    console.log(`🧹 Nettoyage: ${cleaned} événements orphelins supprimés`);
+    return { success: true, cleaned };
+  } catch (error) {
+    console.error('Erreur lors du nettoyage:', error);
     return { success: false, error };
   }
 }
