@@ -6,15 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   User, Calendar, Banknote, Percent, RefreshCw, 
-  CheckCircle, Clock, AlertTriangle, FileText, Building, Download
+  CheckCircle, Clock, AlertTriangle, FileText, Building, Download, History
 } from "lucide-react";
 import { formatFCFA } from "@/lib/utils";
 import { exportPretPDF } from "@/lib/pret-pdf-export";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
+import PretHistoriqueComplet from "./PretHistoriqueComplet";
 
 interface PretDetailsModalProps {
   pretId: string;
@@ -143,244 +145,265 @@ export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsM
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Informations principales */}
-          <div className="grid md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Emprunteur
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="font-bold text-lg">{pret.emprunteur?.nom} {pret.emprunteur?.prenom}</p>
-                {pret.emprunteur?.telephone && (
-                  <p className="text-sm text-muted-foreground">{pret.emprunteur.telephone}</p>
-                )}
-                {pret.avaliste && (
-                  <div className="mt-2 pt-2 border-t">
-                    <p className="text-xs text-muted-foreground">Avaliste (Garant)</p>
-                    <p className="text-sm">{pret.avaliste.nom} {pret.avaliste.prenom}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        <Tabs defaultValue="details" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="details">Détails</TabsTrigger>
+            <TabsTrigger value="historique">
+              <History className="h-4 w-4 mr-1" />
+              Historique Complet
+            </TabsTrigger>
+            <TabsTrigger value="paiements">Paiements ({paiements?.length || 0})</TabsTrigger>
+          </TabsList>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Dates
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Date du prêt</span>
-                  <span>{format(new Date(pret.date_pret), 'dd MMMM yyyy', { locale: fr })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Échéance</span>
-                  <span className={statut === 'en_retard' ? 'text-destructive font-bold' : ''}>
-                    {format(new Date(pret.echeance), 'dd MMMM yyyy', { locale: fr })}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Durée</span>
-                  <span>{pret.duree_mois || 2} mois</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Détails financiers */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Banknote className="h-4 w-4" />
-                Détails Financiers
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-4 gap-4 mb-4">
-                <div className="text-center p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Capital emprunté</p>
-                  <p className="text-xl font-bold">{formatFCFA(pret.montant)}</p>
-                </div>
-                <div className="text-center p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Total intérêts</p>
-                  <p className="text-xl font-bold text-amber-600">{formatFCFA(totalInterets)}</p>
-                  <p className="text-xs text-muted-foreground">{taux}% + {pret.reconductions || 0} recon.</p>
-                </div>
-                <div className="text-center p-3 bg-primary/10 rounded-lg">
-                  <p className="text-xs text-muted-foreground">Total dû</p>
-                  <p className="text-xl font-bold">{formatFCFA(totalDu)}</p>
-                </div>
-                <div className={`text-center p-3 rounded-lg ${resteAPayer > 0 ? 'bg-orange-50 dark:bg-orange-950/30' : 'bg-green-50 dark:bg-green-950/30'}`}>
-                  <p className="text-xs text-muted-foreground">Reste à payer</p>
-                  <p className={`text-xl font-bold ${resteAPayer > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                    {formatFCFA(resteAPayer)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Barres de progression */}
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Progression globale</span>
-                    <span>{progressionGlobale.toFixed(1)}%</span>
-                  </div>
-                  <Progress value={progressionGlobale} className="h-3" />
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-amber-600">Intérêts payés</span>
-                      <span>{formatFCFA(interetPaye)} / {formatFCFA(totalInterets)}</span>
-                    </div>
-                    <Progress value={progressionInteret} className="h-2 [&>div]:bg-amber-500" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-blue-600">Capital remboursé</span>
-                      <span>{formatFCFA(capitalPaye)} / {formatFCFA(pret.montant)}</span>
-                    </div>
-                    <Progress value={progressionCapital} className="h-2 [&>div]:bg-blue-500" />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contexte */}
-          <div className="grid md:grid-cols-2 gap-4">
-            {pret.reunion && (
+          <TabsContent value="details" className="space-y-6">
+            {/* Informations principales */}
+            <div className="grid md:grid-cols-2 gap-4">
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Building className="h-4 w-4" />
-                    Réunion d'attribution
+                    <User className="h-4 w-4" />
+                    Emprunteur
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="font-medium">
-                    {format(new Date(pret.reunion.date_reunion), 'dd MMMM yyyy', { locale: fr })}
-                  </p>
-                  {pret.reunion.ordre_du_jour && (
-                    <p className="text-sm text-muted-foreground mt-1">{pret.reunion.ordre_du_jour}</p>
+                  <p className="font-bold text-lg">{pret.emprunteur?.nom} {pret.emprunteur?.prenom}</p>
+                  {pret.emprunteur?.telephone && (
+                    <p className="text-sm text-muted-foreground">{pret.emprunteur.telephone}</p>
+                  )}
+                  {pret.avaliste && (
+                    <div className="mt-2 pt-2 border-t">
+                      <p className="text-xs text-muted-foreground">Avaliste (Garant)</p>
+                      <p className="text-sm">{pret.avaliste.nom} {pret.avaliste.prenom}</p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
-            )}
-            {pret.exercice && (
+
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Exercice fiscal
+                    Dates
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="font-medium">{pret.exercice.nom}</p>
+                <CardContent className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Date du prêt</span>
+                    <span>{format(new Date(pret.date_pret), 'dd MMMM yyyy', { locale: fr })}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Échéance</span>
+                    <span className={statut === 'en_retard' ? 'text-destructive font-bold' : ''}>
+                      {format(new Date(pret.echeance), 'dd MMMM yyyy', { locale: fr })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Durée</span>
+                    <span>{pret.duree_mois || 2} mois</span>
+                  </div>
                 </CardContent>
               </Card>
-            )}
-          </div>
+            </div>
 
-          {/* Historique des reconductions */}
-          {reconductions && reconductions.length > 0 && (
+            {/* Détails financiers */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4" />
-                  Historique des reconductions ({reconductions.length})
+                  <Banknote className="h-4 w-4" />
+                  Détails Financiers
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>#</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Intérêt du mois</TableHead>
-                      <TableHead>Notes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reconductions.map((recon: any, index: number) => (
-                      <TableRow key={recon.id}>
-                        <TableCell className="font-medium">{reconductions.length - index}</TableCell>
-                        <TableCell>{format(new Date(recon.date_reconduction), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell className="text-amber-600">+{formatFCFA(recon.interet_mois)}</TableCell>
-                        <TableCell className="text-muted-foreground">{recon.notes || '-'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="grid md:grid-cols-4 gap-4 mb-4">
+                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Capital emprunté</p>
+                    <p className="text-xl font-bold">{formatFCFA(pret.montant)}</p>
+                  </div>
+                  <div className="text-center p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Total intérêts</p>
+                    <p className="text-xl font-bold text-amber-600">{formatFCFA(totalInterets)}</p>
+                    <p className="text-xs text-muted-foreground">{taux}% + {pret.reconductions || 0} recon.</p>
+                  </div>
+                  <div className="text-center p-3 bg-primary/10 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Total dû</p>
+                    <p className="text-xl font-bold">{formatFCFA(totalDu)}</p>
+                  </div>
+                  <div className={`text-center p-3 rounded-lg ${resteAPayer > 0 ? 'bg-orange-50 dark:bg-orange-950/30' : 'bg-green-50 dark:bg-green-950/30'}`}>
+                    <p className="text-xs text-muted-foreground">Reste à payer</p>
+                    <p className={`text-xl font-bold ${resteAPayer > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                      {formatFCFA(resteAPayer)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Barres de progression */}
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Progression globale</span>
+                      <span>{progressionGlobale.toFixed(1)}%</span>
+                    </div>
+                    <Progress value={progressionGlobale} className="h-3" />
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-amber-600">Intérêts payés</span>
+                        <span>{formatFCFA(interetPaye)} / {formatFCFA(totalInterets)}</span>
+                      </div>
+                      <Progress value={progressionInteret} className="h-2 [&>div]:bg-amber-500" />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-blue-600">Capital remboursé</span>
+                        <span>{formatFCFA(capitalPaye)} / {formatFCFA(pret.montant)}</span>
+                      </div>
+                      <Progress value={progressionCapital} className="h-2 [&>div]:bg-blue-500" />
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Historique des paiements */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Banknote className="h-4 w-4" />
-                Historique des paiements ({paiements?.length || 0})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {paiements && paiements.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Montant</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Mode</TableHead>
-                      <TableHead>Notes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paiements.map((p: any) => (
-                      <TableRow key={p.id}>
-                        <TableCell>{format(new Date(p.date_paiement), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell className="font-medium text-green-600">{formatFCFA(p.montant_paye)}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">
-                            {p.type_paiement || 'mixte'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="capitalize">{p.mode_paiement}</TableCell>
-                        <TableCell className="text-muted-foreground">{p.notes || '-'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <p className="text-center text-muted-foreground py-4">
-                  {pret.statut === 'rembourse' 
-                    ? "Ce prêt a été remboursé avant la mise en place du suivi détaillé."
-                    : "Aucun paiement enregistré"
-                  }
-                </p>
+            {/* Contexte */}
+            <div className="grid md:grid-cols-2 gap-4">
+              {pret.reunion && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Building className="h-4 w-4" />
+                      Réunion d'attribution
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="font-medium">
+                      {format(new Date(pret.reunion.date_reunion), 'dd MMMM yyyy', { locale: fr })}
+                    </p>
+                    {pret.reunion.ordre_du_jour && (
+                      <p className="text-sm text-muted-foreground mt-1">{pret.reunion.ordre_du_jour}</p>
+                    )}
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
+              {pret.exercice && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Exercice fiscal
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="font-medium">{pret.exercice.nom}</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
-          {/* Notes */}
-          {pret.notes && (
+            {/* Notes */}
+            {pret.notes && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">{pret.notes}</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="historique">
+            <PretHistoriqueComplet 
+              pret={pret} 
+              paiements={paiements || []} 
+              reconductions={reconductions || []} 
+            />
+          </TabsContent>
+
+          <TabsContent value="paiements" className="space-y-4">
+            {/* Historique des reconductions */}
+            {reconductions && reconductions.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Historique des reconductions ({reconductions.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Intérêt du mois</TableHead>
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reconductions.map((recon: any, index: number) => (
+                        <TableRow key={recon.id}>
+                          <TableCell className="font-medium">{reconductions.length - index}</TableCell>
+                          <TableCell>{format(new Date(recon.date_reconduction), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell className="text-amber-600">+{formatFCFA(recon.interet_mois)}</TableCell>
+                          <TableCell className="text-muted-foreground">{recon.notes || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Historique des paiements */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Notes</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Banknote className="h-4 w-4" />
+                  Historique des paiements ({paiements?.length || 0})
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">{pret.notes}</p>
+                {paiements && paiements.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Montant</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Mode</TableHead>
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paiements.map((p: any) => (
+                        <TableRow key={p.id}>
+                          <TableCell>{format(new Date(p.date_paiement), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell className="font-medium text-green-600">{formatFCFA(p.montant_paye)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">
+                              {p.type_paiement || 'mixte'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="capitalize">{p.mode_paiement}</TableCell>
+                          <TableCell className="text-muted-foreground">{p.notes || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-center text-muted-foreground py-4">
+                    {pret.statut === 'rembourse' 
+                      ? "Ce prêt a été remboursé avant la mise en place du suivi détaillé."
+                      : "Aucun paiement enregistré"
+                    }
+                  </p>
+                )}
               </CardContent>
             </Card>
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

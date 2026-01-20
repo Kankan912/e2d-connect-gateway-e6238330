@@ -15,6 +15,9 @@ export interface CaisseSynthese {
   reliquatCotisations: number;
   totalDistributionsBeneficiaires: number;
   tauxRecouvrement: number;
+  // Nouveau: Solde empruntable
+  soldeEmpruntable: number;
+  pourcentageEmpruntable: number;
 }
 
 export const useCaisseSynthese = () => {
@@ -102,6 +105,19 @@ export const useCaisseSynthese = () => {
 
       const fondTotal = totalEntrees - totalSorties;
 
+      // Récupérer la configuration de la caisse pour le pourcentage empruntable
+      const { data: caisseConfig } = await supabase
+        .from("caisse_config")
+        .select("pourcentage_empruntable")
+        .limit(1)
+        .maybeSingle();
+      
+      const pourcentageEmpruntable = caisseConfig?.pourcentage_empruntable || 80;
+      
+      // Solde empruntable = Fond total × pourcentage - Prêts en cours
+      // C'est le montant disponible pour de nouveaux prêts
+      const soldeEmpruntable = Math.max(0, (fondTotal * pourcentageEmpruntable / 100) - pretsEnCours);
+
       return {
         fondTotal,
         totalEpargnes,
@@ -116,6 +132,8 @@ export const useCaisseSynthese = () => {
         reliquatCotisations,
         totalDistributionsBeneficiaires,
         tauxRecouvrement,
+        soldeEmpruntable,
+        pourcentageEmpruntable,
       };
     },
     refetchInterval: 30000, // Actualiser toutes les 30 secondes

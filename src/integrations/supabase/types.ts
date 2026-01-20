@@ -2232,6 +2232,70 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications_logs: {
+        Row: {
+          campagne_id: string | null
+          created_at: string | null
+          destinataire_email: string
+          destinataire_id: string | null
+          erreur: string | null
+          id: string
+          metadata: Json | null
+          statut: string | null
+          sujet: string | null
+          template_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          campagne_id?: string | null
+          created_at?: string | null
+          destinataire_email: string
+          destinataire_id?: string | null
+          erreur?: string | null
+          id?: string
+          metadata?: Json | null
+          statut?: string | null
+          sujet?: string | null
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          campagne_id?: string | null
+          created_at?: string | null
+          destinataire_email?: string
+          destinataire_id?: string | null
+          erreur?: string | null
+          id?: string
+          metadata?: Json | null
+          statut?: string | null
+          sujet?: string | null
+          template_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_logs_destinataire_id_fkey"
+            columns: ["destinataire_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "notifications_logs_destinataire_id_fkey"
+            columns: ["destinataire_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_logs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "notifications_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications_templates: {
         Row: {
           actif: boolean | null
@@ -4004,6 +4068,7 @@ export type Database = {
       site_events: {
         Row: {
           actif: boolean
+          auto_sync: boolean | null
           created_at: string
           date: string
           description: string | null
@@ -4011,6 +4076,8 @@ export type Database = {
           id: string
           image_url: string | null
           lieu: string
+          match_id: string | null
+          match_type: string | null
           media_source: string | null
           ordre: number
           titre: string
@@ -4019,6 +4086,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          auto_sync?: boolean | null
           created_at?: string
           date: string
           description?: string | null
@@ -4026,6 +4094,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           lieu: string
+          match_id?: string | null
+          match_type?: string | null
           media_source?: string | null
           ordre?: number
           titre: string
@@ -4034,6 +4104,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          auto_sync?: boolean | null
           created_at?: string
           date?: string
           description?: string | null
@@ -4041,6 +4112,8 @@ export type Database = {
           id?: string
           image_url?: string | null
           lieu?: string
+          match_id?: string | null
+          match_type?: string | null
           media_source?: string | null
           ordre?: number
           titre?: string

@@ -7,6 +7,7 @@ import Autoplay from "embla-carousel-autoplay";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useRef } from "react";
+import { Link } from "react-router-dom";
 import teamImageFallback from "@/assets/team-celebration.jpg";
 
 const Events = () => {
@@ -62,43 +63,45 @@ const Events = () => {
           <div className="space-y-4">
             {events && events.length > 0 ? (
               events.slice(0, 4).map((event: any) => (
-                <Card key={event.id} className="group hover:shadow-strong transition-all duration-300 border-border">
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-16 h-16 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
-                        <div className="text-2xl font-bold text-primary">
-                          {format(new Date(event.date), "dd")}
-                        </div>
-                        <div className="text-xs text-primary uppercase">
-                          {format(new Date(event.date), "MMM", { locale: fr })}
-                        </div>
-                      </div>
-                      
-                      <div className="flex-1">
-                        <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-secondary/20 text-secondary mb-2">
-                          {event.type}
-                        </span>
-                        <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                          {event.titre}
-                        </h3>
-                        <div className="space-y-1 text-sm text-muted-foreground">
-                          {event.heure && (
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4" />
-                              <span>{event.heure}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
-                            <span>{event.lieu}</span>
+                <Link key={event.id} to={`/evenements/${event.id}`}>
+                  <Card className="group hover:shadow-strong transition-all duration-300 border-border cursor-pointer">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-16 h-16 rounded-lg bg-primary/10 flex flex-col items-center justify-center">
+                          <div className="text-2xl font-bold text-primary">
+                            {format(new Date(event.date), "dd")}
+                          </div>
+                          <div className="text-xs text-primary uppercase">
+                            {format(new Date(event.date), "MMM", { locale: fr })}
                           </div>
                         </div>
-                      </div>
+                        
+                        <div className="flex-1">
+                          <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-secondary/20 text-secondary mb-2">
+                            {event.type}
+                          </span>
+                          <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                            {event.titre}
+                          </h3>
+                          <div className="space-y-1 text-sm text-muted-foreground">
+                            {event.heure && (
+                              <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4" />
+                                <span>{event.heure}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              <span>{event.lieu}</span>
+                            </div>
+                          </div>
+                        </div>
 
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                    </div>
-                  </CardContent>
-                </Card>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))
             ) : (
               <p className="text-center text-muted-foreground py-12">
