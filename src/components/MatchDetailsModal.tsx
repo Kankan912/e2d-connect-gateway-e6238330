@@ -4,12 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, Calendar, MapPin, Users, Target, Star, AlertTriangle, FileText, ImageIcon } from "lucide-react";
+import { Trophy, Calendar, MapPin, Users, Target, Star, AlertTriangle, FileText, ImageIcon, Edit } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CompteRenduMatchForm } from "@/components/forms/CompteRenduMatchForm";
 import { MatchMediaManager } from "@/components/MatchMediaManager";
+import MatchStatsForm from "@/components/MatchStatsForm";
 import { useMatchCompteRendu } from "@/hooks/useMatchCompteRendu";
 import { useMatchMedias } from "@/hooks/useMatchMedias";
 
@@ -202,80 +203,10 @@ export default function MatchDetailsModal({ open, onOpenChange, match, matchType
             </Card>
           </TabsContent>
 
-          {/* Onglet Statistiques */}
-          <TabsContent value="statistiques" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Statistiques par Joueur
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                ) : stats && stats.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Joueur</TableHead>
-                        <TableHead className="text-center">Buts</TableHead>
-                        <TableHead className="text-center">Passes</TableHead>
-                        <TableHead className="text-center">
-                          <span className="inline-block w-4 h-4 bg-yellow-400 rounded-sm" title="Cartons Jaunes" />
-                        </TableHead>
-                        <TableHead className="text-center">
-                          <span className="inline-block w-4 h-4 bg-red-600 rounded-sm" title="Cartons Rouges" />
-                        </TableHead>
-                        <TableHead className="text-center">MOM</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {stats.map((stat) => (
-                        <TableRow key={stat.id}>
-                          <TableCell className="font-medium">{stat.player_name}</TableCell>
-                          <TableCell className="text-center">
-                            {stat.goals > 0 && (
-                              <Badge variant="default">{stat.goals}</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {stat.assists > 0 && (
-                              <Badge variant="outline">{stat.assists}</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {stat.yellow_cards > 0 && (
-                              <Badge className="bg-yellow-400 text-yellow-900">{stat.yellow_cards}</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {stat.red_cards > 0 && (
-                              <Badge variant="destructive">{stat.red_cards}</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {stat.man_of_match && <Star className="h-4 w-4 text-yellow-600 mx-auto" />}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                ) : (
-                  <div className="text-center py-6 text-muted-foreground">
-                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>Aucune statistique enregistrée pour ce match</p>
-                    <p className="text-xs mt-1">
-                      Utilisez le formulaire de saisie pour ajouter les stats des joueurs
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* Onglet Statistiques - Intégration MatchStatsForm pour édition directe */}
+          <TabsContent value="statistiques" className="mt-4 space-y-4">
+            {/* Formulaire de saisie des statistiques */}
+            <MatchStatsForm matchId={match.id} matchType={matchType} />
           </TabsContent>
 
           {/* Onglet Compte Rendu */}

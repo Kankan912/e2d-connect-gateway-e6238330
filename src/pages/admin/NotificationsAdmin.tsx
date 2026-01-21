@@ -1,11 +1,13 @@
-import { Bell, Plus, Send, Loader2 } from "lucide-react";
+import { Bell, Plus, Send, Loader2, Zap, Settings } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BackButton from "@/components/BackButton";
 import NotificationCampagneForm from "@/components/forms/NotificationCampagneForm";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +16,16 @@ import { toast } from "sonner";
 interface NotificationsAdminProps {
   embedded?: boolean;
 }
+
+// Définition des déclencheurs automatiques disponibles
+const TRIGGERS_CONFIG = [
+  { id: 'reunion_created', label: 'Nouvelle réunion créée', description: 'Notifier tous les membres de la création d\'une réunion' },
+  { id: 'sanction_applied', label: 'Sanction appliquée', description: 'Notifier le membre concerné d\'une sanction' },
+  { id: 'pret_approved', label: 'Prêt accordé', description: 'Notifier l\'emprunteur de l\'approbation de son prêt' },
+  { id: 'pret_echeance', label: 'Échéance prêt proche', description: 'Rappel automatique avant échéance' },
+  { id: 'cotisation_reminder', label: 'Rappel cotisation', description: 'Rappel pour les cotisations en retard' },
+  { id: 'aide_allocated', label: 'Aide allouée', description: 'Notifier le bénéficiaire d\'une aide' },
+];
 
 export default function NotificationsAdmin({ embedded = false }: NotificationsAdminProps) {
   const [formOpen, setFormOpen] = useState(false);
@@ -51,6 +63,44 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
     },
   });
 
+  // Fetch templates pour les déclencheurs
+  const { data: templates } = useQuery({
+    queryKey: ["notifications-templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications_templates")
+        .select("id, nom")
+        .eq("actif", true)
+        .order("nom");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch triggers config
+  const { data: triggersConfig } = useQuery({
+    queryKey: ["notifications-triggers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("configurations")
+        .select("*")
+        .like("cle", "trigger_%");
+      if (error) throw error;
+      // Convertir en map pour un accès facile
+      const configMap: Record<string, { enabled: boolean; templateId: string | null }> = {};
+      data?.forEach(c => {
+        const triggerId = c.cle.replace("trigger_", "").replace("_enabled", "").replace("_template", "");
+        if (!configMap[triggerId]) configMap[triggerId] = { enabled: false, templateId: null };
+        if (c.cle.endsWith("_enabled")) {
+          configMap[triggerId].enabled = c.valeur === "true";
+        } else if (c.cle.endsWith("_template")) {
+          configMap[triggerId].templateId = c.valeur || null;
+        }
+      });
+      return configMap;
+    },
+  });
+
   const createCampagne = useMutation({
     mutationFn: async (data: any) => {
       const { error } = await supabase.from('notifications_campagnes').insert(data);
@@ -79,6 +129,38 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
     onError: (error) => {
       toast.error("Erreur lors de l'envoi: " + error.message);
       setSendingId(null);
+    }
+  });
+
+  // Mutation pour sauvegarder la config d'un trigger
+  const updateTriggerConfig = useMutation({
+    mutationFn: async ({ triggerId, enabled, templateId }: { triggerId: string; enabled?: boolean; templateId?: string }) => {
+      const updates = [];
+      
+      if (enabled !== undefined) {
+        updates.push(
+          supabase
+            .from("configurations")
+            .upsert({ cle: `trigger_${triggerId}_enabled`, valeur: String(enabled) }, { onConflict: "cle" })
+        );
+      }
+      
+      if (templateId !== undefined) {
+        updates.push(
+          supabase
+            .from("configurations")
+            .upsert({ cle: `trigger_${triggerId}_template`, valeur: templateId || "" }, { onConflict: "cle" })
+        );
+      }
+      
+      await Promise.all(updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications-triggers"] });
+      toast.success("Configuration mise à jour");
+    },
+    onError: (error) => {
+      toast.error("Erreur: " + error.message);
     }
   });
 
@@ -136,6 +218,73 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
           </CardContent>
         </Card>
       </div>
+
+      {/* Section Déclencheurs Automatiques */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-warning" />
+            Déclencheurs Automatiques
+          </CardTitle>
+          <CardDescription>
+            Configurez les notifications automatiques déclenchées par les événements de l'application
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {TRIGGERS_CONFIG.map((trigger) => {
+              const config = triggersConfig?.[trigger.id] || { enabled: false, templateId: null };
+              
+              return (
+                <div 
+                  key={trigger.id} 
+                  className="flex items-center justify-between p-4 border rounded-lg bg-muted/30"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{trigger.label}</span>
+                      <Badge variant={config.enabled ? "default" : "secondary"}>
+                        {config.enabled ? "Actif" : "Inactif"}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{trigger.description}</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <Select
+                      value={config.templateId || ""}
+                      onValueChange={(value) => updateTriggerConfig.mutate({ 
+                        triggerId: trigger.id, 
+                        templateId: value 
+                      })}
+                    >
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Choisir un template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Aucun template</SelectItem>
+                        {templates?.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.nom}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Switch
+                      checked={config.enabled}
+                      onCheckedChange={(checked) => updateTriggerConfig.mutate({ 
+                        triggerId: trigger.id, 
+                        enabled: checked 
+                      })}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

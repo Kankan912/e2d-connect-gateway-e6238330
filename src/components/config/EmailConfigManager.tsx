@@ -162,6 +162,45 @@ export function EmailConfigManager() {
     }
   };
 
+  // Envoyer un email de test réel à l'administrateur
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+  const sendTestEmail = async () => {
+    if (!emailExpediteur) {
+      toast.error("Veuillez d'abord configurer l'email expéditeur");
+      return;
+    }
+    
+    setSendingTestEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-email", {
+        body: {
+          to: emailExpediteur,
+          subject: "🧪 Test de configuration email - E2D",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #2563eb;">✅ Test réussi !</h1>
+              <p>Cet email confirme que la configuration email de votre application E2D fonctionne correctement.</p>
+              <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
+              <p><strong>Service:</strong> ${emailService === 'resend' ? 'Resend API' : 'SMTP personnalisé'}</p>
+              <p><strong>Expéditeur:</strong> ${emailExpediteurNom} &lt;${emailExpediteur}&gt;</p>
+              <p><strong>Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
+              <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
+              <p style="color: #6b7280; font-size: 12px;">Ce message a été envoyé automatiquement depuis la configuration E2D.</p>
+            </div>
+          `,
+        },
+      });
+      
+      if (error) throw error;
+      toast.success(`Email de test envoyé à ${emailExpediteur}`);
+    } catch (error: any) {
+      console.error("Test email failed:", error);
+      toast.error("Échec de l'envoi: " + (error.message || "Erreur inconnue"));
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
   // Test SMTP connection
   const testSmtpConnection = async () => {
     setTestingSmtp(true);
@@ -416,8 +455,21 @@ export function EmailConfigManager() {
         </CardContent>
       </Card>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
+      {/* Test Email Button + Save Button */}
+      <div className="flex justify-between items-center">
+        <Button 
+          variant="outline"
+          onClick={sendTestEmail}
+          disabled={sendingTestEmail || !emailExpediteur}
+        >
+          {sendingTestEmail ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Mail className="h-4 w-4 mr-2" />
+          )}
+          Envoyer un email de test
+        </Button>
+        
         <Button 
           onClick={() => saveConfigMutation.mutate()}
           disabled={saveConfigMutation.isPending}
