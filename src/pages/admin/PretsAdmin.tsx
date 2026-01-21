@@ -541,9 +541,10 @@ export default function PretsAdmin() {
                 </TableHeader>
                 <TableBody>
                   {filteredPrets?.map((pret) => {
-                    // RESTE = montant_total_du directement (valeur stockée en base)
+                    // RESTE = Total dû - Montant payé (correction bug: déduire les paiements effectués)
                     const estRembourse = getEffectiveStatus(pret) === 'rembourse';
-                    const resteAPayer = estRembourse ? 0 : (pret.montant_total_du || calculerTotalDu(pret));
+                    const totalDu = pret.montant_total_du || calculerTotalDu(pret);
+                    const resteAPayer = estRembourse ? 0 : Math.max(0, totalDu - (pret.montant_paye || 0));
                     
                     // Vérification pour reconduction
                     const verifReconduction = peutReconduirePret(pret);

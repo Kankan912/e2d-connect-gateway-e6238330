@@ -60,17 +60,41 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
   const [selectedCell, setSelectedCell] = useState<{ membre: Membre; type: CotisationType } | null>(null);
   const { hasPermission } = usePermissions();
 
-  // Fetch types de cotisations
+  // Fetch types de cotisations - filtrés par exercice via exercices_cotisations_types
   const { data: types, isLoading: loadingTypes } = useQuery({
-    queryKey: ['cotisations-types-grid'],
+    queryKey: ['cotisations-types-grid', exerciceId],
     queryFn: async () => {
+      // Si pas d'exercice, charger tous les types (fallback)
+      if (!exerciceId) {
+        const { data, error } = await supabase
+          .from('cotisations_types')
+          .select('id, nom, montant_defaut, obligatoire, type_saisie')
+          .order('obligatoire', { ascending: false })
+          .order('nom');
+        if (error) throw error;
+        return data as CotisationType[];
+      }
+      
+      // Sinon, filtrer par les types activés pour cet exercice
       const { data, error } = await supabase
-        .from('cotisations_types')
-        .select('id, nom, montant_defaut, obligatoire, type_saisie')
-        .order('obligatoire', { ascending: false })
-        .order('nom');
+        .from('exercices_cotisations_types')
+        .select('cotisations_types(id, nom, montant_defaut, obligatoire, type_saisie)')
+        .eq('exercice_id', exerciceId)
+        .eq('actif', true);
+      
       if (error) throw error;
-      return data as CotisationType[];
+      
+      // Extraire les types de cotisation et les trier
+      const extractedTypes = data
+        ?.map(d => d.cotisations_types)
+        .filter((t): t is CotisationType => t !== null)
+        .sort((a, b) => {
+          // Obligatoires en premier
+          if (a.obligatoire !== b.obligatoire) return b.obligatoire ? 1 : -1;
+          return a.nom.localeCompare(b.nom);
+        });
+      
+      return extractedTypes || [];
     }
   });
 
