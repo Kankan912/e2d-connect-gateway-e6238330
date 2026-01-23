@@ -10,6 +10,17 @@ interface SendCampaignRequest {
   campaignId: string;
 }
 
+// Fonction pour récupérer la clé API depuis la DB
+async function getResendApiKey(supabase: any): Promise<string> {
+  const { data } = await supabase
+    .from("configurations")
+    .select("valeur")
+    .eq("cle", "resend_api_key")
+    .single();
+
+  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -78,17 +89,25 @@ serve(async (req) => {
 
     console.log("📧 Campaign found:", campaign.nom);
 
-    // Fetch email configuration
+    // Fetch email configuration including API key from DB
     const { data: configs } = await supabaseAdmin
       .from("configurations")
       .select("cle, valeur")
-      .in("cle", ["email_service", "app_url", "email_expediteur", "email_expediteur_nom"]);
+      .in("cle", ["email_service", "app_url", "email_expediteur", "email_expediteur_nom", "resend_api_key"]);
 
     const configMap = new Map(configs?.map(c => [c.cle, c.valeur]) || []);
     const emailService = configMap.get("email_service") || "resend";
     const appUrl = configMap.get("app_url") || "https://e2d-connect.lovable.app";
     const fromEmail = configMap.get("email_expediteur") || "E2D <onboarding@resend.dev>";
-    const fromName = configMap.get("email_expediteur_nom") || "E2D";
+
+    // Charger la clé API depuis la DB
+    const RESEND_API_KEY = configMap.get("resend_api_key") || Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY && emailService === "resend") {
+      return new Response(
+        JSON.stringify({ error: "Clé API Resend non configurée. Veuillez la configurer dans Configuration → Email." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
+    }
 
     // Get recipients based on campaign destinataires
     let recipients: { id: string; email: string; nom: string; prenom: string }[] = [];
@@ -127,15 +146,6 @@ serve(async (req) => {
         nb_destinataires: recipients.length 
       })
       .eq("id", campaignId);
-
-    // Initialize email sending via fetch to Resend API
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (!RESEND_API_KEY && emailService === "resend") {
-      return new Response(
-        JSON.stringify({ error: "RESEND_API_KEY not configured" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
-    }
 
     let sentCount = 0;
     let errorCount = 0;

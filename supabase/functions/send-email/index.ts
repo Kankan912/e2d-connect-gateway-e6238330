@@ -13,6 +13,21 @@ interface EmailRequest {
   text?: string;
 }
 
+// Fonction pour récupérer la clé API depuis la DB
+async function getResendApiKey(): Promise<string> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  const { data } = await supabase
+    .from("configurations")
+    .select("valeur")
+    .eq("cle", "resend_api_key")
+    .single();
+
+  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -51,9 +66,17 @@ serve(async (req) => {
 
     const { to, subject, html, text }: EmailRequest = await req.json();
 
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+    // Charger la clé API depuis la DB
+    const RESEND_API_KEY = await getResendApiKey();
     if (!RESEND_API_KEY) {
-      throw new Error('RESEND_API_KEY not configured');
+      console.error("RESEND_API_KEY non configurée");
+      return new Response(
+        JSON.stringify({ error: 'Clé API Resend non configurée. Veuillez la configurer dans Configuration → Email.' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      );
     }
 
     const res = await fetch('https://api.resend.com/emails', {

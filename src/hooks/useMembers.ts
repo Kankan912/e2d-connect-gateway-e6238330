@@ -42,13 +42,32 @@ export const useMembers = () => {
 
   const createMember = useMutation({
     mutationFn: async (memberData: Omit<Member, 'id' | 'created_at' | 'updated_at'>) => {
+      // Vérifier l'unicité de l'email avant insertion
+      if (memberData.email && memberData.email.trim() !== '') {
+        const { data: existing } = await supabase
+          .from("membres")
+          .select("id")
+          .eq("email", memberData.email.trim())
+          .maybeSingle();
+        
+        if (existing) {
+          throw new Error("Cet email est déjà utilisé par un autre membre. Veuillez en choisir un autre ou laisser le champ vide.");
+        }
+      }
+
       const { data, error } = await supabase
         .from("membres")
         .insert([memberData])
         .select()
         .single();
 
-      if (error) throw error;
+      // Gestion spécifique des erreurs de contrainte unique
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error("Cet email est déjà utilisé par un autre membre.");
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
