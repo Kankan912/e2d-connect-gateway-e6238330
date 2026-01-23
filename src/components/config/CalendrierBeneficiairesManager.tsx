@@ -28,6 +28,7 @@ export default function CalendrierBeneficiairesManager() {
   const [selectedExercice, setSelectedExercice] = useState<string>("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedMembre, setSelectedMembre] = useState<string>("");
+  const [selectedMois, setSelectedMois] = useState<string>("");
   const [sending, setSending] = useState(false);
   const { userRole } = useAuth();
   const { toast } = useToast();
@@ -110,23 +111,29 @@ export default function CalendrierBeneficiairesManager() {
     });
   };
 
-  // Ajouter un bénéficiaire
+  // Ajouter un bénéficiaire (supporte multi-bénéficiaires par mois)
   const handleAdd = async () => {
-    if (!selectedMembre || !selectedExercice) return;
+    if (!selectedMembre || !selectedExercice || !selectedMois) return;
     
     const cotisation = cotisationsMensuelles.find(c => c.membre_id === selectedMembre);
     const nextRang = calendrier.length + 1;
+    const moisNum = parseInt(selectedMois);
+    
+    // Calculer l'ordre dans le mois (pour multi-bénéficiaires)
+    const beneficiairesDuMois = calendrier.filter(c => c.mois_benefice === moisNum);
+    const ordreMois = beneficiairesDuMois.length + 1;
     
     await createBeneficiaire.mutateAsync({
       exercice_id: selectedExercice,
       membre_id: selectedMembre,
       rang: nextRang,
-      mois_benefice: nextRang <= 12 ? nextRang : null,
+      mois_benefice: moisNum > 0 ? moisNum : null,
       montant_mensuel: cotisation?.montant || 20000
     });
     
     setShowAddDialog(false);
     setSelectedMembre("");
+    setSelectedMois("");
   };
 
   // Exporter en PDF
@@ -393,7 +400,7 @@ export default function CalendrierBeneficiairesManager() {
         </CardContent>
       </Card>
 
-      {/* Dialog d'ajout */}
+      {/* Dialog d'ajout avec sélection du mois */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent>
           <DialogHeader>
@@ -415,10 +422,31 @@ export default function CalendrierBeneficiairesManager() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Mois de bénéfice</Label>
+              <Select value={selectedMois} onValueChange={setSelectedMois}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un mois" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MOIS.map((mois, index) => {
+                    const beneficiairesDuMois = calendrier.filter(c => c.mois_benefice === index + 1);
+                    return (
+                      <SelectItem key={index + 1} value={String(index + 1)}>
+                        {mois} {beneficiairesDuMois.length > 0 && `(${beneficiairesDuMois.length} bénéficiaire(s))`}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Vous pouvez assigner plusieurs bénéficiaires au même mois
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>Annuler</Button>
-            <Button onClick={handleAdd} disabled={!selectedMembre}>Ajouter</Button>
+            <Button onClick={handleAdd} disabled={!selectedMembre || !selectedMois}>Ajouter</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

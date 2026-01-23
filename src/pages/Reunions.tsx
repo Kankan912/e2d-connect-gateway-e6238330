@@ -1260,7 +1260,18 @@ export default function Reunions() {
             sujet: selectedReunion.sujet || selectedReunion.ordre_du_jour,
             date_reunion: selectedReunion.date_reunion
           }}
-          onSuccess={loadReunions}
+          onSuccess={() => {
+            // Recharger les réunions ET réinitialiser la sélection pour forcer le rechargement des données liées
+            loadReunions();
+            // Réinitialiser puis resélectionner après un délai pour forcer le rechargement des composants enfants
+            const currentId = selectedReunion.id;
+            setSelectedReunion(null);
+            setTimeout(() => {
+              loadReunions().then(() => {
+                // La réunion sera resélectionnée via l'UI si nécessaire
+              });
+            }, 100);
+          }}
         />
       )}
 

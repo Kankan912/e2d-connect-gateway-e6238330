@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.create-platform-user]
 verify_jwt = false
+
+[functions.update-email-config]
+verify_jwt = false
+
+[functions.send-calendrier-beneficiaires]
+verify_jwt = false

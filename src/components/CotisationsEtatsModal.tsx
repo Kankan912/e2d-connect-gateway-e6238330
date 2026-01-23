@@ -1,12 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, AlertTriangle, MinusCircle, BarChart2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CheckCircle, AlertTriangle, MinusCircle, BarChart2, Calendar, TrendingUp } from 'lucide-react';
 import { formatFCFA } from '@/lib/utils';
-import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CotisationType {
   id: string;
@@ -61,6 +63,7 @@ interface EtatMembre {
 export default function CotisationsEtatsModal({
   open,
   onOpenChange,
+  exerciceId,
   membres,
   types,
   cotisations,
@@ -68,12 +71,33 @@ export default function CotisationsEtatsModal({
 }: CotisationsEtatsModalProps) {
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatut, setFilterStatut] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'reunion' | 'annuel'>('reunion');
+
+  // Fetch all cotisations for the entire exercice (for annual view)
+  const { data: cotisationsAnnuelles } = useQuery({
+    queryKey: ['cotisations-exercice-annuel', exerciceId],
+    queryFn: async () => {
+      if (!exerciceId) return [];
+      const { data, error } = await supabase
+        .from('cotisations')
+        .select('id, membre_id, type_cotisation_id, montant, statut')
+        .eq('exercice_id', exerciceId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open && !!exerciceId && viewMode === 'annuel'
+  });
 
   // Filter only standard types (not checkbox)
   const standardTypes = useMemo(
     () => types.filter(t => t.type_saisie !== 'checkbox'),
     [types]
   );
+
+  // Use annual cotisations if in annual view mode
+  const cotisationsToUse = viewMode === 'annuel' && cotisationsAnnuelles 
+    ? cotisationsAnnuelles 
+    : cotisations;
 
   // Calculate état for each membre
   const etats = useMemo<EtatMembre[]>(() => {
@@ -86,18 +110,21 @@ export default function CotisationsEtatsModal({
         ? standardTypes 
         : standardTypes.filter(t => t.id === filterType);
 
+      // For annual view, multiply expected by 12 for monthly types
+      const multiplier = viewMode === 'annuel' ? 12 : 1;
+
       typesToConsider.forEach(type => {
         // Get expected amount (personalized or default)
         const perso = cotisationsMembres.find(
           cm => cm.membre_id === membre.id && cm.type_cotisation_id === type.id
         );
-        const expected = perso?.montant_personnalise ?? type.montant_defaut ?? 0;
+        const expected = (perso?.montant_personnalise ?? type.montant_defaut ?? 0) * multiplier;
         montantTotal += expected;
 
         // Get paid amount
-        const paid = cotisations
-          .filter(c => c.membre_id === membre.id && c.type_cotisation_id === type.id && c.statut === 'paye')
-          .reduce((sum, c) => sum + c.montant, 0);
+        const paid = cotisationsToUse
+          .filter((c: Cotisation) => c.membre_id === membre.id && c.type_cotisation_id === type.id && c.statut === 'paye')
+          .reduce((sum: number, c: Cotisation) => sum + c.montant, 0);
         montantPaye += paid;
       });
 
@@ -108,7 +135,7 @@ export default function CotisationsEtatsModal({
 
       return { membre, montantTotal, montantPaye, reste: Math.max(0, reste), statut };
     });
-  }, [membres, standardTypes, cotisations, cotisationsMembres, filterType]);
+  }, [membres, standardTypes, cotisationsToUse, cotisationsMembres, filterType, viewMode]);
 
   // Apply statut filter
   const filteredEtats = useMemo(() => {
@@ -140,19 +167,39 @@ export default function CotisationsEtatsModal({
           </DialogDescription>
         </DialogHeader>
 
+        {/* View Mode Tabs */}
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'reunion' | 'annuel')}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="reunion" className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Réunion courante
+            </TabsTrigger>
+            <TabsTrigger value="annuel" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Cumul annuel
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         {/* Summary cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-muted rounded-lg p-3 text-center">
             <p className="text-xl font-bold">{formatFCFA(stats.totalAttendu)}</p>
-            <p className="text-xs text-muted-foreground">Total attendu</p>
+            <p className="text-xs text-muted-foreground">
+              {viewMode === 'annuel' ? 'Total annuel attendu' : 'Total attendu'}
+            </p>
           </div>
           <div className="bg-success/10 rounded-lg p-3 text-center">
             <p className="text-xl font-bold text-success">{formatFCFA(stats.totalPaye)}</p>
-            <p className="text-xs text-muted-foreground">Total payé</p>
+            <p className="text-xs text-muted-foreground">
+              {viewMode === 'annuel' ? 'Total annuel payé' : 'Total payé'}
+            </p>
           </div>
           <div className="bg-warning/10 rounded-lg p-3 text-center">
             <p className="text-xl font-bold text-warning">{formatFCFA(stats.totalReste)}</p>
-            <p className="text-xs text-muted-foreground">Reste à payer</p>
+            <p className="text-xs text-muted-foreground">
+              {viewMode === 'annuel' ? 'Reste annuel à payer' : 'Reste à payer'}
+            </p>
           </div>
           <div className="bg-primary/10 rounded-lg p-3 text-center">
             <p className="text-xl font-bold text-primary">{membres.length}</p>

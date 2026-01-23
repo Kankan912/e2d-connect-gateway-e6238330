@@ -447,6 +447,7 @@ export type Database = {
           montant_mensuel: number
           montant_total: number | null
           notes: string | null
+          ordre_mois: number | null
           rang: number
           updated_at: string
         }
@@ -460,6 +461,7 @@ export type Database = {
           montant_mensuel?: number
           montant_total?: number | null
           notes?: string | null
+          ordre_mois?: number | null
           rang: number
           updated_at?: string
         }
@@ -473,6 +475,7 @@ export type Database = {
           montant_mensuel?: number
           montant_total?: number | null
           notes?: string | null
+          ordre_mois?: number | null
           rang?: number
           updated_at?: string
         }
