@@ -14,14 +14,17 @@ import { Mail, Server, Key, Globe, Send, Eye, EyeOff, Loader2, CheckCircle, XCir
 export function EmailConfigManager() {
   const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
+  const [showResendKey, setShowResendKey] = useState(false);
   const [testingResend, setTestingResend] = useState(false);
   const [testingSmtp, setTestingSmtp] = useState(false);
+  const [savingResendKey, setSavingResendKey] = useState(false);
   
   // Local state for form
   const [emailService, setEmailService] = useState<"resend" | "smtp">("resend");
   const [appUrl, setAppUrl] = useState("");
   const [emailExpediteur, setEmailExpediteur] = useState("");
   const [emailExpediteurNom, setEmailExpediteurNom] = useState("");
+  const [resendApiKey, setResendApiKey] = useState("");
   
   // SMTP config state
   const [smtpHost, setSmtpHost] = useState("");
@@ -282,27 +285,79 @@ export function EmailConfigManager() {
               Configuration Resend API
             </CardTitle>
             <CardDescription>
-              La clé API Resend est configurée dans les secrets Supabase. 
-              Vous pouvez tester la connexion ci-dessous.
+              Saisissez votre clé API Resend pour activer l'envoi d'emails
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-sm">Clé API RESEND_API_KEY configurée dans les secrets Supabase</span>
+            <div className="space-y-2">
+              <Label htmlFor="resend-api-key">Clé API Resend</Label>
+              <div className="relative">
+                <Input
+                  id="resend-api-key"
+                  type={showResendKey ? "text" : "password"}
+                  placeholder="re_xxxxxxxx..."
+                  value={resendApiKey}
+                  onChange={(e) => setResendApiKey(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setShowResendKey(!showResendKey)}
+                >
+                  {showResendKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Obtenez votre clé sur <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">resend.com/api-keys</a>
+              </p>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={testResendConnection}
-              disabled={testingResend}
-            >
-              {testingResend ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
-              )}
-              Tester la connexion Resend
-            </Button>
+            
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="secondary"
+                onClick={async () => {
+                  if (!resendApiKey || !resendApiKey.startsWith('re_')) {
+                    toast.error("Clé API invalide. Elle doit commencer par 're_'");
+                    return;
+                  }
+                  setSavingResendKey(true);
+                  try {
+                    const { error } = await supabase.functions.invoke("update-email-config", {
+                      body: { resend_api_key: resendApiKey, email_mode: "resend" }
+                    });
+                    if (error) throw error;
+                    toast.success("Clé API Resend enregistrée");
+                  } catch (err: any) {
+                    toast.error("Erreur: " + (err.message || "Impossible d'enregistrer la clé"));
+                  } finally {
+                    setSavingResendKey(false);
+                  }
+                }}
+                disabled={savingResendKey || !resendApiKey}
+              >
+                {savingResendKey ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Key className="h-4 w-4 mr-2" />
+                )}
+                Enregistrer la clé API
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                onClick={testResendConnection}
+                disabled={testingResend}
+              >
+                {testingResend ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Tester la connexion
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

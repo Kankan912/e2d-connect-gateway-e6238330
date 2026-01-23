@@ -56,10 +56,19 @@ export default function ReouvrirReunionModal({
         }
       }
 
-      // 3. Invalider les queries
+      // 3. Invalider TOUS les caches liés à cette réunion (FIX CRITIQUE)
       queryClient.invalidateQueries({ queryKey: ["reunions"] });
       queryClient.invalidateQueries({ queryKey: ["presences"] });
       queryClient.invalidateQueries({ queryKey: ["reunions-sanctions"] });
+      queryClient.invalidateQueries({ queryKey: ["cotisations-reunion-grid", reunionId] });
+      queryClient.invalidateQueries({ queryKey: ["huile-savon-reunion", reunionId] });
+      queryClient.invalidateQueries({ queryKey: ["reunions-presences", reunionId] });
+      queryClient.invalidateQueries({ queryKey: ["reunion-presences-cloture", reunionId] });
+      queryClient.invalidateQueries({ queryKey: ["reunion-beneficiaires", reunionId] });
+      queryClient.invalidateQueries({ queryKey: ["reunion-beneficiaires-details", reunionId] });
+      queryClient.invalidateQueries({ queryKey: ["cotisations-reunion", reunionId] });
+      queryClient.invalidateQueries({ queryKey: ["cotisations"] });
+      queryClient.invalidateQueries({ queryKey: ["epargnes"] });
 
       toast({
         title: "Réunion rouverte",
