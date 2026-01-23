@@ -11,25 +11,38 @@ interface ReminderRequest {
   testMode?: boolean;
 }
 
+// Fonction pour récupérer la clé API depuis la DB
+async function getResendApiKey(supabase: any): Promise<string> {
+  const { data } = await supabase
+    .from("configurations")
+    .select("valeur")
+    .eq("cle", "resend_api_key")
+    .single();
+
+  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Charger la clé API depuis la DB
+    const resendApiKey = await getResendApiKey(supabase);
     if (!resendApiKey) {
       console.error("RESEND_API_KEY non configurée");
       return new Response(
-        JSON.stringify({ error: "Configuration manquante", message: "La clé API Resend n'est pas configurée" }),
+        JSON.stringify({ error: "Configuration manquante", message: "La clé API Resend n'est pas configurée. Allez dans Configuration → Email." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const resend = new Resend(resendApiKey);
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { testMode = false }: ReminderRequest = await req.json().catch(() => ({}));
 

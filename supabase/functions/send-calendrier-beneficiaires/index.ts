@@ -28,6 +28,17 @@ const formatFCFA = (amount: number): string => {
   }).format(amount) + ' FCFA';
 };
 
+// Fonction pour récupérer la clé API depuis la DB
+async function getResendApiKey(supabase: any): Promise<string> {
+  const { data } = await supabase
+    .from("configurations")
+    .select("valeur")
+    .eq("cle", "resend_api_key")
+    .single();
+
+  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -35,14 +46,15 @@ serve(async (req) => {
   }
 
   try {
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendApiKey) {
-      throw new Error("RESEND_API_KEY not configured");
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Charger la clé API depuis la DB
+    const resendApiKey = await getResendApiKey(supabase);
+    if (!resendApiKey) {
+      throw new Error("Clé API Resend non configurée. Veuillez la configurer dans Configuration → Email.");
+    }
 
     const body: RequestBody = await req.json();
     const { exerciceNom, calendrier } = body;
@@ -71,7 +83,7 @@ serve(async (req) => {
     // Calculer le total
     const totalAnnuel = calendrier.reduce((sum, c) => sum + c.montantTotal, 0);
 
-    // Générer le tableau HTML
+    // Générer le tableau HTML avec logo E2D
     const tableRows = calendrier.map(c => `
       <tr>
         <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${c.rang}</td>
@@ -82,7 +94,7 @@ serve(async (req) => {
       </tr>
     `).join('');
 
-    // Template email HTML
+    // Template email HTML amélioré avec logo
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -91,49 +103,55 @@ serve(async (req) => {
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .header h1 { color: #006400; margin: 0; }
-          .header p { color: #666; }
+          .header { text-align: center; margin-bottom: 30px; background: linear-gradient(135deg, #006400, #228B22); padding: 30px; border-radius: 8px; }
+          .header h1 { color: white; margin: 0; }
+          .header p { color: rgba(255,255,255,0.9); margin: 10px 0 0 0; }
+          .logo { font-size: 48px; margin-bottom: 10px; }
           table { width: 100%; border-collapse: collapse; margin: 20px 0; }
           th { background-color: #006400; color: white; padding: 12px 8px; text-align: left; }
           .total { background-color: #f5f5f5; font-weight: bold; }
+          .info-box { background: #e8f5e9; border-left: 4px solid #006400; padding: 15px; margin: 20px 0; border-radius: 4px; }
           .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; font-size: 12px; color: #666; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
+            <div class="logo">🏆</div>
             <h1>E2D - Calendrier des Bénéficiaires</h1>
-            <p>Exercice: ${exerciceNom}</p>
+            <p>Exercice : ${exerciceNom}</p>
           </div>
           
           <p>Chers membres,</p>
-          <p>Veuillez trouver ci-dessous le calendrier des bénéficiaires pour l'exercice ${exerciceNom}.</p>
+          <p>Veuillez trouver ci-dessous le calendrier officiel des bénéficiaires pour l'exercice <strong>${exerciceNom}</strong>.</p>
           
           <table>
             <thead>
               <tr>
-                <th>Rang</th>
+                <th style="text-align: center; width: 60px;">Rang</th>
                 <th>Membre</th>
-                <th>Mois</th>
-                <th>Mensuel</th>
-                <th>Total (×12)</th>
+                <th style="text-align: center;">Mois</th>
+                <th style="text-align: right;">Mensuel</th>
+                <th style="text-align: right;">Total (×12)</th>
               </tr>
             </thead>
             <tbody>
               ${tableRows}
               <tr class="total">
-                <td colspan="4" style="padding: 12px 8px; border: 1px solid #ddd; text-align: right;">Total Annuel:</td>
-                <td style="padding: 12px 8px; border: 1px solid #ddd; text-align: right; color: #006400;">${formatFCFA(totalAnnuel)}</td>
+                <td colspan="4" style="padding: 12px 8px; border: 1px solid #ddd; text-align: right; font-size: 16px;">Total Annuel :</td>
+                <td style="padding: 12px 8px; border: 1px solid #ddd; text-align: right; color: #006400; font-size: 18px;">${formatFCFA(totalAnnuel)}</td>
               </tr>
             </tbody>
           </table>
           
-          <p>Ce calendrier définit l'ordre de passage des bénéficiaires. Chaque bénéficiaire recevra son montant total (mensuel × 12) moins les éventuelles déductions (sanctions impayées, etc.).</p>
+          <div class="info-box">
+            <strong>📌 Information importante :</strong><br>
+            Ce calendrier définit l'ordre de passage des bénéficiaires. Chaque bénéficiaire recevra son montant total (mensuel × 12) moins les éventuelles déductions (sanctions impayées, cotisations non réglées, etc.).
+          </div>
           
           <div class="footer">
             <p>Cet email a été envoyé automatiquement par le système de gestion E2D.</p>
-            <p>© ${new Date().getFullYear()} E2D - Tous droits réservés</p>
+            <p>© ${new Date().getFullYear()} E2D - Association Ensemble pour le Développement Durable - Tous droits réservés</p>
           </div>
         </div>
       </body>
@@ -157,7 +175,7 @@ serve(async (req) => {
           body: JSON.stringify({
             from: "E2D <notifications@resend.dev>",
             to: [membre.email],
-            subject: `[E2D] Calendrier des Bénéficiaires - ${exerciceNom}`,
+            subject: `[E2D] 📅 Calendrier des Bénéficiaires - ${exerciceNom}`,
             html: htmlContent
           })
         });

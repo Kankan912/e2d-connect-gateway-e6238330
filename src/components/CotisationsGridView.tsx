@@ -64,18 +64,18 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
   const { data: types, isLoading: loadingTypes } = useQuery({
     queryKey: ['cotisations-types-grid', exerciceId],
     queryFn: async () => {
-      // Si pas d'exercice, charger tous les types (fallback)
+      // Si pas d'exercice, charger tous les types obligatoires (fallback)
       if (!exerciceId) {
         const { data, error } = await supabase
           .from('cotisations_types')
           .select('id, nom, montant_defaut, obligatoire, type_saisie')
-          .order('obligatoire', { ascending: false })
+          .eq('obligatoire', true)
           .order('nom');
         if (error) throw error;
         return data as CotisationType[];
       }
       
-      // Sinon, filtrer par les types activés pour cet exercice
+      // Filtrer par les types activés pour cet exercice
       const { data, error } = await supabase
         .from('exercices_cotisations_types')
         .select('cotisations_types(id, nom, montant_defaut, obligatoire, type_saisie)')
@@ -85,7 +85,7 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
       if (error) throw error;
       
       // Extraire les types de cotisation et les trier
-      const extractedTypes = data
+      let extractedTypes = data
         ?.map(d => d.cotisations_types)
         .filter((t): t is CotisationType => t !== null)
         .sort((a, b) => {
@@ -94,7 +94,17 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
           return a.nom.localeCompare(b.nom);
         });
       
-      return extractedTypes || [];
+      // FALLBACK: Si aucun type activé, charger les types obligatoires par défaut
+      if (!extractedTypes || extractedTypes.length === 0) {
+        const { data: fallbackTypes } = await supabase
+          .from('cotisations_types')
+          .select('id, nom, montant_defaut, obligatoire, type_saisie')
+          .eq('obligatoire', true)
+          .order('nom');
+        extractedTypes = fallbackTypes || [];
+      }
+      
+      return extractedTypes;
     }
   });
 
@@ -309,6 +319,19 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
               </p>
             </div>
           )}
+          
+          {/* Message d'alerte si aucun type de cotisation n'est activé */}
+          {exerciceId && types && types.length === 0 && (
+            <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-md m-4">
+              <p className="text-sm font-medium text-destructive">
+                ⚠️ Aucun type de cotisation n'est activé pour cet exercice.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Veuillez activer les types de cotisation dans Configuration → Types de cotisations par exercice.
+              </p>
+            </div>
+          )}
+          
           <ScrollArea className="w-full">
             <div className="min-w-max">
               <Table>

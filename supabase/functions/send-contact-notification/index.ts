@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +22,21 @@ interface NotificationRequest {
   replyContent?: string;
 }
 
+// Fonction pour récupérer la clé API depuis la DB
+async function getResendApiKey(): Promise<string> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  const { data } = await supabase
+    .from("configurations")
+    .select("valeur")
+    .eq("cle", "resend_api_key")
+    .single();
+
+  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
+}
+
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -28,11 +44,12 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    // Charger la clé API depuis la DB
+    const RESEND_API_KEY = await getResendApiKey();
     if (!RESEND_API_KEY) {
       console.error("RESEND_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "Email service not configured" }),
+        JSON.stringify({ error: "Clé API Resend non configurée. Veuillez la configurer dans Configuration → Email." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
