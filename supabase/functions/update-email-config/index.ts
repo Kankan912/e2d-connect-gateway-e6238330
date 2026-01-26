@@ -37,14 +37,18 @@ serve(async (req) => {
       );
     }
 
-    // Check if user is admin via utilisateurs table
-    const { data: utilisateur } = await supabase
-      .from("utilisateurs")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+    // Check if user is admin via user_roles table
+    const { data: userRoles } = await supabase
+      .from("user_roles")
+      .select("roles(name)")
+      .eq("user_id", user.id);
 
-    if (utilisateur?.role !== "admin") {
+    const isAdmin = userRoles?.some((ur: any) => 
+      ['administrateur', 'tresorier', 'super_admin', 'secretaire_general']
+        .includes(ur.roles?.name?.toLowerCase())
+    );
+
+    if (!isAdmin) {
       return new Response(
         JSON.stringify({ error: "Admin access required" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
