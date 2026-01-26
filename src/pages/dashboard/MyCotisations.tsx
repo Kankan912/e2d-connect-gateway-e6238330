@@ -19,6 +19,27 @@ const MyCotisations = () => {
       .reduce((sum, c) => sum + c.montant, 0);
   };
 
+  const getRecapByType = () => {
+    if (!cotisations) return [];
+    const recap: { [key: string]: { count: number; total: number } } = {};
+    
+    cotisations.forEach(c => {
+      const typeName = c.type?.nom || 'Non spécifié';
+      if (!recap[typeName]) {
+        recap[typeName] = { count: 0, total: 0 };
+      }
+      if (c.statut === 'paye') {
+        recap[typeName].count++;
+        recap[typeName].total += c.montant;
+      }
+    });
+    
+    return Object.entries(recap).map(([type, data]) => ({
+      type,
+      ...data
+    }));
+  };
+
   const getStatusBadge = (statut: string) => {
     switch (statut) {
       case 'paye':
@@ -40,6 +61,29 @@ const MyCotisations = () => {
           Historique de vos cotisations annuelles
         </p>
       </div>
+
+      {/* Récapitulatif par type */}
+      {cotisations && cotisations.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-3">
+          {getRecapByType().map(({ type, count, total }) => (
+            <Card key={type} className="border-l-4 border-l-primary">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {type}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">
+                  {formatFCFA(total)}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {count} paiement{count > 1 ? 's' : ''}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Card>
         <CardHeader>

@@ -7,6 +7,7 @@ import { AlertTriangle, Unlock, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ReouvrirReunionModalProps {
   open: boolean;
@@ -27,6 +28,7 @@ export default function ReouvrirReunionModal({
   const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const handleReouvrir = async () => {
     setProcessing(true);
@@ -42,7 +44,22 @@ export default function ReouvrirReunionModal({
 
       if (updateError) throw updateError;
 
-      // 2. Supprimer les sanctions auto-générées si demandé
+      // 2. Logger l'action dans audit_logs
+      await supabase.from("audit_logs").insert({
+        action: "REUNION_REOUVERTURE",
+        table_name: "reunions",
+        record_id: reunionId,
+        user_id: user?.id || null,
+        old_data: { statut: "terminee" },
+        new_data: { 
+          statut: "en_cours", 
+          sanctions_supprimees: supprimerSanctions,
+          date_reunion: reunionData.date_reunion,
+          sujet: reunionData.sujet
+        }
+      });
+
+      // 3. Supprimer les sanctions auto-générées si demandé
       if (supprimerSanctions) {
         const { error: sanctionsError } = await supabase
           .from("reunions_sanctions")

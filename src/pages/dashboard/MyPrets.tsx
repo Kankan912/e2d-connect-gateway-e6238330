@@ -7,6 +7,7 @@ import { useUserPrets } from "@/hooks/usePersonalData";
 import { Wallet, CircleDollarSign, Clock, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { formatFCFA } from "@/lib/utils";
 
 const MyPrets = () => {
   const { data: prets, isLoading, error } = useUserPrets();
@@ -85,7 +86,7 @@ const MyPrets = () => {
             </div>
             {pretsEnCours.count > 0 && (
               <p className="text-sm text-muted-foreground mt-1">
-                Reste à rembourser: {pretsEnCours.total.toLocaleString('fr-FR')} FCFA
+                Reste à rembourser: {formatFCFA(pretsEnCours.total)}
               </p>
             )}
           </CardContent>
@@ -159,12 +160,12 @@ const MyPrets = () => {
                         {format(new Date(pret.date_pret), 'dd/MM/yyyy', { locale: fr })}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {montant.toLocaleString('fr-FR')} FCFA
+                        {formatFCFA(montant)}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
                           <div className="flex justify-between text-xs">
-                            <span>{rembourse.toLocaleString('fr-FR')} FCFA</span>
+                            <span>{formatFCFA(rembourse)}</span>
                             <span>{pourcentage}%</span>
                           </div>
                           <Progress value={pourcentage} className="h-2" />
