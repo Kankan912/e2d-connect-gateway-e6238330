@@ -1,179 +1,207 @@
 
-# Plan d'implémentation - Phase 2 : Priorité Haute (3h)
+# Plan d'implémentation - Phase 3 : Priorité Moyenne (~2h30)
 
 ## Résumé de l'Analyse
 
 ### Ce qui est déjà bien implémenté :
-1. **Synchronisation E2D → Site** : Entièrement fonctionnelle
-   - `useCreateE2DMatch` synchronise automatiquement si `statut_publication === 'publie'`
-   - `useUpdateE2DMatch` synchronise ou retire selon le statut
-   - `useDeleteE2DMatch` retire du site avant suppression
-   - `useSportEventSync` écoute les changements en temps réel
-   - Bouton "Synchroniser site" déjà présent dans `SportE2D.tsx` (ligne 176-186)
+1. **Templates notifications** : 7 templates existent déjà dans la base de données (rappel_cotisation, reunion_convocation, pret_echeance, sanction_notification, epargne_rappel, creation_compte, reunion_cr)
+2. **Navigation événements cliquable** : Les cartes d'événements sont déjà des `<Link>` vers `/evenements/:id` (ligne 66)
+3. **Page EventDetail** : Route et composant `/evenements/:id` déjà fonctionnels
 
-2. **Configuration types cotisation par exercice** : Interface fonctionnelle
-   - `ExercicesCotisationsTypesManager.tsx` permet d'activer/désactiver les types par exercice
-   - Toggle Switch pour chaque type avec badge Actif/Inactif
+### Ce qui nécessite des corrections :
 
-3. **Montants mensuels individuels** : Interface complète
-   - `CotisationsMensuellesExerciceManager.tsx` (580 lignes)
-   - Saisie par membre, application en masse, verrouillage après exercice actif
-   - Audit des modifications pour exercices verrouillés
-
-4. **Multi-bénéficiaires par mois** : Partiellement implémenté
-   - Le hook `useCalendrierBeneficiaires` supporte plusieurs bénéficiaires
-   - La dialog d'ajout affiche le nombre de bénéficiaires par mois
-
-### Ce qui nécessite des améliorations :
-
-| Point | État Actuel | Amélioration Requise |
+| Point | État Actuel | Correction Requise |
 |-------|-------------|----------------------|
-| Types cotisation exercice | Ne charge que les exercices actifs | Charger tous les exercices (planifiés inclus) |
-| Types cotisation exercice | Pas de bouton "Initialiser obligatoires" | Ajouter bouton d'initialisation rapide |
-| Multi-bénéficiaires | Pas d'affichage de l'ordre dans le mois | Ajouter colonne "Ordre mois" |
-| Multi-bénéficiaires | Pas de drag & drop pour réordonner | Amélioration UX future (hors périmètre) |
+| Sélection destinataires | Seulement les "présents" sont notifiés | Ajouter RadioGroup (Tous/Présents/Absents/Sélection manuelle) |
+| Limite événements | `events.slice(0, 4)` = limite statique de 4 | Augmenter ou supprimer la limite, ajouter bouton "Voir plus" |
+| Formatage devise FCFA | ~15 fichiers utilisent `toLocaleString()` manuellement | Remplacer par `formatFCFA()` de `src/lib/utils.ts` |
 
 ---
 
-## Corrections à Implémenter
+## Correction 3.1 : Sélection des destinataires dans NotifierReunionModal
 
-### 2.1 Améliorer ExercicesCotisationsTypesManager
-
-**Fichier** : `src/components/config/ExercicesCotisationsTypesManager.tsx`
+**Fichier** : `src/components/NotifierReunionModal.tsx`
 
 **Modifications** :
 
-1. **Charger TOUS les exercices** (pas seulement les actifs) :
+1. **Ajouter état pour le type de destinataire** :
 ```typescript
-// Ligne 22-30 : Modifier la requête
-const { data: exercices, isLoading: loadingExercices } = useQuery({
-  queryKey: ["exercices-config-types"],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("exercices")
-      .select("id, nom, statut")
-      .in("statut", ["planifie", "actif"]) // Inclure planifiés
-      .order("date_debut", { ascending: false });
-    
-    if (error) throw error;
-    return data;
-  },
-});
+const [recipientType, setRecipientType] = useState<"tous" | "presents" | "absents" | "manuel">("presents");
+const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
 ```
 
-2. **Ajouter bouton "Initialiser les types obligatoires"** :
+2. **Ajouter RadioGroup pour sélection** (après la Card des infos réunion) :
 ```typescript
-// Ajouter après le sélecteur d'exercice (ligne 150)
-{selectedExerciceId && (
+<div className="space-y-2">
+  <Label className="text-sm font-medium">Destinataires</Label>
+  <RadioGroup value={recipientType} onValueChange={(v) => setRecipientType(v as any)}>
+    <div className="flex items-center space-x-2">
+      <RadioGroupItem value="tous" id="tous" />
+      <Label htmlFor="tous" className="font-normal">Tous les membres avec email</Label>
+    </div>
+    <div className="flex items-center space-x-2">
+      <RadioGroupItem value="presents" id="presents" />
+      <Label htmlFor="presents" className="font-normal">Présents uniquement</Label>
+    </div>
+    <div className="flex items-center space-x-2">
+      <RadioGroupItem value="absents" id="absents" />
+      <Label htmlFor="absents" className="font-normal">Absents/Excusés uniquement</Label>
+    </div>
+    <div className="flex items-center space-x-2">
+      <RadioGroupItem value="manuel" id="manuel" />
+      <Label htmlFor="manuel" className="font-normal">Sélection manuelle</Label>
+    </div>
+  </RadioGroup>
+</div>
+```
+
+3. **Modifier le calcul des destinataires selon le type** :
+```typescript
+const destinataires = useMemo(() => {
+  if (!presences) return [];
+  
+  let filtered = presences;
+  
+  if (recipientType === "presents") {
+    filtered = presences.filter(p => p.statut_presence === "present");
+  } else if (recipientType === "absents") {
+    filtered = presences.filter(p => 
+      p.statut_presence === "absent_non_excuse" || p.statut_presence === "excuse"
+    );
+  } else if (recipientType === "manuel") {
+    filtered = presences.filter(p => selectedMembers.has(p.membre?.id || ""));
+  }
+  // "tous" = pas de filtre
+  
+  return filtered
+    .filter(p => p.membre?.email)
+    .map(p => ({
+      email: p.membre!.email!,
+      nom: p.membre!.nom,
+      prenom: p.membre!.prenom,
+    }));
+}, [presences, recipientType, selectedMembers]);
+```
+
+4. **Ajouter interface de sélection manuelle** (si recipientType === "manuel") :
+```typescript
+{recipientType === "manuel" && (
+  <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1">
+    {presences?.filter(p => p.membre?.email).map((p) => (
+      <div key={p.id} className="flex items-center space-x-2">
+        <Checkbox 
+          id={p.id}
+          checked={selectedMembers.has(p.membre?.id || "")}
+          onCheckedChange={(checked) => {
+            const newSet = new Set(selectedMembers);
+            if (checked) {
+              newSet.add(p.membre?.id || "");
+            } else {
+              newSet.delete(p.membre?.id || "");
+            }
+            setSelectedMembers(newSet);
+          }}
+        />
+        <Label htmlFor={p.id} className="font-normal text-sm">
+          {p.membre?.prenom} {p.membre?.nom}
+        </Label>
+      </div>
+    ))}
+  </div>
+)}
+```
+
+5. **Imports à ajouter** :
+```typescript
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { useMemo } from "react";
+```
+
+---
+
+## Correction 3.2 : Augmenter limite événements et ajouter pagination
+
+**Fichier** : `src/components/Events.tsx`
+
+**Modifications** :
+
+1. **Ajouter état pour le nombre d'événements affichés** :
+```typescript
+const [displayCount, setDisplayCount] = useState(4);
+```
+
+2. **Remplacer slice(0, 4) par slice dynamique** (ligne 65) :
+```typescript
+events.slice(0, displayCount).map((event: any) => (
+```
+
+3. **Ajouter bouton "Voir plus"** après la liste d'événements :
+```typescript
+{events && events.length > displayCount && (
   <Button 
     variant="outline" 
-    size="sm"
-    onClick={handleInitializeObligatoires}
-    disabled={initMutation.isPending}
+    onClick={() => setDisplayCount(prev => prev + 4)}
+    className="w-full mt-4"
   >
-    <Wand2 className="h-4 w-4 mr-2" />
-    Initialiser types obligatoires
+    Voir plus d'événements ({events.length - displayCount} restants)
   </Button>
 )}
 ```
 
-3. **Mutation pour initialiser les types obligatoires** :
+4. **Imports à ajouter** :
 ```typescript
-const initMutation = useMutation({
-  mutationFn: async () => {
-    const obligatoires = typesCotisations?.filter(t => t.obligatoire) || [];
-    for (const type of obligatoires) {
-      const existing = associations?.find(a => a.type_cotisation_id === type.id);
-      if (!existing) {
-        await supabase.from("exercices_cotisations_types").insert({
-          exercice_id: selectedExerciceId,
-          type_cotisation_id: type.id,
-          actif: true
-        });
-      } else if (!existing.actif) {
-        await supabase.from("exercices_cotisations_types")
-          .update({ actif: true })
-          .eq("id", existing.id);
-      }
-    }
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["exercices-cotisations-types", selectedExerciceId] });
-    toast({ title: "Types obligatoires activés" });
-  }
-});
-```
-
-4. **Avertissement si exercice actif** :
-```typescript
-// Ajouter après le sélecteur (dans le JSX)
-{selectedExercice?.statut === 'actif' && (
-  <Alert className="mt-2">
-    <AlertCircle className="h-4 w-4" />
-    <AlertDescription>
-      Cet exercice est <strong>actif</strong>. Les modifications sont possibles mais 
-      affecteront les calculs de cotisations en cours.
-    </AlertDescription>
-  </Alert>
-)}
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 ```
 
 ---
 
-### 2.2 Améliorer CalendrierBeneficiairesManager
+## Correction 3.3 : Standardiser formatage FCFA
 
-**Fichier** : `src/components/config/CalendrierBeneficiairesManager.tsx`
+**Fichiers à modifier** (portail interne uniquement) :
 
-**Modifications** :
+| Fichier | Lignes | Remplacement |
+|---------|--------|--------------|
+| `src/components/MemberDetailSheet.tsx` | 67-69 | Supprimer `formatCurrency` local, importer `formatFCFA` |
+| `src/pages/dashboard/DashboardHome.tsx` | 50 | `{formatFCFA(summary.totalEpargnes)}` |
+| `src/pages/dashboard/MyCotisations.tsx` | 90 | `{formatFCFA(cotisation.montant)}` |
+| `src/pages/dashboard/MyEpargnes.tsx` | 118 | `{formatFCFA(epargne.montant)}` |
+| `src/pages/dashboard/MyAides.tsx` | 145 | `{formatFCFA(aide.montant || 0)}` |
+| `src/components/PhoenixCotisationsAnnuelles.tsx` | 105 | `{formatFCFA(cotisation.montant || 0)}` |
+| `src/components/config/ExercicesManager.tsx` | 351-352 | `{formatFCFA(exercice.croissance_fond_caisse || 0)}` |
+| `src/components/notifications/NotificationToaster.tsx` | 54 | `formatFCFA(Number(sanction.montant))` |
+| `src/hooks/useCaisse.ts` | 155-162 | Utiliser `formatFCFA()` pour les alertes |
+| `supabase/functions/send-sanction-notification/index.ts` | 156 | Formater manuellement (pas de module disponible en edge) |
 
-1. **Afficher l'ordre dans le mois** pour les multi-bénéficiaires :
+**Pattern de remplacement** :
 ```typescript
-// Dans le TableRow (ligne 341-386), après la colonne "Mois"
-<TableCell>
-  {b.mois_benefice ? (
-    <div className="flex items-center gap-2">
-      <Badge>{MOIS[b.mois_benefice - 1]}</Badge>
-      {/* Afficher l'ordre si plusieurs bénéficiaires sur le même mois */}
-      {calendrier.filter(c => c.mois_benefice === b.mois_benefice).length > 1 && (
-        <Badge variant="outline" className="text-xs">
-          {calendrier.filter(c => c.mois_benefice === b.mois_benefice && c.rang <= b.rang).length}
-          /{calendrier.filter(c => c.mois_benefice === b.mois_benefice).length}
-        </Badge>
-      )}
-    </div>
-  ) : (
-    <span className="text-muted-foreground">-</span>
-  )}
-</TableCell>
+// AVANT
+{montant.toLocaleString('fr-FR')} FCFA
+
+// APRÈS
+import { formatFCFA } from "@/lib/utils";
+// ...
+{formatFCFA(montant)}
 ```
 
-2. **Calculer le montant individuel** (divisé par le nombre de bénéficiaires du mois) :
-```typescript
-// Dans le calcul du montant total affiché (optionnel, à activer si souhaité)
-const getMontantIndividuel = (beneficiaire: CalendrierBeneficiaire) => {
-  const nbBeneficiairesMois = calendrier.filter(
-    c => c.mois_benefice === beneficiaire.mois_benefice
-  ).length;
-  return nbBeneficiairesMois > 1 
-    ? beneficiaire.montant_total / nbBeneficiairesMois 
-    : beneficiaire.montant_total;
-};
-```
+**Note** : Les fichiers de dons publics (`Adhesion.tsx`, `DonationsTable.tsx`, `payment-utils.ts`) conservent le multi-devises (EUR/USD).
 
-3. **Améliorer le feedback dans la dialog d'ajout** :
-```typescript
-// Ajouter une info-bulle après la sélection du mois (ligne 442-444)
-<p className="text-xs text-muted-foreground mt-1">
-  {calendrier.filter(c => c.mois_benefice === parseInt(selectedMois)).length > 0 ? (
-    <span className="text-amber-600">
-      ⚠️ Ce mois a déjà {calendrier.filter(c => c.mois_benefice === parseInt(selectedMois)).length} bénéficiaire(s). 
-      Le montant sera partagé.
-    </span>
-  ) : (
-    "Ce sera le seul bénéficiaire de ce mois."
-  )}
-</p>
-```
+---
+
+## Correction 3.4 : Templates notifications (DÉJÀ FAIT)
+
+Les templates par défaut existent déjà en base de données :
+- `rappel_cotisation`
+- `reunion_convocation`
+- `pret_echeance`
+- `sanction_notification`
+- `epargne_rappel`
+- `creation_compte`
+- `reunion_cr`
+
+Pas de migration SQL nécessaire pour ce point.
 
 ---
 
@@ -181,52 +209,50 @@ const getMontantIndividuel = (beneficiaire: CalendrierBeneficiaire) => {
 
 | Fichier | Modifications |
 |---------|---------------|
-| `src/components/config/ExercicesCotisationsTypesManager.tsx` | Charger tous exercices, bouton init obligatoires, avertissement |
-| `src/components/config/CalendrierBeneficiairesManager.tsx` | Afficher ordre mois, calcul montant individuel, feedback dialog |
+| `src/components/NotifierReunionModal.tsx` | RadioGroup sélection destinataires, Checkboxes manuelles |
+| `src/components/Events.tsx` | Pagination dynamique, bouton "Voir plus" |
+| `src/components/MemberDetailSheet.tsx` | Import formatFCFA, supprimer local formatCurrency |
+| `src/pages/dashboard/DashboardHome.tsx` | Utiliser formatFCFA |
+| `src/pages/dashboard/MyCotisations.tsx` | Utiliser formatFCFA |
+| `src/pages/dashboard/MyEpargnes.tsx` | Utiliser formatFCFA |
+| `src/pages/dashboard/MyAides.tsx` | Utiliser formatFCFA |
+| `src/components/PhoenixCotisationsAnnuelles.tsx` | Utiliser formatFCFA |
+| `src/components/config/ExercicesManager.tsx` | Utiliser formatFCFA |
+| `src/components/notifications/NotificationToaster.tsx` | Utiliser formatFCFA |
+| `src/hooks/useCaisse.ts` | Utiliser formatFCFA |
 
 ---
 
-## Éléments Déjà Fonctionnels (Pas de Modification)
-
-Les éléments suivants sont déjà correctement implémentés et ne nécessitent aucune modification :
-
-1. **Synchronisation E2D → Site Web** :
-   - `src/hooks/useSport.ts` : Appels automatiques à `syncE2DMatchToEvent`
-   - `src/hooks/useSportEventSync.ts` : Écoute temps réel
-   - `src/pages/SportE2D.tsx` : Bouton "Synchroniser site" avec compteur
-
-2. **Montants mensuels par membre** :
-   - `src/components/config/CotisationsMensuellesExerciceManager.tsx` : Interface complète
-   - Bulk-edit, verrouillage, audit
-
-3. **Hook calendrier bénéficiaires** :
-   - `src/hooks/useCalendrierBeneficiaires.ts` : Supporte déjà multi-bénéficiaires
-
----
-
-## Estimation Révisée
+## Estimation
 
 | Tâche | Temps |
 |-------|-------|
-| Améliorer ExercicesCotisationsTypesManager | 45 min |
-| Améliorer CalendrierBeneficiairesManager | 45 min |
+| NotifierReunionModal (sélection destinataires) | 45 min |
+| Events.tsx (pagination) | 15 min |
+| Standardisation formatFCFA (11 fichiers) | 45 min |
 | Tests et vérifications | 30 min |
-| **Total Phase 2** | **~2h** |
+| **Total Phase 3** | **~2h15** |
 
 ---
 
 ## Tests de Validation
 
-1. **Types cotisation par exercice** :
-   - Sélectionner un exercice planifié → Vérifier affichage
-   - Cliquer "Initialiser types obligatoires" → Vérifier activation
-   - Sélectionner exercice actif → Vérifier message d'avertissement
+1. **Sélection destinataires** :
+   - Ouvrir NotifierReunionModal → Vérifier les 4 options RadioGroup
+   - Choisir "Tous" → Compteur affiche tous les membres avec email
+   - Choisir "Absents" → Compteur affiche excusés + absents non excusés
+   - Choisir "Sélection manuelle" → Cocher quelques membres → Vérifier compteur
 
-2. **Multi-bénéficiaires** :
-   - Ajouter 2 bénéficiaires sur le même mois
-   - Vérifier affichage de l'ordre (1/2, 2/2)
-   - Vérifier le message d'avertissement dans la dialog
+2. **Pagination événements** :
+   - Page d'accueil → Section événements → 4 premiers affichés
+   - Cliquer "Voir plus" → 4 suivants chargés
+   - Répéter jusqu'à épuisement → Bouton disparaît
 
-3. **Synchronisation E2D** (déjà fonctionnel) :
-   - Créer un match avec statut "Publié" → Vérifier apparition sur `/` (événements)
-   - Modifier le statut en "Brouillon" → Vérifier retrait du site
+3. **Formatage FCFA** :
+   - Dashboard membre → Vérifier format "XX XXX FCFA" sans "€"
+   - MemberDetailSheet → Vérifier épargnes, prêts, cotisations
+   - Notifications toast → Vérifier montant formaté
+
+4. **Non-régression dons publics** :
+   - Page /adhesion → Montants toujours en "€"
+   - Admin dons → Montants affichent la devise (EUR/USD/FCFA)
