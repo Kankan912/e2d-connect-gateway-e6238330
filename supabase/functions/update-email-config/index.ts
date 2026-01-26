@@ -62,9 +62,15 @@ serve(async (req) => {
 
     // Update email mode in configurations table
     if (email_mode) {
-      await supabase
+      const { error: modeError } = await supabase
         .from("configurations")
-        .upsert({ cle: "email_mode", valeur: email_mode, description: "Mode d'envoi email (resend ou smtp)" });
+        .upsert(
+          { cle: "email_mode", valeur: email_mode, description: "Mode d'envoi email (resend ou smtp)" },
+          { onConflict: "cle" }
+        );
+      if (modeError) {
+        console.error("Erreur upsert email_mode:", modeError);
+      }
     }
 
     // Store SMTP config in configurations table
@@ -77,27 +83,49 @@ serve(async (req) => {
       ];
 
       for (const entry of smtpEntries) {
-        await supabase.from("configurations").upsert(entry);
+        const { error: smtpError } = await supabase
+          .from("configurations")
+          .upsert(entry, { onConflict: "cle" });
+        if (smtpError) {
+          console.error(`Erreur upsert ${entry.cle}:`, smtpError);
+        }
       }
 
       // Store SMTP password securely (encrypted in configurations for now)
       if (smtp_config.password) {
-        await supabase.from("configurations").upsert({
-          cle: "smtp_password",
-          valeur: smtp_config.password,
-          description: "Mot de passe SMTP (stocké de manière sécurisée)"
-        });
+        const { error: pwdError } = await supabase
+          .from("configurations")
+          .upsert(
+            {
+              cle: "smtp_password",
+              valeur: smtp_config.password,
+              description: "Mot de passe SMTP (stocké de manière sécurisée)"
+            },
+            { onConflict: "cle" }
+          );
+        if (pwdError) {
+          console.error("Erreur upsert smtp_password:", pwdError);
+        }
       }
     }
 
-    // Store Resend API key in configurations table
-    // Note: In production, this should use Supabase secrets management
+    // Store Resend API key in configurations table with explicit onConflict
     if (resend_api_key) {
-      await supabase.from("configurations").upsert({
-        cle: "resend_api_key",
-        valeur: resend_api_key,
-        description: "Clé API Resend pour l'envoi d'emails"
-      });
+      const { error: resendError } = await supabase
+        .from("configurations")
+        .upsert(
+          {
+            cle: "resend_api_key",
+            valeur: resend_api_key,
+            description: "Clé API Resend pour l'envoi d'emails"
+          },
+          { onConflict: "cle" }
+        );
+      
+      if (resendError) {
+        console.error("Erreur upsert resend_api_key:", resendError);
+        throw new Error("Impossible de sauvegarder la clé Resend: " + resendError.message);
+      }
       console.log("Resend API key updated successfully");
     }
 

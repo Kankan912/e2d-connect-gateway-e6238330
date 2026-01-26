@@ -173,7 +173,7 @@ serve(async (req) => {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            from: "E2D <notifications@resend.dev>",
+            from: "E2D <onboarding@resend.dev>",
             to: [membre.email],
             subject: `[E2D] 📅 Calendrier des Bénéficiaires - ${exerciceNom}`,
             html: htmlContent
@@ -183,12 +183,18 @@ serve(async (req) => {
         if (response.ok) {
           emailsSent++;
           console.log(`Email envoyé à ${membre.email}`);
+          // Respecter le rate limit Resend (2 req/sec) - délai de 600ms
+          await new Promise(resolve => setTimeout(resolve, 600));
         } else {
-          throw new Error(await response.text());
+          const errorText = await response.text();
+          console.error(`Erreur Resend pour ${membre.email}:`, errorText);
+          throw new Error(errorText);
         }
       } catch (emailError) {
         console.error(`Erreur envoi à ${membre.email}:`, emailError);
         emailsErrors++;
+        // Continuer avec les autres emails même en cas d'erreur
+        await new Promise(resolve => setTimeout(resolve, 600));
       }
     }
 
