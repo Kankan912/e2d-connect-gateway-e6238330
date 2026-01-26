@@ -12,6 +12,26 @@ interface ReminderRequest {
   testMode?: boolean;
 }
 
+// Charger la clé API Resend depuis la base de données
+async function getResendApiKey(supabase: any): Promise<string> {
+  const { data } = await supabase
+    .from("configurations")
+    .select("valeur")
+    .eq("cle", "resend_api_key")
+    .single();
+  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
+}
+
+// Charger la configuration d'expéditeur email
+async function getEmailSender(supabase: any): Promise<string> {
+  const { data } = await supabase
+    .from("configurations")
+    .select("valeur")
+    .eq("cle", "smtp_from")
+    .single();
+  return data?.valeur || "E2D <onboarding@resend.dev>";
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
@@ -19,23 +39,25 @@ serve(async (req) => {
   }
 
   try {
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Charger la clé API dynamiquement depuis la DB
+    const resendApiKey = await getResendApiKey(supabase);
     if (!resendApiKey) {
       console.error("RESEND_API_KEY non configurée");
       return new Response(
         JSON.stringify({ 
           error: "Configuration manquante", 
-          message: "La clé API Resend n'est pas configurée" 
+          message: "La clé API Resend n'est pas configurée. Allez dans Configuration → Email." 
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const resend = new Resend(resendApiKey);
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const emailSender = await getEmailSender(supabase);
 
     const { joursAvant = 2, testMode = false }: ReminderRequest = await req.json().catch(() => ({}));
 
@@ -183,7 +205,7 @@ serve(async (req) => {
 
         try {
           const { error: emailError } = await resend.emails.send({
-            from: "E2D <onboarding@resend.dev>",
+            from: emailSender,
             to: [membre.email],
             subject: `Rappel : Réunion E2D le ${dateFormatted}`,
             html: emailHtml,

@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,7 +31,27 @@ interface SendReunionCRRequest {
   lieu?: string;
   presences?: PresenceInfo;
   financials?: FinancialSummary;
-  isPreview?: boolean; // Si true, ajoute [APERÇU] au sujet
+  isPreview?: boolean;
+}
+
+// Charger la clé API Resend depuis la base de données
+async function getResendApiKey(supabase: any): Promise<string> {
+  const { data } = await supabase
+    .from("configurations")
+    .select("valeur")
+    .eq("cle", "resend_api_key")
+    .single();
+  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
+}
+
+// Charger la configuration d'expéditeur email
+async function getEmailSender(supabase: any): Promise<string> {
+  const { data } = await supabase
+    .from("configurations")
+    .select("valeur")
+    .eq("cle", "smtp_from")
+    .single();
+  return data?.valeur || "E2D <onboarding@resend.dev>";
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -42,6 +61,26 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Charger la clé API dynamiquement depuis la DB
+    const resendApiKey = await getResendApiKey(supabase);
+    if (!resendApiKey) {
+      console.error("RESEND_API_KEY non configurée");
+      return new Response(
+        JSON.stringify({ 
+          error: "Configuration manquante", 
+          message: "La clé API Resend n'est pas configurée. Allez dans Configuration → Email." 
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const resend = new Resend(resendApiKey);
+    const emailSender = await getEmailSender(supabase);
+
     const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, presences, financials, isPreview }: SendReunionCRRequest = await req.json();
 
     const previewLabel = isPreview ? "[APERÇU] " : "";
@@ -183,7 +222,7 @@ ${contenu}
         `;
 
         const emailResponse = await resend.emails.send({
-          from: "E2D <onboarding@resend.dev>",
+          from: emailSender,
           to: [destinataire.email],
           subject: `[E2D] ${previewLabel}Compte-Rendu: ${sujet}`,
           html: htmlContent,
