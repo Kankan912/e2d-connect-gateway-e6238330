@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Member } from "@/hooks/useMembers";
 import { useMemberDetails } from "@/hooks/useMemberDetails";
+import { formatFCFA } from "@/lib/utils";
 import logoE2D from "@/assets/logo-e2d.png";
 
 // Hook pour récupérer les infos du compte utilisateur lié au membre
@@ -63,10 +64,6 @@ interface MemberDetailSheetProps {
   onOpenChange: (open: boolean) => void;
   onEdit: (member: Member) => void;
 }
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XAF', maximumFractionDigits: 0 }).format(amount);
-};
 
 export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }: MemberDetailSheetProps) {
   const { cotisations, epargnes, prets, sanctions, operations, stats, isLoading } = useMemberDetails(member?.id || null);
@@ -181,13 +178,13 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
             <div className="grid grid-cols-3 gap-4 mt-4">
               <Card className="bg-green-50 dark:bg-green-950/30 border-green-200">
                 <CardContent className="p-3 text-center">
-                  <p className="text-lg font-bold text-green-700 dark:text-green-400">{formatCurrency(stats.totalEpargne)}</p>
+                  <p className="text-lg font-bold text-green-700 dark:text-green-400">{formatFCFA(stats.totalEpargne)}</p>
                   <p className="text-xs text-green-600 dark:text-green-500">Épargne totale</p>
                 </CardContent>
               </Card>
               <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200">
                 <CardContent className="p-3 text-center">
-                  <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{formatCurrency(stats.totalEmprunte)}</p>
+                  <p className="text-lg font-bold text-blue-700 dark:text-blue-400">{formatFCFA(stats.totalEmprunte)}</p>
                   <p className="text-xs text-blue-600 dark:text-blue-500">Total emprunté</p>
                 </CardContent>
               </Card>
@@ -277,7 +274,7 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                           <TableRow key={c.id}>
                             <TableCell>{(c as any).cotisations_types?.nom || "Standard"}</TableCell>
                             <TableCell className="text-xs">{(c as any).reunions?.sujet || "-"}</TableCell>
-                            <TableCell>{formatCurrency(c.montant)}</TableCell>
+                            <TableCell>{formatFCFA(c.montant)}</TableCell>
                             <TableCell className="text-xs">{c.date_paiement ? format(new Date(c.date_paiement), 'dd/MM/yyyy', { locale: fr }) : "-"}</TableCell>
                             <TableCell>
                               <Badge variant={c.statut === 'paye' ? 'default' : 'secondary'}>
@@ -299,7 +296,7 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                   <CardHeader className="py-3">
                     <CardTitle className="text-sm flex items-center justify-between">
                       <span>Dépôts d'Épargne</span>
-                      <Badge className="bg-green-600">{formatCurrency(stats.totalEpargne)}</Badge>
+                      <Badge className="bg-green-600">{formatFCFA(stats.totalEpargne)}</Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
@@ -324,7 +321,7 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                           <TableRow key={e.id}>
                             <TableCell className="text-xs">{format(new Date(e.date_depot), 'dd/MM/yyyy', { locale: fr })}</TableCell>
                             <TableCell className="text-xs">{(e as any).reunions?.sujet || "-"}</TableCell>
-                            <TableCell className="font-medium text-green-600">{formatCurrency(e.montant)}</TableCell>
+                            <TableCell className="font-medium text-green-600">{formatFCFA(e.montant)}</TableCell>
                             <TableCell><Badge variant="outline">{e.statut}</Badge></TableCell>
                             <TableCell className="text-xs max-w-[150px] truncate">{e.notes || "-"}</TableCell>
                           </TableRow>
@@ -368,10 +365,10 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                           return (
                             <TableRow key={p.id}>
                               <TableCell className="text-xs">{format(new Date(p.date_pret), 'dd/MM/yyyy', { locale: fr })}</TableCell>
-                              <TableCell className="font-medium">{formatCurrency(p.montant)}</TableCell>
+                              <TableCell className="font-medium">{formatFCFA(p.montant)}</TableCell>
                               <TableCell>
                                 <div className="space-y-1">
-                                  <span className="text-xs">{formatCurrency(p.montant_paye || 0)}</span>
+                                  <span className="text-xs">{formatFCFA(p.montant_paye || 0)}</span>
                                   <Progress value={progression} className="h-1" />
                                 </div>
                               </TableCell>
@@ -422,7 +419,7 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                           <TableRow key={s.id}>
                             <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: fr })}</TableCell>
                             <TableCell>{s.motif}</TableCell>
-                            <TableCell className="font-medium text-red-600">{formatCurrency(s.montant_amende)}</TableCell>
+                            <TableCell className="font-medium text-red-600">{formatFCFA(s.montant_amende)}</TableCell>
                             <TableCell className="text-xs">{(s as any).reunions?.sujet || "-"}</TableCell>
                             <TableCell>
                               <Badge variant={s.statut === 'payee' ? 'default' : 'secondary'}>
@@ -470,7 +467,7 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                             </TableCell>
                             <TableCell className="text-xs">{o.libelle}</TableCell>
                             <TableCell className={o.type_operation === 'entree' ? 'text-green-600' : 'text-red-600'}>
-                              {formatCurrency(o.montant)}
+                              {formatFCFA(o.montant)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -510,7 +507,7 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                               {format(new Date(item.date), 'dd/MM/yyyy', { locale: fr })}
                             </span>
                             <span className="font-medium">
-                              {formatCurrency((item.data as any).montant || (item.data as any).montant_amende || 0)}
+                              {formatFCFA((item.data as any).montant || (item.data as any).montant_amende || 0)}
                             </span>
                           </div>
                         ))
@@ -563,7 +560,7 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Total épargné</span>
-                          <span className="font-medium text-green-600">{formatCurrency(stats.totalEpargne)}</span>
+                          <span className="font-medium text-green-600">{formatFCFA(stats.totalEpargne)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Nb de dépôts</span>
@@ -584,11 +581,11 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Total emprunté</span>
-                          <span className="font-medium">{formatCurrency(stats.totalEmprunte)}</span>
+                          <span className="font-medium">{formatFCFA(stats.totalEmprunte)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Total remboursé</span>
-                          <span className="font-medium text-green-600">{formatCurrency(stats.totalRembourse)}</span>
+                          <span className="font-medium text-green-600">{formatFCFA(stats.totalRembourse)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Prêts en cours</span>

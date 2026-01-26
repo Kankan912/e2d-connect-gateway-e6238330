@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CotisationsClotureExerciceCheck } from "@/components/CotisationsClotureExerciceCheck";
+import { formatFCFA } from "@/lib/utils";
 
 interface Exercice {
   id: string;
@@ -348,8 +349,8 @@ export function ExercicesManager() {
                     {exercice.taux_interet_prets || 5}%
                   </Badge>
                 </TableCell>
-                <TableCell>{exercice.croissance_fond_caisse?.toLocaleString()} FCFA</TableCell>
-                <TableCell>{exercice.plafond_fond_caisse?.toLocaleString()} FCFA</TableCell>
+                <TableCell>{formatFCFA(exercice.croissance_fond_caisse || 0)}</TableCell>
+                <TableCell>{formatFCFA(exercice.plafond_fond_caisse || 0)}</TableCell>
                 <TableCell className="text-right space-x-2">
                   <Button
                     variant="outline"

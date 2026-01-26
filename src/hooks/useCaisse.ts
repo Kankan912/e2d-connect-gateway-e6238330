@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { formatFCFA } from "@/lib/utils";
 
 export interface CaisseOperation {
   id: string;
@@ -152,13 +153,13 @@ export const useCaisseStats = () => {
         if (solde_global < config.seuil_alerte_solde) {
           alertes.push({
             type: 'warning',
-            message: `Solde global bas: ${solde_global.toLocaleString()} FCFA (seuil: ${config.seuil_alerte_solde.toLocaleString()} FCFA)`
+            message: `Solde global bas: ${formatFCFA(solde_global)} (seuil: ${formatFCFA(config.seuil_alerte_solde)})`
           });
         }
         if (solde_empruntable < config.seuil_alerte_empruntable) {
           alertes.push({
             type: 'error',
-            message: `Solde empruntable critique: ${solde_empruntable.toLocaleString()} FCFA (seuil: ${config.seuil_alerte_empruntable.toLocaleString()} FCFA)`
+            message: `Solde empruntable critique: ${formatFCFA(solde_empruntable)} (seuil: ${formatFCFA(config.seuil_alerte_empruntable)})`
           });
         }
       }

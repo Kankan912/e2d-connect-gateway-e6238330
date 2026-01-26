@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { User, Heart, Receipt, Settings, PiggyBank, AlertTriangle, Wallet, Calendar, HandHeart } from "lucide-react";
+import { formatFCFA } from "@/lib/utils";
 
 const DashboardHome = () => {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ const DashboardHome = () => {
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-24" /> : (
               <div className="text-2xl font-bold text-green-600">
-                {summary.totalEpargnes.toLocaleString('fr-FR')} FCFA
+                {formatFCFA(summary.totalEpargnes)}
               </div>
             )}
           </CardContent>

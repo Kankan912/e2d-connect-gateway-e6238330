@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, CheckCircle, XCircle, Clock } from "lucide-react";
+import { formatFCFA } from "@/lib/utils";
 
 export default function PhoenixCotisationsAnnuelles() {
   const { data: cotisations } = useQuery({
@@ -52,7 +53,7 @@ export default function PhoenixCotisationsAnnuelles() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{totalCotisations.toLocaleString('fr-FR')} FCFA</p>
+            <p className="text-2xl font-bold">{formatFCFA(totalCotisations)}</p>
           </CardContent>
         </Card>
 
@@ -102,7 +103,7 @@ export default function PhoenixCotisationsAnnuelles() {
                     {cotisation.membre?.nom} {cotisation.membre?.prenom}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {cotisation.montant?.toLocaleString('fr-FR')} FCFA
+                    {formatFCFA(cotisation.montant || 0)}
                   </TableCell>
                   <TableCell>
                     {new Date(cotisation.date_paiement).toLocaleDateString('fr-FR')}

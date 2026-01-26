@@ -7,6 +7,7 @@ import { useUserCotisations } from "@/hooks/useCotisations";
 import { Eye, Receipt } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { formatFCFA } from "@/lib/utils";
 
 const MyCotisations = () => {
   const { data: cotisations, isLoading, error } = useUserCotisations();
@@ -87,7 +88,7 @@ const MyCotisations = () => {
                         {cotisation.type?.nom || 'Non spécifié'}
                       </TableCell>
                       <TableCell className="text-right">
-                        {cotisation.montant.toLocaleString('fr-FR')} FCFA
+                        {formatFCFA(cotisation.montant)}
                       </TableCell>
                       <TableCell>
                         {format(new Date(cotisation.date_paiement), 'dd/MM/yyyy', { locale: fr })}
@@ -118,7 +119,7 @@ const MyCotisations = () => {
                     Total des cotisations payées
                   </span>
                   <span className="text-xl font-bold text-foreground">
-                    {getTotalPaye().toLocaleString('fr-FR')} FCFA
+                    {formatFCFA(getTotalPaye())}
                   </span>
                 </div>
               </div>
