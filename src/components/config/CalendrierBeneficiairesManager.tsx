@@ -351,7 +351,16 @@ export default function CalendrierBeneficiairesManager() {
                     </TableCell>
                     <TableCell>
                       {b.mois_benefice ? (
-                        <Badge>{MOIS[b.mois_benefice - 1]}</Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge>{MOIS[b.mois_benefice - 1]}</Badge>
+                          {/* Afficher l'ordre si plusieurs bénéficiaires sur le même mois */}
+                          {calendrier.filter(c => c.mois_benefice === b.mois_benefice).length > 1 && (
+                            <Badge variant="outline" className="text-xs">
+                              {calendrier.filter(c => c.mois_benefice === b.mois_benefice && c.rang <= b.rang).length}
+                              /{calendrier.filter(c => c.mois_benefice === b.mois_benefice).length}
+                            </Badge>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}
@@ -439,9 +448,16 @@ export default function CalendrierBeneficiairesManager() {
                   })}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground mt-1">
-                Vous pouvez assigner plusieurs bénéficiaires au même mois
-              </p>
+              {selectedMois && calendrier.filter(c => c.mois_benefice === parseInt(selectedMois)).length > 0 ? (
+                <p className="text-xs text-destructive mt-1">
+                  ⚠️ Ce mois a déjà {calendrier.filter(c => c.mois_benefice === parseInt(selectedMois)).length} bénéficiaire(s). 
+                  Le montant sera partagé.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {selectedMois ? "Ce sera le seul bénéficiaire de ce mois." : "Sélectionnez un mois pour ce bénéficiaire."}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>

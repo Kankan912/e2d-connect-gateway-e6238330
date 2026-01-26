@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, CheckCircle, XCircle } from "lucide-react";
+import { Settings, CheckCircle, XCircle, Wand2, AlertCircle } from "lucide-react";
 import { formatFCFA } from "@/lib/utils";
 
 export function ExercicesCotisationsTypesManager() {
@@ -15,14 +17,14 @@ export function ExercicesCotisationsTypesManager() {
   const queryClient = useQueryClient();
   const [selectedExerciceId, setSelectedExerciceId] = useState<string>("");
 
-  // Charger les exercices
+  // Charger les exercices (planifiés ET actifs)
   const { data: exercices, isLoading: loadingExercices } = useQuery({
-    queryKey: ["exercices-actifs"],
+    queryKey: ["exercices-config-types"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("exercices")
         .select("id, nom, statut")
-        .eq("statut", "actif")
+        .in("statut", ["planifie", "actif"])
         .order("date_debut", { ascending: false });
       
       if (error) throw error;
@@ -96,6 +98,36 @@ export function ExercicesCotisationsTypesManager() {
     },
   });
 
+  // Mutation pour initialiser les types obligatoires
+  const initObligatoiresMutation = useMutation({
+    mutationFn: async () => {
+      const obligatoires = typesCotisations?.filter(t => t.obligatoire) || [];
+      for (const type of obligatoires) {
+        const existing = associations?.find(a => a.type_cotisation_id === type.id);
+        if (!existing) {
+          await supabase.from("exercices_cotisations_types").insert({
+            exercice_id: selectedExerciceId,
+            type_cotisation_id: type.id,
+            actif: true
+          });
+        } else if (!existing.actif) {
+          await supabase.from("exercices_cotisations_types")
+            .update({ actif: true })
+            .eq("id", existing.id);
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exercices-cotisations-types", selectedExerciceId] });
+      toast({ title: "Types obligatoires activés", description: "Tous les types obligatoires sont maintenant actifs" });
+    },
+    onError: (error) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const selectedExercice = exercices?.find(e => e.id === selectedExerciceId);
+
   const isTypeActif = (typeId: string): boolean => {
     const assoc = associations?.find(a => a.type_cotisation_id === typeId);
     return assoc?.actif ?? true; // Par défaut actif si pas d'association
@@ -131,22 +163,48 @@ export function ExercicesCotisationsTypesManager() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Sélecteur d'exercice */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Exercice</label>
-          <Select value={selectedExerciceId} onValueChange={setSelectedExerciceId}>
-            <SelectTrigger className="w-full md:w-64">
-              <SelectValue placeholder="Sélectionner un exercice" />
-            </SelectTrigger>
-            <SelectContent>
-              {exercices?.map(ex => (
-                <SelectItem key={ex.id} value={ex.id}>
-                  {ex.nom}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Sélecteur d'exercice + Bouton init */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Exercice</label>
+            <Select value={selectedExerciceId} onValueChange={setSelectedExerciceId}>
+              <SelectTrigger className="w-full md:w-64">
+                <SelectValue placeholder="Sélectionner un exercice" />
+              </SelectTrigger>
+              <SelectContent>
+                {exercices?.map(ex => (
+                  <SelectItem key={ex.id} value={ex.id}>
+                    {ex.nom} {ex.statut === 'actif' && <Badge variant="default" className="ml-2">Actif</Badge>}
+                    {ex.statut === 'planifie' && <Badge variant="secondary" className="ml-2">Planifié</Badge>}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {selectedExerciceId && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => initObligatoiresMutation.mutate()}
+              disabled={initObligatoiresMutation.isPending}
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              Initialiser types obligatoires
+            </Button>
+          )}
         </div>
+
+        {/* Avertissement si exercice actif */}
+        {selectedExercice?.statut === 'actif' && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Cet exercice est <strong>actif</strong>. Les modifications sont possibles mais 
+              affecteront les calculs de cotisations en cours.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Liste des types */}
         {selectedExerciceId ? (
