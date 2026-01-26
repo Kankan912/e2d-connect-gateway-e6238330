@@ -86,7 +86,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'E2D <noreply@e2d.com>',
+        from: 'E2D <onboarding@resend.dev>',
         to: [to],
         subject,
         html,

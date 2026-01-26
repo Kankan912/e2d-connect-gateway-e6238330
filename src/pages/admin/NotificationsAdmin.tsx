@@ -1,4 +1,4 @@
-import { Bell, Plus, Send, Loader2, Zap, Settings } from "lucide-react";
+import { Bell, Plus, Send, Loader2, Zap, AlertTriangle, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,7 +48,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
     enabled: !!user?.id
   });
 
-  const { data: campagnes, isLoading } = useQuery({
+  const { data: campagnes, isLoading, isError, error: campagnesError } = useQuery({
     queryKey: ["notifications-campagnes"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -163,6 +163,31 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
       toast.error("Erreur: " + error.message);
     }
   });
+
+  // Afficher une erreur propre en cas de problème de chargement
+  if (isError) {
+    return (
+      <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
+        {!embedded && <BackButton />}
+        <div className="p-8 text-center">
+          <AlertTriangle className="h-16 w-16 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Erreur de chargement</h2>
+          <p className="text-muted-foreground mb-4">
+            Impossible de charger les notifications. Vérifiez votre connexion.
+          </p>
+          {campagnesError && (
+            <p className="text-sm text-destructive bg-destructive/10 p-2 rounded mb-4">
+              {(campagnesError as Error).message}
+            </p>
+          )}
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Réessayer
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
