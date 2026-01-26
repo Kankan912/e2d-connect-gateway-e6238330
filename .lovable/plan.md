@@ -1,159 +1,271 @@
 
-# Plan d'implémentation - Phase 4 : Priorité Basse (~2h)
+# Plan de Correction - Problèmes Identifiés avec Preuves
 
-## Résumé de l'Analyse
+## Diagnostic des 3 Problèmes Signalés
 
-### Ce qui est déjà bien implémenté :
-1. **MatchDetailsModal** : Intègre déjà `MatchMediaManager` et `CompteRenduMatchForm` via des onglets (lignes 214-219)
-2. **Table audit_logs** : Existe déjà avec les colonnes appropriées (action, table_name, record_id, user_id, old_data, new_data, created_at)
-3. **Logo PDF bénéficiaires** : Le logo E2D est déjà ajouté via `addE2DLogo(doc)` (ligne 146)
+### Problème 1 : Échec du test Resend (Image 80)
 
-### Ce qui nécessite des corrections :
+**Cause identifiée** : La clé API Resend n'est PAS enregistrée dans la base de données !
+```sql
+SELECT valeur FROM configurations WHERE cle = 'resend_api_key';
+-- Résultat : valeur = "" (vide)
+```
 
-| Point | État Actuel | Correction Requise |
-|-------|-------------|----------------------|
-| MyCotisations.tsx | Calcul du total correct mais pas de récapitulatif par type | Ajouter récapitulatif par type de cotisation |
-| MyPrets.tsx | Utilise `.toLocaleString()` au lieu de `formatFCFA` | Standardiser le formatage |
-| Audit réouverture | Pas de log dans `audit_logs` lors de la réouverture | Ajouter insertion dans `audit_logs` |
+**Pourquoi** : L'edge function `update-email-config/index.ts` fait un `upsert` mais la ligne n'existe pas initialement. L'upsert nécessite que la colonne `cle` soit définie comme contrainte unique. L'erreur dans les logs PostgreSQL confirme : 
+```
+"duplicate key value violates unique constraint configurations_cle_key"
+```
+
+Cela indique que l'insertion échoue car la clé existe déjà mais avec une valeur vide, et le conflit n'est pas géré correctement.
+
+**Correction** :
+1. Modifier l'edge function pour utiliser `upsert` avec `onConflict: 'cle'` explicitement
+2. Vérifier que la ligne existe d'abord, sinon l'insérer
 
 ---
 
-## Correction 4.1 : Enrichir MyCotisations avec récapitulatif par type
+### Problème 2 : 0 emails envoyés - Notification calendrier (Image 81)
 
-**Fichier** : `src/pages/dashboard/MyCotisations.tsx`
+**Cause identifiée** : Domaine Resend non vérifié + Rate limiting
 
-**Modifications** :
-
-1. **Ajouter récapitulatif par type de cotisation** (avant le tableau) :
-```typescript
-const getRecapByType = () => {
-  if (!cotisations) return [];
-  const recap: { [key: string]: { count: number; total: number } } = {};
-  
-  cotisations.forEach(c => {
-    const typeName = c.type?.nom || 'Non spécifié';
-    if (!recap[typeName]) {
-      recap[typeName] = { count: 0, total: 0 };
-    }
-    if (c.statut === 'paye') {
-      recap[typeName].count++;
-      recap[typeName].total += c.montant;
-    }
-  });
-  
-  return Object.entries(recap).map(([type, data]) => ({
-    type,
-    ...data
-  }));
-};
+Les logs Edge Function montrent clairement les erreurs :
+```
+statusCode: 403
+message: "You can only send testing emails to your own email address (kankanway912@gmail.com). To send emails to other recipients, please verify a domain at resend.com/domains"
 ```
 
-2. **Afficher les cartes de récapitulatif** (après le titre, avant la Card principale) :
-```typescript
-{cotisations && cotisations.length > 0 && (
-  <div className="grid gap-4 md:grid-cols-3">
-    {getRecapByType().map(({ type, count, total }) => (
-      <Card key={type} className="border-l-4 border-l-primary">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {type}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-primary">
-            {formatFCFA(total)}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {count} paiement{count > 1 ? 's' : ''}
-          </p>
-        </CardContent>
-      </Card>
-    ))}
-  </div>
-)}
+Et aussi :
 ```
+statusCode: 429
+message: "Too many requests. You can only make 2 requests per second"
+```
+
+**Problèmes** :
+1. Le domaine `e2d.com` n'est pas vérifié sur Resend
+2. L'adresse `from` utilise `notifications@resend.dev` qui ne peut envoyer qu'à soi-même en mode test
+3. Les emails sont envoyés trop rapidement sans délai entre chaque requête
+
+**Corrections** :
+1. Modifier l'adresse `from` pour utiliser `onboarding@resend.dev` (adresse de test Resend autorisée pour tous)
+2. Ajouter un délai de 600ms entre chaque envoi pour respecter le rate limit de 2/seconde
+3. Afficher clairement les informations de domaine dans l'UI
 
 ---
 
-## Correction 4.2 : Standardiser formatFCFA dans MyPrets.tsx
+### Problème 3 : Page blanche sur onglet Notifications (Image 82)
 
-**Fichier** : `src/pages/dashboard/MyPrets.tsx`
+**Cause identifiée** : Erreur non gérée dans les composants enfants
 
-**Modifications** :
+L'onglet Notifications charge `NotificationsAdmin embedded={true}` qui fait des requêtes à :
+- `notifications_campagnes`
+- `notifications_templates`
+- `configurations` (pour les triggers)
 
-1. **Ajouter import** :
-```typescript
-import { formatFCFA } from "@/lib/utils";
-```
+Si une de ces requêtes échoue silencieusement ou si un composant enfant plante, il n'y a pas d'ErrorBoundary pour afficher une erreur propre.
 
-2. **Remplacer les occurrences** (3 endroits) :
-- Ligne 88 : `{pretsEnCours.total.toLocaleString('fr-FR')} FCFA` → `{formatFCFA(pretsEnCours.total)}`
-- Ligne 162 : `{montant.toLocaleString('fr-FR')} FCFA` → `{formatFCFA(montant)}`
-- Ligne 167 : `{rembourse.toLocaleString('fr-FR')} FCFA` → `{formatFCFA(rembourse)}`
+**Corrections** :
+1. Ajouter un composant `ErrorBoundary` global dans `App.tsx`
+2. Ajouter des fallbacks de chargement/erreur dans `NotificationsAdmin`
+3. Vérifier que toutes les tables existent
 
 ---
 
-## Correction 4.3 : Ajouter audit log lors de la réouverture de réunion
+## Plan d'Implémentation
 
-**Fichier** : `src/components/ReouvrirReunionModal.tsx`
+### Correction 1 : Réparer la sauvegarde de la clé Resend
 
-**Modifications** :
+**Fichier** : `supabase/functions/update-email-config/index.ts`
 
-1. **Ajouter import pour récupérer l'user** :
+Modifier les lignes 95-101 pour gérer correctement l'upsert :
+
 ```typescript
-import { useAuth } from "@/contexts/AuthContext";
-```
-
-2. **Ajouter le hook dans le composant** :
-```typescript
-const { user } = useAuth();
-```
-
-3. **Insérer un log dans audit_logs après la mise à jour** (après ligne 43) :
-```typescript
-// 1.5 Logger l'action dans audit_logs
-await supabase.from("audit_logs").insert({
-  action: "REUNION_REOUVERTURE",
-  table_name: "reunions",
-  record_id: reunionId,
-  user_id: user?.id,
-  old_data: { statut: "terminee" },
-  new_data: { 
-    statut: "en_cours", 
-    sanctions_supprimees: supprimerSanctions,
-    date_reunion: reunionData.date_reunion,
-    sujet: reunionData.sujet
-  }
+// Avant : upsert simple qui peut échouer
+await supabase.from("configurations").upsert({
+  cle: "resend_api_key",
+  valeur: resend_api_key,
+  description: "Clé API Resend"
 });
+
+// Après : upsert avec gestion explicite du conflit
+const { error: upsertError } = await supabase
+  .from("configurations")
+  .upsert(
+    { 
+      cle: "resend_api_key", 
+      valeur: resend_api_key, 
+      description: "Clé API Resend pour l'envoi d'emails" 
+    }, 
+    { onConflict: "cle" }
+  );
+
+if (upsertError) {
+  console.error("Erreur upsert resend_api_key:", upsertError);
+  throw new Error("Impossible de sauvegarder la clé Resend");
+}
+```
+
+### Correction 2 : Réparer l'envoi d'emails calendrier
+
+**Fichier** : `supabase/functions/send-calendrier-beneficiaires/index.ts`
+
+Modifications :
+1. Changer l'adresse `from` de `notifications@resend.dev` à `onboarding@resend.dev`
+2. Ajouter un délai de 600ms entre chaque envoi (rate limit Resend = 2/sec)
+
+```typescript
+// Ligne 176 - Changer from
+from: "E2D <onboarding@resend.dev>",  // Adresse de test autorisée
+
+// Après chaque envoi réussi, ajouter un délai
+if (response.ok) {
+  emailsSent++;
+  console.log(`Email envoyé à ${membre.email}`);
+  // Respecter le rate limit Resend (2 req/sec)
+  await new Promise(resolve => setTimeout(resolve, 600));
+} else {
+  throw new Error(await response.text());
+}
+```
+
+**Fichier** : `supabase/functions/send-email/index.ts`
+
+Même correction pour l'adresse from (ligne 89) :
+```typescript
+from: 'E2D <onboarding@resend.dev>',  // Au lieu de noreply@e2d.com
+```
+
+### Correction 3 : Ajouter ErrorBoundary global
+
+**Nouveau fichier** : `src/components/ErrorBoundary.tsx`
+
+```typescript
+import React from "react";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+export class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-muted/30">
+          <div className="text-center space-y-4 p-8 max-w-md">
+            <AlertTriangle className="h-16 w-16 text-destructive mx-auto" />
+            <h1 className="text-2xl font-bold">Une erreur est survenue</h1>
+            <p className="text-muted-foreground">
+              Nous nous excusons pour ce désagrément.
+            </p>
+            {this.state.error && (
+              <p className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                {this.state.error.message}
+              </p>
+            )}
+            <div className="flex gap-4 justify-center">
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Actualiser
+              </Button>
+              <Button onClick={() => window.location.href = "/dashboard"}>
+                <Home className="h-4 w-4 mr-2" />
+                Dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+```
+
+**Fichier** : `src/App.tsx`
+
+Envelopper l'application avec ErrorBoundary :
+```typescript
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+// Dans le return
+return (
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      {/* ... reste de l'app */}
+    </QueryClientProvider>
+  </ErrorBoundary>
+);
+```
+
+### Correction 4 : Améliorer le composant NotificationsAdmin
+
+**Fichier** : `src/pages/admin/NotificationsAdmin.tsx`
+
+Ajouter un fallback d'erreur dans le composant :
+
+```typescript
+// Après la ligne 64 (fin de la query campagnes)
+const { data: campagnes, isLoading, isError, error } = useQuery({
+  // ... existant
+});
+
+// Dans le return, avant le contenu principal
+if (isError) {
+  return (
+    <div className="p-6 text-center">
+      <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+      <h2 className="text-lg font-semibold mb-2">Erreur de chargement</h2>
+      <p className="text-muted-foreground">
+        Impossible de charger les notifications. Vérifiez votre connexion.
+      </p>
+      <p className="text-sm text-red-500 mt-2">{error?.message}</p>
+    </div>
+  );
+}
 ```
 
 ---
 
 ## Fichiers à Modifier
 
-| Fichier | Modifications |
-|---------|---------------|
-| `src/pages/dashboard/MyCotisations.tsx` | Ajouter récapitulatif par type de cotisation |
-| `src/pages/dashboard/MyPrets.tsx` | Importer et utiliser `formatFCFA` |
-| `src/components/ReouvrirReunionModal.tsx` | Ajouter log audit lors réouverture |
+| Fichier | Action | Priorité |
+|---------|--------|----------|
+| `supabase/functions/update-email-config/index.ts` | Corriger upsert avec onConflict | CRITIQUE |
+| `supabase/functions/send-calendrier-beneficiaires/index.ts` | Changer from + ajouter délai | CRITIQUE |
+| `supabase/functions/send-email/index.ts` | Changer from address | CRITIQUE |
+| `src/components/ErrorBoundary.tsx` | CRÉER - Nouveau fichier | HAUTE |
+| `src/App.tsx` | Wrapper avec ErrorBoundary | HAUTE |
+| `src/pages/admin/NotificationsAdmin.tsx` | Ajouter gestion erreur | MOYENNE |
 
 ---
 
-## Éléments Déjà Fonctionnels (Pas de Modification)
+## Migration SQL Nécessaire
 
-Les éléments suivants sont déjà correctement implémentés :
+Avant les corrections, s'assurer que la clé resend_api_key existe :
 
-1. **MatchDetailsModal** :
-   - `CompteRenduMatchForm` intégré dans l'onglet "CR" (ligne 214)
-   - `MatchMediaManager` intégré dans l'onglet "Médias" (ligne 219)
-   - Badges indicateurs de contenu existant (lignes 94-105)
-
-2. **Logo PDF Calendrier Bénéficiaires** :
-   - `addE2DLogo(doc)` appelé ligne 146 dans `CalendrierBeneficiairesManager.tsx`
-   - `addE2DFooter(doc)` appelé ligne 191
-
-3. **Table audit_logs** :
-   - Existe avec toutes les colonnes nécessaires (id, action, table_name, record_id, user_id, old_data, new_data, created_at)
+```sql
+INSERT INTO configurations (cle, valeur, description, categorie)
+VALUES ('resend_api_key', '', 'Clé API Resend pour l''envoi d''emails', 'email')
+ON CONFLICT (cle) DO NOTHING;
+```
 
 ---
 
@@ -161,52 +273,48 @@ Les éléments suivants sont déjà correctement implémentés :
 
 | Tâche | Temps |
 |-------|-------|
-| Récapitulatif MyCotisations | 30 min |
-| Standardiser formatFCFA MyPrets | 10 min |
-| Audit log réouverture réunion | 20 min |
-| Tests et vérifications | 30 min |
-| **Total Phase 4** | **~1h30** |
+| Correction update-email-config | 15 min |
+| Correction send-calendrier-beneficiaires | 20 min |
+| Correction send-email | 10 min |
+| Création ErrorBoundary + App.tsx | 20 min |
+| Amélioration NotificationsAdmin | 15 min |
+| Tests et vérifications | 20 min |
+| **Total** | **~1h40** |
 
 ---
 
 ## Tests de Validation
 
-1. **MyCotisations** :
-   - Accéder à /dashboard/my-cotisations
-   - Vérifier affichage des cartes récapitulatives par type
-   - Vérifier que le total général correspond à la somme des types
+1. **Test clé Resend** :
+   - Aller dans Configuration E2D → Email
+   - Saisir une clé Resend valide (commençant par `re_`)
+   - Cliquer "Enregistrer la clé API"
+   - Vérifier en base : `SELECT valeur FROM configurations WHERE cle = 'resend_api_key'`
+   - Cliquer "Tester la connexion" → doit afficher succès
 
-2. **MyPrets** :
-   - Accéder à /dashboard/my-prets
-   - Vérifier format "XX XXX FCFA" (avec espace comme séparateur de milliers)
-   - Vérifier dans le tableau ET dans les cartes statistiques
+2. **Test envoi calendrier** :
+   - Aller dans Configuration E2D → Tontine → Calendrier des Bénéficiaires
+   - Cliquer "Notifier les membres"
+   - Vérifier les logs Edge Function : plus d'erreur 403 pour l'adresse from
+   - Vérifier qu'il n'y a plus d'erreur 429 (rate limit)
 
-3. **Audit réouverture** :
-   - Rouvrir une réunion terminée
-   - Vérifier dans la base de données :
-   ```sql
-   SELECT * FROM audit_logs 
-   WHERE action = 'REUNION_REOUVERTURE' 
-   ORDER BY created_at DESC LIMIT 5;
-   ```
+3. **Test page Notifications** :
+   - Aller dans Configuration E2D → Notifications
+   - La page doit s'afficher avec les 4 statistiques et le tableau
+   - Si erreur, un message d'erreur propre doit s'afficher (pas de page blanche)
 
-4. **Non-régression MatchDetailsModal** (déjà fonctionnel) :
-   - Ouvrir les détails d'un match E2D
-   - Vérifier que les onglets CR et Médias fonctionnent
-   - Vérifier les badges indicateurs de contenu
-
-5. **Non-régression PDF Bénéficiaires** (déjà fonctionnel) :
-   - Exporter le calendrier bénéficiaires en PDF
-   - Vérifier présence du logo E2D en haut à droite
-   - Vérifier pied de page avec numérotation
+4. **Test ErrorBoundary** :
+   - Provoquer une erreur intentionnelle dans un composant
+   - Vérifier que l'écran d'erreur avec boutons "Actualiser" et "Dashboard" s'affiche
 
 ---
 
-## Récapitulatif des 4 Phases
+## Note Importante sur Resend
 
-| Phase | Statut | Corrections |
-|-------|--------|-------------|
-| Phase 1 | ✅ Terminée | 5 Edge Functions corrigées, entrée config resend_api_key |
-| Phase 2 | ✅ Terminée | ExercicesCotisationsTypesManager amélioré, Multi-bénéficiaires UI |
-| Phase 3 | ✅ Terminée | NotifierReunionModal destinataires, Events pagination, formatFCFA 11 fichiers |
-| Phase 4 | 🔄 En cours | MyCotisations récap, MyPrets formatFCFA, Audit réouverture |
+Pour envoyer des emails à **tous les destinataires** (pas seulement à soi-même), l'utilisateur doit :
+
+1. Aller sur https://resend.com/domains
+2. Ajouter et vérifier un domaine (ex: e2d.com)
+3. Mettre à jour l'adresse `from` dans les Edge Functions pour utiliser ce domaine vérifié (ex: `notifications@e2d.com`)
+
+En mode test, seul `onboarding@resend.dev` permet d'envoyer à n'importe qui, mais avec une limite de 100 emails/jour.
