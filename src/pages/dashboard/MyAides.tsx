@@ -6,6 +6,7 @@ import { useUserAides } from "@/hooks/usePersonalData";
 import { Heart, HandHeart, CheckCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { formatFCFA } from "@/lib/utils";
 
 const MyAides = () => {
   const { data: aides, isLoading, error } = useUserAides();
@@ -68,7 +69,7 @@ const MyAides = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-pink-600">
-              {getTotalAides().toLocaleString('fr-FR')} FCFA
+              {formatFCFA(getTotalAides())}
             </div>
           </CardContent>
         </Card>
@@ -142,7 +143,7 @@ const MyAides = () => {
                       {aide.contexte_aide || '-'}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {(aide.montant || 0).toLocaleString('fr-FR')} FCFA
+                      {formatFCFA(aide.montant || 0)}
                     </TableCell>
                     <TableCell>
                       {getStatusBadge(aide.statut)}

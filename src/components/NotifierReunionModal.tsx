@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Mail, Loader2, Users, FileText, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +18,8 @@ interface NotifierReunionModalProps {
   reunionData: { sujet?: string; date_reunion: string; ordre_du_jour?: string; lieu_description?: string };
 }
 
+type RecipientType = "tous" | "presents" | "absents" | "manuel";
+
 export default function NotifierReunionModal({
   open,
   onOpenChange,
@@ -22,6 +27,8 @@ export default function NotifierReunionModal({
   reunionData,
 }: NotifierReunionModalProps) {
   const [sending, setSending] = useState(false);
+  const [recipientType, setRecipientType] = useState<RecipientType>("presents");
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   // Récupérer les membres présents
@@ -64,23 +71,63 @@ export default function NotifierReunionModal({
   const absents = presences?.filter(p => p.statut_presence === "absent_non_excuse") || [];
   const retards = presences?.filter(p => p.heure_arrivee) || [];
 
-  const destinataires = presences
-    ?.filter(p => p.membre?.email && p.statut_presence === "present")
-    .map(p => ({
-      email: p.membre!.email!,
-      nom: p.membre!.nom,
-      prenom: p.membre!.prenom,
-    })) || [];
+  // Calculer les destinataires selon le type sélectionné
+  const destinataires = useMemo(() => {
+    if (!presences) return [];
+    
+    let filtered = presences;
+    
+    if (recipientType === "presents") {
+      filtered = presences.filter(p => p.statut_presence === "present");
+    } else if (recipientType === "absents") {
+      filtered = presences.filter(p => 
+        p.statut_presence === "absent_non_excuse" || p.statut_presence === "excuse"
+      );
+    } else if (recipientType === "manuel") {
+      filtered = presences.filter(p => selectedMembers.has(p.membre?.id || ""));
+    }
+    // "tous" = pas de filtre
+    
+    return filtered
+      .filter(p => p.membre?.email)
+      .map(p => ({
+        email: p.membre!.email!,
+        nom: p.membre!.nom,
+        prenom: p.membre!.prenom,
+      }));
+  }, [presences, recipientType, selectedMembers]);
+
+  // Membres avec email pour sélection manuelle
+  const membresAvecEmail = presences?.filter(p => p.membre?.email) || [];
 
   const tauxPresence = presences && presences.length > 0 
     ? Math.round((presents.length / presences.length) * 100) 
     : 0;
 
+  const handleToggleMember = (membreId: string) => {
+    const newSet = new Set(selectedMembers);
+    if (newSet.has(membreId)) {
+      newSet.delete(membreId);
+    } else {
+      newSet.add(membreId);
+    }
+    setSelectedMembers(newSet);
+  };
+
+  const handleSelectAll = () => {
+    const allIds = membresAvecEmail.map(p => p.membre?.id || "").filter(Boolean);
+    setSelectedMembers(new Set(allIds));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedMembers(new Set());
+  };
+
   const handleSendNotification = async () => {
     if (destinataires.length === 0) {
       toast({
         title: "Aucun destinataire",
-        description: "Aucun membre présent avec email trouvé",
+        description: "Aucun membre correspondant aux critères avec email",
         variant: "destructive",
       });
       return;
@@ -137,14 +184,14 @@ export default function NotifierReunionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5 text-primary" />
             Notifier sans clôturer
           </DialogTitle>
           <DialogDescription>
-            Envoyer un compte-rendu préliminaire aux membres présents
+            Envoyer un compte-rendu préliminaire aux membres sélectionnés
           </DialogDescription>
         </DialogHeader>
 
@@ -188,11 +235,78 @@ export default function NotifierReunionModal({
             <span>{comptesRendus?.length || 0} point(s) de compte-rendu</span>
           </div>
 
-          {/* Destinataires */}
+          {/* Sélection type de destinataires */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Destinataires</Label>
+            <RadioGroup 
+              value={recipientType} 
+              onValueChange={(v) => setRecipientType(v as RecipientType)}
+              className="grid grid-cols-2 gap-2"
+            >
+              <div className="flex items-center space-x-2 border rounded-lg p-2">
+                <RadioGroupItem value="tous" id="tous" />
+                <Label htmlFor="tous" className="font-normal text-sm cursor-pointer">
+                  Tous ({membresAvecEmail.length})
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 border rounded-lg p-2">
+                <RadioGroupItem value="presents" id="presents" />
+                <Label htmlFor="presents" className="font-normal text-sm cursor-pointer">
+                  Présents ({presents.filter(p => p.membre?.email).length})
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 border rounded-lg p-2">
+                <RadioGroupItem value="absents" id="absents" />
+                <Label htmlFor="absents" className="font-normal text-sm cursor-pointer">
+                  Absents/Excusés ({[...excuses, ...absents].filter(p => p.membre?.email).length})
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2 border rounded-lg p-2">
+                <RadioGroupItem value="manuel" id="manuel" />
+                <Label htmlFor="manuel" className="font-normal text-sm cursor-pointer">
+                  Sélection manuelle
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* Sélection manuelle */}
+          {recipientType === "manuel" && (
+            <div className="space-y-2">
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={handleSelectAll}>
+                  Tout sélectionner
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleDeselectAll}>
+                  Tout désélectionner
+                </Button>
+              </div>
+              <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1">
+                {membresAvecEmail.map((p) => (
+                  <div key={p.id} className="flex items-center space-x-2 hover:bg-muted/50 rounded p-1">
+                    <Checkbox 
+                      id={p.id}
+                      checked={selectedMembers.has(p.membre?.id || "")}
+                      onCheckedChange={() => handleToggleMember(p.membre?.id || "")}
+                    />
+                    <Label htmlFor={p.id} className="font-normal text-sm cursor-pointer flex-1">
+                      {p.membre?.prenom} {p.membre?.nom}
+                      <span className="text-xs text-muted-foreground ml-2">
+                        ({p.statut_presence === "present" ? "présent" : 
+                          p.statut_presence === "excuse" ? "excusé" : "absent"})
+                      </span>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Affichage des destinataires */}
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Users className="h-4 w-4" />
-              <span>Destinataires ({destinataires.length})</span>
+              <span>Destinataires sélectionnés ({destinataires.length})</span>
             </div>
             {destinataires.length > 0 ? (
               <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
@@ -205,7 +319,7 @@ export default function NotifierReunionModal({
             ) : (
               <div className="flex items-center gap-2 text-sm text-destructive">
                 <AlertCircle className="h-4 w-4" />
-                <span>Aucun membre présent avec email</span>
+                <span>Aucun destinataire sélectionné avec email</span>
               </div>
             )}
           </div>

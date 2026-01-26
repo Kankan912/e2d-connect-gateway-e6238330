@@ -6,6 +6,7 @@ import { useUserEpargnes } from "@/hooks/usePersonalData";
 import { PiggyBank, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { formatFCFA } from "@/lib/utils";
 
 const MyEpargnes = () => {
   const { data: epargnes, isLoading, error } = useUserEpargnes();
@@ -48,7 +49,7 @@ const MyEpargnes = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">
-              {getTotalEpargnes().toLocaleString('fr-FR')} FCFA
+              {formatFCFA(getTotalEpargnes())}
             </div>
           </CardContent>
         </Card>
@@ -115,7 +116,7 @@ const MyEpargnes = () => {
                       {format(new Date(epargne.date_depot), 'dd/MM/yyyy', { locale: fr })}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {epargne.montant.toLocaleString('fr-FR')} FCFA
+                      {formatFCFA(epargne.montant)}
                     </TableCell>
                     <TableCell>
                       {getStatusBadge(epargne.statut)}

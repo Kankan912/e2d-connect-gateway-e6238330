@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { formatFCFA } from "@/lib/utils";
 
 export const NotificationToaster = () => {
   const { user } = useAuth();
@@ -51,7 +52,7 @@ export const NotificationToaster = () => {
           
           if (sanction.montant > 0 && sanction.statut !== 'paye') {
             toast.warning("Nouvelle sanction", {
-              description: `Une nouvelle sanction de ${Number(sanction.montant).toLocaleString('fr-FR')} FCFA a été créée`,
+              description: `Une nouvelle sanction de ${formatFCFA(Number(sanction.montant))} a été créée`,
               action: {
                 label: "Voir",
                 onClick: () => navigate('/dashboard/admin/reunions'),
