@@ -111,25 +111,51 @@ serve(async (req) => {
 
     // Get recipients based on campaign destinataires
     let recipients: { id: string; email: string; nom: string; prenom: string }[] = [];
-    const destinataires = campaign.destinataires as { type: string; ids?: string[] };
+    const destinatairesRaw = campaign.destinataires;
 
-    if (destinataires.type === "all") {
-      const { data: membres } = await supabaseAdmin
-        .from("membres")
-        .select("id, email, nom, prenom")
-        .not("email", "is", null)
-        .eq("statut", "actif");
-      recipients = membres || [];
-    } else if (destinataires.type === "selected" && destinataires.ids) {
-      const { data: membres } = await supabaseAdmin
-        .from("membres")
-        .select("id, email, nom, prenom")
-        .in("id", destinataires.ids)
-        .not("email", "is", null);
-      recipients = membres || [];
+    // Gestion des deux formats : tableau direct d'IDs ou objet { type, ids }
+    if (Array.isArray(destinatairesRaw)) {
+      // Format: ["uuid1", "uuid2", ...] - tableau direct d'IDs membres
+      console.log(`📋 Destinataires format: array with ${destinatairesRaw.length} IDs`);
+      if (destinatairesRaw.length > 0) {
+        const { data: membres } = await supabaseAdmin
+          .from("membres")
+          .select("id, email, nom, prenom")
+          .in("id", destinatairesRaw)
+          .not("email", "is", null);
+        recipients = membres || [];
+      } else {
+        // Tableau vide = tous les membres actifs
+        const { data: membres } = await supabaseAdmin
+          .from("membres")
+          .select("id, email, nom, prenom")
+          .not("email", "is", null)
+          .eq("statut", "actif");
+        recipients = membres || [];
+      }
+    } else if (typeof destinatairesRaw === "object" && destinatairesRaw !== null) {
+      // Format objet: { type: "all" | "selected", ids?: [] }
+      const destinataires = destinatairesRaw as { type?: string; ids?: string[] };
+      console.log(`📋 Destinataires format: object with type=${destinataires.type}`);
+      
+      if (destinataires.type === "all") {
+        const { data: membres } = await supabaseAdmin
+          .from("membres")
+          .select("id, email, nom, prenom")
+          .not("email", "is", null)
+          .eq("statut", "actif");
+        recipients = membres || [];
+      } else if (destinataires.type === "selected" && destinataires.ids?.length) {
+        const { data: membres } = await supabaseAdmin
+          .from("membres")
+          .select("id, email, nom, prenom")
+          .in("id", destinataires.ids)
+          .not("email", "is", null);
+        recipients = membres || [];
+      }
     }
 
-    console.log(`📬 Found ${recipients.length} recipients`);
+    console.log(`📬 Found ${recipients.length} recipients from format: ${Array.isArray(destinatairesRaw) ? "array" : "object"}`);
 
     if (recipients.length === 0) {
       return new Response(
