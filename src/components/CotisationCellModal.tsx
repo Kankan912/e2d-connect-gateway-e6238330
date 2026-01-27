@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Trash2, Save, User, Coins } from 'lucide-react';
+import { Loader2, Trash2, Save, User, Coins, AlertCircle } from 'lucide-react';
 import { formatFCFA } from '@/lib/utils';
 
 interface CotisationCellModalProps {
@@ -38,7 +38,19 @@ export default function CotisationCellModal({
   const [montant, setMontant] = useState<string>('');
   const [datePaiement, setDatePaiement] = useState<string>(new Date().toISOString().split('T')[0]);
 
-  // Calculer le reste à payer (uniquement pour les nouvelles saisies)
+  // Calculer le reste à payer de manière dynamique en temps réel
+  const resteAPayerDynamique = useMemo(() => {
+    const nouveauMontantNum = parseFloat(montant) || 0;
+    if (existingCotisation) {
+      // En mode édition: reste = attendu - cumul (sans ce paiement) - nouveau montant
+      const cumulSansCePaiement = cumulPaye - existingCotisation.montant;
+      return Math.max(0, defaultMontant - cumulSansCePaiement - nouveauMontantNum);
+    }
+    // Nouvelle saisie: reste = attendu - déjà payé - montant en cours de saisie
+    return Math.max(0, defaultMontant - cumulPaye - nouveauMontantNum);
+  }, [montant, defaultMontant, cumulPaye, existingCotisation]);
+
+  // Reste à payer initial (sans le montant en cours)
   const resteAPayer = existingCotisation 
     ? defaultMontant - cumulPaye  // En mode édition, on garde le calcul normal
     : Math.max(0, defaultMontant - cumulPaye);
@@ -201,9 +213,32 @@ export default function CotisationCellModal({
               min="0"
               className="text-lg font-semibold"
             />
-            {parseFloat(montant) !== defaultMontant && parseFloat(montant) > 0 && (
-              <p className="text-xs text-warning">
-                ⚠️ Montant différent du montant par défaut ({formatFCFA(defaultMontant)})
+            
+            {/* Indicateur temps réel du reste à payer */}
+            {(parseFloat(montant) > 0) && (
+              <div className={`flex items-center gap-2 p-2 rounded-lg text-sm ${
+                resteAPayerDynamique === 0 
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
+                  : resteAPayerDynamique < 0 
+                    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+              }`}>
+                {resteAPayerDynamique === 0 ? (
+                  <>✓ Cotisation complète après ce paiement</>
+                ) : resteAPayerDynamique < 0 ? (
+                  <>
+                    <AlertCircle className="h-4 w-4" />
+                    Excédent de {formatFCFA(Math.abs(resteAPayerDynamique))}
+                  </>
+                ) : (
+                  <>Reste après paiement : {formatFCFA(resteAPayerDynamique)}</>
+                )}
+              </div>
+            )}
+            
+            {parseFloat(montant) !== defaultMontant && parseFloat(montant) > 0 && !existingCotisation && (
+              <p className="text-xs text-muted-foreground">
+                ℹ️ Montant différent du montant par défaut ({formatFCFA(defaultMontant)})
               </p>
             )}
           </div>

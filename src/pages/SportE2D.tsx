@@ -20,7 +20,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import LogoHeader from "@/components/LogoHeader";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { ChevronDown } from "lucide-react";
 import E2DMatchForm from "@/components/forms/E2DMatchForm";
 import E2DMatchEditForm from "@/components/forms/E2DMatchEditForm";
 import MatchDetailsModal from "@/components/MatchDetailsModal";
@@ -70,12 +71,13 @@ export default function SportE2D() {
       const { data, error } = await supabase
         .from('sport_e2d_matchs')
         .select('*')
-        .order('date_match', { ascending: false })
-        .limit(5);
+        .order('date_match', { ascending: false });
       if (error) throw error;
       return data;
     }
   });
+
+  const [displayCount, setDisplayCount] = useState(10);
 
   // Real-time updates
   useRealtimeUpdates({
@@ -235,14 +237,16 @@ export default function SportE2D() {
       {matchs && matchs.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5" />
-              Derniers Matchs E2D
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Trophy className="h-5 w-5" />
+                Matchs E2D ({matchs.length})
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {matchs.slice(0, 5).map((match) => (
+              {matchs.slice(0, displayCount).map((match) => (
                 <div 
                   key={match.id} 
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -305,6 +309,20 @@ export default function SportE2D() {
                 </div>
               ))}
             </div>
+
+            {/* Bouton Charger plus */}
+            {displayCount < matchs.length && (
+              <div className="flex justify-center mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setDisplayCount(prev => prev + 10)}
+                  className="gap-2"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  Charger plus ({matchs.length - displayCount} restants)
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

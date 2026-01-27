@@ -19,10 +19,92 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { addE2DLogo, addE2DFooter } from "@/lib/pdf-utils";
 
+// Drag-and-drop
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
+
 const MOIS = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
 ];
+
+// Composant ligne draggable
+interface SortableRowProps {
+  beneficiaire: any;
+  calendrier: any[];
+  isLocked: boolean;
+  isAdmin: boolean;
+  onMontantChange: (id: string, montant: number) => void;
+  onDelete: () => void;
+}
+
+function SortableBeneficiaireRow({ beneficiaire: b, calendrier, isLocked, isAdmin, onMontantChange, onDelete }: SortableRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: b.id });
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    cursor: !isLocked ? 'grab' : 'default',
+  };
+
+  return (
+    <TableRow ref={setNodeRef} style={style}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          {!isLocked && (
+            <button {...attributes} {...listeners} className="touch-none">
+              <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab hover:text-foreground" />
+            </button>
+          )}
+          <Badge variant="outline">{b.rang}</Badge>
+        </div>
+      </TableCell>
+      <TableCell className="font-medium">
+        {b.membres?.prenom} {b.membres?.nom}
+      </TableCell>
+      <TableCell>
+        {b.mois_benefice ? (
+          <div className="flex items-center gap-2">
+            <Badge>{MOIS[b.mois_benefice - 1]}</Badge>
+            {calendrier.filter((c: any) => c.mois_benefice === b.mois_benefice).length > 1 && (
+              <Badge variant="outline" className="text-xs">
+                {calendrier.filter((c: any) => c.mois_benefice === b.mois_benefice && c.rang <= b.rang).length}
+                /{calendrier.filter((c: any) => c.mois_benefice === b.mois_benefice).length}
+              </Badge>
+            )}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        )}
+      </TableCell>
+      <TableCell>
+        {!isLocked && isAdmin ? (
+          <Input
+            type="number"
+            value={b.montant_mensuel}
+            onChange={(e) => onMontantChange(b.id, parseFloat(e.target.value) || 0)}
+            className="w-32"
+          />
+        ) : (
+          formatFCFA(b.montant_mensuel)
+        )}
+      </TableCell>
+      <TableCell className="font-semibold">
+        {formatFCFA(b.montant_total)}
+      </TableCell>
+      {!isLocked && isAdmin && (
+        <TableCell>
+          <Button variant="ghost" size="icon" onClick={onDelete}>
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </TableCell>
+      )}
+    </TableRow>
+  );
+}
 
 export default function CalendrierBeneficiairesManager() {
   const [selectedExercice, setSelectedExercice] = useState<string>("");
@@ -66,6 +148,7 @@ export default function CalendrierBeneficiairesManager() {
     createBeneficiaire, 
     updateBeneficiaire, 
     deleteBeneficiaire,
+    reorderBeneficiaires,
     initializeCalendrier,
     calculerMontant
   } = useCalendrierBeneficiaires(selectedExercice);
@@ -237,6 +320,30 @@ export default function CalendrierBeneficiairesManager() {
     await updateBeneficiaire.mutateAsync({ id, data: { montant_mensuel: montant } });
   };
 
+  // Drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Gestionnaire de fin de drag
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id || isLocked) return;
+    
+    const oldIndex = calendrier.findIndex(b => b.id === active.id);
+    const newIndex = calendrier.findIndex(b => b.id === over.id);
+    
+    if (oldIndex === -1 || newIndex === -1) return;
+    
+    // Réorganiser localement et mettre à jour les rangs
+    const newOrder = arrayMove(calendrier, oldIndex, newIndex);
+    const updates = newOrder.map((b, idx) => ({ id: b.id, rang: idx + 1 }));
+    
+    await reorderBeneficiaires.mutateAsync(updates);
+  };
+
   return (
     <div className="space-y-6">
       {/* En-tête avec sélecteur d'exercice */}
@@ -326,75 +433,40 @@ export default function CalendrierBeneficiairesManager() {
               <p className="text-sm mt-2">Cliquez sur "Initialiser" pour créer le calendrier</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">Rang</TableHead>
-                  <TableHead>Membre</TableHead>
-                  <TableHead>Mois</TableHead>
-                  <TableHead>Montant Mensuel</TableHead>
-                  <TableHead>Montant Total (×12)</TableHead>
-                  {!isLocked && isAdmin && <TableHead className="w-16">Actions</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {calendrier.map((b, index) => (
-                  <TableRow key={b.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {!isLocked && <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />}
-                        <Badge variant="outline">{b.rang}</Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {b.membres?.prenom} {b.membres?.nom}
-                    </TableCell>
-                    <TableCell>
-                      {b.mois_benefice ? (
-                        <div className="flex items-center gap-2">
-                          <Badge>{MOIS[b.mois_benefice - 1]}</Badge>
-                          {/* Afficher l'ordre si plusieurs bénéficiaires sur le même mois */}
-                          {calendrier.filter(c => c.mois_benefice === b.mois_benefice).length > 1 && (
-                            <Badge variant="outline" className="text-xs">
-                              {calendrier.filter(c => c.mois_benefice === b.mois_benefice && c.rang <= b.rang).length}
-                              /{calendrier.filter(c => c.mois_benefice === b.mois_benefice).length}
-                            </Badge>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {!isLocked && isAdmin ? (
-                        <Input
-                          type="number"
-                          value={b.montant_mensuel}
-                          onChange={(e) => handleMontantChange(b.id, parseFloat(e.target.value) || 0)}
-                          className="w-32"
-                        />
-                      ) : (
-                        formatFCFA(b.montant_mensuel)
-                      )}
-                    </TableCell>
-                    <TableCell className="font-semibold">
-                      {formatFCFA(b.montant_total)}
-                    </TableCell>
-                    {!isLocked && isAdmin && (
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteBeneficiaire.mutate(b.id)}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    )}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+              modifiers={[restrictToVerticalAxis]}
+            >
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16">Rang</TableHead>
+                    <TableHead>Membre</TableHead>
+                    <TableHead>Mois</TableHead>
+                    <TableHead>Montant Mensuel</TableHead>
+                    <TableHead>Montant Total (×12)</TableHead>
+                    {!isLocked && isAdmin && <TableHead className="w-16">Actions</TableHead>}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <SortableContext items={calendrier.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                  <TableBody>
+                    {calendrier.map((b) => (
+                      <SortableBeneficiaireRow
+                        key={b.id}
+                        beneficiaire={b}
+                        calendrier={calendrier}
+                        isLocked={!!isLocked}
+                        isAdmin={!!isAdmin}
+                        onMontantChange={handleMontantChange}
+                        onDelete={() => deleteBeneficiaire.mutate(b.id)}
+                      />
+                    ))}
+                  </TableBody>
+                </SortableContext>
+              </Table>
+            </DndContext>
           )}
 
           {/* Total */}
@@ -449,9 +521,9 @@ export default function CalendrierBeneficiairesManager() {
                 </SelectContent>
               </Select>
               {selectedMois && calendrier.filter(c => c.mois_benefice === parseInt(selectedMois)).length > 0 ? (
-                <p className="text-xs text-destructive mt-1">
-                  ⚠️ Ce mois a déjà {calendrier.filter(c => c.mois_benefice === parseInt(selectedMois)).length} bénéficiaire(s). 
-                  Le montant sera partagé.
+                <p className="text-xs text-amber-600 mt-1 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
+                  ℹ️ Ce mois compte déjà {calendrier.filter(c => c.mois_benefice === parseInt(selectedMois)).length} bénéficiaire(s). 
+                  Chaque bénéficiaire recevra sa cotisation × 12 (paiements indépendants).
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground mt-1">
