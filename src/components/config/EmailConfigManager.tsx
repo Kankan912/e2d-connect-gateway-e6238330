@@ -146,20 +146,31 @@ export function EmailConfigManager() {
   const testResendConnection = async () => {
     setTestingResend(true);
     try {
+      // Récupérer l'email de l'utilisateur connecté
+      const { data: { user } } = await supabase.auth.getUser();
+      const testEmail = user?.email || "kankanway912@gmail.com";
+      
       const { data, error } = await supabase.functions.invoke("send-email", {
         body: {
-          to: "test@test.com",
-          subject: "Test Resend Connection",
-          html: "<p>Test</p>",
-          test: true,
+          to: testEmail,
+          subject: "✅ Test Resend E2D - Connexion réussie",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #22c55e;">✅ Test Resend réussi !</h1>
+              <p>La configuration email de votre application E2D fonctionne correctement.</p>
+              <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
+                Ce message a été envoyé depuis la configuration E2D le ${new Date().toLocaleString('fr-FR')}.
+              </p>
+            </div>
+          `,
         },
       });
       
       if (error) throw error;
-      toast.success("Connexion Resend réussie !", { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
-    } catch (error) {
+      toast.success(`Test réussi ! Email envoyé à ${testEmail}`, { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
+    } catch (error: any) {
       console.error("Resend test failed:", error);
-      toast.error("Échec du test Resend", { icon: <XCircle className="h-4 w-4 text-red-500" /> });
+      toast.error("Échec du test Resend: " + (error.message || "Vérifiez la clé API"), { icon: <XCircle className="h-4 w-4 text-red-500" /> });
     } finally {
       setTestingResend(false);
     }
