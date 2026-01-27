@@ -1,155 +1,212 @@
 
 
-# Plan de Correction Définitive - Envoi d'Emails de Campagne
+# Plan d'Implémentation - Gestion Multi-Services Email
 
-## Problème Identifié
+## Situation Actuelle
 
-L'Edge Function `send-campaign-emails` ne trouve aucun destinataire car :
+| Élément | État |
+|---------|------|
+| **Configuration DB** | `email_service = "smtp"` configuré |
+| **SMTP configuré** | Outlook (`smtp-mail.outlook.com`, `e2d.cmr@outlook.fr`) |
+| **Resend API** | Clé configurée dans `configurations` |
+| **Edge Functions** | Utilisent **uniquement Resend**, ignorent le paramètre `email_service` |
 
-| Ce que contient la DB | Ce que le code attend |
-|----------------------|----------------------|
-| `["uuid1", "uuid2", ...]` (tableau) | `{ type: "all" \| "selected", ids: ["..."] }` (objet) |
+Les Edge Functions ignorent totalement le choix de l'administrateur et utilisent toujours Resend.
 
-Les logs confirment : `📬 Found 0 recipients`
+---
 
-Les campagnes existantes ont 7 destinataires stockés directement comme un tableau d'IDs :
-```json
-["f9b3b4ea-...", "0fc66f31-...", "c44fdebc-...", ...]
-```
+## Architecture Proposée
 
-Mais le code de l'Edge Function fait :
-```typescript
-const destinataires = campaign.destinataires as { type: string; ids?: string[] };
-if (destinataires.type === "all") { ... }  // ❌ undefined
+```text
++-------------------+     +------------------------+     +------------------+
+|   EmailConfig     |---->|  email-utils.ts        |---->| Edge Functions   |
+|   Manager (UI)    |     |  (logique centralisée) |     | send-email       |
++-------------------+     +------------------------+     | send-campaign    |
+         |                         |                     | send-reunion-cr  |
+         v                         v                     +------------------+
++-------------------+     +------------------------+
+| configurations    |     | smtp_config            |
+| - email_service   |     | - serveur_smtp         |
+| - resend_api_key  |     | - utilisateur_smtp     |
++-------------------+     +------------------------+
 ```
 
 ---
 
-## Solution
+## Modifications à Implémenter
 
-Adapter l'Edge Function pour gérer **les deux formats** :
-1. **Format tableau** (données existantes) : `["uuid1", "uuid2", ...]`
-2. **Format objet** (nouveau format prévu) : `{ type: "all" | "selected", ids: [] }`
+### 1. Refactoriser `_shared/email-utils.ts`
 
-### Modification de l'Edge Function
+Créer une fonction centrale `sendEmail()` qui gère les deux services :
 
-**Fichier** : `supabase/functions/send-campaign-emails/index.ts`
-
-**Avant** (lignes 112-130) :
 ```typescript
-let recipients: { id: string; email: string; nom: string; prenom: string }[] = [];
-const destinataires = campaign.destinataires as { type: string; ids?: string[] };
-
-if (destinataires.type === "all") {
-  const { data: membres } = await supabaseAdmin
-    .from("membres")
-    .select("id, email, nom, prenom")
-    .not("email", "is", null)
-    .eq("statut", "actif");
-  recipients = membres || [];
-} else if (destinataires.type === "selected" && destinataires.ids) {
-  const { data: membres } = await supabaseAdmin
-    .from("membres")
-    .select("id, email, nom, prenom")
-    .in("id", destinataires.ids)
-    .not("email", "is", null);
-  recipients = membres || [];
+export interface FullEmailConfig {
+  service: "resend" | "smtp";
+  // Resend
+  resendApiKey?: string;
+  // SMTP
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPassword?: string;
+  smtpEncryption?: "tls" | "ssl" | "none";
+  // Commun
+  fromEmail: string;
+  fromName: string;
+  appUrl: string;
 }
-```
 
-**Après** :
-```typescript
-let recipients: { id: string; email: string; nom: string; prenom: string }[] = [];
-const destinatairesRaw = campaign.destinataires;
+export async function getFullEmailConfig(): Promise<FullEmailConfig> {
+  // Charge configurations + smtp_config depuis la DB
+}
 
-// Gestion des deux formats : tableau direct d'IDs ou objet { type, ids }
-if (Array.isArray(destinatairesRaw)) {
-  // Format: ["uuid1", "uuid2", ...] - tableau direct d'IDs membres
-  if (destinatairesRaw.length > 0) {
-    const { data: membres } = await supabaseAdmin
-      .from("membres")
-      .select("id, email, nom, prenom")
-      .in("id", destinatairesRaw)
-      .not("email", "is", null);
-    recipients = membres || [];
+export async function sendEmail(config: FullEmailConfig, params: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (config.service === "resend") {
+    return sendViaResend(config, params);
   } else {
-    // Tableau vide = tous les membres actifs
-    const { data: membres } = await supabaseAdmin
-      .from("membres")
-      .select("id, email, nom, prenom")
-      .not("email", "is", null)
-      .eq("statut", "actif");
-    recipients = membres || [];
-  }
-} else if (typeof destinatairesRaw === "object" && destinatairesRaw !== null) {
-  // Format objet: { type: "all" | "selected", ids?: [] }
-  const destinataires = destinatairesRaw as { type?: string; ids?: string[] };
-  
-  if (destinataires.type === "all") {
-    const { data: membres } = await supabaseAdmin
-      .from("membres")
-      .select("id, email, nom, prenom")
-      .not("email", "is", null)
-      .eq("statut", "actif");
-    recipients = membres || [];
-  } else if (destinataires.type === "selected" && destinataires.ids?.length) {
-    const { data: membres } = await supabaseAdmin
-      .from("membres")
-      .select("id, email, nom, prenom")
-      .in("id", destinataires.ids)
-      .not("email", "is", null);
-    recipients = membres || [];
+    return sendViaSMTP(config, params);
   }
 }
+```
 
-console.log(`📬 Found ${recipients.length} recipients from format: ${Array.isArray(destinatairesRaw) ? "array" : "object"}`);
+### 2. Implémenter l'envoi SMTP avec `denomailer`
+
+Utiliser la bibliothèque Deno `denomailer` pour l'envoi SMTP :
+
+```typescript
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+
+async function sendViaSMTP(config: FullEmailConfig, params: EmailParams) {
+  const client = new SMTPClient({
+    connection: {
+      hostname: config.smtpHost!,
+      port: config.smtpPort!,
+      tls: config.smtpEncryption === "tls" || config.smtpEncryption === "ssl",
+      auth: {
+        username: config.smtpUser!,
+        password: config.smtpPassword!,
+      },
+    },
+  });
+
+  await client.send({
+    from: `${config.fromName} <${config.smtpUser}>`,
+    to: params.to,
+    subject: params.subject,
+    html: params.html,
+  });
+
+  await client.close();
+  return { success: true };
+}
+```
+
+### 3. Modifier les Edge Functions
+
+**Fichiers à modifier** :
+- `supabase/functions/send-email/index.ts`
+- `supabase/functions/send-campaign-emails/index.ts`
+- `supabase/functions/send-contact-notification/index.ts`
+- `supabase/functions/send-reunion-cr/index.ts`
+- `supabase/functions/send-sanction-notification/index.ts`
+- `supabase/functions/send-cotisation-reminders/index.ts`
+- `supabase/functions/send-pret-echeance-reminders/index.ts`
+- `supabase/functions/send-presence-reminders/index.ts`
+- `supabase/functions/send-calendrier-beneficiaires/index.ts`
+
+**Changement type** :
+```typescript
+// AVANT
+const res = await fetch('https://api.resend.com/emails', { ... });
+
+// APRÈS
+import { getFullEmailConfig, sendEmail } from "../_shared/email-utils.ts";
+
+const emailConfig = await getFullEmailConfig();
+const result = await sendEmail(emailConfig, { to, subject, html });
+```
+
+### 4. Améliorer l'UI `EmailConfigManager`
+
+Ajouter un indicateur visuel du service actif et un vrai test SMTP :
+
+```typescript
+// Appeler une nouvelle Edge Function pour tester SMTP
+const testSmtpConnection = async () => {
+  const { data, error } = await supabase.functions.invoke("send-email", {
+    body: {
+      to: smtpUser, // Envoyer à l'expéditeur lui-même
+      subject: "Test SMTP E2D",
+      html: "<p>Test SMTP réussi !</p>",
+      forceService: "smtp" // Nouveau paramètre pour forcer le service
+    },
+  });
+};
 ```
 
 ---
 
-## Important : Restriction du Mode Test Resend
+## Tableau Comparatif des Services
 
-En mode test Resend (sans domaine vérifié), les emails ne peuvent être envoyés qu'à l'adresse du propriétaire du compte : `kankanway912@gmail.com`.
-
-Les 7 destinataires de la campagne ont ces emails :
-- `alexr.fotso@gmail.com` ❌
-- `nanafranck96@gmail.com` ❌
-- `zpekinho@gmail.com` ❌
-- `admin@e2d.com` ❌
-- `kankanway912@gmail.com` ✅ (seul email autorisé)
-- `toto@guillaume.com` ❌
-- `patrick@gmail.com` ❌
-
-**Seul 1 email sur 7 sera envoyé avec succès** tant qu'un domaine n'est pas vérifié sur Resend.
+| Service | Avantages | Inconvénients |
+|---------|-----------|---------------|
+| **Resend API** | Simple, fiable, pas de configuration serveur | Mode test limité à 1 email ; domaine requis pour prod |
+| **SMTP Outlook** | Gratuit, pas de restriction de destinataire | Limites d'envoi (~300/jour) ; possible blocage anti-spam |
+| **SMTP Gmail** | Gratuit, pas de restriction | Requiert mot de passe d'application ; limites (~500/jour) |
 
 ---
 
-## Fichiers à Modifier
+## Fichiers à Créer/Modifier
 
-| Fichier | Modification |
-|---------|--------------|
-| `supabase/functions/send-campaign-emails/index.ts` | Gérer le format tableau ET objet pour `destinataires` |
-
----
-
-## Tests de Validation
-
-1. Après déploiement de l'Edge Function :
-   - Aller dans **Configuration E2D → Notifications**
-   - Cliquer sur l'icône d'envoi ✈️ pour la campagne "Rappel réunion"
-   - Vérifier les logs : `📬 Found 7 recipients from format: array`
-   - Résultat attendu : **1 email envoyé** (kankanway912@gmail.com), **6 erreurs** (emails non autorisés en mode test)
-
-2. Pour envoyer à tous les membres :
-   - **Vérifier un domaine** sur https://resend.com/domains
-   - Mettre à jour l'adresse `from` dans l'Edge Function avec le domaine vérifié
+| Fichier | Action | Description |
+|---------|--------|-------------|
+| `supabase/functions/_shared/email-utils.ts` | Modifier | Ajouter `getFullEmailConfig()` et `sendEmail()` avec support SMTP |
+| `supabase/functions/send-email/index.ts` | Modifier | Utiliser `sendEmail()` centralisé |
+| `supabase/functions/send-campaign-emails/index.ts` | Modifier | Utiliser `sendEmail()` centralisé |
+| (+ 7 autres Edge Functions) | Modifier | Même pattern |
 
 ---
 
-## Prochaine Étape Recommandée
+## Gestion du Changement d'Adresse Email
 
-Améliorer le formulaire de création de campagne pour permettre la sélection des destinataires :
-- Ajouter un sélecteur "Tous les membres" / "Sélection personnalisée"
-- Ajouter une liste de cases à cocher pour sélectionner les membres
-- Stocker au format objet `{ type, ids }` pour cohérence future
+Pour changer d'Outlook vers Gmail :
+
+1. **Dans l'UI** (Configuration E2D → Email) :
+   - Sélectionner "SMTP Personnalisé"
+   - Serveur : `smtp.gmail.com`
+   - Port : `587`
+   - Utilisateur : `votre-adresse@gmail.com`
+   - Mot de passe : **Mot de passe d'application** (pas le mot de passe normal)
+   - Encryption : TLS
+
+2. **Pour obtenir un mot de passe d'application Gmail** :
+   - Aller sur https://myaccount.google.com/security
+   - Activer la validation en 2 étapes
+   - Créer un mot de passe d'application : https://myaccount.google.com/apppasswords
+
+---
+
+## Estimation
+
+| Tâche | Temps |
+|-------|-------|
+| Refactoriser `email-utils.ts` | 15 min |
+| Modifier `send-email` et `send-campaign-emails` | 20 min |
+| Modifier les 7 autres Edge Functions | 30 min |
+| Tests et déploiement | 10 min |
+| **Total** | **~1h15** |
+
+---
+
+## Résultat Attendu
+
+Après implémentation :
+1. L'administrateur choisit le service dans **Configuration E2D → Email**
+2. Toutes les Edge Functions utilisent automatiquement le service choisi
+3. Les emails Outlook/Gmail fonctionnent sans restriction de destinataire
+4. Changer de service = modifier la configuration sans toucher au code
 
