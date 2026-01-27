@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Calendar, Clock, MapPin, ArrowLeft, Trophy, Users } from "lucide-react";
+import { Calendar, Clock, MapPin, ArrowLeft, Trophy, Users, Image, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import SEOHead from "@/components/SEOHead";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { LazyImage } from "@/components/ui/lazy-image";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +44,22 @@ export default function EventDetail() {
 
       if (error) return null;
       return data;
+    },
+    enabled: !!event?.match_id,
+  });
+
+  // Charger les médias du match (photos/vidéos)
+  const { data: matchMedias = [] } = useQuery({
+    queryKey: ["match-medias-event", event?.match_id],
+    queryFn: async () => {
+      if (!event?.match_id) return [];
+      const { data, error } = await supabase
+        .from("match_medias")
+        .select("*")
+        .eq("match_id", event.match_id)
+        .order("ordre", { ascending: true });
+      if (error) return [];
+      return data || [];
     },
     enabled: !!event?.match_id,
   });
@@ -239,6 +256,56 @@ export default function EventDetail() {
                     <p className="text-sm text-muted-foreground">Adversaire</p>
                     <p className="font-medium">{matchDetails.equipe_adverse}</p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Galerie médias du match */}
+          {matchMedias.length > 0 && (
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Image className="h-5 w-5" />
+                  Photos & Vidéos du match
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {matchMedias.map((media) => (
+                    <div key={media.id} className="relative group">
+                      {media.type === "video" ? (
+                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+                          <a 
+                            href={media.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+                          >
+                            <Film className="h-10 w-10" />
+                            <span className="text-sm">Voir la vidéo</span>
+                          </a>
+                        </div>
+                      ) : (
+                        <a 
+                          href={media.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          <LazyImage
+                            src={media.url}
+                            alt={media.legende || "Photo du match"}
+                            className="rounded-lg aspect-square object-cover hover:opacity-90 transition-opacity cursor-pointer"
+                            aspectRatio="square"
+                          />
+                        </a>
+                      )}
+                      {media.legende && (
+                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                          {media.legende}
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>

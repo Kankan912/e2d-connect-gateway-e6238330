@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, TrendingUp, Users, Settings, Trophy, MapPin, Clock, DollarSign, Plus, Target, Star, Activity, Shirt } from "lucide-react";
+import { Calendar, TrendingUp, Users, Settings, Trophy, MapPin, Clock, DollarSign, Plus, Target, Star, Activity, Shirt, ChevronDown } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import LogoHeader from "@/components/LogoHeader";
@@ -70,12 +70,13 @@ export default function SportPhoenix() {
       const { data, error } = await supabase
         .from('phoenix_entrainements_internes')
         .select('*')
-        .order('date_entrainement', { ascending: false })
-        .limit(5);
+        .order('date_entrainement', { ascending: false });
       if (error) throw error;
       return data;
     }
   });
+
+  const [displayCount, setDisplayCount] = useState(10);
 
   // Real-time updates
   useRealtimeUpdates({
@@ -194,14 +195,16 @@ export default function SportPhoenix() {
       {entrainements && entrainements.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5" />
-              Derniers Entraînements Jaune vs Rouge
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Trophy className="h-5 w-5" />
+                Entraînements Jaune vs Rouge ({entrainements.length})
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {entrainements.slice(0, 3).map((entrainement) => (
+              {entrainements.slice(0, displayCount).map((entrainement) => (
                 <div key={entrainement.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <p className="font-medium">Entraînement Jaune vs Rouge</p>
@@ -221,6 +224,20 @@ export default function SportPhoenix() {
                 </div>
               ))}
             </div>
+
+            {/* Bouton Charger plus */}
+            {displayCount < entrainements.length && (
+              <div className="flex justify-center mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setDisplayCount(prev => prev + 10)}
+                  className="gap-2"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  Charger plus ({entrainements.length - displayCount} restants)
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
