@@ -9,7 +9,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Mail, Server, Key, Globe, Send, Eye, EyeOff, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Mail, Server, Key, Globe, Send, Eye, EyeOff, Loader2, CheckCircle, XCircle, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function EmailConfigManager() {
   const queryClient = useQueryClient();
@@ -142,17 +143,18 @@ export function EmailConfigManager() {
     },
   });
 
+  // Email du propriétaire du compte Resend (seul destinataire autorisé en mode test)
+  const resendOwnerEmail = "kankanway912@gmail.com";
+
   // Test Resend connection
   const testResendConnection = async () => {
     setTestingResend(true);
     try {
-      // Récupérer l'email de l'utilisateur connecté
-      const { data: { user } } = await supabase.auth.getUser();
-      const testEmail = user?.email || "kankanway912@gmail.com";
-      
+      // En mode test Resend (sans domaine vérifié), on ne peut envoyer
+      // qu'à l'adresse du propriétaire du compte Resend
       const { data, error } = await supabase.functions.invoke("send-email", {
         body: {
-          to: testEmail,
+          to: resendOwnerEmail,
           subject: "✅ Test Resend E2D - Connexion réussie",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -167,7 +169,7 @@ export function EmailConfigManager() {
       });
       
       if (error) throw error;
-      toast.success(`Test réussi ! Email envoyé à ${testEmail}`, { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
+      toast.success(`Test réussi ! Email envoyé à ${resendOwnerEmail}`, { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
     } catch (error: any) {
       console.error("Resend test failed:", error);
       toast.error("Échec du test Resend: " + (error.message || "Vérifiez la clé API"), { icon: <XCircle className="h-4 w-4 text-red-500" /> });
@@ -297,9 +299,17 @@ export function EmailConfigManager() {
             </CardTitle>
             <CardDescription>
               Saisissez votre clé API Resend pour activer l'envoi d'emails
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+            <Info className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200">
+              <strong>Mode Test Resend :</strong> Sans domaine vérifié, les emails ne peuvent être envoyés 
+              qu'à l'adresse du propriétaire du compte Resend (<code className="bg-amber-100 dark:bg-amber-900 px-1 rounded">{resendOwnerEmail}</code>). 
+              Pour envoyer à tous les membres, <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="underline font-medium">vérifiez un domaine</a>.
+            </AlertDescription>
+          </Alert>
             <div className="space-y-2">
               <Label htmlFor="resend-api-key">Clé API Resend</Label>
               <div className="relative">
