@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,21 +21,6 @@ interface NotificationRequest {
   replyContent?: string;
 }
 
-// Fonction pour récupérer la clé API depuis la DB
-async function getResendApiKey(): Promise<string> {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-  const { data } = await supabase
-    .from("configurations")
-    .select("valeur")
-    .eq("cle", "resend_api_key")
-    .single();
-
-  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
-}
-
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -44,20 +28,22 @@ serve(async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Charger la clé API depuis la DB
-    const RESEND_API_KEY = await getResendApiKey();
-    if (!RESEND_API_KEY) {
-      console.error("RESEND_API_KEY not configured");
+    // Charger la configuration email complète
+    const emailConfig = await getFullEmailConfig();
+    
+    // Valider la configuration
+    const validation = validateFullEmailConfig(emailConfig);
+    if (!validation.valid) {
+      console.error("Configuration email invalide:", validation.error);
       return new Response(
-        JSON.stringify({ error: "Clé API Resend non configurée. Veuillez la configurer dans Configuration → Email." }),
+        JSON.stringify({ error: validation.error }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const resend = new Resend(RESEND_API_KEY);
     const { type, to, contactData, replyContent }: NotificationRequest = await req.json();
 
-    console.log(`Sending ${type} email to ${to}`);
+    console.log(`Sending ${type} email to ${to} via ${emailConfig.service}`);
 
     let subject: string;
     let html: string;
@@ -201,17 +187,17 @@ serve(async (req: Request): Promise<Response> => {
         );
     }
 
-    const emailResponse = await resend.emails.send({
-      from: "E2D <onboarding@resend.dev>",
-      to: [to],
-      subject,
-      html,
-    });
+    // Envoyer l'email via le service configuré
+    const result = await sendEmail(emailConfig, { to, subject, html });
 
-    console.log("Email sent successfully:", emailResponse);
+    if (!result.success) {
+      throw new Error(result.error || "Failed to send email");
+    }
+
+    console.log(`Email sent successfully via ${emailConfig.service}:`, result.data);
 
     return new Response(
-      JSON.stringify({ success: true, data: emailResponse }),
+      JSON.stringify({ success: true, data: result.data, service: emailConfig.service }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {

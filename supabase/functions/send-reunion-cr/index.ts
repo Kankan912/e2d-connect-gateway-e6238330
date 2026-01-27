@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
+import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,26 +33,6 @@ interface SendReunionCRRequest {
   isPreview?: boolean;
 }
 
-// Charger la clé API Resend depuis la base de données
-async function getResendApiKey(supabase: any): Promise<string> {
-  const { data } = await supabase
-    .from("configurations")
-    .select("valeur")
-    .eq("cle", "resend_api_key")
-    .single();
-  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
-}
-
-// Charger la configuration d'expéditeur email
-async function getEmailSender(supabase: any): Promise<string> {
-  const { data } = await supabase
-    .from("configurations")
-    .select("valeur")
-    .eq("cle", "smtp_from")
-    .single();
-  return data?.valeur || "E2D <onboarding@resend.dev>";
-}
-
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -61,30 +40,23 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Charger la clé API dynamiquement depuis la DB
-    const resendApiKey = await getResendApiKey(supabase);
-    if (!resendApiKey) {
-      console.error("RESEND_API_KEY non configurée");
+    // Charger la configuration email complète
+    const emailConfig = await getFullEmailConfig();
+    
+    // Valider la configuration
+    const validation = validateFullEmailConfig(emailConfig);
+    if (!validation.valid) {
+      console.error("Configuration email invalide:", validation.error);
       return new Response(
-        JSON.stringify({ 
-          error: "Configuration manquante", 
-          message: "La clé API Resend n'est pas configurée. Allez dans Configuration → Email." 
-        }),
+        JSON.stringify({ error: "Configuration manquante", message: validation.error }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const resend = new Resend(resendApiKey);
-    const emailSender = await getEmailSender(supabase);
-
     const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, presences, financials, isPreview }: SendReunionCRRequest = await req.json();
 
     const previewLabel = isPreview ? "[APERÇU] " : "";
-    console.log(`Sending reunion CR for reunion ${reunionId} to ${destinataires.length} recipients (preview: ${isPreview})`);
+    console.log(`Sending reunion CR for reunion ${reunionId} to ${destinataires.length} recipients via ${emailConfig.service} (preview: ${isPreview})`);
 
     if (!destinataires || destinataires.length === 0) {
       return new Response(
@@ -221,15 +193,22 @@ ${contenu}
           </html>
         `;
 
-        const emailResponse = await resend.emails.send({
-          from: emailSender,
-          to: [destinataire.email],
+        // Envoyer via le service configuré
+        const result = await sendEmail(emailConfig, {
+          to: destinataire.email,
           subject: `[E2D] ${previewLabel}Compte-Rendu: ${sujet}`,
           html: htmlContent,
         });
 
-        console.log(`Email sent to ${destinataire.email}:`, emailResponse);
+        if (!result.success) {
+          throw new Error(result.error || "Failed to send email");
+        }
+
+        console.log(`Email sent to ${destinataire.email} via ${emailConfig.service}`);
         sentCount++;
+        
+        // Rate limiting
+        await new Promise(resolve => setTimeout(resolve, 600));
       } catch (emailError: any) {
         console.error(`Error sending to ${destinataire.email}:`, emailError);
         errorCount++;
@@ -237,13 +216,14 @@ ${contenu}
       }
     }
 
-    console.log(`Sending complete: ${sentCount} sent, ${errorCount} errors`);
+    console.log(`Sending complete: ${sentCount} sent, ${errorCount} errors via ${emailConfig.service}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         sentCount,
         errorCount,
+        service: emailConfig.service,
         errors: errors.length > 0 ? errors : undefined,
       }),
       {

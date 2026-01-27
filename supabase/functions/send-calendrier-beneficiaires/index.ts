@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,17 +29,6 @@ const formatFCFA = (amount: number): string => {
   }).format(amount) + ' FCFA';
 };
 
-// Fonction pour récupérer la clé API depuis la DB
-async function getResendApiKey(supabase: any): Promise<string> {
-  const { data } = await supabase
-    .from("configurations")
-    .select("valeur")
-    .eq("cle", "resend_api_key")
-    .single();
-
-  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
-}
-
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -50,16 +40,19 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Charger la clé API depuis la DB
-    const resendApiKey = await getResendApiKey(supabase);
-    if (!resendApiKey) {
-      throw new Error("Clé API Resend non configurée. Veuillez la configurer dans Configuration → Email.");
+    // Charger la configuration email complète
+    const emailConfig = await getFullEmailConfig();
+    
+    // Valider la configuration
+    const validation = validateFullEmailConfig(emailConfig);
+    if (!validation.valid) {
+      throw new Error(validation.error);
     }
 
     const body: RequestBody = await req.json();
     const { exerciceNom, calendrier } = body;
 
-    console.log("Envoi calendrier bénéficiaires pour:", exerciceNom);
+    console.log(`Envoi calendrier bénéficiaires pour: ${exerciceNom} via ${emailConfig.service}`);
 
     // Récupérer tous les membres E2D avec email
     const { data: membres, error: membresError } = await supabase
@@ -158,7 +151,7 @@ serve(async (req) => {
       </html>
     `;
 
-    // Envoyer les emails via fetch à Resend API
+    // Envoyer les emails via le service configuré
     let emailsSent = 0;
     let emailsErrors = 0;
 
@@ -166,30 +159,23 @@ serve(async (req) => {
       if (!membre.email) continue;
 
       try {
-        const response = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${resendApiKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            from: "E2D <onboarding@resend.dev>",
-            to: [membre.email],
-            subject: `[E2D] 📅 Calendrier des Bénéficiaires - ${exerciceNom}`,
-            html: htmlContent
-          })
+        // Envoyer via le service configuré
+        const result = await sendEmail(emailConfig, {
+          to: membre.email,
+          subject: `[E2D] 📅 Calendrier des Bénéficiaires - ${exerciceNom}`,
+          html: htmlContent,
         });
-        
-        if (response.ok) {
+
+        if (result.success) {
           emailsSent++;
-          console.log(`Email envoyé à ${membre.email}`);
-          // Respecter le rate limit Resend (2 req/sec) - délai de 600ms
-          await new Promise(resolve => setTimeout(resolve, 600));
+          console.log(`Email envoyé à ${membre.email} via ${emailConfig.service}`);
         } else {
-          const errorText = await response.text();
-          console.error(`Erreur Resend pour ${membre.email}:`, errorText);
-          throw new Error(errorText);
+          console.error(`Erreur pour ${membre.email}:`, result.error);
+          emailsErrors++;
         }
+        
+        // Respecter le rate limit - délai de 600ms
+        await new Promise(resolve => setTimeout(resolve, 600));
       } catch (emailError) {
         console.error(`Erreur envoi à ${membre.email}:`, emailError);
         emailsErrors++;
@@ -198,14 +184,15 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Résultat: ${emailsSent} envoyés, ${emailsErrors} erreurs`);
+    console.log(`Résultat: ${emailsSent} envoyés via ${emailConfig.service}, ${emailsErrors} erreurs`);
 
     return new Response(
       JSON.stringify({
         success: true,
         emailsSent,
         emailsErrors,
-        totalMembres: membres.length
+        totalMembres: membres.length,
+        service: emailConfig.service
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
