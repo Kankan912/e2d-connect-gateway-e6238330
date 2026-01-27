@@ -1,55 +1,74 @@
 
-# Plan de Correction - Test Resend Échoue
+
+# Plan de Correction - Test Resend en Mode Test
 
 ## Problème Identifié
 
-Le test Resend échoue car l'email de test est envoyé à `test@test.com`, mais Resend en mode test (sans domaine vérifié) ne permet d'envoyer **qu'à l'adresse du propriétaire du compte** : `kankanway912@gmail.com`.
-
-**Erreur Resend :**
-```
-You can only send testing emails to your own email address (kankanway912@gmail.com)
-```
+Le test Resend échoue car :
+1. Vous êtes connecté avec un compte dont l'email n'est **pas** `kankanway912@gmail.com`
+2. En mode test Resend (sans domaine vérifié), on ne peut envoyer qu'à l'email du propriétaire du compte Resend : `kankanway912@gmail.com`
 
 ## Solution
 
-### Correction 1 : Modifier le test Resend pour utiliser l'email du propriétaire
+Modifier le code pour **toujours** utiliser l'email du compte Resend en mode test, avec un avertissement clair à l'utilisateur.
+
+### Modification
 
 **Fichier** : `src/components/config/EmailConfigManager.tsx`
-
-Modifier la fonction `testResendConnection` (lignes 146-166) pour :
-1. Envoyer l'email de test à `kankanway912@gmail.com` (email du compte Resend)
-2. OU utiliser l'email de l'utilisateur connecté
 
 ```typescript
 const testResendConnection = async () => {
   setTestingResend(true);
   try {
-    // Récupérer l'email de l'utilisateur connecté
-    const { data: { user } } = await supabase.auth.getUser();
-    const testEmail = user?.email || "kankanway912@gmail.com";
+    // En mode test Resend (sans domaine vérifié), on ne peut envoyer
+    // qu'à l'adresse du propriétaire du compte Resend
+    const resendOwnerEmail = "kankanway912@gmail.com";
     
     const { data, error } = await supabase.functions.invoke("send-email", {
       body: {
-        to: testEmail,  // ← Envoyer à l'utilisateur connecté
+        to: resendOwnerEmail,
         subject: "✅ Test Resend E2D - Connexion réussie",
-        html: `<h1>Test réussi !</h1><p>La configuration Resend fonctionne correctement.</p>`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #22c55e;">✅ Test Resend réussi !</h1>
+            <p>La configuration email de votre application E2D fonctionne correctement.</p>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
+              Ce message a été envoyé depuis la configuration E2D le ${new Date().toLocaleString('fr-FR')}.
+            </p>
+          </div>
+        `,
       },
     });
     
     if (error) throw error;
-    toast.success(`Test réussi ! Email envoyé à ${testEmail}`);
-  } catch (error) {
+    toast.success(`Test réussi ! Email envoyé à ${resendOwnerEmail}`, { 
+      icon: <CheckCircle className="h-4 w-4 text-green-500" /> 
+    });
+  } catch (error: any) {
     console.error("Resend test failed:", error);
-    toast.error("Échec du test Resend. Vérifiez la clé API.");
+    toast.error("Échec du test Resend: " + (error.message || "Vérifiez la clé API"), { 
+      icon: <XCircle className="h-4 w-4 text-red-500" /> 
+    });
   } finally {
     setTestingResend(false);
   }
 };
 ```
 
-### Correction 2 : Redéployer l'Edge Function send-email
+### Ajouter un message d'information dans l'UI
 
-S'assurer que la dernière version de `send-email/index.ts` est déployée avec `onboarding@resend.dev`.
+Ajouter un encadré d'information expliquant la limitation du mode test :
+
+```tsx
+<Alert className="mb-4">
+  <Info className="h-4 w-4" />
+  <AlertDescription>
+    <strong>Mode Test Resend :</strong> Sans domaine vérifié, les emails ne peuvent être envoyés 
+    qu'à l'adresse du propriétaire du compte Resend ({resendOwnerEmail}). 
+    Pour envoyer à tous les membres, <a href="https://resend.com/domains" target="_blank" className="underline">vérifiez un domaine</a>.
+  </AlertDescription>
+</Alert>
+```
 
 ---
 
@@ -57,32 +76,30 @@ S'assurer que la dernière version de `send-email/index.ts` est déployée avec 
 
 | Fichier | Modification |
 |---------|--------------|
-| `src/components/config/EmailConfigManager.tsx` | Modifier `testResendConnection` pour utiliser l'email de l'utilisateur |
+| `src/components/config/EmailConfigManager.tsx` | Utiliser l'email fixe du compte Resend + ajouter message d'info |
 
 ---
 
-## Note Importante sur Resend
+## Solution à Long Terme
 
-**En mode test (sans domaine vérifié) :**
-- L'adresse `from` doit être `onboarding@resend.dev` ✅ (déjà corrigé)
-- L'adresse `to` doit être **l'email du propriétaire du compte Resend** (`kankanway912@gmail.com`)
+Pour envoyer des emails à **tous les destinataires** :
 
-**Pour envoyer à n'importe qui :**
 1. Aller sur https://resend.com/domains
-2. Ajouter et vérifier un domaine (ex: e2d.com)
-3. Changer l'adresse `from` pour utiliser ce domaine (ex: `notifications@e2d.com`)
+2. Ajouter votre domaine (ex: e2d.com)
+3. Configurer les enregistrements DNS (MX, SPF, DKIM)
+4. Une fois vérifié, mettre à jour l'adresse `from` dans les Edge Functions :
+   ```typescript
+   from: 'E2D <notifications@e2d.com>'
+   ```
 
 ---
 
-## Tests de Validation
+## Estimation
 
-1. **Après correction** :
-   - Aller dans Configuration E2D → Email
-   - S'assurer que la clé Resend est enregistrée
-   - Cliquer "Tester la connexion"
-   - Vérifier que le toast affiche "Test réussi ! Email envoyé à [votre email]"
-   - Vérifier la réception de l'email dans la boîte du compte connecté
+| Tâche | Temps |
+|-------|-------|
+| Corriger testResendConnection | 10 min |
+| Ajouter message d'information | 10 min |
+| Test et validation | 5 min |
+| **Total** | **~25 min** |
 
-2. **Pour l'envoi à tous les membres** :
-   - Vérifier un domaine sur Resend
-   - Mettre à jour l'adresse `from` dans les Edge Functions
