@@ -1,90 +1,155 @@
 
 
-# Plan de Correction Définitive - Notifications Admin
+# Plan de Correction Définitive - Envoi d'Emails de Campagne
 
 ## Problème Identifié
 
-L'erreur "Could not find a relationship between 'notifications_campagnes' and 'membres'" est causée par un **nom de contrainte incorrect** dans la requête Supabase.
+L'Edge Function `send-campaign-emails` ne trouve aucun destinataire car :
 
-| Utilisé dans le code | Nom réel dans la BDD |
-|---------------------|---------------------|
-| `notifications_campagnes_created_by_fkey` | `fk_notifications_campagnes_created_by` |
+| Ce que contient la DB | Ce que le code attend |
+|----------------------|----------------------|
+| `["uuid1", "uuid2", ...]` (tableau) | `{ type: "all" \| "selected", ids: ["..."] }` (objet) |
+
+Les logs confirment : `📬 Found 0 recipients`
+
+Les campagnes existantes ont 7 destinataires stockés directement comme un tableau d'IDs :
+```json
+["f9b3b4ea-...", "0fc66f31-...", "c44fdebc-...", ...]
+```
+
+Mais le code de l'Edge Function fait :
+```typescript
+const destinataires = campaign.destinataires as { type: string; ids?: string[] };
+if (destinataires.type === "all") { ... }  // ❌ undefined
+```
+
+---
 
 ## Solution
 
-### Modification Unique
+Adapter l'Edge Function pour gérer **les deux formats** :
+1. **Format tableau** (données existantes) : `["uuid1", "uuid2", ...]`
+2. **Format objet** (nouveau format prévu) : `{ type: "all" | "selected", ids: [] }`
 
-**Fichier** : `src/pages/admin/NotificationsAdmin.tsx`
+### Modification de l'Edge Function
 
-**Ligne 58** - Corriger le nom de la contrainte de clé étrangère :
+**Fichier** : `supabase/functions/send-campaign-emails/index.ts`
 
+**Avant** (lignes 112-130) :
 ```typescript
-// AVANT (ligne 58)
-createur:membres!notifications_campagnes_created_by_fkey(nom, prenom)
+let recipients: { id: string; email: string; nom: string; prenom: string }[] = [];
+const destinataires = campaign.destinataires as { type: string; ids?: string[] };
 
-// APRÈS
-createur:membres!fk_notifications_campagnes_created_by(nom, prenom)
+if (destinataires.type === "all") {
+  const { data: membres } = await supabaseAdmin
+    .from("membres")
+    .select("id, email, nom, prenom")
+    .not("email", "is", null)
+    .eq("statut", "actif");
+  recipients = membres || [];
+} else if (destinataires.type === "selected" && destinataires.ids) {
+  const { data: membres } = await supabaseAdmin
+    .from("membres")
+    .select("id, email, nom, prenom")
+    .in("id", destinataires.ids)
+    .not("email", "is", null);
+  recipients = membres || [];
+}
 ```
 
-### Code Complet de la Requête Corrigée
-
+**Après** :
 ```typescript
-const { data: campagnes, isLoading, isError, error: campagnesError } = useQuery({
-  queryKey: ["notifications-campagnes"],
-  queryFn: async () => {
-    const { data, error } = await supabase
-      .from("notifications_campagnes")
-      .select(`
-        *,
-        createur:membres!fk_notifications_campagnes_created_by(nom, prenom)
-      `)
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return data;
-  },
-});
+let recipients: { id: string; email: string; nom: string; prenom: string }[] = [];
+const destinatairesRaw = campaign.destinataires;
+
+// Gestion des deux formats : tableau direct d'IDs ou objet { type, ids }
+if (Array.isArray(destinatairesRaw)) {
+  // Format: ["uuid1", "uuid2", ...] - tableau direct d'IDs membres
+  if (destinatairesRaw.length > 0) {
+    const { data: membres } = await supabaseAdmin
+      .from("membres")
+      .select("id, email, nom, prenom")
+      .in("id", destinatairesRaw)
+      .not("email", "is", null);
+    recipients = membres || [];
+  } else {
+    // Tableau vide = tous les membres actifs
+    const { data: membres } = await supabaseAdmin
+      .from("membres")
+      .select("id, email, nom, prenom")
+      .not("email", "is", null)
+      .eq("statut", "actif");
+    recipients = membres || [];
+  }
+} else if (typeof destinatairesRaw === "object" && destinatairesRaw !== null) {
+  // Format objet: { type: "all" | "selected", ids?: [] }
+  const destinataires = destinatairesRaw as { type?: string; ids?: string[] };
+  
+  if (destinataires.type === "all") {
+    const { data: membres } = await supabaseAdmin
+      .from("membres")
+      .select("id, email, nom, prenom")
+      .not("email", "is", null)
+      .eq("statut", "actif");
+    recipients = membres || [];
+  } else if (destinataires.type === "selected" && destinataires.ids?.length) {
+    const { data: membres } = await supabaseAdmin
+      .from("membres")
+      .select("id, email, nom, prenom")
+      .in("id", destinataires.ids)
+      .not("email", "is", null);
+    recipients = membres || [];
+  }
+}
+
+console.log(`📬 Found ${recipients.length} recipients from format: ${Array.isArray(destinatairesRaw) ? "array" : "object"}`);
 ```
 
-## Explication Technique
+---
 
-Supabase PostgREST utilise les noms des contraintes de clé étrangère pour résoudre les relations entre tables. Quand on écrit :
+## Important : Restriction du Mode Test Resend
 
-```
-membres!fk_notifications_campagnes_created_by
-```
+En mode test Resend (sans domaine vérifié), les emails ne peuvent être envoyés qu'à l'adresse du propriétaire du compte : `kankanway912@gmail.com`.
 
-Cela signifie : "Joindre la table `membres` en utilisant la contrainte nommée `fk_notifications_campagnes_created_by`".
+Les 7 destinataires de la campagne ont ces emails :
+- `alexr.fotso@gmail.com` ❌
+- `nanafranck96@gmail.com` ❌
+- `zpekinho@gmail.com` ❌
+- `admin@e2d.com` ❌
+- `kankanway912@gmail.com` ✅ (seul email autorisé)
+- `toto@guillaume.com` ❌
+- `patrick@gmail.com` ❌
 
-Si le nom de la contrainte ne correspond pas exactement, PostgREST retourne l'erreur "Could not find a relationship".
+**Seul 1 email sur 7 sera envoyé avec succès** tant qu'un domaine n'est pas vérifié sur Resend.
 
-## Vérification Effectuée
-
-La requête SQL sur `pg_constraint` confirme le nom réel :
-
-| constraint_name | table_name | referenced_table |
-|----------------|------------|------------------|
-| fk_notifications_campagnes_created_by | notifications_campagnes | membres |
+---
 
 ## Fichiers à Modifier
 
 | Fichier | Modification |
 |---------|--------------|
-| `src/pages/admin/NotificationsAdmin.tsx` | Ligne 58 : Corriger le nom de la FK |
+| `supabase/functions/send-campaign-emails/index.ts` | Gérer le format tableau ET objet pour `destinataires` |
 
-## Test de Validation
+---
 
-Après correction :
-1. Aller dans **Configuration E2D → Notifications**
-2. L'onglet **Campagnes** doit s'afficher sans erreur
-3. Les 4 cartes statistiques doivent être visibles
-4. Le tableau des campagnes doit afficher les données
-5. La section "Déclencheurs Automatiques" doit fonctionner
+## Tests de Validation
 
-## Estimation
+1. Après déploiement de l'Edge Function :
+   - Aller dans **Configuration E2D → Notifications**
+   - Cliquer sur l'icône d'envoi ✈️ pour la campagne "Rappel réunion"
+   - Vérifier les logs : `📬 Found 7 recipients from format: array`
+   - Résultat attendu : **1 email envoyé** (kankanway912@gmail.com), **6 erreurs** (emails non autorisés en mode test)
 
-| Tâche | Temps |
-|-------|-------|
-| Corriger le nom de la contrainte | 2 min |
-| Test et validation | 3 min |
-| **Total** | **~5 min** |
+2. Pour envoyer à tous les membres :
+   - **Vérifier un domaine** sur https://resend.com/domains
+   - Mettre à jour l'adresse `from` dans l'Edge Function avec le domaine vérifié
+
+---
+
+## Prochaine Étape Recommandée
+
+Améliorer le formulaire de création de campagne pour permettre la sélection des destinataires :
+- Ajouter un sélecteur "Tous les membres" / "Sélection personnalisée"
+- Ajouter une liste de cases à cocher pour sélectionner les membres
+- Stocker au format objet `{ type, ids }` pour cohérence future
 
