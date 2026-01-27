@@ -55,7 +55,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
         .from("notifications_campagnes")
         .select(`
           *,
-          createur:membres!notifications_campagnes_created_by_fkey(nom, prenom)
+          createur:membres!fk_notifications_campagnes_created_by(nom, prenom)
         `)
         .order("created_at", { ascending: false });
       if (error) throw error;
