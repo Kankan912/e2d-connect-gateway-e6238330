@@ -1,203 +1,248 @@
 
 
-# Code Review Complet - Gestion Multi-Services Email
+# Plan d'Action Multi-Phases - Correction des Manquements
 
-## Résumé de l'Analyse
+## Vue d'Ensemble
 
-J'ai examiné en détail tous les fichiers impliqués dans la fonctionnalité multi-services email. Voici mon rapport complet.
-
----
-
-## Architecture Vérifiée
-
-| Composant | Fichier | Statut |
-|-----------|---------|--------|
-| Utilitaire centralisé | `_shared/email-utils.ts` | ✅ Implémenté |
-| Edge Function principale | `send-email/index.ts` | ✅ Utilise le système unifié |
-| Campagnes | `send-campaign-emails/index.ts` | ✅ Utilise le système unifié |
-| Contact | `send-contact-notification/index.ts` | ✅ Utilise le système unifié |
-| Réunions | `send-reunion-cr/index.ts` | ✅ Utilise le système unifié |
-| Sanctions | `send-sanction-notification/index.ts` | ✅ Utilise le système unifié |
-| Cotisations | `send-cotisation-reminders/index.ts` | ✅ Utilise le système unifié |
-| Prêts | `send-pret-echeance-reminders/index.ts` | ✅ Utilise le système unifié |
-| Présences | `send-presence-reminders/index.ts` | ✅ Utilise le système unifié |
-| Calendrier | `send-calendrier-beneficiaires/index.ts` | ✅ Utilise le système unifié |
-| UI Config | `EmailConfigManager.tsx` | ⚠️ Problèmes identifiés |
+Ce plan couvre la correction de **22 points** identifiés dans l'analyse, organisés en 4 phases selon leur priorité et complexité.
 
 ---
 
-## Problèmes Critiques Identifiés
+## Phase 1 : Corrections Critiques (1h30)
 
-### 1. Espace parasite dans le serveur SMTP
+### 1.1 Message "Montant Partagé" Incorrect
 
-**Impact** : Les emails SMTP échouent silencieusement.
+**Fichier** : `src/components/config/CalendrierBeneficiairesManager.tsx`
 
-Le serveur SMTP stocké en base a un espace au début :
+**Action** : Reformuler le message d'alerte lors de l'ajout d'un bénéficiaire sur un mois déjà occupé.
+
+**Avant** :
 ```
-" smtp-mail.outlook.com"  ← Espace avant
-```
-
-Au lieu de :
-```
-"smtp-mail.outlook.com"   ← Correct
+"Le montant sera partagé entre les bénéficiaires"
 ```
 
-**Correction SQL requise** :
-```sql
-UPDATE smtp_config 
-SET serveur_smtp = TRIM(serveur_smtp) 
-WHERE serveur_smtp LIKE ' %';
+**Après** :
+```
+"Plusieurs bénéficiaires ce mois : chacun recevra sa cotisation × 12 (paiements indépendants)"
 ```
 
 ---
 
-### 2. Test SMTP simulé (non fonctionnel)
+### 1.2 Affichage Médias sur EventDetail
 
-**Fichier** : `src/components/config/EmailConfigManager.tsx` (lignes 220-237)
+**Fichier** : `src/pages/EventDetail.tsx`
 
-Le bouton "Tester la connexion SMTP" **ne teste pas réellement le SMTP**. Il simule un succès après 1 seconde :
+**Actions** :
+1. Requêter `match_medias` via `match_id` lié à l'événement
+2. Afficher une galerie photos/vidéos sous les détails du match
+3. Utiliser le composant `LazyImage` existant pour les performances
 
+**Code à ajouter** :
 ```typescript
-// Simulate test - in production, this would call an edge function
-await new Promise(resolve => setTimeout(resolve, 1000));
-toast.success("Configuration SMTP valide !");  // Toujours succès !
+// Charger les médias du match
+const { data: matchMedias } = useQuery({
+  queryKey: ['match-medias', event?.match_id],
+  queryFn: async () => {
+    if (!event?.match_id) return [];
+    const { data } = await supabase
+      .from('match_medias')
+      .select('*')
+      .eq('match_id', event.match_id);
+    return data || [];
+  },
+  enabled: !!event?.match_id
+});
 ```
 
-**Correction requise** : Appeler l'Edge Function `send-email` avec `forceService: "smtp"` pour effectuer un vrai test.
-
 ---
 
-### 3. Incohérence de configuration
+## Phase 2 : Améliorations Importantes (2h)
 
-La base de données contient des valeurs incohérentes :
+### 2.1 Drag-and-Drop Bénéficiaires
 
-| Clé | Valeur | Problème |
-|-----|--------|----------|
-| `email_service` | `smtp` | ✅ Correct |
-| `email_mode` | `resend` | ⚠️ Doublon incohérent |
+**Fichier** : `src/components/config/CalendrierBeneficiairesManager.tsx`
 
-Il y a deux clés pour la même chose (`email_service` et `email_mode`) avec des valeurs différentes.
+**Actions** :
+1. Installer `@dnd-kit/core` et `@dnd-kit/sortable`
+2. Wrapper la liste avec `DndContext` et `SortableContext`
+3. Remplacer l'icône `GripVertical` statique par un handle draggable
+4. Appeler `reorderBeneficiaires` mutation sur `onDragEnd`
 
----
-
-## Points Positifs Confirmés
-
-### Logique centralisée robuste
-
-L'utilitaire `email-utils.ts` est bien conçu :
-- ✅ `getFullEmailConfig()` charge correctement la config DB + SMTP
-- ✅ `sendEmail()` route vers Resend ou SMTP selon la config
-- ✅ `validateFullEmailConfig()` valide les paramètres requis
-- ✅ Rate limiting (600ms) implémenté dans toutes les fonctions
-- ✅ Gestion des erreurs avec fallback approprié
-
-### 9 Edge Functions unifiées
-
-Toutes les fonctions suivent le même pattern :
+**Structure** :
 ```typescript
-import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
-const emailConfig = await getFullEmailConfig();
-const validation = validateFullEmailConfig(emailConfig);
-const result = await sendEmail(emailConfig, { to, subject, html });
-```
-
-### Support multi-formats destinataires
-
-`send-campaign-emails` gère correctement les deux formats :
-- ✅ Tableau direct `["uuid1", "uuid2", ...]`
-- ✅ Objet structuré `{ type: "all" | "selected", ids: [...] }`
-
----
-
-## Plan de Correction
-
-### Étape 1 : Migration SQL (Correction données)
-
-```sql
--- Nettoyer l'espace dans le serveur SMTP
-UPDATE smtp_config 
-SET serveur_smtp = TRIM(serveur_smtp);
-
--- Supprimer la clé dupliquée email_mode (garder email_service)
-DELETE FROM configurations WHERE cle = 'email_mode';
-```
-
-### Étape 2 : Corriger le test SMTP dans l'UI
-
-**Fichier** : `src/components/config/EmailConfigManager.tsx`
-
-Remplacer le test simulé par un vrai appel :
-
-```typescript
-const testSmtpConnection = async () => {
-  setTestingSmtp(true);
-  try {
-    if (!smtpHost || !smtpUser || !smtpPassword) {
-      throw new Error("Configuration SMTP incomplète");
-    }
-    
-    // Appeler l'Edge Function avec forceService: "smtp"
-    const { data, error } = await supabase.functions.invoke("send-email", {
-      body: {
-        to: smtpUser,  // Envoyer à l'expéditeur lui-même
-        subject: "✅ Test SMTP E2D - Connexion réussie",
-        html: `<p>Test SMTP réussi le ${new Date().toLocaleString('fr-FR')}</p>`,
-        forceService: "smtp"
-      },
-    });
-    
-    if (error) throw error;
-    toast.success(`Test SMTP réussi ! Email envoyé à ${smtpUser}`);
-  } catch (error: any) {
-    toast.error("Échec du test SMTP: " + (error.message || "Connexion échouée"));
-  } finally {
-    setTestingSmtp(false);
-  }
+// Composant SortableRow pour chaque bénéficiaire
+const SortableRow = ({ beneficiaire }) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: beneficiaire.id
+  });
+  // ...
 };
 ```
 
 ---
 
-## Fichiers à Modifier
+### 2.2 Pagination "Charger Plus" pour Événements/Matchs
 
-| Fichier | Modification |
-|---------|--------------|
-| (Migration SQL) | Nettoyer espace serveur SMTP + supprimer `email_mode` |
-| `src/components/config/EmailConfigManager.tsx` | Implémenter vrai test SMTP via Edge Function |
+**Fichiers** :
+- `src/pages/Sport.tsx`
+- `src/pages/SportE2D.tsx`
+- `src/pages/SportPhoenix.tsx`
 
----
+**Actions** :
+1. Supprimer les `.limit(5)` ou `.limit(10)` hardcodés
+2. Implémenter un état `displayCount` avec valeur initiale 10
+3. Ajouter un bouton "Charger plus" qui incrémente de 10
+4. Utiliser `useInfiniteQuery` ou pagination simple
 
-## Tests de Validation Recommandés
+**Code type** :
+```typescript
+const [displayCount, setDisplayCount] = useState(10);
 
-Après correction :
+// Dans le JSX
+{matchs.slice(0, displayCount).map(match => ...)}
 
-1. **Test SMTP via Outlook** :
-   - Aller dans Configuration E2D → Email
-   - Sélectionner "SMTP Personnalisé"
-   - Cliquer "Tester la connexion"
-   - Vérifier réception email à `e2d.cmr@outlook.fr`
-
-2. **Test envoi campagne** :
-   - Créer une campagne de test
-   - Cliquer sur l'icône envoi ✈️
-   - Vérifier les logs : `📬 Using email service: smtp`
-
-3. **Basculer vers Resend** :
-   - Sélectionner "Resend API"
-   - Enregistrer
-   - Tester un envoi
-   - Vérifier les logs : `📬 Using email service: resend`
+{displayCount < matchs.length && (
+  <Button onClick={() => setDisplayCount(prev => prev + 10)}>
+    Charger plus ({matchs.length - displayCount} restants)
+  </Button>
+)}
+```
 
 ---
 
-## Conclusion
+### 2.3 Calcul Dynamique "Reste à Payer" Cotisations
 
-L'architecture multi-services est **correctement implémentée à 95%**. Les deux problèmes identifiés (espace dans serveur SMTP et test simulé) sont faciles à corriger et n'affectent pas la logique métier principale.
+**Fichier** : `src/components/CotisationCellModal.tsx`
 
-Une fois les corrections appliquées, le système sera 100% fonctionnel pour :
-- Envoyer via Resend API
-- Envoyer via SMTP Outlook
-- Envoyer via SMTP Gmail (après configuration)
-- Basculer entre services sans modifier le code
+**Actions** :
+1. Utiliser `useMemo` pour recalculer le reste à payer à chaque saisie
+2. Afficher un indicateur visuel temps réel (badge coloré)
+3. Désactiver le bouton de paiement si montant > reste
+
+**Code** :
+```typescript
+const resteAPayer = useMemo(() => {
+  const totalPaye = paiements.reduce((sum, p) => sum + p.montant, 0);
+  return Math.max(0, montantDu - totalPaye - nouveauMontant);
+}, [paiements, montantDu, nouveauMontant]);
+```
+
+---
+
+## Phase 3 : Vérifications et Corrections Modérées (1h30)
+
+### 3.1 Notifications Sans Clôture Réunion
+
+**Fichiers** :
+- `src/components/NotifierReunionModal.tsx`
+- `supabase/functions/send-reunion-cr/index.ts`
+
+**Actions** :
+1. Vérifier que le bouton "Notifier" est accessible même si `statut !== 'cloturee'`
+2. Adapter le template email pour distinguer "rappel" vs "compte-rendu"
+3. Ajouter un paramètre `type: 'rappel' | 'compte_rendu'` à l'Edge Function
+
+---
+
+### 3.2 Logique Intérêts/Reconduction Prêts
+
+**Fichiers** :
+- `src/hooks/usePrets.ts` (ou équivalent)
+- `src/pages/admin/PretsAdmin.tsx`
+
+**Actions** :
+1. Vérifier que `calculate_total_pret_amount` SQL est appelé correctement
+2. Afficher clairement : Montant initial + Intérêts + Reconductions
+3. Recalculer automatiquement lors d'une reconduction
+
+**Formule attendue** :
+```
+Total = Montant × (1 + taux/100) × (1 + nb_reconductions)
+```
+
+---
+
+### 3.3 Export PDF Calendrier Bénéficiaires avec Logo
+
+**Fichier** : `src/components/config/CalendrierBeneficiairesManager.tsx`
+
+**Actions** :
+1. Vérifier que `jspdf` charge bien le logo E2D
+2. Positionner le logo en haut à gauche du PDF
+3. Ajuster les marges pour ne pas chevaucher le tableau
+
+---
+
+## Phase 4 : Nettoyage et Finalisation (45min)
+
+### 4.1 Audit Log Réouverture Réunion
+
+**Fichiers** :
+- `src/components/ReouvrirReunionModal.tsx`
+- Table `audit_logs` (à créer si inexistante)
+
+**Actions** :
+1. Logger chaque réouverture avec : `user_id`, `reunion_id`, `raison`, `timestamp`
+2. Afficher l'historique dans le détail de la réunion
+
+---
+
+### 4.2 Synchronisation Complète Sport → Site
+
+**Fichier** : `src/lib/sync-events.ts`
+
+**Actions** :
+1. Vérifier que `syncAllSportEventsToWebsite({ includeAll: true })` inclut bien les matchs passés
+2. S'assurer que les scores sont affichés sur le site public
+
+---
+
+### 4.3 Test Final Multi-Services Email
+
+**Actions** :
+1. Tester envoi via SMTP Outlook
+2. Tester envoi via Resend API
+3. Vérifier basculement automatique selon config DB
+4. Confirmer réception des emails de test
+
+---
+
+## Récapitulatif par Phase
+
+| Phase | Durée | Nombre de corrections |
+|-------|-------|----------------------|
+| Phase 1 - Critiques | 1h30 | 2 |
+| Phase 2 - Importantes | 2h00 | 3 |
+| Phase 3 - Modérées | 1h30 | 3 |
+| Phase 4 - Finalisation | 0h45 | 3 |
+| **Total** | **5h45** | **11 corrections** |
+
+Les 11 autres points de l'analyse étaient soit déjà corrigés, soit fonctionnels, soit des comportements acceptables.
+
+---
+
+## Dépendances à Installer
+
+```bash
+npm install @dnd-kit/core @dnd-kit/sortable
+```
+
+---
+
+## Ordre d'Exécution Recommandé
+
+1. **Phase 1.1** → Message bénéficiaires (5 min)
+2. **Phase 1.2** → Médias EventDetail (25 min)
+3. **Phase 2.1** → Drag-and-drop (45 min)
+4. **Phase 2.2** → Pagination événements (30 min)
+5. **Phase 2.3** → Calcul dynamique cotisations (20 min)
+6. **Phase 3.1** → Notifications réunion (30 min)
+7. **Phase 3.2** → Logique prêts (30 min)
+8. **Phase 3.3** → PDF logo (15 min)
+9. **Phase 4.1** → Audit log (20 min)
+10. **Phase 4.2** → Sync sport (15 min)
+11. **Phase 4.3** → Test emails (10 min)
 
