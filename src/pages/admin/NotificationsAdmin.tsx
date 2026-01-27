@@ -277,17 +277,17 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
                   
                   <div className="flex items-center gap-4">
                     <Select
-                      value={config.templateId || ""}
+                      value={config.templateId || "none"}
                       onValueChange={(value) => updateTriggerConfig.mutate({ 
                         triggerId: trigger.id, 
-                        templateId: value 
+                        templateId: value === "none" ? "" : value 
                       })}
                     >
                       <SelectTrigger className="w-[200px]">
                         <SelectValue placeholder="Choisir un template" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Aucun template</SelectItem>
+                        <SelectItem value="none">Aucun template</SelectItem>
                         {templates?.map((t) => (
                           <SelectItem key={t.id} value={t.id}>
                             {t.nom}
