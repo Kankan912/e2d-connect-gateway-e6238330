@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
+import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,17 +9,6 @@ const corsHeaders = {
 
 interface ReminderRequest {
   testMode?: boolean;
-}
-
-// Fonction pour récupérer la clé API depuis la DB
-async function getResendApiKey(supabase: any): Promise<string> {
-  const { data } = await supabase
-    .from("configurations")
-    .select("valeur")
-    .eq("cle", "resend_api_key")
-    .single();
-
-  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
 }
 
 serve(async (req) => {
@@ -32,21 +21,22 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Charger la clé API depuis la DB
-    const resendApiKey = await getResendApiKey(supabase);
-    if (!resendApiKey) {
-      console.error("RESEND_API_KEY non configurée");
+    // Charger la configuration email complète
+    const emailConfig = await getFullEmailConfig();
+    
+    // Valider la configuration
+    const validation = validateFullEmailConfig(emailConfig);
+    if (!validation.valid) {
+      console.error("Configuration email invalide:", validation.error);
       return new Response(
-        JSON.stringify({ error: "Configuration manquante", message: "La clé API Resend n'est pas configurée. Allez dans Configuration → Email." }),
+        JSON.stringify({ error: "Configuration manquante", message: validation.error }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const resend = new Resend(resendApiKey);
-
     const { testMode = false }: ReminderRequest = await req.json().catch(() => ({}));
 
-    console.log(`Envoi de rappels pour cotisations impayées. Mode test: ${testMode}`);
+    console.log(`Envoi de rappels pour cotisations impayées via ${emailConfig.service}. Mode test: ${testMode}`);
 
     // Récupérer la configuration des notifications
     const { data: config } = await supabase
@@ -178,19 +168,19 @@ serve(async (req) => {
       }
 
       try {
-        const { error: emailError } = await resend.emails.send({
-          from: "E2D <onboarding@resend.dev>",
-          to: [membre.email],
+        // Envoyer via le service configuré
+        const result = await sendEmail(emailConfig, {
+          to: membre.email,
           subject: `Rappel : Cotisations impayées - ${totalDu.toLocaleString("fr-FR")} FCFA`,
           html: emailHtml,
         });
 
-        if (emailError) {
-          console.error(`Erreur envoi email à ${membre.email}:`, emailError);
-          errors.push(`${membre.email}: ${emailError.message}`);
+        if (!result.success) {
+          console.error(`Erreur envoi email à ${membre.email}:`, result.error);
+          errors.push(`${membre.email}: ${result.error}`);
           emailsErrors++;
         } else {
-          console.log(`Email envoyé à ${membre.email}`);
+          console.log(`Email envoyé à ${membre.email} via ${emailConfig.service}`);
           emailsSent++;
 
           // Enregistrer dans l'historique
@@ -203,6 +193,9 @@ serve(async (req) => {
             variables_utilisees: { membre_id: membreId, cotisations_count: cotisations.length, total_du: totalDu }
           });
         }
+        
+        // Rate limiting
+        await new Promise(resolve => setTimeout(resolve, 600));
       } catch (emailErr: any) {
         console.error(`Exception envoi email à ${membre.email}:`, emailErr);
         errors.push(`${membre.email}: ${emailErr.message}`);
@@ -210,7 +203,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Résumé: ${emailsSent} emails envoyés, ${emailsErrors} erreurs`);
+    console.log(`Résumé: ${emailsSent} emails envoyés via ${emailConfig.service}, ${emailsErrors} erreurs`);
 
     return new Response(
       JSON.stringify({
@@ -219,6 +212,7 @@ serve(async (req) => {
         emailsErrors,
         membresCount: Object.keys(cotisationsParMembre).length,
         cotisationsCount: cotisationsImpayees.length,
+        service: emailConfig.service,
         errors: errors.length > 0 ? errors : undefined,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

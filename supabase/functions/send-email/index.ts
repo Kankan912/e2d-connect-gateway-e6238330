@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,21 +12,7 @@ interface EmailRequest {
   subject: string;
   html: string;
   text?: string;
-}
-
-// Fonction pour récupérer la clé API depuis la DB
-async function getResendApiKey(): Promise<string> {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-  const { data } = await supabase
-    .from("configurations")
-    .select("valeur")
-    .eq("cle", "resend_api_key")
-    .single();
-
-  return data?.valeur || Deno.env.get("RESEND_API_KEY") || "";
+  forceService?: "resend" | "smtp"; // Optionnel: forcer un service spécifique
 }
 
 serve(async (req) => {
@@ -64,14 +51,22 @@ serve(async (req) => {
       );
     }
 
-    const { to, subject, html, text }: EmailRequest = await req.json();
+    const { to, subject, html, text, forceService }: EmailRequest = await req.json();
 
-    // Charger la clé API depuis la DB
-    const RESEND_API_KEY = await getResendApiKey();
-    if (!RESEND_API_KEY) {
-      console.error("RESEND_API_KEY non configurée");
+    // Charger la configuration email complète
+    const emailConfig = await getFullEmailConfig();
+    
+    // Permettre de forcer un service pour les tests
+    if (forceService) {
+      emailConfig.service = forceService;
+    }
+
+    // Valider la configuration
+    const validation = validateFullEmailConfig(emailConfig);
+    if (!validation.valid) {
+      console.error("Configuration email invalide:", validation.error);
       return new Response(
-        JSON.stringify({ error: 'Clé API Resend non configurée. Veuillez la configurer dans Configuration → Email.' }),
+        JSON.stringify({ error: validation.error }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500,
@@ -79,29 +74,24 @@ serve(async (req) => {
       );
     }
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: 'E2D <onboarding@resend.dev>',
-        to: [to],
-        subject,
-        html,
-        text: text || '',
-      }),
-    });
+    // Envoyer l'email via le service configuré
+    const result = await sendEmail(emailConfig, { to, subject, html, text });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(JSON.stringify(data));
+    if (!result.success) {
+      console.error("Échec envoi email:", result.error);
+      return new Response(
+        JSON.stringify({ error: result.error }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
     }
 
+    console.log(`Email envoyé via ${emailConfig.service} à ${to}`);
+
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, data: result.data, service: emailConfig.service }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
