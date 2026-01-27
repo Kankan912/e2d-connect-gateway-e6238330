@@ -217,20 +217,74 @@ export function EmailConfigManager() {
     }
   };
 
-  // Test SMTP connection
+  // Test SMTP connection - Real test via Edge Function
   const testSmtpConnection = async () => {
     setTestingSmtp(true);
     try {
-      // For now, just validate the fields
       if (!smtpHost || !smtpUser || !smtpPassword) {
-        throw new Error("Configuration SMTP incomplète");
+        throw new Error("Configuration SMTP incomplète - Remplissez tous les champs");
       }
       
-      // Simulate test - in production, this would call an edge function
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success("Configuration SMTP valide !", { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
+      // Sauvegarder d'abord la config SMTP pour que l'Edge Function puisse l'utiliser
+      const smtpData = {
+        serveur_smtp: smtpHost.trim(),
+        port_smtp: parseInt(smtpPort),
+        utilisateur_smtp: smtpUser.trim(),
+        mot_de_passe_smtp: smtpPassword,
+        encryption_type: smtpEncryption,
+        actif: true,
+      };
+
+      if (smtpConfigId) {
+        const { error: saveError } = await supabase
+          .from("smtp_config")
+          .update(smtpData)
+          .eq("id", smtpConfigId);
+        if (saveError) throw new Error("Erreur sauvegarde config: " + saveError.message);
+      } else {
+        const { error: insertError } = await supabase
+          .from("smtp_config")
+          .insert(smtpData);
+        if (insertError) throw new Error("Erreur création config: " + insertError.message);
+      }
+      
+      // Appeler l'Edge Function avec forceService: "smtp" pour un vrai test
+      const { data, error } = await supabase.functions.invoke("send-email", {
+        body: {
+          to: smtpUser.trim(),
+          subject: "✅ Test SMTP E2D - Connexion réussie",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #22c55e;">✅ Test SMTP réussi !</h1>
+              <p>La connexion à votre serveur SMTP fonctionne correctement.</p>
+              <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
+              <p><strong>Serveur:</strong> ${smtpHost.trim()}</p>
+              <p><strong>Port:</strong> ${smtpPort}</p>
+              <p><strong>Utilisateur:</strong> ${smtpUser.trim()}</p>
+              <p><strong>Encryption:</strong> ${smtpEncryption.toUpperCase()}</p>
+              <p><strong>Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
+              <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
+              <p style="color: #6b7280; font-size: 12px;">Ce message a été envoyé depuis la configuration E2D.</p>
+            </div>
+          `,
+          forceService: "smtp"
+        },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      toast.success(`Test SMTP réussi ! Email envoyé à ${smtpUser.trim()}`, { 
+        icon: <CheckCircle className="h-4 w-4 text-green-500" /> 
+      });
+      
+      // Rafraîchir les données
+      queryClient.invalidateQueries({ queryKey: ["smtp-config"] });
     } catch (error: any) {
-      toast.error(error.message || "Échec du test SMTP", { icon: <XCircle className="h-4 w-4 text-red-500" /> });
+      console.error("SMTP test failed:", error);
+      toast.error("Échec du test SMTP: " + (error.message || "Connexion échouée"), { 
+        icon: <XCircle className="h-4 w-4 text-red-500" /> 
+      });
     } finally {
       setTestingSmtp(false);
     }
