@@ -1,126 +1,90 @@
 
 
-# Plan de Correction - Deux Erreurs Identifiées
+# Plan de Correction Définitive - Notifications Admin
 
-## Problèmes Identifiés
+## Problème Identifié
 
-### Problème 1 : Test Resend échoue encore
-**Cause** : Malgré la correction du code, la version déployée de l'Edge Function `send-email` pourrait ne pas être à jour OU l'email de l'utilisateur connecté n'est pas celui du compte Resend.
+L'erreur "Could not find a relationship between 'notifications_campagnes' and 'membres'" est causée par un **nom de contrainte incorrect** dans la requête Supabase.
 
-**Log d'erreur** :
-```
-You can only send testing emails to your own email address (kankanway912@gmail.com)
-```
+| Utilisé dans le code | Nom réel dans la BDD |
+|---------------------|---------------------|
+| `notifications_campagnes_created_by_fkey` | `fk_notifications_campagnes_created_by` |
 
-### Problème 2 : Crash de l'onglet Notifications
-**Cause** : Ligne 290 dans `NotificationsAdmin.tsx` contient un `<SelectItem value="">` avec une chaîne vide, ce qui est interdit par Radix UI.
+## Solution
 
-```tsx
-// ERREUR - Ligne 290
-<SelectItem value="">Aucun template</SelectItem>
-```
-
-Radix UI réserve la chaîne vide (`""`) pour effacer la sélection. Il faut utiliser une valeur différente comme `"none"`.
-
----
-
-## Plan de Correction
-
-### Correction 1 : NotificationsAdmin.tsx - Select.Item vide
+### Modification Unique
 
 **Fichier** : `src/pages/admin/NotificationsAdmin.tsx`
 
-**Modifications** :
-1. Remplacer `value=""` par `value="none"` (ligne 290)
-2. Adapter le `onValueChange` pour gérer `"none"` comme "pas de template"
-3. Adapter la valeur initiale dans le Select pour convertir `null`/`""` en `"none"`
+**Ligne 58** - Corriger le nom de la contrainte de clé étrangère :
 
-```tsx
-// Avant
-<Select
-  value={config.templateId || ""}
-  onValueChange={(value) => updateTriggerConfig.mutate({ 
-    triggerId: trigger.id, 
-    templateId: value 
-  })}
->
-  ...
-  <SelectItem value="">Aucun template</SelectItem>
+```typescript
+// AVANT (ligne 58)
+createur:membres!notifications_campagnes_created_by_fkey(nom, prenom)
 
-// Après
-<Select
-  value={config.templateId || "none"}
-  onValueChange={(value) => updateTriggerConfig.mutate({ 
-    triggerId: trigger.id, 
-    templateId: value === "none" ? "" : value 
-  })}
->
-  ...
-  <SelectItem value="none">Aucun template</SelectItem>
+// APRÈS
+createur:membres!fk_notifications_campagnes_created_by(nom, prenom)
 ```
 
----
+### Code Complet de la Requête Corrigée
 
-### Correction 2 : Redéployer l'Edge Function send-email
+```typescript
+const { data: campagnes, isLoading, isError, error: campagnesError } = useQuery({
+  queryKey: ["notifications-campagnes"],
+  queryFn: async () => {
+    const { data, error } = await supabase
+      .from("notifications_campagnes")
+      .select(`
+        *,
+        createur:membres!fk_notifications_campagnes_created_by(nom, prenom)
+      `)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data;
+  },
+});
+```
 
-Forcer le redéploiement de `send-email` pour s'assurer que la dernière version est active.
+## Explication Technique
 
----
+Supabase PostgREST utilise les noms des contraintes de clé étrangère pour résoudre les relations entre tables. Quand on écrit :
+
+```
+membres!fk_notifications_campagnes_created_by
+```
+
+Cela signifie : "Joindre la table `membres` en utilisant la contrainte nommée `fk_notifications_campagnes_created_by`".
+
+Si le nom de la contrainte ne correspond pas exactement, PostgREST retourne l'erreur "Could not find a relationship".
+
+## Vérification Effectuée
+
+La requête SQL sur `pg_constraint` confirme le nom réel :
+
+| constraint_name | table_name | referenced_table |
+|----------------|------------|------------------|
+| fk_notifications_campagnes_created_by | notifications_campagnes | membres |
 
 ## Fichiers à Modifier
 
 | Fichier | Modification |
 |---------|--------------|
-| `src/pages/admin/NotificationsAdmin.tsx` | Corriger `SelectItem value=""` → `value="none"` |
-| `supabase/functions/send-email/index.ts` | Redéployer la fonction |
+| `src/pages/admin/NotificationsAdmin.tsx` | Ligne 58 : Corriger le nom de la FK |
 
----
+## Test de Validation
 
-## Détails Techniques
+Après correction :
+1. Aller dans **Configuration E2D → Notifications**
+2. L'onglet **Campagnes** doit s'afficher sans erreur
+3. Les 4 cartes statistiques doivent être visibles
+4. Le tableau des campagnes doit afficher les données
+5. La section "Déclencheurs Automatiques" doit fonctionner
 
-### Pourquoi le Select crash ?
+## Estimation
 
-Radix UI `<Select>` utilise la valeur `""` (chaîne vide) de manière spéciale :
-- Quand `value=""`, le Select affiche le placeholder
-- Un `SelectItem` avec `value=""` entre en conflit avec ce comportement
-
-La solution standard est d'utiliser une valeur sentinelle comme `"none"`, `"null"`, ou `"__empty__"`.
-
-### Exemple de code corrigé
-
-```tsx
-<Select
-  value={config.templateId || "none"}
-  onValueChange={(value) => updateTriggerConfig.mutate({ 
-    triggerId: trigger.id, 
-    templateId: value === "none" ? "" : value 
-  })}
->
-  <SelectTrigger className="w-[200px]">
-    <SelectValue placeholder="Choisir un template" />
-  </SelectTrigger>
-  <SelectContent>
-    <SelectItem value="none">Aucun template</SelectItem>
-    {templates?.map((t) => (
-      <SelectItem key={t.id} value={t.id}>
-        {t.nom}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
-```
-
----
-
-## Tests de Validation
-
-1. **Après correction du Select** :
-   - Aller dans Configuration E2D → Notifications
-   - La page doit s'afficher sans erreur
-   - Les déclencheurs automatiques doivent être visibles
-
-2. **Après redéploiement de send-email** :
-   - Aller dans Configuration E2D → Email
-   - Cliquer sur "Tester la connexion"
-   - Vérifier le toast de succès et la réception de l'email
+| Tâche | Temps |
+|-------|-------|
+| Corriger le nom de la contrainte | 2 min |
+| Test et validation | 3 min |
+| **Total** | **~5 min** |
 
