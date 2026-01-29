@@ -294,7 +294,14 @@ export default function EventDetail() {
           )}
 
           {/* Compte Rendu du match */}
-          {isMatch && compteRendu && (compteRendu.resume || compteRendu.faits_marquants) && (
+          {isMatch && compteRendu && (
+            compteRendu.resume || 
+            compteRendu.faits_marquants || 
+            compteRendu.conditions_jeu || 
+            compteRendu.ambiance || 
+            compteRendu.score_mi_temps || 
+            compteRendu.arbitrage_commentaire
+          ) && (
             <Card className="mb-6">
               <CardContent className="p-6">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -333,6 +340,12 @@ export default function EventDetail() {
                     <div className="p-3 bg-muted/50 rounded-lg">
                       <p className="text-xs text-muted-foreground mb-1">Ambiance</p>
                       <p className="text-sm">{compteRendu.ambiance}</p>
+                    </div>
+                  )}
+                  {compteRendu.arbitrage_commentaire && (
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Arbitrage</p>
+                      <p className="text-sm">{compteRendu.arbitrage_commentaire}</p>
                     </div>
                   )}
                 </div>
