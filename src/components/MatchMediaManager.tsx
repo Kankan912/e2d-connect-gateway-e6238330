@@ -1,12 +1,13 @@
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useMemo } from 'react';
 import { useMatchMedias, MatchMedia } from '@/hooks/useMatchMedias';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Upload, Trash2, ImageIcon, Video, Loader2, X, Edit2 } from 'lucide-react';
+import { Upload, Trash2, ImageIcon, Video, Loader2, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ImageLightbox, LightboxImage } from '@/components/ui/image-lightbox';
 
 interface MatchMediaManagerProps {
   matchId: string;
@@ -18,7 +19,8 @@ export function MatchMediaManager({ matchId, readOnly = false }: MatchMediaManag
   const [isDragging, setIsDragging] = useState(false);
   const [editingMedia, setEditingMedia] = useState<MatchMedia | null>(null);
   const [legendeInput, setLegendeInput] = useState('');
-  const [previewMedia, setPreviewMedia] = useState<MatchMedia | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -68,6 +70,20 @@ export function MatchMediaManager({ matchId, readOnly = false }: MatchMediaManag
     }
   };
 
+  // Convert medias to lightbox format
+  const lightboxImages: LightboxImage[] = useMemo(() => {
+    return medias.map(media => ({
+      url: media.url,
+      title: media.legende || undefined,
+      isVideo: media.type === 'video',
+    }));
+  }, [medias]);
+
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -94,7 +110,7 @@ export function MatchMediaManager({ matchId, readOnly = false }: MatchMediaManag
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,video/*"
+            accept="image/*,video/*,.heic,.heif"
             multiple
             onChange={handleFileSelect}
             className="hidden"
@@ -133,12 +149,12 @@ export function MatchMediaManager({ matchId, readOnly = false }: MatchMediaManag
         </p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {medias.map((media) => (
+          {medias.map((media, index) => (
             <Card key={media.id} className="overflow-hidden group relative">
               <CardContent className="p-0">
                 <div 
                   className="aspect-square relative cursor-pointer"
-                  onClick={() => setPreviewMedia(media)}
+                  onClick={() => openLightbox(index)}
                 >
                   {media.type === 'image' ? (
                     <img
@@ -248,27 +264,13 @@ export function MatchMediaManager({ matchId, readOnly = false }: MatchMediaManag
         </DialogContent>
       </Dialog>
 
-      {/* Modal preview média */}
-      <Dialog open={!!previewMedia} onOpenChange={() => setPreviewMedia(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>{previewMedia?.legende || 'Média du match'}</DialogTitle>
-          </DialogHeader>
-          {previewMedia?.type === 'image' ? (
-            <img
-              src={previewMedia.url}
-              alt={previewMedia.legende || 'Photo du match'}
-              className="w-full max-h-[70vh] object-contain"
-            />
-          ) : previewMedia?.type === 'video' ? (
-            <video
-              src={previewMedia.url}
-              controls
-              className="w-full max-h-[70vh]"
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
+      {/* Lightbox pour prévisualisation */}
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        open={lightboxOpen}
+        onOpenChange={setLightboxOpen}
+      />
     </div>
   );
 }

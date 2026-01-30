@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,11 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Pencil, Trash2, Image as ImageIcon, Video, FolderPlus, Folder } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Image as ImageIcon, Video, FolderPlus, Folder, Upload } from "lucide-react";
 import { useSiteGallery, useCreateGalleryItem, useUpdateGalleryItem, useDeleteGalleryItem, useSiteGalleryAlbums, useCreateGalleryAlbum, useUpdateGalleryAlbum, useDeleteGalleryAlbum } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { toast } from "sonner";
+import { uploadFile } from "@/lib/storage-utils";
 
 export default function GalleryAdmin() {
   const { data: gallery, isLoading } = useSiteGallery();
@@ -25,10 +26,13 @@ export default function GalleryAdmin() {
   
   const [open, setOpen] = useState(false);
   const [albumOpen, setAlbumOpen] = useState(false);
+  const [multiUploadOpen, setMultiUploadOpen] = useState(false);
+  const [multiUploadAlbumId, setMultiUploadAlbumId] = useState<string | null>(null);
+  const [isMultiUploading, setIsMultiUploading] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [editingAlbum, setEditingAlbum] = useState<any>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("none");
-  
+  const multiUploadRef = useRef<HTMLInputElement>(null);
   const { register, handleSubmit, reset, setValue, watch } = useForm();
   const { register: registerAlbum, handleSubmit: handleSubmitAlbum, reset: resetAlbum, setValue: setValueAlbum } = useForm();
   const watchCategorie = watch("categorie", "Photo");
@@ -105,6 +109,63 @@ export default function GalleryAdmin() {
         onSuccess: () => toast.success("Album supprimé")
       });
     }
+  };
+
+  // Multi-upload handler
+  const handleMultiUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !multiUploadAlbumId) return;
+
+    setIsMultiUploading(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        // Upload file to storage
+        const url = await uploadFile("site-gallery", file);
+        
+        // Create gallery item
+        await new Promise<void>((resolve, reject) => {
+          createItem.mutate({
+            titre: file.name.split('.').slice(0, -1).join('.') || file.name,
+            categorie: "Photo",
+            image_url: url,
+            album_id: multiUploadAlbumId,
+            ordre: i,
+          }, {
+            onSuccess: () => resolve(),
+            onError: (err) => reject(err),
+          });
+        });
+        
+        successCount++;
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        errorCount++;
+      }
+    }
+
+    setIsMultiUploading(false);
+    setMultiUploadOpen(false);
+    setMultiUploadAlbumId(null);
+    
+    if (multiUploadRef.current) {
+      multiUploadRef.current.value = "";
+    }
+
+    if (successCount > 0) {
+      toast.success(`${successCount} image(s) ajoutée(s) avec succès`);
+    }
+    if (errorCount > 0) {
+      toast.error(`${errorCount} erreur(s) lors de l'upload`);
+    }
+  };
+
+  const openMultiUpload = (albumId: string) => {
+    setMultiUploadAlbumId(albumId);
+    setMultiUploadOpen(true);
   };
 
   const getAlbumName = (albumId: string | null) => {
@@ -415,7 +476,11 @@ export default function GalleryAdmin() {
                             {album.description}
                           </p>
                         )}
-                        <div className="flex gap-2 mt-4">
+                        <div className="flex flex-wrap gap-2 mt-4">
+                          <Button size="sm" variant="outline" onClick={() => openMultiUpload(album.id)}>
+                            <Upload className="w-4 h-4 mr-1" />
+                            Ajouter images
+                          </Button>
                           <Button size="sm" variant="outline" onClick={() => handleEditAlbum(album)}>
                             <Pencil className="w-4 h-4 mr-1" />
                             Modifier
@@ -444,6 +509,45 @@ export default function GalleryAdmin() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Multi-upload Dialog */}
+      <Dialog open={multiUploadOpen} onOpenChange={setMultiUploadOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajouter plusieurs images</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Sélectionnez plusieurs images à ajouter à cet album. Les formats HEIC sont automatiquement convertis.
+            </p>
+            <div className="border-2 border-dashed rounded-lg p-8 text-center">
+              <input
+                ref={multiUploadRef}
+                type="file"
+                multiple
+                accept="image/*,.heic,.heif"
+                onChange={handleMultiUpload}
+                className="hidden"
+                id="multi-upload"
+              />
+              {isMultiUploading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Upload en cours...</p>
+                </div>
+              ) : (
+                <label htmlFor="multi-upload" className="cursor-pointer">
+                  <div className="flex flex-col items-center gap-2">
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                    <p className="text-sm font-medium">Cliquez pour sélectionner des images</p>
+                    <p className="text-xs text-muted-foreground">ou glissez-déposez</p>
+                  </div>
+                </label>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
