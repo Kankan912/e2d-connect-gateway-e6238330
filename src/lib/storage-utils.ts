@@ -1,7 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
+import { processFileForUpload } from "./heic-converter";
 
 /**
  * Upload un fichier vers un bucket Supabase Storage
+ * Convertit automatiquement les fichiers HEIC en JPEG
  * @param bucket - Nom du bucket (site-gallery, site-partners, etc.)
  * @param file - Fichier à uploader
  * @param path - Chemin optionnel dans le bucket
@@ -12,13 +14,16 @@ export async function uploadFile(
   file: File,
   path?: string
 ): Promise<string> {
-  const fileExt = file.name.split(".").pop();
+  // Process file (converts HEIC to JPEG if needed)
+  const processedFile = await processFileForUpload(file);
+  
+  const fileExt = processedFile.name.split(".").pop();
   const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
   const filePath = path ? `${path}/${fileName}` : fileName;
 
   const { data, error } = await supabase.storage
     .from(bucket)
-    .upload(filePath, file, {
+    .upload(filePath, processedFile, {
       cacheControl: "3600",
       upsert: false,
     });

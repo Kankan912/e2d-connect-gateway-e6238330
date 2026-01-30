@@ -2,15 +2,52 @@ import { Image as ImageIcon, Play, Folder } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSiteGallery, useSiteGalleryAlbums } from "@/hooks/useSiteContent";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ImageLightbox, LightboxImage } from "@/components/ui/image-lightbox";
 
 const Gallery = () => {
   const { data: albums, isLoading: loadingAlbums } = useSiteGalleryAlbums();
   const { data: galleryItems, isLoading: loadingItems } = useSiteGallery();
-  const [selectedAlbum, setSelectedAlbum] = useState<any>(null);
+  
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<LightboxImage[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const isLoading = loadingAlbums || loadingItems;
+
+  // Open lightbox for an album
+  const openAlbumLightbox = (album: any, startIndex = 0) => {
+    const albumItems = galleryItems?.filter((item: any) => item.album_id === album.id) || [];
+    
+    if (albumItems.length === 0) return;
+    
+    const images: LightboxImage[] = albumItems.map((item: any) => ({
+      url: item.image_url || item.video_url,
+      title: item.titre,
+      description: album.description,
+      isVideo: item.categorie?.toLowerCase() === "vidéo" || !!item.video_url,
+    }));
+    
+    setLightboxImages(images);
+    setLightboxIndex(startIndex);
+    setLightboxOpen(true);
+  };
+
+  // Open lightbox for items without album
+  const openItemLightbox = (itemIndex: number) => {
+    const itemsWithoutAlbum = galleryItems?.filter((item: any) => !item.album_id) || [];
+    
+    const images: LightboxImage[] = itemsWithoutAlbum.map((item: any) => ({
+      url: item.image_url || item.video_url,
+      title: item.titre,
+      description: item.description,
+      isVideo: item.categorie?.toLowerCase() === "vidéo" || !!item.video_url,
+    }));
+    
+    setLightboxImages(images);
+    setLightboxIndex(itemIndex);
+    setLightboxOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -29,11 +66,6 @@ const Gallery = () => {
       </section>
     );
   }
-
-  // Get items for selected album
-  const albumItems = selectedAlbum
-    ? galleryItems?.filter((item: any) => item.album_id === selectedAlbum.id) || []
-    : [];
 
   // Get items without album (for default view)
   const itemsWithoutAlbum = galleryItems?.filter((item: any) => !item.album_id) || [];
@@ -65,27 +97,39 @@ const Gallery = () => {
               return (
                 <div
                   key={album.id}
-                  onClick={() => setSelectedAlbum(album)}
-                  className="group relative aspect-square rounded-xl overflow-hidden shadow-soft hover:shadow-strong transition-all duration-300 cursor-pointer"
+                  onClick={() => openAlbumLightbox(album)}
+                  className="group relative rounded-xl overflow-hidden shadow-soft hover:shadow-strong transition-all duration-300 cursor-pointer"
                 >
-                  {coverImage ? (
-                    <img
-                      src={coverImage}
-                      alt={album.titre}
-                      loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                      <Folder className="w-16 h-16 text-muted-foreground/30" />
-                    </div>
-                  )}
+                  {/* Album Cover */}
+                  <div className="aspect-square">
+                    {coverImage ? (
+                      <img
+                        src={coverImage}
+                        alt={album.titre}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+                        <Folder className="w-16 h-16 text-muted-foreground/30" />
+                      </div>
+                    )}
+                  </div>
                   
-                  <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   
-                  <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <h3 className="text-white font-semibold mb-1">{album.titre}</h3>
-                    <p className="text-white/80 text-sm">{albumItemsCount} élément{albumItemsCount > 1 ? 's' : ''}</p>
+                  {/* Album info - always visible */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4">
+                    <h3 className="text-white font-semibold text-lg mb-1">{album.titre}</h3>
+                    {album.description && (
+                      <p className="text-white/80 text-sm line-clamp-2 mb-2">
+                        {album.description}
+                      </p>
+                    )}
+                    <p className="text-white/60 text-xs">
+                      {albumItemsCount} élément{albumItemsCount > 1 ? 's' : ''}
+                    </p>
                   </div>
                 </div>
               );
@@ -98,13 +142,14 @@ const Gallery = () => {
           <>
             <h3 className="text-2xl font-bold text-foreground mb-6">Tous les médias</h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {itemsWithoutAlbum.map((item: any) => {
+              {itemsWithoutAlbum.map((item: any, index: number) => {
                 const isVideo = item.categorie?.toLowerCase() === "vidéo" || item.video_url;
                 const mediaUrl = item.image_url || item.video_url;
                 
                 return (
                   <div
                     key={item.id}
+                    onClick={() => openItemLightbox(index)}
                     className="group relative aspect-square rounded-xl overflow-hidden shadow-soft hover:shadow-strong transition-all duration-300 cursor-pointer"
                   >
                     {mediaUrl ? (
@@ -169,75 +214,13 @@ const Gallery = () => {
         </div>
       </div>
 
-      {/* Album Detail Dialog */}
-      <Dialog open={!!selectedAlbum} onOpenChange={() => setSelectedAlbum(null)}>
-        <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">{selectedAlbum?.titre}</DialogTitle>
-            {selectedAlbum?.description && (
-              <p className="text-muted-foreground">{selectedAlbum.description}</p>
-            )}
-          </DialogHeader>
-          
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-            {albumItems.map((item: any) => {
-              const isVideo = item.categorie?.toLowerCase() === "vidéo" || item.video_url;
-              const mediaUrl = item.image_url || item.video_url;
-              
-              return (
-                <div
-                  key={item.id}
-                  className="group relative aspect-square rounded-lg overflow-hidden shadow-soft hover:shadow-strong transition-all duration-300"
-                >
-                  {mediaUrl ? (
-                    <>
-                      {isVideo ? (
-                        <div className="w-full h-full relative">
-                          <img
-                            src={mediaUrl}
-                            alt={item.titre}
-                            loading="lazy"
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Play className="w-12 h-12 text-white/80" />
-                          </div>
-                        </div>
-                      ) : (
-                        <img
-                          src={mediaUrl}
-                          alt={item.titre}
-                          loading="lazy"
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-primary/90 via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </>
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                      {isVideo ? (
-                        <Play className="w-12 h-12 text-muted-foreground/30" />
-                      ) : (
-                        <ImageIcon className="w-12 h-12 text-muted-foreground/30" />
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <h4 className="text-white font-semibold text-sm">{item.titre}</h4>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          
-          {albumItems.length === 0 && (
-            <p className="text-center text-muted-foreground py-12">
-              Aucun média dans cet album.
-            </p>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Lightbox */}
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        open={lightboxOpen}
+        onOpenChange={setLightboxOpen}
+      />
     </section>
   );
 };

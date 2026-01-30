@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -42,13 +41,14 @@ import {
   Search,
   Check,
   Copy,
-  X,
   FolderOpen,
   Calendar,
   FileType,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
+import { ImageLightbox, LightboxImage } from "@/components/ui/image-lightbox";
+import { processFileForUpload } from "@/lib/heic-converter";
 
 interface MediaFile {
   name: string;
@@ -86,6 +86,8 @@ export const MediaLibrary = ({
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<MediaFile | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   // Fetch files from bucket
   const { data: files, isLoading } = useQuery({
@@ -120,14 +122,16 @@ export const MediaLibrary = ({
     },
   });
 
-  // Upload mutation
+  // Upload mutation with HEIC support
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+      // Process file (converts HEIC to JPEG if needed)
+      const processedFile = await processFileForUpload(file);
+      const fileName = `${Date.now()}-${processedFile.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
       
       const { error } = await supabase.storage
         .from(selectedBucket)
-        .upload(fileName, file, {
+        .upload(fileName, processedFile, {
           cacheControl: "3600",
           upsert: false,
         });
@@ -219,12 +223,22 @@ export const MediaLibrary = ({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const handleSelect = (file: MediaFile) => {
+  // Convert files to lightbox format
+  const lightboxImages: LightboxImage[] = useMemo(() => {
+    return (filteredFiles || []).map(file => ({
+      url: file.url,
+      title: file.name,
+    }));
+  }, [filteredFiles]);
+
+  const handleSelect = (file: MediaFile, index: number) => {
     if (mode === "select" && onSelect) {
       onSelect(file.url);
     } else {
+      // Open lightbox for viewing
+      setLightboxIndex(index);
+      setLightboxOpen(true);
       setSelectedFile(file);
-      setPreviewOpen(true);
     }
   };
 
@@ -286,7 +300,7 @@ export const MediaLibrary = ({
             id="file-upload"
             type="file"
             multiple
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             className="hidden"
             onChange={handleUpload}
             disabled={uploading}
@@ -310,13 +324,13 @@ export const MediaLibrary = ({
       ) : filteredFiles && filteredFiles.length > 0 ? (
         <ScrollArea className="h-[500px]">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 p-1">
-            {filteredFiles.map((file) => (
+            {filteredFiles.map((file, index) => (
               <Card
                 key={file.id}
                 className={`group cursor-pointer overflow-hidden hover:ring-2 hover:ring-primary transition-all ${
                   mode === "select" ? "hover:scale-105" : ""
                 }`}
-                onClick={() => handleSelect(file)}
+                onClick={() => handleSelect(file, index)}
               >
                 <div className="aspect-square relative bg-muted">
                   <img
@@ -443,6 +457,14 @@ export const MediaLibrary = ({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Lightbox for image viewing */}
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        open={lightboxOpen}
+        onOpenChange={setLightboxOpen}
+      />
     </div>
   );
 };

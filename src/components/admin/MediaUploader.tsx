@@ -209,7 +209,7 @@ export default function MediaUploader({
             <input
               ref={fileInputRef}
               type="file"
-              accept={accept}
+              accept={`${accept},.heic,.heif`}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFileSelect(file);
