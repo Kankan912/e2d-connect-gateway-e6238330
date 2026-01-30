@@ -1,170 +1,289 @@
 
-# Plan de Renforcement des Politiques RLS
+# Plan d'Implémentation - Gestion des Medias Avancee
 
-## Analyse des 7 Politiques Permissives Identifiées
+## Resume des 3 Fonctionnalites Demandees
 
-Le linter Supabase a détecté 7 politiques RLS avec `WITH CHECK (true)` qui permettent des insertions sans restriction. Voici l'analyse de chaque cas :
-
-### Tables Concernées et Analyse de Risque
-
-| # | Table | Politique | Risque Actuel | Justification Métier |
-|---|-------|-----------|---------------|---------------------|
-| 1 | `adhesions` | Public can insert | MODÉRÉ | Formulaire public de paiement adhésion |
-| 2 | `demandes_adhesion` | Anyone can submit | MODÉRÉ | Formulaire public de demande |
-| 3 | `donations` | Public peut insérer | MODÉRÉ | Dons publics via site |
-| 4 | `messages_contact` | Anyone can submit | MODÉRÉ | Formulaire contact public |
-| 5 | `messages_contact` | Public can insert | DUPLIQUÉ | À supprimer (doublon) |
-| 6 | `beneficiaires_paiements_audit` | Insert policy | FAIBLE | Audit interne (authenticated) |
-| 7 | `utilisateurs_actions_log` | Insert logs | FAIBLE | Logs internes (authenticated) |
+1. **Support HEIC** : Permettre l'upload d'images au format HEIC dans la bibliotheque media
+2. **Lecteur d'images Facebook-like** : Visualisation en lightbox avec navigation fleches gauche/droite (pas de nouvelle page)
+3. **Gestion par Albums** : Afficher les legendes sur les albums et permettre l'ajout de plusieurs images par album
 
 ---
 
-## Stratégie de Renforcement
+## I. Support HEIC dans la Bibliotheque Media
 
-### Approche par Type de Table
+### Contexte Technique
+Les fichiers HEIC (High Efficiency Image Container) sont utilises par defaut sur les iPhones. Les navigateurs ne supportent pas nativement ce format, il faut donc les convertir cote client avant l'upload.
 
-**Tables Publiques (adhesions, demandes_adhesion, donations, messages_contact)**
-- Ces tables DOIVENT rester accessibles publiquement (formulaires du site)
-- Renforcement via **validation des données** plutôt que restriction d'accès
-- Ajout de contraintes sur les valeurs autorisées
+### Solution
+Utiliser la bibliotheque `heic2any` pour convertir automatiquement les fichiers HEIC en JPEG avant upload.
 
-**Tables d'Audit (beneficiaires_paiements_audit, utilisateurs_actions_log)**
-- Restreindre l'insertion à l'utilisateur authentifié lui-même
-- Valider que `user_id` ou `effectue_par` = `auth.uid()`
+### Fichiers a Modifier/Creer
 
----
+| Fichier | Action |
+|---------|--------|
+| `package.json` | Ajouter dependance `heic2any` |
+| `src/lib/heic-converter.ts` | **CREER** - Utilitaire de conversion HEIC vers JPEG |
+| `src/lib/storage-utils.ts` | Modifier `uploadFile()` pour detecter et convertir HEIC |
+| `src/components/admin/MediaUploader.tsx` | Ajouter `.heic,.heif` dans l'attribut `accept` |
+| `src/components/MediaLibrary.tsx` | Ajouter `.heic,.heif` dans l'attribut `accept` |
+| `src/components/MatchMediaManager.tsx` | Ajouter `.heic,.heif` dans l'attribut `accept` |
 
-## Modifications à Appliquer
+### Logique de Conversion
 
-### 1. Table `adhesions`
-**Action** : Renforcer WITH CHECK pour valider les données
-
-```sql
--- Supprimer l'ancienne politique
-DROP POLICY IF EXISTS "Public can insert adhesions" ON adhesions;
-
--- Nouvelle politique avec validation
-CREATE POLICY "Public can insert adhesions with validation" ON adhesions
-FOR INSERT TO public
-WITH CHECK (
-  payment_status = 'pending'  -- Statut initial obligatoire
-  AND processed = false       -- Non traité initialement
-  AND montant_paye > 0        -- Montant positif requis
-  AND type_adhesion IN ('e2d', 'phoenix', 'e2d_phoenix')  -- Types valides
-);
-```
-
-### 2. Table `demandes_adhesion`
-**Action** : Valider le statut initial
-
-```sql
-DROP POLICY IF EXISTS "Anyone can submit adhesion request" ON demandes_adhesion;
-
-CREATE POLICY "Anyone can submit adhesion request with validation" ON demandes_adhesion
-FOR INSERT TO public
-WITH CHECK (
-  statut = 'en_attente'  -- Statut initial obligatoire
-  AND type_adhesion IN ('e2d', 'phoenix', 'e2d_phoenix')
-);
-```
-
-### 3. Table `donations`
-**Action** : Valider les données de don
-
-```sql
-DROP POLICY IF EXISTS "Public peut insérer des donations" ON donations;
-
-CREATE POLICY "Public peut insérer des donations validées" ON donations
-FOR INSERT TO public
-WITH CHECK (
-  payment_status = 'pending'
-  AND amount > 0
-  AND currency = 'EUR'
-  AND payment_method IN ('stripe', 'paypal', 'bank_transfer', 'helloasso')
-);
-```
-
-### 4. Table `messages_contact`
-**Action** : Supprimer le doublon et renforcer
-
-```sql
--- Supprimer les politiques dupliquées
-DROP POLICY IF EXISTS "Anyone can submit contact message" ON messages_contact;
-DROP POLICY IF EXISTS "Public can insert messages" ON messages_contact;
-
--- Une seule politique renforcée
-CREATE POLICY "Public can submit contact message validated" ON messages_contact
-FOR INSERT TO public
-WITH CHECK (
-  statut = 'nouveau'  -- Statut initial
-  AND length(message) >= 10  -- Message minimum 10 caractères
-);
-```
-
-### 5. Table `beneficiaires_paiements_audit`
-**Action** : Restreindre à l'utilisateur authentifié
-
-```sql
-DROP POLICY IF EXISTS "beneficiaires_audit_insert_policy" ON beneficiaires_paiements_audit;
-
-CREATE POLICY "beneficiaires_audit_insert_authenticated" ON beneficiaires_paiements_audit
-FOR INSERT TO authenticated
-WITH CHECK (
-  effectue_par = auth.uid()  -- Seul l'utilisateur peut logger ses actions
-);
-```
-
-### 6. Table `utilisateurs_actions_log`
-**Action** : Restreindre à l'utilisateur lui-même
-
-```sql
-DROP POLICY IF EXISTS "Authenticated users can insert logs" ON utilisateurs_actions_log;
-
-CREATE POLICY "Users can insert their own action logs" ON utilisateurs_actions_log
-FOR INSERT TO authenticated
-WITH CHECK (
-  user_id = auth.uid()  -- L'utilisateur logge ses propres actions
-);
+```text
+Fichier selectionne
+    |
+    v
+Est-ce un fichier HEIC/HEIF ?
+    |
+   OUI -> Conversion via heic2any -> Blob JPEG -> Nouveau File avec extension .jpg
+    |
+   NON -> Fichier original
+    |
+    v
+Upload normal vers Supabase Storage
 ```
 
 ---
 
-## Nettoyage des Politiques Dupliquées
+## II. Lecteur d'Images Facebook-Like (Lightbox)
 
-En plus des 7 politiques permissives, 2 tables ont des politiques SELECT dupliquées à nettoyer :
+### Comportement Souhaite (base sur la reference utilisateur)
+- Clic sur image ouvre une modale plein ecran (pas une nouvelle page)
+- Navigation fleches gauche/droite pour passer d'une image a l'autre
+- Fermeture via X ou clic en dehors
+- Navigation au clavier (Fleche gauche/droite, Echap)
+- Affichage du compteur (ex: 3/12)
+- Titre et legende de l'image en overlay
+- Support tactile (swipe) sur mobile
 
-### Table `messages_contact`
-```sql
--- 2 politiques SELECT identiques
-DROP POLICY IF EXISTS "Authenticated can view messages" ON messages_contact;
--- Garder: "Authenticated users can view contact messages"
+### Fichiers a Creer/Modifier
+
+| Fichier | Action |
+|---------|--------|
+| `src/components/ui/image-lightbox.tsx` | **CREER** - Composant lightbox reutilisable |
+| `src/components/Gallery.tsx` | Remplacer le Dialog par le lightbox |
+| `src/components/MediaLibrary.tsx` | Integrer le lightbox pour la previsualisation |
+| `src/components/MatchMediaManager.tsx` | Remplacer le Dialog par le lightbox |
+
+### Structure du Composant ImageLightbox
+
+```text
+Props:
+- images: Array<{ url: string, title?: string, description?: string }>
+- initialIndex: number (image de depart)
+- open: boolean
+- onOpenChange: (open: boolean) => void
+
+Features:
+- Overlay sombre avec animation fade
+- Boutons Precedent/Suivant (ChevronLeft/ChevronRight)
+- Bouton Fermer (X) en haut a droite
+- Compteur d'images (3/12)
+- Titre et description en bas de l'image
+- Navigation clavier (ArrowLeft, ArrowRight, Escape)
+- Support swipe tactile pour mobile
+- Prechargement des images adjacentes
 ```
 
 ---
 
-## Résumé des Changements
+## III. Gestion des Albums avec Legendes Visibles
 
-| Table | Action | Impact |
-|-------|--------|--------|
-| `adhesions` | Validation payment_status, processed, montant | Formulaire intact, données validées |
-| `demandes_adhesion` | Validation statut, type_adhesion | Formulaire intact, données validées |
-| `donations` | Validation payment_status, amount, currency | Dons intacts, données validées |
-| `messages_contact` | Suppression doublon, validation statut | Contact intact, nettoyage |
-| `beneficiaires_paiements_audit` | Restriction à effectue_par = auth.uid() | Audit sécurisé |
-| `utilisateurs_actions_log` | Restriction à user_id = auth.uid() | Logs sécurisés |
+### Probleme Actuel (visible dans la capture d'ecran)
+- Les albums s'affichent mais la legende/description n'est pas visible sur la page publique
+- L'album montre juste une icone dossier quand pas d'image de couverture
+- Le clic sur album ouvre un Dialog classique, pas un lightbox
+
+### Ameliorations a Apporter
+
+| Element | Amelioration |
+|---------|--------------|
+| Affichage Album | Ajouter la legende/description visible sur la carte album |
+| Ouverture Album | Utiliser le lightbox Facebook-like au lieu du Dialog actuel |
+| Navigation interne | Fleches gauche/droite dans l'album |
+| Multi-upload | Permettre l'upload de plusieurs images a la fois dans un album |
+
+### Fichiers a Modifier
+
+| Fichier | Action |
+|---------|--------|
+| `src/components/Gallery.tsx` | Refactorer pour utiliser ImageLightbox + afficher legendes |
+| `src/pages/admin/site/GalleryAdmin.tsx` | Ajouter bouton "Ajouter plusieurs images" par album |
+
+### Nouveau Flux Galerie Publique
+
+```text
+1. Affichage des albums avec:
+   - Titre de l'album
+   - Legende/description visible sous le titre
+   - Image de couverture ou premiere image
+
+2. Clic sur un album:
+   - Ouvre le lightbox avec toutes les images de l'album
+   - Navigation fleches gauche/droite
+   - Compteur (3/12 photos)
+   - Affichage titre + legende de chaque image
+
+3. Clic sur une image hors album:
+   - Ouvre le lightbox avec les images sans album
+   - Meme navigation
+```
 
 ---
 
-## Politique Alternative pour Edge Functions
+## IV. Detail des Implementations
 
-**Note importante** : Si les Edge Functions utilisent le `service_role` pour insérer dans les tables d'audit, les politiques de restriction ne s'appliqueront pas (service_role bypass RLS). C'est le comportement attendu et sécurisé.
+### 1. Nouveau fichier: `src/lib/heic-converter.ts`
+
+```typescript
+// Fonctions a implementer:
+
+// isHeicFile(file: File): boolean
+// - Detecte si le fichier est HEIC/HEIF via extension ou mimetype
+
+// convertHeicToJpeg(file: File): Promise<File>
+// - Utilise heic2any pour convertir
+// - Retourne un nouveau File avec extension .jpg
+// - Gere les erreurs de conversion
+// - Affiche un toast de conversion en cours
+```
+
+### 2. Nouveau fichier: `src/components/ui/image-lightbox.tsx`
+
+```typescript
+// Structure du composant:
+
+interface LightboxImage {
+  url: string;
+  title?: string;
+  description?: string;
+}
+
+interface ImageLightboxProps {
+  images: LightboxImage[];
+  initialIndex?: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+// Implementation:
+// - Dialog plein ecran avec overlay sombre (bg-black/90)
+// - Image centree avec object-contain
+// - Boutons ChevronLeft/ChevronRight sur les cotes
+// - Bouton X en haut a droite
+// - Compteur en haut au centre
+// - Titre/description en bas
+// - useEffect pour navigation clavier
+// - Touch events pour swipe mobile
+```
+
+### 3. Modification: `src/components/Gallery.tsx`
+
+```typescript
+// Changements principaux:
+
+// 1. Ajouter import du lightbox
+import { ImageLightbox } from '@/components/ui/image-lightbox';
+
+// 2. Nouveaux states
+const [lightboxOpen, setLightboxOpen] = useState(false);
+const [lightboxImages, setLightboxImages] = useState<LightboxImage[]>([]);
+const [lightboxIndex, setLightboxIndex] = useState(0);
+
+// 3. Fonction pour ouvrir le lightbox
+const openAlbumLightbox = (album, startIndex = 0) => {
+  const albumItems = galleryItems.filter(item => item.album_id === album.id);
+  const images = albumItems.map(item => ({
+    url: item.image_url || item.video_url,
+    title: item.titre,
+    description: album.description
+  }));
+  setLightboxImages(images);
+  setLightboxIndex(startIndex);
+  setLightboxOpen(true);
+};
+
+// 4. Afficher la legende sur chaque album
+// Dans le rendu des albums, ajouter:
+{album.description && (
+  <p className="text-sm text-muted-foreground line-clamp-2">
+    {album.description}
+  </p>
+)}
+
+// 5. Remplacer le Dialog par ImageLightbox
+<ImageLightbox
+  images={lightboxImages}
+  initialIndex={lightboxIndex}
+  open={lightboxOpen}
+  onOpenChange={setLightboxOpen}
+/>
+```
+
+### 4. Modification: `src/pages/admin/site/GalleryAdmin.tsx`
+
+```typescript
+// Ajouter un bouton "Ajouter plusieurs images" par album
+
+// Nouveau state pour multi-upload
+const [multiUploadAlbumId, setMultiUploadAlbumId] = useState<string | null>(null);
+
+// Nouveau Dialog pour multi-upload
+<Dialog open={!!multiUploadAlbumId} onOpenChange={() => setMultiUploadAlbumId(null)}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Ajouter plusieurs images a l'album</DialogTitle>
+    </DialogHeader>
+    <input
+      type="file"
+      multiple
+      accept="image/*,.heic,.heif"
+      onChange={handleMultiUpload}
+    />
+  </DialogContent>
+</Dialog>
+
+// Fonction handleMultiUpload
+// - Boucle sur les fichiers selectionnes
+// - Pour chaque fichier: upload vers storage + creation entree site_gallery
+// - Associe a l'album_id
+```
 
 ---
 
-## Résultat Attendu
+## V. Dependance a Installer
 
-Après application :
-- **0 warning** pour les politiques RLS trop permissives
-- Tables publiques : Insertion validée mais toujours possible
-- Tables d'audit : Insertion restreinte à l'utilisateur authentifié
-- Politiques dupliquées : Nettoyées
+```json
+{
+  "heic2any": "^0.0.4"
+}
+```
+
+Note : heic2any est un package leger (~100KB) qui utilise libheif pour la conversion cote client.
+
+---
+
+## VI. Resume des Fichiers
+
+### Fichiers a CREER (2)
+1. `src/lib/heic-converter.ts` - Utilitaire de conversion HEIC
+2. `src/components/ui/image-lightbox.tsx` - Composant lightbox reutilisable
+
+### Fichiers a MODIFIER (6)
+1. `src/lib/storage-utils.ts` - Integrer conversion HEIC avant upload
+2. `src/components/admin/MediaUploader.tsx` - Accepter HEIC dans input file
+3. `src/components/MediaLibrary.tsx` - Accepter HEIC + utiliser lightbox
+4. `src/components/MatchMediaManager.tsx` - Accepter HEIC + utiliser lightbox
+5. `src/components/Gallery.tsx` - Lightbox + legendes visibles sur albums
+6. `src/pages/admin/site/GalleryAdmin.tsx` - Multi-upload par album
+
+---
+
+## VII. Tests a Effectuer
+
+1. **Upload HEIC** : Uploader une image .heic depuis un iPhone, verifier la conversion en JPEG
+2. **Lightbox Navigation** : Tester les fleches, le clavier, le swipe sur mobile
+3. **Albums avec legendes** : Verifier l'affichage des descriptions sur le site public
+4. **Multi-upload** : Ajouter plusieurs images a un album en une fois
+5. **Compatibilite** : Tester sur Chrome, Firefox, Safari, Mobile
