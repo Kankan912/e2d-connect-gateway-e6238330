@@ -1,4 +1,3 @@
-import heic2any from "heic2any";
 import { toast } from "sonner";
 
 /**
@@ -14,6 +13,7 @@ export function isHeicFile(file: File): boolean {
 
 /**
  * Convert a HEIC file to JPEG
+ * Uses dynamic import to avoid module initialization issues
  * @param file - The HEIC file to convert
  * @returns A new File object in JPEG format
  */
@@ -21,6 +21,9 @@ export async function convertHeicToJpeg(file: File): Promise<File> {
   const toastId = toast.loading("Conversion de l'image HEIC en cours...");
   
   try {
+    // Dynamic import to avoid initialization issues with React
+    const heic2any = (await import("heic2any")).default;
+    
     const result = await heic2any({
       blob: file,
       toType: "image/jpeg",
