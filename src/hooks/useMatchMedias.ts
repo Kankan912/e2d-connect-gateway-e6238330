@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { processFileForUpload } from '@/lib/heic-converter';
 
 export interface MatchMedia {
   id: string;
@@ -35,13 +36,16 @@ export function useMatchMedias(matchId: string) {
     mutationFn: async ({ file, legende }: { file: File; legende?: string }) => {
       const { data: user } = await supabase.auth.getUser();
       
+      // Process file (convert HEIC to JPEG if needed)
+      const processedFile = await processFileForUpload(file);
+      
       // Upload to storage
-      const fileExt = file.name.split('.').pop();
+      const fileExt = processedFile.name.split('.').pop();
       const fileName = `${matchId}/${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('match-medias')
-        .upload(fileName, file);
+        .upload(fileName, processedFile);
 
       if (uploadError) throw uploadError;
 
