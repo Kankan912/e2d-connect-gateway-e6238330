@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,9 +13,12 @@ import SEOHead from "@/components/SEOHead";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { LazyImage } from "@/components/ui/lazy-image";
+import { ImageLightbox, LightboxImage } from "@/components/ui/image-lightbox";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["site-event-detail", id],
@@ -95,6 +99,18 @@ export default function EventDetail() {
     },
     enabled: !!event?.match_id,
   });
+
+  // Préparer les images pour le lightbox
+  const lightboxImages: LightboxImage[] = matchMedias.map((media) => ({
+    url: media.url,
+    title: media.legende || undefined,
+    isVideo: media.type === "video",
+  }));
+
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
+  };
 
   if (isLoading) {
     return (
@@ -448,34 +464,30 @@ export default function EventDetail() {
                   Photos & Vidéos du match
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {matchMedias.map((media) => (
+                  {matchMedias.map((media, index) => (
                     <div key={media.id} className="relative group">
                       {media.type === "video" ? (
-                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                          <a 
-                            href={media.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex flex-col items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
-                          >
+                        <div 
+                          onClick={() => openLightbox(index)}
+                          className="aspect-video bg-muted rounded-lg flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors"
+                        >
+                          <div className="flex flex-col items-center gap-2 text-muted-foreground">
                             <Film className="h-10 w-10" />
                             <span className="text-sm">Voir la vidéo</span>
-                          </a>
+                          </div>
                         </div>
                       ) : (
-                        <a 
-                          href={media.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="block"
+                        <div 
+                          onClick={() => openLightbox(index)}
+                          className="cursor-pointer"
                         >
                           <LazyImage
                             src={media.url}
                             alt={media.legende || "Photo du match"}
-                            className="rounded-lg aspect-square object-cover hover:opacity-90 transition-opacity cursor-pointer"
+                            className="rounded-lg aspect-square object-cover hover:opacity-90 transition-opacity"
                             aspectRatio="square"
                           />
-                        </a>
+                        </div>
                       )}
                       {media.legende && (
                         <p className="text-xs text-muted-foreground mt-1 truncate">
@@ -491,6 +503,14 @@ export default function EventDetail() {
         </div>
       </main>
       <Footer />
+      
+      {/* Lightbox pour les médias */}
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        open={lightboxOpen}
+        onOpenChange={setLightboxOpen}
+      />
     </>
   );
 }
