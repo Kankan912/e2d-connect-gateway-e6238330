@@ -1,98 +1,210 @@
 
-# Integration du Lightbox Facebook sur la Page Evenement/Match
+# Plan d'Action Correctif E2D - Exécution Phase par Phase
 
-## Probleme Identifie
+## PHASE 1 - Corrections Critiques Bloquantes (Priorité Immédiate)
 
-Sur la page de detail d'un evenement (`/evenements/:id`), les photos et videos du match utilisent actuellement des liens `<a href target="_blank">` qui ouvrent les medias dans un nouvel onglet du navigateur.
+### 1.1 Exercice Actif - Erreur "Aucun exercice actif"
+**Problème** : La requête `.single()` échoue car il y a 2 exercices marqués 'actif' en base de données.
 
-**Code actuel (lignes 466-478):**
-```html
-<a href={media.url} target="_blank" rel="noopener noreferrer">
-  <LazyImage ... />
-</a>
+**Fichier** : `src/components/CotisationsCumulAnnuel.tsx` (lignes 27-34)
+
+**Corrections** :
+```text
+1. Modifier la requête pour gérer les cas multiples:
+   - Remplacer .single() par .limit(1)
+   - Ou trier par date_debut DESC pour prendre le plus récent
+   
+2. Corriger la base de données:
+   - Un seul exercice doit être "actif" à la fois
 ```
 
-## Solution
+**SQL préalable** :
+```sql
+UPDATE exercices SET statut = 'cloture' 
+WHERE id = '9f764af9-3239-4838-9017-86f2ad8a9ad0'; 
+-- Garder uniquement "Exercice 2026 - 2027" comme actif
+```
 
-Integrer le composant `ImageLightbox` deja existant pour afficher les photos/videos dans une modale Facebook-like avec navigation fleches gauche/droite.
+---
 
-## Fichier a Modifier
+### 1.2 Réouverture Réunion - Déverrouillage Incomplet
+**Problème** : Les cotisations et opérations caisse restent verrouillées après réouverture.
 
-| Fichier | Modification |
-|---------|--------------|
-| `src/pages/EventDetail.tsx` | Ajouter le lightbox + remplacer les liens par des clics |
+**Fichier** : `src/components/ReouvrirReunionModal.tsx`
 
-## Changements Techniques
-
-### 1. Imports a Ajouter
+**Ajouts après ligne 45** :
 ```typescript
-import { useState } from "react";
-import { ImageLightbox, LightboxImage } from "@/components/ui/image-lightbox";
+// Déverrouiller les cotisations liées
+const { error: cotisError } = await supabase
+  .from("cotisations")
+  .update({ verrouille: false })
+  .eq("reunion_id", reunionId);
+
+// Déverrouiller les opérations caisse
+const { error: caisseError } = await supabase
+  .from("fond_caisse_operations")
+  .update({ verrouille: false })
+  .eq("reunion_id", reunionId);
 ```
 
-### 2. Nouveaux States
-```typescript
-const [lightboxOpen, setLightboxOpen] = useState(false);
-const [lightboxIndex, setLightboxIndex] = useState(0);
+---
+
+### 1.3 Navigation Réunions - Liens Nouvel Onglet
+**Problème** : Certains liens ouvrent un nouvel onglet au lieu de naviguer dans l'application.
+
+**Fichier** : `src/pages/Reunions.tsx`
+
+**Action** : Rechercher et supprimer tous les `target="_blank"` sur les liens internes.
+
+---
+
+## PHASE 2 - Emails et Notifications (1-2 heures)
+
+### 2.1 Debug Edge Function send-campaign-emails
+**Problème** : "0 email(s) envoyé(s)" malgré des destinataires valides.
+
+**Fichiers** :
+- `supabase/functions/send-campaign-emails/index.ts`
+- `supabase/functions/_shared/email-utils.ts`
+
+**Actions** :
+1. Ajouter des logs détaillés pour identifier où échoue l'envoi
+2. Vérifier que `getFullEmailConfig()` retourne bien la clé Resend
+3. Vérifier que la table `configurations` contient `resend_api_key`
+
+**Diagnostic SQL** :
+```sql
+SELECT * FROM configurations WHERE cle = 'resend_api_key';
+SELECT * FROM configurations WHERE cle = 'email_service';
 ```
 
-### 3. Preparation des Images pour le Lightbox
-```typescript
-const lightboxImages: LightboxImage[] = matchMedias.map((media) => ({
-  url: media.url,
-  title: media.legende || undefined,
-  isVideo: media.type === "video",
-}));
+---
+
+### 2.2 Notifications Calendrier Bénéficiaires
+**Fichier** : `supabase/functions/send-calendrier-beneficiaires/index.ts`
+
+**Action** : Appliquer les mêmes corrections que 2.1 (même dépendance email-utils).
+
+---
+
+## PHASE 3 - Améliorations UX (2-3 heures)
+
+### 3.1 Mois Éditable pour Bénéficiaires
+**Problème** : Le mois est affiché en Badge fixe, non modifiable.
+
+**Fichier** : `src/components/config/CalendrierBeneficiairesManager.tsx`
+
+**Modification lignes 69-81** :
+```text
+Remplacer le Badge statique par un composant Select
+- Permettre la modification si !isLocked && isAdmin
+- Appeler updateBeneficiaire.mutate avec le nouveau mois
 ```
 
-### 4. Fonction d'Ouverture
-```typescript
-const openLightbox = (index: number) => {
-  setLightboxIndex(index);
-  setLightboxOpen(true);
-};
-```
+---
 
-### 5. Remplacement des Liens
-**Avant (ouvre nouvel onglet):**
-```html
-<a href={media.url} target="_blank">
-  <LazyImage ... />
-</a>
-```
+### 3.2 Devise FCFA Cohérente
+**Problème** : Certains écrans affichent "€" au lieu de "FCFA".
 
-**Apres (ouvre lightbox):**
-```html
-<div onClick={() => openLightbox(index)} className="cursor-pointer">
-  <LazyImage ... />
-</div>
-```
+**Actions** :
+1. Auditer tous les fichiers avec: `grep -r "€\|EUR\|toLocaleString.*currency" src/`
+2. Remplacer par `formatFCFA()` de `@/lib/utils`
 
-### 6. Ajout du Composant Lightbox
-```html
-<ImageLightbox
-  images={lightboxImages}
-  initialIndex={lightboxIndex}
-  open={lightboxOpen}
-  onOpenChange={setLightboxOpen}
-/>
-```
+**Fichiers probables** :
+- `src/components/CotisationsCumulAnnuel.tsx` (utilise `.toLocaleString()` + " FCFA" correctement)
+- Autres composants cotisations/prêts à vérifier
 
-## Comportement Final
+---
 
-1. **Clic sur une image** → Ouvre le lightbox plein ecran
-2. **Navigation fleches** → Passe a l'image precedente/suivante
-3. **Compteur** → Affiche "3/12" en haut
-4. **Legende** → Affichee en bas de l'image
-5. **Videos** → Lecteur video integre dans le lightbox
-6. **Clavier** → Fleches gauche/droite + Echap pour fermer
-7. **Mobile** → Swipe gauche/droite fonctionne
+### 3.3 Prêts - Paiement Partiel
+**Problème** : L'intérêt est recalculé à tort lors d'un paiement partiel.
 
-## Resume des Modifications
+**Règle métier correcte** :
+- Intérêt fixé à la création du prêt, jamais recalculé
+- Paiement partiel: d'abord sur l'intérêt, puis sur le capital
 
-- Ajouter import de `useState` (si pas deja present)
-- Ajouter import de `ImageLightbox`
-- Ajouter les states `lightboxOpen` et `lightboxIndex`
-- Creer la liste `lightboxImages` a partir de `matchMedias`
-- Remplacer les balises `<a>` par des `<div>` cliquables
-- Ajouter le composant `<ImageLightbox>` en fin de page
+**Fichiers à auditer** :
+- `src/hooks/useEpargnes.ts`
+- `src/pages/Epargnes.tsx`
+- `src/components/PretsPaiementsManager.tsx`
+
+---
+
+## PHASE 4 - Utilisateurs et Membres (1 heure)
+
+### 4.1 Centralisation Gestion Utilisateurs
+**Problème** : Confusion entre comptes utilisateurs (auth) et membres (association).
+
+**Clarification architecture** :
+- `profiles` = Utilisateurs Supabase Auth (email/mot de passe)
+- `membres` = Membres de l'association E2D
+- Lien via `membres.user_id -> profiles.id`
+
+**Fichier** : `src/pages/admin/UtilisateursAdmin.tsx`
+
+**Vérifications** :
+1. Affiche-t-il uniquement les `profiles` ou mélange-t-il avec `membres`?
+2. Le menu Config → Utilisateurs est-il accessible?
+
+---
+
+## PHASE 5 - Audit Calculs Caisse (30 min)
+
+### 5.1 Totaux Caisse Incohérents
+**Fichier** : `src/hooks/useCaisseSynthese.ts`
+
+**Actions** :
+1. Vérifier les filtres par catégorie (epargne, cotisation, etc.)
+2. Comparer les calculs frontend avec les données brutes en base
+3. Ajouter des logs temporaires pour debug
+
+---
+
+## Ordre d'Exécution Recommandé
+
+| Phase | Tâche | Durée | Bloquant |
+|-------|-------|-------|----------|
+| 1.1 | Fix exercice actif | 15 min | OUI |
+| 1.2 | Déverrouillage réouverture | 20 min | OUI |
+| 1.3 | Navigation SPA | 15 min | Non |
+| 2.1 | Debug emails campagne | 45 min | OUI |
+| 2.2 | Emails calendrier | 15 min | Non |
+| 3.1 | Mois éditable | 30 min | Non |
+| 3.2 | Audit devise FCFA | 30 min | Non |
+| 3.3 | Paiement partiel prêts | 45 min | Non |
+| 4.1 | Utilisateurs/Membres | 30 min | Non |
+| 5.1 | Audit caisse | 30 min | Non |
+
+**Durée totale estimée : 4-5 heures**
+
+---
+
+## Points Déjà Fonctionnels (FAIT)
+
+| # | Fonctionnalité | État |
+|---|----------------|------|
+| 1 | Email unique membre | Message convivial implémenté |
+| 3 | Montants individuels cotisations | Table dédiée utilisée |
+| 8 | Multi-bénéficiaires par mois | Supporté dans le code |
+| 9 | Drag & drop ordre bénéficiaires | DnD Kit intégré |
+
+---
+
+## Tests de Validation par Phase
+
+**Phase 1** :
+- Vérifier que "Suivi Cumulatif Annuel" affiche les données
+- Clôturer puis rouvrir une réunion, vérifier l'édition des cotisations
+
+**Phase 2** :
+- Créer une campagne test avec 1-2 destinataires
+- Vérifier les logs edge function dans Supabase Dashboard
+- Confirmer réception email
+
+**Phase 3** :
+- Modifier le mois d'un bénéficiaire
+- Vérifier l'affichage FCFA partout (pas de €)
+
+**Phase 4** :
+- Naviguer dans Config → Utilisateurs
+- Vérifier la distinction membres/utilisateurs
