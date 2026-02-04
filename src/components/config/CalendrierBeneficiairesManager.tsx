@@ -37,10 +37,11 @@ interface SortableRowProps {
   isLocked: boolean;
   isAdmin: boolean;
   onMontantChange: (id: string, montant: number) => void;
+  onMoisChange: (id: string, mois: number | null) => void;
   onDelete: () => void;
 }
 
-function SortableBeneficiaireRow({ beneficiaire: b, calendrier, isLocked, isAdmin, onMontantChange, onDelete }: SortableRowProps) {
+function SortableBeneficiaireRow({ beneficiaire: b, calendrier, isLocked, isAdmin, onMontantChange, onMoisChange, onDelete }: SortableRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: b.id });
   
   const style = {
@@ -49,6 +50,9 @@ function SortableBeneficiaireRow({ beneficiaire: b, calendrier, isLocked, isAdmi
     opacity: isDragging ? 0.5 : 1,
     cursor: !isLocked ? 'grab' : 'default',
   };
+
+  const beneficiairesDuMois = calendrier.filter((c: any) => c.mois_benefice === b.mois_benefice);
+  const positionDansMois = beneficiairesDuMois.filter((c: any) => c.rang <= b.rang).length;
 
   return (
     <TableRow ref={setNodeRef} style={style}>
@@ -66,18 +70,43 @@ function SortableBeneficiaireRow({ beneficiaire: b, calendrier, isLocked, isAdmi
         {b.membres?.prenom} {b.membres?.nom}
       </TableCell>
       <TableCell>
-        {b.mois_benefice ? (
+        {!isLocked && isAdmin ? (
           <div className="flex items-center gap-2">
-            <Badge>{MOIS[b.mois_benefice - 1]}</Badge>
-            {calendrier.filter((c: any) => c.mois_benefice === b.mois_benefice).length > 1 && (
+            <Select
+              value={b.mois_benefice?.toString() || "none"}
+              onValueChange={(value) => onMoisChange(b.id, value === "none" ? null : parseInt(value))}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Choisir..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Non défini</SelectItem>
+                {MOIS.map((mois, index) => (
+                  <SelectItem key={index + 1} value={(index + 1).toString()}>
+                    {mois}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {beneficiairesDuMois.length > 1 && b.mois_benefice && (
               <Badge variant="outline" className="text-xs">
-                {calendrier.filter((c: any) => c.mois_benefice === b.mois_benefice && c.rang <= b.rang).length}
-                /{calendrier.filter((c: any) => c.mois_benefice === b.mois_benefice).length}
+                {positionDansMois}/{beneficiairesDuMois.length}
               </Badge>
             )}
           </div>
         ) : (
-          <span className="text-muted-foreground">-</span>
+          b.mois_benefice ? (
+            <div className="flex items-center gap-2">
+              <Badge>{MOIS[b.mois_benefice - 1]}</Badge>
+              {beneficiairesDuMois.length > 1 && (
+                <Badge variant="outline" className="text-xs">
+                  {positionDansMois}/{beneficiairesDuMois.length}
+                </Badge>
+              )}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )
         )}
       </TableCell>
       <TableCell>
@@ -320,6 +349,12 @@ export default function CalendrierBeneficiairesManager() {
     await updateBeneficiaire.mutateAsync({ id, data: { montant_mensuel: montant } });
   };
 
+  // Mise à jour du mois de bénéfice
+  const handleMoisChange = async (id: string, mois: number | null) => {
+    if (isLocked && !isAdmin) return;
+    await updateBeneficiaire.mutateAsync({ id, data: { mois_benefice: mois } });
+  };
+
   // Drag-and-drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -460,6 +495,7 @@ export default function CalendrierBeneficiairesManager() {
                         isLocked={!!isLocked}
                         isAdmin={!!isAdmin}
                         onMontantChange={handleMontantChange}
+                        onMoisChange={handleMoisChange}
                         onDelete={() => deleteBeneficiaire.mutate(b.id)}
                       />
                     ))}

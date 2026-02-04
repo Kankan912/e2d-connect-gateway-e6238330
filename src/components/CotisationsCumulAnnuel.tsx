@@ -24,11 +24,14 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
         if (error) throw error;
         return data;
       }
+      // Utiliser order + limit + maybeSingle pour gérer les cas de multiples exercices actifs
       const { data, error } = await supabase
         .from('exercices')
         .select('*')
         .eq('statut', 'actif')
-        .single();
+        .order('date_debut', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       if (error) throw error;
       return data;
     },

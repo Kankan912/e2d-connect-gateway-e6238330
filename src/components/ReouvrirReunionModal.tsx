@@ -44,7 +44,19 @@ export default function ReouvrirReunionModal({
 
       if (updateError) throw updateError;
 
-      // 2. Logger l'action dans audit_logs
+      // 2. Supprimer les opérations caisse auto-générées liées à cette réunion
+      // (elles seront recréées lors de la prochaine clôture)
+      const { error: caisseError } = await supabase
+        .from("fond_caisse_operations")
+        .delete()
+        .eq("reunion_id", reunionId);
+
+      if (caisseError) {
+        console.warn("Erreur suppression opérations caisse:", caisseError);
+        // On continue quand même car ce n'est pas bloquant
+      }
+
+      // 3. Logger l'action dans audit_logs
       await supabase.from("audit_logs").insert({
         action: "REUNION_REOUVERTURE",
         table_name: "reunions",
@@ -59,7 +71,7 @@ export default function ReouvrirReunionModal({
         }
       });
 
-      // 3. Supprimer les sanctions auto-générées si demandé
+      // 4. Supprimer les sanctions auto-générées si demandé
       if (supprimerSanctions) {
         const { error: sanctionsError } = await supabase
           .from("reunions_sanctions")
@@ -73,7 +85,7 @@ export default function ReouvrirReunionModal({
         }
       }
 
-      // 3. Invalider TOUS les caches liés à cette réunion (FIX CRITIQUE)
+      // 5. Invalider TOUS les caches liés à cette réunion (FIX CRITIQUE)
       queryClient.invalidateQueries({ queryKey: ["reunions"] });
       queryClient.invalidateQueries({ queryKey: ["presences"] });
       queryClient.invalidateQueries({ queryKey: ["reunions-sanctions"] });
