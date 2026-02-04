@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import nodemailer from "https://esm.sh/nodemailer@6.9.9";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 // ============================================================
 // Types
@@ -193,7 +193,9 @@ async function sendViaResend(config: FullEmailConfig, params: EmailParams): Prom
 }
 
 /**
- * Envoie un email via SMTP (nodemailer - gère STARTTLS correctement)
+ * Envoie un email via SMTP (denomailer)
+ * Pour Outlook port 587: utilise STARTTLS (connexion non-TLS puis upgrade)
+ * Pour port 465: utilise TLS direct
  */
 async function sendViaSMTP(config: FullEmailConfig, params: EmailParams): Promise<EmailResult> {
   if (!config.smtpHost || !config.smtpUser || !config.smtpPassword) {
@@ -203,54 +205,65 @@ async function sendViaSMTP(config: FullEmailConfig, params: EmailParams): Promis
     };
   }
 
+  let client: SMTPClient | null = null;
+  
   try {
-    console.log(`[SMTP] Connexion à ${config.smtpHost}:${config.smtpPort} (encryption: ${config.smtpEncryption})...`);
+    const port = config.smtpPort || 587;
     
-    // Configuration pour nodemailer
-    // Port 587 = STARTTLS (secure: false, le TLS est négocié après connexion)
-    // Port 465 = SSL/TLS direct (secure: true)
-    const isPort465 = config.smtpPort === 465;
-    const useSecure = config.smtpEncryption === "ssl" || isPort465;
+    // Déterminer le mode de connexion TLS
+    // Port 465 = TLS direct (tls: true)
+    // Port 587 = STARTTLS (tls: false, le client fait STARTTLS automatiquement)
+    const useTLS = port === 465 || config.smtpEncryption === "ssl";
     
-    const transportConfig = {
-      host: config.smtpHost,
-      port: config.smtpPort || 587,
-      secure: useSecure, // true pour port 465, false pour port 587 (STARTTLS)
-      auth: {
-        user: config.smtpUser,
-        pass: config.smtpPassword,
+    console.log(`[SMTP] Connexion à ${config.smtpHost}:${port} (tls: ${useTLS}, encryption: ${config.smtpEncryption})...`);
+    
+    client = new SMTPClient({
+      connection: {
+        hostname: config.smtpHost,
+        port: port,
+        // Pour STARTTLS (port 587), tls doit être false - le client upgrade automatiquement
+        tls: useTLS,
+        auth: {
+          username: config.smtpUser,
+          password: config.smtpPassword,
+        },
       },
-      // Pour les serveurs qui nécessitent TLS mais sur port 587
-      ...((!useSecure && config.smtpEncryption === "tls") && {
-        requireTLS: true,
-      }),
-      // Options de débogage
-      logger: false,
-      debug: false,
-    };
+    });
 
-    console.log(`[SMTP] Transport config: secure=${useSecure}, requireTLS=${!useSecure && config.smtpEncryption === "tls"}`);
-
-    const transporter = nodemailer.createTransport(transportConfig);
-    
     const fromAddress = `${config.fromName} <${config.smtpUser}>`;
 
-    const info = await transporter.sendMail({
+    await client.send({
       from: fromAddress,
       to: params.to,
       subject: params.subject,
       html: params.html,
-      text: params.text || "",
+      content: params.text || "",
     });
 
-    console.log(`[SMTP] Email envoyé à ${params.to}, messageId: ${info.messageId}`);
-    return { success: true, data: { messageId: info.messageId } };
+    console.log(`[SMTP] Email envoyé avec succès à ${params.to}`);
+    return { success: true };
   } catch (error: any) {
     console.error("[SMTP] Erreur d'envoi:", error);
+    
+    // Message d'erreur plus explicite pour les problèmes courants
+    let errorMessage = error.message || "Connexion échouée";
+    
+    if (errorMessage.includes("InvalidContentType") || errorMessage.includes("corrupt message")) {
+      errorMessage = "Erreur de négociation TLS. Vérifiez que le port et le type d'encryption sont corrects (Port 587 = TLS/STARTTLS, Port 465 = SSL).";
+    }
+    
     return { 
       success: false, 
-      error: `Erreur SMTP: ${error.message || "Connexion échouée"}` 
+      error: `Erreur SMTP: ${errorMessage}` 
     };
+  } finally {
+    if (client) {
+      try {
+        await client.close();
+      } catch (e) {
+        console.warn("[SMTP] Erreur fermeture connexion:", e);
+      }
+    }
   }
 }
 
