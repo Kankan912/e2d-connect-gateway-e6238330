@@ -80,18 +80,29 @@ serve(async (req) => {
     console.log("📧 Campaign found:", campaign.nom);
 
     // Charger la configuration email complète (multi-services)
+    console.log("📧 Loading email configuration...");
     const emailConfig = await getFullEmailConfig();
+    
+    console.log(`📬 Email service configured: ${emailConfig.service}`);
+    console.log(`📬 From: ${emailConfig.fromName} <${emailConfig.fromEmail}>`);
+    if (emailConfig.service === "resend") {
+      console.log(`📬 Resend API Key: ${emailConfig.resendApiKey ? "✅ Configured" : "❌ Missing"}`);
+    } else {
+      console.log(`📬 SMTP Host: ${emailConfig.smtpHost || "❌ Missing"}`);
+      console.log(`📬 SMTP User: ${emailConfig.smtpUser || "❌ Missing"}`);
+    }
     
     // Valider la configuration
     const validation = validateFullEmailConfig(emailConfig);
     if (!validation.valid) {
+      console.error("❌ Email config validation failed:", validation.error);
       return new Response(
         JSON.stringify({ error: validation.error }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
 
-    console.log(`📬 Using email service: ${emailConfig.service}`);
+    console.log(`✅ Email configuration valid - using ${emailConfig.service}`);
 
     // Get recipients based on campaign destinataires
     let recipients: { id: string; email: string; nom: string; prenom: string }[] = [];
