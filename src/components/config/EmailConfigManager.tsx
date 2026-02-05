@@ -119,11 +119,15 @@ export function EmailConfigManager() {
         };
 
         if (smtpConfigId) {
-          const { error } = await supabase
+          const { data: updatedSmtp, error } = await supabase
             .from("smtp_config")
             .update(smtpData)
-            .eq("id", smtpConfigId);
+            .eq("id", smtpConfigId)
+            .select();
           if (error) throw error;
+          if (!updatedSmtp || updatedSmtp.length === 0) {
+            throw new Error("Échec de la mise à jour SMTP : permissions insuffisantes ou session expirée");
+          }
         } else {
           const { error } = await supabase
             .from("smtp_config")
@@ -236,11 +240,17 @@ export function EmailConfigManager() {
       };
 
       if (smtpConfigId) {
-        const { error: saveError } = await supabase
+        const { data: updatedData, error: saveError } = await supabase
           .from("smtp_config")
           .update(smtpData)
-          .eq("id", smtpConfigId);
-        if (saveError) throw new Error("Erreur sauvegarde config: " + saveError.message);
+          .eq("id", smtpConfigId)
+          .select();
+        if (saveError) {
+          throw new Error("Erreur sauvegarde config: " + saveError.message);
+        }
+        if (!updatedData || updatedData.length === 0) {
+          throw new Error("Échec de la sauvegarde : vérifiez vos permissions administrateur ou rafraîchissez la page");
+        }
       } else {
         const { error: insertError } = await supabase
           .from("smtp_config")
