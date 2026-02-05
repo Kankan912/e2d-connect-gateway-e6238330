@@ -1,210 +1,126 @@
 
-# Plan d'Action Correctif E2D - Exécution Phase par Phase
+# Correction SMTP Outlook - Port 587 STARTTLS
 
-## PHASE 1 - Corrections Critiques Bloquantes (Priorité Immédiate)
+## Diagnostic
 
-### 1.1 Exercice Actif - Erreur "Aucun exercice actif"
-**Problème** : La requête `.single()` échoue car il y a 2 exercices marqués 'actif' en base de données.
+**Problème identifié** : La bibliothèque `denomailer` ne gère pas correctement le protocole STARTTLS avec les serveurs Outlook/Office365. Deno (via `rustls`) est très strict sur la négociation TLS et échoue avec l'erreur "InvalidContentType".
 
-**Fichier** : `src/components/CotisationsCumulAnnuel.tsx` (lignes 27-34)
+**Configuration actuelle** :
+| Paramètre | Valeur |
+|-----------|--------|
+| Serveur | smtp-mail.outlook.com |
+| Port | 587 |
+| Encryption | TLS (STARTTLS) |
+| Utilisateur | e2d.cmr@outlook.fr |
 
-**Corrections** :
-```text
-1. Modifier la requête pour gérer les cas multiples:
-   - Remplacer .single() par .limit(1)
-   - Ou trier par date_debut DESC pour prendre le plus récent
-   
-2. Corriger la base de données:
-   - Un seul exercice doit être "actif" à la fois
-```
+## Solution
 
-**SQL préalable** :
-```sql
-UPDATE exercices SET statut = 'cloture' 
-WHERE id = '9f764af9-3239-4838-9017-86f2ad8a9ad0'; 
--- Garder uniquement "Exercice 2026 - 2027" comme actif
-```
+Utiliser `nodemailer` (plus mature et compatible Outlook) avec les polyfills Node.js nécessaires pour Deno.
 
----
+## Fichier a Modifier
 
-### 1.2 Réouverture Réunion - Déverrouillage Incomplet
-**Problème** : Les cotisations et opérations caisse restent verrouillées après réouverture.
+`supabase/functions/_shared/email-utils.ts`
 
-**Fichier** : `src/components/ReouvrirReunionModal.tsx`
+## Changements Techniques
 
-**Ajouts après ligne 45** :
+### 1. Remplacer les imports (lignes 1-2)
+
+**Avant** :
 ```typescript
-// Déverrouiller les cotisations liées
-const { error: cotisError } = await supabase
-  .from("cotisations")
-  .update({ verrouille: false })
-  .eq("reunion_id", reunionId);
-
-// Déverrouiller les opérations caisse
-const { error: caisseError } = await supabase
-  .from("fond_caisse_operations")
-  .update({ verrouille: false })
-  .eq("reunion_id", reunionId);
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 ```
 
----
+**Apres** :
+```typescript
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-### 1.3 Navigation Réunions - Liens Nouvel Onglet
-**Problème** : Certains liens ouvrent un nouvel onglet au lieu de naviguer dans l'application.
+// Polyfills Node.js pour nodemailer dans Deno
+import { Buffer } from "node:buffer";
+import process from "node:process";
 
-**Fichier** : `src/pages/Reunions.tsx`
+// Injecter dans le scope global
+// @ts-ignore
+if (typeof globalThis.Buffer === "undefined") globalThis.Buffer = Buffer;
+// @ts-ignore
+if (typeof globalThis.process === "undefined") globalThis.process = process;
 
-**Action** : Rechercher et supprimer tous les `target="_blank"` sur les liens internes.
-
----
-
-## PHASE 2 - Emails et Notifications (1-2 heures)
-
-### 2.1 Debug Edge Function send-campaign-emails
-**Problème** : "0 email(s) envoyé(s)" malgré des destinataires valides.
-
-**Fichiers** :
-- `supabase/functions/send-campaign-emails/index.ts`
-- `supabase/functions/_shared/email-utils.ts`
-
-**Actions** :
-1. Ajouter des logs détaillés pour identifier où échoue l'envoi
-2. Vérifier que `getFullEmailConfig()` retourne bien la clé Resend
-3. Vérifier que la table `configurations` contient `resend_api_key`
-
-**Diagnostic SQL** :
-```sql
-SELECT * FROM configurations WHERE cle = 'resend_api_key';
-SELECT * FROM configurations WHERE cle = 'email_service';
+import nodemailer from "npm:nodemailer@6.9.9";
 ```
 
----
+### 2. Reecrire la fonction sendViaSMTP (lignes 200-268)
 
-### 2.2 Notifications Calendrier Bénéficiaires
-**Fichier** : `supabase/functions/send-calendrier-beneficiaires/index.ts`
+```typescript
+async function sendViaSMTP(config: FullEmailConfig, params: EmailParams): Promise<EmailResult> {
+  if (!config.smtpHost || !config.smtpUser || !config.smtpPassword) {
+    return { 
+      success: false, 
+      error: "Configuration SMTP incomplete." 
+    };
+  }
 
-**Action** : Appliquer les mêmes corrections que 2.1 (même dépendance email-utils).
+  try {
+    const port = config.smtpPort || 587;
+    const isSecure = port === 465 || config.smtpEncryption === "ssl";
+    
+    console.log(`[SMTP] Connexion a ${config.smtpHost}:${port} (secure: ${isSecure})...`);
+    
+    const transporter = nodemailer.createTransport({
+      host: config.smtpHost,
+      port: port,
+      secure: isSecure, // true pour 465, false pour 587
+      auth: {
+        user: config.smtpUser,
+        pass: config.smtpPassword,
+      },
+      // Configuration TLS pour Outlook
+      tls: {
+        ciphers: "SSLv3",
+        rejectUnauthorized: false,
+      },
+      // Force STARTTLS pour port 587
+      requireTLS: !isSecure && config.smtpEncryption === "tls",
+    });
 
----
+    const info = await transporter.sendMail({
+      from: `"${config.fromName}" <${config.smtpUser}>`,
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+      text: params.text || "",
+    });
 
-## PHASE 3 - Améliorations UX (2-3 heures)
-
-### 3.1 Mois Éditable pour Bénéficiaires
-**Problème** : Le mois est affiché en Badge fixe, non modifiable.
-
-**Fichier** : `src/components/config/CalendrierBeneficiairesManager.tsx`
-
-**Modification lignes 69-81** :
-```text
-Remplacer le Badge statique par un composant Select
-- Permettre la modification si !isLocked && isAdmin
-- Appeler updateBeneficiaire.mutate avec le nouveau mois
+    console.log(`[SMTP] Email envoye a ${params.to}, messageId: ${info.messageId}`);
+    return { success: true, data: { messageId: info.messageId } };
+  } catch (error: any) {
+    console.error("[SMTP] Erreur d'envoi:", error);
+    return { 
+      success: false, 
+      error: `Erreur SMTP: ${error.message}` 
+    };
+  }
+}
 ```
 
----
+## Pourquoi ca va fonctionner
 
-### 3.2 Devise FCFA Cohérente
-**Problème** : Certains écrans affichent "€" au lieu de "FCFA".
+1. **nodemailer** : Bibliotheque mature qui gere correctement les specificites d'Outlook (delais EHLO, negociation STARTTLS)
+2. **Polyfills** : Les imports `node:buffer` et `node:process` sont supportes nativement par Deno et resolvent l'erreur "Buffer is not defined"
+3. **Configuration TLS** : Les options `ciphers: "SSLv3"` et `requireTLS` assurent une negociation compatible
 
-**Actions** :
-1. Auditer tous les fichiers avec: `grep -r "€\|EUR\|toLocaleString.*currency" src/`
-2. Remplacer par `formatFCFA()` de `@/lib/utils`
+## Edge Functions a Redeployer
 
-**Fichiers probables** :
-- `src/components/CotisationsCumulAnnuel.tsx` (utilise `.toLocaleString()` + " FCFA" correctement)
-- Autres composants cotisations/prêts à vérifier
+Apres modification de `email-utils.ts`, redeployer :
+- `send-email`
+- `send-campaign-emails`
+- `send-calendrier-beneficiaires`
+- `send-contact-notification`
+- `send-cotisation-reminders`
+- `send-presence-reminders`
+- `send-pret-echeance-reminders`
+- `send-reunion-cr`
+- `send-sanction-notification`
 
----
+## Test de Validation
 
-### 3.3 Prêts - Paiement Partiel
-**Problème** : L'intérêt est recalculé à tort lors d'un paiement partiel.
-
-**Règle métier correcte** :
-- Intérêt fixé à la création du prêt, jamais recalculé
-- Paiement partiel: d'abord sur l'intérêt, puis sur le capital
-
-**Fichiers à auditer** :
-- `src/hooks/useEpargnes.ts`
-- `src/pages/Epargnes.tsx`
-- `src/components/PretsPaiementsManager.tsx`
-
----
-
-## PHASE 4 - Utilisateurs et Membres (1 heure)
-
-### 4.1 Centralisation Gestion Utilisateurs
-**Problème** : Confusion entre comptes utilisateurs (auth) et membres (association).
-
-**Clarification architecture** :
-- `profiles` = Utilisateurs Supabase Auth (email/mot de passe)
-- `membres` = Membres de l'association E2D
-- Lien via `membres.user_id -> profiles.id`
-
-**Fichier** : `src/pages/admin/UtilisateursAdmin.tsx`
-
-**Vérifications** :
-1. Affiche-t-il uniquement les `profiles` ou mélange-t-il avec `membres`?
-2. Le menu Config → Utilisateurs est-il accessible?
-
----
-
-## PHASE 5 - Audit Calculs Caisse (30 min)
-
-### 5.1 Totaux Caisse Incohérents
-**Fichier** : `src/hooks/useCaisseSynthese.ts`
-
-**Actions** :
-1. Vérifier les filtres par catégorie (epargne, cotisation, etc.)
-2. Comparer les calculs frontend avec les données brutes en base
-3. Ajouter des logs temporaires pour debug
-
----
-
-## Ordre d'Exécution Recommandé
-
-| Phase | Tâche | Durée | Bloquant |
-|-------|-------|-------|----------|
-| 1.1 | Fix exercice actif | 15 min | OUI |
-| 1.2 | Déverrouillage réouverture | 20 min | OUI |
-| 1.3 | Navigation SPA | 15 min | Non |
-| 2.1 | Debug emails campagne | 45 min | OUI |
-| 2.2 | Emails calendrier | 15 min | Non |
-| 3.1 | Mois éditable | 30 min | Non |
-| 3.2 | Audit devise FCFA | 30 min | Non |
-| 3.3 | Paiement partiel prêts | 45 min | Non |
-| 4.1 | Utilisateurs/Membres | 30 min | Non |
-| 5.1 | Audit caisse | 30 min | Non |
-
-**Durée totale estimée : 4-5 heures**
-
----
-
-## Points Déjà Fonctionnels (FAIT)
-
-| # | Fonctionnalité | État |
-|---|----------------|------|
-| 1 | Email unique membre | Message convivial implémenté |
-| 3 | Montants individuels cotisations | Table dédiée utilisée |
-| 8 | Multi-bénéficiaires par mois | Supporté dans le code |
-| 9 | Drag & drop ordre bénéficiaires | DnD Kit intégré |
-
----
-
-## Tests de Validation par Phase
-
-**Phase 1** :
-- Vérifier que "Suivi Cumulatif Annuel" affiche les données
-- Clôturer puis rouvrir une réunion, vérifier l'édition des cotisations
-
-**Phase 2** :
-- Créer une campagne test avec 1-2 destinataires
-- Vérifier les logs edge function dans Supabase Dashboard
-- Confirmer réception email
-
-**Phase 3** :
-- Modifier le mois d'un bénéficiaire
-- Vérifier l'affichage FCFA partout (pas de €)
-
-**Phase 4** :
-- Naviguer dans Config → Utilisateurs
-- Vérifier la distinction membres/utilisateurs
+Apres deploiement, tester via Configuration → Email → "Tester la connexion SMTP"
