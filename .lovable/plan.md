@@ -1,126 +1,70 @@
 
-# Correction SMTP Outlook - Port 587 STARTTLS
+# Plan de correction : Sauvegarde du mot de passe SMTP
 
-## Diagnostic
+## Probleme identifie
 
-**Problème identifié** : La bibliothèque `denomailer` ne gère pas correctement le protocole STARTTLS avec les serveurs Outlook/Office365. Deno (via `rustls`) est très strict sur la négociation TLS et échoue avec l'erreur "InvalidContentType".
+L'operation `.update()` de Supabase reussit au niveau API mais n'affecte aucune ligne car les politiques RLS (Row Level Security) sur la table `smtp_config` bloquent silencieusement la mise a jour. Le code ne detecte pas cet echec.
 
-**Configuration actuelle** :
-| Paramètre | Valeur |
-|-----------|--------|
-| Serveur | smtp-mail.outlook.com |
-| Port | 587 |
-| Encryption | TLS (STARTTLS) |
-| Utilisateur | e2d.cmr@outlook.fr |
+**Preuve :**
+- Timestamp `updated_at` dans la base : `2025-10-30` (jamais mis a jour depuis)
+- Mot de passe actuel en base : `cigpihevjbrmccgh` (ancien mot de passe)
+- L'Edge Function continue d'utiliser l'ancien mot de passe
 
-## Solution
+## Solution proposee
 
-Utiliser `nodemailer` (plus mature et compatible Outlook) avec les polyfills Node.js nécessaires pour Deno.
+Modifier `EmailConfigManager.tsx` pour utiliser `.select()` apres l'update afin de verifier que la mise a jour a fonctionne, et afficher une erreur claire si ce n'est pas le cas.
 
-## Fichier a Modifier
+## Modifications techniques
 
-`supabase/functions/_shared/email-utils.ts`
+### Fichier : `src/components/config/EmailConfigManager.tsx`
 
-## Changements Techniques
+**Lignes 238-248 - Fonction `testSmtpConnection()`**
 
-### 1. Remplacer les imports (lignes 1-2)
-
-**Avant** :
+Remplacer :
 ```typescript
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+const { error: saveError } = await supabase
+  .from("smtp_config")
+  .update(smtpData)
+  .eq("id", smtpConfigId);
+if (saveError) throw new Error("Erreur sauvegarde config: " + saveError.message);
 ```
 
-**Apres** :
+Par :
 ```typescript
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const { data: updatedData, error: saveError } = await supabase
+  .from("smtp_config")
+  .update(smtpData)
+  .eq("id", smtpConfigId)
+  .select();
 
-// Polyfills Node.js pour nodemailer dans Deno
-import { Buffer } from "node:buffer";
-import process from "node:process";
+if (saveError) {
+  throw new Error("Erreur sauvegarde config: " + saveError.message);
+}
 
-// Injecter dans le scope global
-// @ts-ignore
-if (typeof globalThis.Buffer === "undefined") globalThis.Buffer = Buffer;
-// @ts-ignore
-if (typeof globalThis.process === "undefined") globalThis.process = process;
-
-import nodemailer from "npm:nodemailer@6.9.9";
-```
-
-### 2. Reecrire la fonction sendViaSMTP (lignes 200-268)
-
-```typescript
-async function sendViaSMTP(config: FullEmailConfig, params: EmailParams): Promise<EmailResult> {
-  if (!config.smtpHost || !config.smtpUser || !config.smtpPassword) {
-    return { 
-      success: false, 
-      error: "Configuration SMTP incomplete." 
-    };
-  }
-
-  try {
-    const port = config.smtpPort || 587;
-    const isSecure = port === 465 || config.smtpEncryption === "ssl";
-    
-    console.log(`[SMTP] Connexion a ${config.smtpHost}:${port} (secure: ${isSecure})...`);
-    
-    const transporter = nodemailer.createTransport({
-      host: config.smtpHost,
-      port: port,
-      secure: isSecure, // true pour 465, false pour 587
-      auth: {
-        user: config.smtpUser,
-        pass: config.smtpPassword,
-      },
-      // Configuration TLS pour Outlook
-      tls: {
-        ciphers: "SSLv3",
-        rejectUnauthorized: false,
-      },
-      // Force STARTTLS pour port 587
-      requireTLS: !isSecure && config.smtpEncryption === "tls",
-    });
-
-    const info = await transporter.sendMail({
-      from: `"${config.fromName}" <${config.smtpUser}>`,
-      to: params.to,
-      subject: params.subject,
-      html: params.html,
-      text: params.text || "",
-    });
-
-    console.log(`[SMTP] Email envoye a ${params.to}, messageId: ${info.messageId}`);
-    return { success: true, data: { messageId: info.messageId } };
-  } catch (error: any) {
-    console.error("[SMTP] Erreur d'envoi:", error);
-    return { 
-      success: false, 
-      error: `Erreur SMTP: ${error.message}` 
-    };
-  }
+// Verifier que la mise a jour a affecte au moins une ligne
+if (!updatedData || updatedData.length === 0) {
+  throw new Error("Echec de la sauvegarde : verifiez vos permissions administrateur ou rafraichissez la page");
 }
 ```
 
-## Pourquoi ca va fonctionner
+**Lignes 121-126 - Fonction `saveConfigMutation`**
 
-1. **nodemailer** : Bibliotheque mature qui gere correctement les specificites d'Outlook (delais EHLO, negociation STARTTLS)
-2. **Polyfills** : Les imports `node:buffer` et `node:process` sont supportes nativement par Deno et resolvent l'erreur "Buffer is not defined"
-3. **Configuration TLS** : Les options `ciphers: "SSLv3"` et `requireTLS` assurent une negociation compatible
+Appliquer la meme correction pour la sauvegarde generale :
+```typescript
+const { data: updatedSmtp, error } = await supabase
+  .from("smtp_config")
+  .update(smtpData)
+  .eq("id", smtpConfigId)
+  .select();
 
-## Edge Functions a Redeployer
+if (error) throw error;
+if (!updatedSmtp || updatedSmtp.length === 0) {
+  throw new Error("Echec de la mise a jour SMTP : permissions insuffisantes");
+}
+```
 
-Apres modification de `email-utils.ts`, redeployer :
-- `send-email`
-- `send-campaign-emails`
-- `send-calendrier-beneficiaires`
-- `send-contact-notification`
-- `send-cotisation-reminders`
-- `send-presence-reminders`
-- `send-pret-echeance-reminders`
-- `send-reunion-cr`
-- `send-sanction-notification`
+## Resultat attendu
 
-## Test de Validation
-
-Apres deploiement, tester via Configuration → Email → "Tester la connexion SMTP"
+- Si la mise a jour echoue a cause des permissions RLS, l'utilisateur verra un message d'erreur clair au lieu d'un faux succes
+- Le diagnostic sera plus facile car on saura exactement si le probleme vient des permissions ou d'autre chose
+- L'utilisateur pourra contacter l'administrateur ou rafraichir sa session si necessaire
