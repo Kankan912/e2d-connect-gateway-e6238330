@@ -1,16 +1,4 @@
  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
- 
- // Polyfills Node.js pour nodemailer dans Deno
- import { Buffer } from "node:buffer";
- import process from "node:process";
- 
- // Injecter dans le scope global pour nodemailer
- // @ts-ignore
- if (typeof globalThis.Buffer === "undefined") globalThis.Buffer = Buffer;
- // @ts-ignore
- if (typeof globalThis.process === "undefined") globalThis.process = process;
- 
- import nodemailer from "https://esm.sh/nodemailer@6.9.9";
 
 // ============================================================
 // Types
@@ -219,41 +207,149 @@ async function sendViaSMTP(config: FullEmailConfig, params: EmailParams): Promis
   try {
     const port = config.smtpPort || 587;
      const isSecure = port === 465 || config.smtpEncryption === "ssl";
-    
+     
      console.log(`[SMTP] Connexion à ${config.smtpHost}:${port} (secure: ${isSecure})...`);
-    
-     const transporter = nodemailer.createTransport({
-       host: config.smtpHost,
-       port: port,
-       secure: isSecure, // true pour 465, false pour 587 (STARTTLS)
-       auth: {
-         user: config.smtpUser,
-         pass: config.smtpPassword,
-       },
-       // Configuration TLS pour Outlook
-       tls: {
-         ciphers: "SSLv3",
-         rejectUnauthorized: false,
-      },
-       // Force STARTTLS pour port 587
-       requireTLS: !isSecure && config.smtpEncryption === "tls",
-    });
-
-     const info = await transporter.sendMail({
-       from: `"${config.fromName}" <${config.smtpUser}>`,
-      to: params.to,
-      subject: params.subject,
-      html: params.html,
-       text: params.text || "",
-    });
-
-     console.log(`[SMTP] Email envoyé à ${params.to}, messageId: ${info.messageId}`);
-     return { success: true, data: { messageId: info.messageId } };
+     
+     // Résoudre le hostname manuellement (dns.lookup non supporté dans Deno)
+     let resolvedHost = config.smtpHost;
+     try {
+       const addresses = await Deno.resolveDns(config.smtpHost, "A");
+       if (addresses && addresses.length > 0) {
+         resolvedHost = addresses[0];
+         console.log(`[SMTP] DNS résolu: ${config.smtpHost} -> ${resolvedHost}`);
+       }
+     } catch (dnsErr) {
+       console.warn(`[SMTP] DNS lookup échoué, utilisation directe du hostname`);
+     }
+     
+     // Établir la connexion
+     let conn: Deno.TcpConn | Deno.TlsConn;
+     if (isSecure) {
+       conn = await Deno.connectTls({ hostname: resolvedHost, port });
+     } else {
+       conn = await Deno.connect({ hostname: resolvedHost, port });
+     }
+     
+     const encoder = new TextEncoder();
+     const decoder = new TextDecoder();
+     
+     // Helper: lire réponse SMTP (peut être multi-lignes)
+     async function readResponse(): Promise<string> {
+       const buffer = new Uint8Array(4096);
+       let fullResponse = "";
+       while (true) {
+         const n = await conn.read(buffer);
+         if (n === null) break;
+         const chunk = decoder.decode(buffer.subarray(0, n));
+         fullResponse += chunk;
+         // Réponse complète si ligne se termine par "code " (espace après code = dernière ligne)
+         const lines = fullResponse.split("\r\n").filter(l => l.length > 0);
+         const lastLine = lines[lines.length - 1];
+         if (lastLine && lastLine.length >= 4 && lastLine[3] === " ") break;
+       }
+       return fullResponse;
+     }
+     
+     // Helper: envoyer commande
+     async function sendCmd(cmd: string): Promise<string> {
+       await conn.write(encoder.encode(cmd + "\r\n"));
+       return await readResponse();
+     }
+     
+     // Lire le banner
+     let resp = await readResponse();
+     console.log(`[SMTP] Banner: ${resp.substring(0, 50)}...`);
+     if (!resp.startsWith("220")) throw new Error(`Serveur non prêt: ${resp}`);
+     
+     // EHLO
+     resp = await sendCmd(`EHLO localhost`);
+     if (!resp.includes("250")) throw new Error(`EHLO échoué: ${resp}`);
+     console.log(`[SMTP] EHLO OK`);
+     
+     // STARTTLS si nécessaire (port 587)
+     if (!isSecure && config.smtpEncryption === "tls") {
+       resp = await sendCmd("STARTTLS");
+       if (!resp.startsWith("220")) throw new Error(`STARTTLS échoué: ${resp}`);
+       
+       // Upgrade vers TLS
+       conn = await Deno.startTls(conn as Deno.TcpConn, { hostname: config.smtpHost });
+       console.log(`[SMTP] TLS établi`);
+       
+       // Re-EHLO après STARTTLS
+       resp = await sendCmd(`EHLO localhost`);
+       if (!resp.includes("250")) throw new Error(`EHLO post-TLS échoué: ${resp}`);
+     }
+     
+     // AUTH LOGIN
+     resp = await sendCmd("AUTH LOGIN");
+     if (!resp.startsWith("334")) throw new Error(`AUTH LOGIN échoué: ${resp}`);
+     
+     // Username (base64)
+     resp = await sendCmd(btoa(config.smtpUser));
+     if (!resp.startsWith("334")) throw new Error(`Username rejeté: ${resp}`);
+     
+     // Password (base64)
+     resp = await sendCmd(btoa(config.smtpPassword));
+     if (!resp.startsWith("235")) throw new Error(`Authentification échouée: ${resp}`);
+     console.log(`[SMTP] Authentification réussie`);
+     
+     // MAIL FROM
+     resp = await sendCmd(`MAIL FROM:<${config.smtpUser}>`);
+     if (!resp.startsWith("250")) throw new Error(`MAIL FROM échoué: ${resp}`);
+     
+     // RCPT TO
+     resp = await sendCmd(`RCPT TO:<${params.to}>`);
+     if (!resp.startsWith("250")) throw new Error(`RCPT TO échoué: ${resp}`);
+     
+     // DATA
+     resp = await sendCmd("DATA");
+     if (!resp.startsWith("354")) throw new Error(`DATA échoué: ${resp}`);
+     
+     // Construire le message
+     const messageId = `<${crypto.randomUUID()}@e2d.local>`;
+     const date = new Date().toUTCString();
+     const boundary = `----=_Part_${Date.now()}`;
+     
+     const emailData = [
+       `Date: ${date}`,
+       `From: "${config.fromName}" <${config.smtpUser}>`,
+       `To: ${params.to}`,
+       `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(params.subject)))}?=`,
+       `Message-ID: ${messageId}`,
+       `MIME-Version: 1.0`,
+       `Content-Type: multipart/alternative; boundary="${boundary}"`,
+       ``,
+       `--${boundary}`,
+       `Content-Type: text/plain; charset=utf-8`,
+       `Content-Transfer-Encoding: base64`,
+       ``,
+       btoa(unescape(encodeURIComponent(params.text || ""))),
+       ``,
+       `--${boundary}`,
+       `Content-Type: text/html; charset=utf-8`,
+       `Content-Transfer-Encoding: base64`,
+       ``,
+       btoa(unescape(encodeURIComponent(params.html))),
+       ``,
+       `--${boundary}--`,
+       `.`
+     ].join("\r\n");
+     
+     await conn.write(encoder.encode(emailData + "\r\n"));
+     resp = await readResponse();
+     if (!resp.startsWith("250")) throw new Error(`Envoi DATA échoué: ${resp}`);
+     
+     // QUIT
+     try { await sendCmd("QUIT"); } catch { /* ignore */ }
+     try { conn.close(); } catch { /* ignore */ }
+     
+     console.log(`[SMTP] Email envoyé à ${params.to}, messageId: ${messageId}`);
+     return { success: true, data: { messageId } };
   } catch (error: any) {
     console.error("[SMTP] Erreur d'envoi:", error);
     return { 
       success: false, 
-       error: `Erreur SMTP: ${error.message}` 
+       error: `Erreur SMTP: ${error.message}`
     };
   }
 }
