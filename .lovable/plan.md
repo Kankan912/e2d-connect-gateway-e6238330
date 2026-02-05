@@ -1,70 +1,110 @@
 
-# Plan de correction : Sauvegarde du mot de passe SMTP
+# Plan de correction SMTP pour Outlook
 
 ## Probleme identifie
 
-L'operation `.update()` de Supabase reussit au niveau API mais n'affecte aucune ligne car les politiques RLS (Row Level Security) sur la table `smtp_config` bloquent silencieusement la mise a jour. Le code ne detecte pas cet echec.
+Le serveur Microsoft Outlook rejette l'authentification `AUTH LOGIN` meme avec un mot de passe d'application. Les logs montrent :
 
-**Preuve :**
-- Timestamp `updated_at` dans la base : `2025-10-30` (jamais mis a jour depuis)
-- Mot de passe actuel en base : `cigpihevjbrmccgh` (ancien mot de passe)
-- L'Edge Function continue d'utiliser l'ancien mot de passe
-
-## Solution proposee
-
-Modifier `EmailConfigManager.tsx` pour utiliser `.select()` apres l'update afin de verifier que la mise a jour a fonctionne, et afficher une erreur claire si ce n'est pas le cas.
-
-## Modifications techniques
-
-### Fichier : `src/components/config/EmailConfigManager.tsx`
-
-**Lignes 238-248 - Fonction `testSmtpConnection()`**
-
-Remplacer :
-```typescript
-const { error: saveError } = await supabase
-  .from("smtp_config")
-  .update(smtpData)
-  .eq("id", smtpConfigId);
-if (saveError) throw new Error("Erreur sauvegarde config: " + saveError.message);
+```
+AUTH LOGIN echoue: 504 5.7.4 Unrecognized authentication type (encryption "none")
+535 5.7.139 Authentication unsuccessful, basic authentication is disabled (encryption "tls")
 ```
 
-Par :
-```typescript
-const { data: updatedData, error: saveError } = await supabase
-  .from("smtp_config")
-  .update(smtpData)
-  .eq("id", smtpConfigId)
-  .select();
+## Causes
 
-if (saveError) {
-  throw new Error("Erreur sauvegarde config: " + saveError.message);
+1. Le code utilise uniquement `AUTH LOGIN` - Microsoft peut preferer `AUTH PLAIN`
+2. Microsoft Outlook necessite que SMTP AUTH soit active dans les parametres du compte
+3. La methode d'authentification doit etre compatible avec les politiques de securite Microsoft
+
+## Solution technique
+
+### 1. Modifier `supabase/functions/_shared/email-utils.ts`
+
+Remplacer l'authentification `AUTH LOGIN` (lignes 283-293) par une logique qui :
+- Detecte les methodes d'authentification supportees via la reponse EHLO
+- Essaie `AUTH PLAIN` en priorite (plus compatible avec Outlook moderne)
+- Utilise `AUTH LOGIN` comme fallback si PLAIN n'est pas disponible
+
+```text
+Avant (AUTH LOGIN uniquement):
+  AUTH LOGIN
+  -> base64(username)
+  -> base64(password)
+
+Apres (AUTH PLAIN prioritaire):
+  AUTH PLAIN base64(\0username\0password)
+  Si echec -> AUTH LOGIN comme fallback
+```
+
+### 2. Modification du code d'authentification
+
+**Lignes 266-293** - Apres le bloc EHLO/STARTTLS, ajouter :
+
+```typescript
+// Parser les capacites EHLO pour detecter les methodes AUTH supportees
+const ehloLines = resp.split("\r\n");
+const authLine = ehloLines.find(l => l.includes("AUTH"));
+const supportsPlain = authLine?.includes("PLAIN") ?? false;
+const supportsLogin = authLine?.includes("LOGIN") ?? false;
+
+let authSuccess = false;
+
+// Essayer AUTH PLAIN en priorite (meilleure compatibilite Outlook)
+if (supportsPlain) {
+  const plainCredentials = btoa(`\0${config.smtpUser}\0${config.smtpPassword}`);
+  resp = await sendCmd(`AUTH PLAIN ${plainCredentials}`);
+  if (resp.startsWith("235")) {
+    authSuccess = true;
+    console.log("[SMTP] AUTH PLAIN reussi");
+  }
 }
 
-// Verifier que la mise a jour a affecte au moins une ligne
-if (!updatedData || updatedData.length === 0) {
-  throw new Error("Echec de la sauvegarde : verifiez vos permissions administrateur ou rafraichissez la page");
+// Fallback vers AUTH LOGIN si PLAIN echoue
+if (!authSuccess && supportsLogin) {
+  resp = await sendCmd("AUTH LOGIN");
+  if (resp.startsWith("334")) {
+    resp = await sendCmd(btoa(config.smtpUser));
+    if (resp.startsWith("334")) {
+      resp = await sendCmd(btoa(config.smtpPassword));
+      if (resp.startsWith("235")) {
+        authSuccess = true;
+        console.log("[SMTP] AUTH LOGIN reussi");
+      }
+    }
+  }
+}
+
+if (!authSuccess) {
+  throw new Error(`Authentification echouee. Methodes supportees: ${authLine || "inconnues"}. Verifiez que SMTP AUTH est active dans votre compte Outlook.`);
 }
 ```
 
-**Lignes 121-126 - Fonction `saveConfigMutation`**
+### 3. Ajouter un message d'aide pour l'utilisateur
 
-Appliquer la meme correction pour la sauvegarde generale :
-```typescript
-const { data: updatedSmtp, error } = await supabase
-  .from("smtp_config")
-  .update(smtpData)
-  .eq("id", smtpConfigId)
-  .select();
+Si l'authentification echoue malgre les deux methodes, le message d'erreur guidera l'utilisateur vers les parametres Outlook :
 
-if (error) throw error;
-if (!updatedSmtp || updatedSmtp.length === 0) {
-  throw new Error("Echec de la mise a jour SMTP : permissions insuffisantes");
-}
-```
+> "Authentification SMTP echouee. Verifiez que SMTP AUTH est active dans votre compte Outlook : Parametres > Courrier > Synchroniser le courrier > Activer POP et IMAP"
 
-## Resultat attendu
+## Fichiers a modifier
 
-- Si la mise a jour echoue a cause des permissions RLS, l'utilisateur verra un message d'erreur clair au lieu d'un faux succes
-- Le diagnostic sera plus facile car on saura exactement si le probleme vient des permissions ou d'autre chose
-- L'utilisateur pourra contacter l'administrateur ou rafraichir sa session si necessaire
+| Fichier | Modification |
+|---------|--------------|
+| `supabase/functions/_shared/email-utils.ts` | Logique AUTH PLAIN + LOGIN avec detection automatique |
+
+## Verification requise cote utilisateur
+
+Apres la modification du code, si l'erreur persiste, l'utilisateur doit verifier dans son compte Outlook :
+
+1. Aller sur [outlook.live.com](https://outlook.live.com) > Parametres > Courrier
+2. Section "Synchroniser le courrier"
+3. Activer "Autoriser les appareils et applications a utiliser POP"
+4. Cette option active SMTP AUTH necessaire pour l'envoi d'emails
+
+## Test de validation
+
+Une fois le code deploye, retester avec :
+- **Serveur**: smtp-mail.outlook.com
+- **Port**: 587
+- **Encryption**: TLS/STARTTLS
+- **Utilisateur**: e2d.cmr@outlook.fr
+- **Mot de passe**: cglcjtbwqmrwktcd (App Password)
