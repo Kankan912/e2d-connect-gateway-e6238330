@@ -280,17 +280,66 @@ async function sendViaSMTP(config: FullEmailConfig, params: EmailParams): Promis
        if (!resp.includes("250")) throw new Error(`EHLO post-TLS échoué: ${resp}`);
      }
      
-     // AUTH LOGIN
-     resp = await sendCmd("AUTH LOGIN");
-     if (!resp.startsWith("334")) throw new Error(`AUTH LOGIN échoué: ${resp}`);
+     // Parser les capacités EHLO pour détecter les méthodes AUTH supportées
+     const ehloLines = resp.split("\r\n");
+     const authLine = ehloLines.find(l => l.toUpperCase().includes("AUTH"));
+     const supportsPlain = authLine?.toUpperCase().includes("PLAIN") ?? false;
+     const supportsLogin = authLine?.toUpperCase().includes("LOGIN") ?? false;
+     console.log(`[SMTP] Méthodes AUTH supportées: ${authLine || "non détectées"}`);
      
-     // Username (base64)
-     resp = await sendCmd(btoa(config.smtpUser));
-     if (!resp.startsWith("334")) throw new Error(`Username rejeté: ${resp}`);
+     let authSuccess = false;
      
-     // Password (base64)
-     resp = await sendCmd(btoa(config.smtpPassword));
-     if (!resp.startsWith("235")) throw new Error(`Authentification échouée: ${resp}`);
+     // Essayer AUTH PLAIN en priorité (meilleure compatibilité Outlook moderne)
+     if (supportsPlain && !authSuccess) {
+       try {
+         // AUTH PLAIN format: base64(\0username\0password)
+         const plainCredentials = btoa(`\x00${config.smtpUser}\x00${config.smtpPassword}`);
+         resp = await sendCmd(`AUTH PLAIN ${plainCredentials}`);
+         if (resp.startsWith("235")) {
+           authSuccess = true;
+           console.log(`[SMTP] AUTH PLAIN réussi`);
+         } else {
+           console.log(`[SMTP] AUTH PLAIN échoué: ${resp.substring(0, 100)}`);
+         }
+       } catch (plainErr: any) {
+         console.log(`[SMTP] AUTH PLAIN erreur: ${plainErr.message}`);
+       }
+     }
+     
+     // Fallback vers AUTH LOGIN si PLAIN échoue ou n'est pas supporté
+     if (!authSuccess && supportsLogin) {
+       try {
+         resp = await sendCmd("AUTH LOGIN");
+         if (resp.startsWith("334")) {
+           // Username (base64)
+           resp = await sendCmd(btoa(config.smtpUser));
+           if (resp.startsWith("334")) {
+             // Password (base64)
+             resp = await sendCmd(btoa(config.smtpPassword));
+             if (resp.startsWith("235")) {
+               authSuccess = true;
+               console.log(`[SMTP] AUTH LOGIN réussi`);
+             } else {
+               console.log(`[SMTP] AUTH LOGIN mot de passe rejeté: ${resp.substring(0, 100)}`);
+             }
+           } else {
+             console.log(`[SMTP] AUTH LOGIN username rejeté: ${resp.substring(0, 100)}`);
+           }
+         } else {
+           console.log(`[SMTP] AUTH LOGIN non accepté: ${resp.substring(0, 100)}`);
+         }
+       } catch (loginErr: any) {
+         console.log(`[SMTP] AUTH LOGIN erreur: ${loginErr.message}`);
+       }
+     }
+     
+     // Si aucune méthode n'a fonctionné
+     if (!authSuccess) {
+       throw new Error(
+         `Authentification échouée. Méthodes supportées: ${authLine || "inconnues"}. ` +
+         `Pour Outlook, vérifiez que SMTP AUTH est activé: Paramètres > Courrier > Synchroniser le courrier > Activer POP/IMAP.`
+       );
+     }
      console.log(`[SMTP] Authentification réussie`);
      
      // MAIL FROM
