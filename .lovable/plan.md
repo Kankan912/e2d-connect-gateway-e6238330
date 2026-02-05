@@ -1,110 +1,55 @@
 
-# Plan de correction SMTP pour Outlook
+# Configuration Gmail SMTP
 
-## Probleme identifie
+## Prérequis côté Google
 
-Le serveur Microsoft Outlook rejette l'authentification `AUTH LOGIN` meme avec un mot de passe d'application. Les logs montrent :
+Gmail nécessite un **mot de passe d'application** pour l'accès SMTP (comme Outlook).
 
-```
-AUTH LOGIN echoue: 504 5.7.4 Unrecognized authentication type (encryption "none")
-535 5.7.139 Authentication unsuccessful, basic authentication is disabled (encryption "tls")
-```
+### Étape 1 : Activer la validation en 2 étapes
+1. Aller sur [myaccount.google.com/security](https://myaccount.google.com/security)
+2. Section "Comment vous connecter à Google"
+3. Activer "Validation en 2 étapes"
 
-## Causes
+### Étape 2 : Créer un mot de passe d'application
+1. Aller sur [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+2. Sélectionner "Autre (nom personnalisé)" → entrer "E2D SMTP"
+3. Cliquer "Générer"
+4. **Copier le mot de passe de 16 caractères** affiché
 
-1. Le code utilise uniquement `AUTH LOGIN` - Microsoft peut preferer `AUTH PLAIN`
-2. Microsoft Outlook necessite que SMTP AUTH soit active dans les parametres du compte
-3. La methode d'authentification doit etre compatible avec les politiques de securite Microsoft
+## Configuration dans l'application
 
-## Solution technique
+Une fois le mot de passe d'application obtenu, configurer dans **Configuration E2D → Email** :
 
-### 1. Modifier `supabase/functions/_shared/email-utils.ts`
+| Paramètre | Valeur |
+|-----------|--------|
+| Service | SMTP |
+| Serveur SMTP | `smtp.gmail.com` |
+| Port | `587` |
+| Encryption | TLS (STARTTLS) |
+| Utilisateur | Votre adresse Gmail complète |
+| Mot de passe | Le mot de passe d'application (16 caractères) |
 
-Remplacer l'authentification `AUTH LOGIN` (lignes 283-293) par une logique qui :
-- Detecte les methodes d'authentification supportees via la reponse EHLO
-- Essaie `AUTH PLAIN` en priorite (plus compatible avec Outlook moderne)
-- Utilise `AUTH LOGIN` comme fallback si PLAIN n'est pas disponible
+## Pourquoi Gmail devrait fonctionner
 
-```text
-Avant (AUTH LOGIN uniquement):
-  AUTH LOGIN
-  -> base64(username)
-  -> base64(password)
+Contrairement à Outlook qui a désactivé l'authentification basique pour tous les comptes personnels, Gmail continue de supporter :
+- `AUTH PLAIN` via TLS/STARTTLS
+- `AUTH LOGIN` comme fallback
+- Les mots de passe d'application comme méthode d'authentification sécurisée
 
-Apres (AUTH PLAIN prioritaire):
-  AUTH PLAIN base64(\0username\0password)
-  Si echec -> AUTH LOGIN comme fallback
-```
+Le code actuel dans `email-utils.ts` gère déjà ces deux méthodes d'authentification.
 
-### 2. Modification du code d'authentification
+## Actions requises
 
-**Lignes 266-293** - Apres le bloc EHLO/STARTTLS, ajouter :
+1. **Vous** : Créer le mot de passe d'application Google (voir étapes ci-dessus)
+2. **Vous** : Mettre à jour la configuration SMTP dans l'interface avec les paramètres Gmail
+3. **Test** : Utiliser le bouton "Tester la connexion" pour valider
 
-```typescript
-// Parser les capacites EHLO pour detecter les methodes AUTH supportees
-const ehloLines = resp.split("\r\n");
-const authLine = ehloLines.find(l => l.includes("AUTH"));
-const supportsPlain = authLine?.includes("PLAIN") ?? false;
-const supportsLogin = authLine?.includes("LOGIN") ?? false;
+## Section technique
 
-let authSuccess = false;
+Aucune modification de code n'est nécessaire. L'implémentation SMTP native dans `supabase/functions/_shared/email-utils.ts` :
+- Supporte `AUTH PLAIN` (prioritaire) et `AUTH LOGIN` (fallback)
+- Gère STARTTLS sur port 587
+- Gère SSL direct sur port 465
+- Résout les DNS manuellement pour compatibilité Deno
 
-// Essayer AUTH PLAIN en priorite (meilleure compatibilite Outlook)
-if (supportsPlain) {
-  const plainCredentials = btoa(`\0${config.smtpUser}\0${config.smtpPassword}`);
-  resp = await sendCmd(`AUTH PLAIN ${plainCredentials}`);
-  if (resp.startsWith("235")) {
-    authSuccess = true;
-    console.log("[SMTP] AUTH PLAIN reussi");
-  }
-}
-
-// Fallback vers AUTH LOGIN si PLAIN echoue
-if (!authSuccess && supportsLogin) {
-  resp = await sendCmd("AUTH LOGIN");
-  if (resp.startsWith("334")) {
-    resp = await sendCmd(btoa(config.smtpUser));
-    if (resp.startsWith("334")) {
-      resp = await sendCmd(btoa(config.smtpPassword));
-      if (resp.startsWith("235")) {
-        authSuccess = true;
-        console.log("[SMTP] AUTH LOGIN reussi");
-      }
-    }
-  }
-}
-
-if (!authSuccess) {
-  throw new Error(`Authentification echouee. Methodes supportees: ${authLine || "inconnues"}. Verifiez que SMTP AUTH est active dans votre compte Outlook.`);
-}
-```
-
-### 3. Ajouter un message d'aide pour l'utilisateur
-
-Si l'authentification echoue malgre les deux methodes, le message d'erreur guidera l'utilisateur vers les parametres Outlook :
-
-> "Authentification SMTP echouee. Verifiez que SMTP AUTH est active dans votre compte Outlook : Parametres > Courrier > Synchroniser le courrier > Activer POP et IMAP"
-
-## Fichiers a modifier
-
-| Fichier | Modification |
-|---------|--------------|
-| `supabase/functions/_shared/email-utils.ts` | Logique AUTH PLAIN + LOGIN avec detection automatique |
-
-## Verification requise cote utilisateur
-
-Apres la modification du code, si l'erreur persiste, l'utilisateur doit verifier dans son compte Outlook :
-
-1. Aller sur [outlook.live.com](https://outlook.live.com) > Parametres > Courrier
-2. Section "Synchroniser le courrier"
-3. Activer "Autoriser les appareils et applications a utiliser POP"
-4. Cette option active SMTP AUTH necessaire pour l'envoi d'emails
-
-## Test de validation
-
-Une fois le code deploye, retester avec :
-- **Serveur**: smtp-mail.outlook.com
-- **Port**: 587
-- **Encryption**: TLS/STARTTLS
-- **Utilisateur**: e2d.cmr@outlook.fr
-- **Mot de passe**: cglcjtbwqmrwktcd (App Password)
+Les paramètres Gmail seront stockés dans la table `smtp_config` existante.
