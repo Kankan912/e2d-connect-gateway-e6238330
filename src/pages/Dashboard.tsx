@@ -191,7 +191,7 @@ const Dashboard = () => {
           <Route
             path="/admin/caisse"
             element={
-              <PermissionRoute resource="epargnes" permission="read">
+              <PermissionRoute resource="caisse" permission="read">
                 <CaisseAdmin />
               </PermissionRoute>
             }

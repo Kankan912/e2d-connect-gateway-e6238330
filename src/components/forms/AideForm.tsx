@@ -17,6 +17,7 @@ const aideSchema = z.object({
   type_aide_id: z.string().min(1, "Sélectionnez un type d'aide"),
   beneficiaire_id: z.string().min(1, "Sélectionnez un bénéficiaire"),
   reunion_id: z.string().optional(),
+  exercice_id: z.string().min(1, "Sélectionnez un exercice"),
   montant: z.number().positive("Le montant doit être positif"),
   date_allocation: z.string().min(1, "Date d'allocation requise"),
   contexte_aide: z.string().min(1, "Contexte requis"),
@@ -51,6 +52,19 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
     },
   });
 
+  // Récupérer les exercices
+  const { data: exercices } = useQuery({
+    queryKey: ["exercices-aide"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("exercices")
+        .select("id, nom, statut")
+        .order("date_debut", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Récupérer les réunions récentes (6 derniers mois)
   const { data: reunions } = useQuery({
     queryKey: ["reunions-recentes"],
@@ -80,8 +94,19 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
   const typeAideId = watch("type_aide_id");
   const beneficiaireId = watch("beneficiaire_id");
   const reunionId = watch("reunion_id");
+  const exerciceId = watch("exercice_id");
   const statut = watch("statut");
   const contexte = watch("contexte_aide");
+
+  // Auto-sélectionner l'exercice actif
+  useEffect(() => {
+    if (exercices && !initialData && !exerciceId) {
+      const exerciceActif = exercices.find(e => e.statut === "actif");
+      if (exerciceActif) {
+        setValue("exercice_id", exerciceActif.id);
+      }
+    }
+  }, [exercices, initialData, exerciceId, setValue]);
 
   // Auto-remplir la date d'allocation avec la date de réunion
   useEffect(() => {
@@ -118,6 +143,7 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
           type_aide_id: initialData.type_aide_id,
           beneficiaire_id: initialData.beneficiaire_id,
           reunion_id: initialData.reunion_id || undefined,
+          exercice_id: initialData.exercice_id || "",
           montant: initialData.montant,
           date_allocation: initialData.date_allocation,
           contexte_aide: initialData.contexte_aide,
@@ -131,6 +157,7 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
           statut: "alloue",
           date_allocation: new Date().toISOString().split("T")[0],
           notes: "",
+          exercice_id: "",
         });
         setJustificatifUrl(null);
       }
@@ -141,6 +168,7 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
     onSubmit({
       ...data,
       reunion_id: data.reunion_id || null,
+      exercice_id: data.exercice_id || null,
       justificatif_url: justificatifUrl,
     });
   };
@@ -190,6 +218,26 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
                 <p className="text-sm text-destructive mt-1">{errors.beneficiaire_id.message}</p>
               )}
             </div>
+          </div>
+
+          {/* Exercice obligatoire */}
+          <div>
+            <Label>Exercice *</Label>
+            <Select value={exerciceId} onValueChange={(val) => setValue("exercice_id", val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un exercice" />
+              </SelectTrigger>
+              <SelectContent>
+                {exercices?.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.nom} {e.statut === "actif" ? "(actif)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.exercice_id && (
+              <p className="text-sm text-destructive mt-1">{errors.exercice_id.message}</p>
+            )}
           </div>
 
           {/* Afficher le champ Réunion uniquement si contexte = "reunion" */}

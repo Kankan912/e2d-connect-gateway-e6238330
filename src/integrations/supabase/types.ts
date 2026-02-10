@@ -140,6 +140,7 @@ export type Database = {
           contexte_aide: string
           created_at: string
           date_allocation: string
+          exercice_id: string | null
           id: string
           justificatif_url: string | null
           montant: number
@@ -153,6 +154,7 @@ export type Database = {
           contexte_aide?: string
           created_at?: string
           date_allocation?: string
+          exercice_id?: string | null
           id?: string
           justificatif_url?: string | null
           montant: number
@@ -166,6 +168,7 @@ export type Database = {
           contexte_aide?: string
           created_at?: string
           date_allocation?: string
+          exercice_id?: string | null
           id?: string
           justificatif_url?: string | null
           montant?: number
@@ -175,6 +178,13 @@ export type Database = {
           type_aide_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "aides_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "aides_reunion_id_fkey"
             columns: ["reunion_id"]
@@ -1513,6 +1523,7 @@ export type Database = {
           beneficiaire_id: string | null
           categorie: string | null
           created_at: string
+          created_by: string | null
           date_operation: string
           exercice_id: string | null
           id: string
@@ -1526,11 +1537,13 @@ export type Database = {
           source_table: string | null
           type_operation: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           beneficiaire_id?: string | null
           categorie?: string | null
           created_at?: string
+          created_by?: string | null
           date_operation?: string
           exercice_id?: string | null
           id?: string
@@ -1544,11 +1557,13 @@ export type Database = {
           source_table?: string | null
           type_operation: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           beneficiaire_id?: string | null
           categorie?: string | null
           created_at?: string
+          created_by?: string | null
           date_operation?: string
           exercice_id?: string | null
           id?: string
@@ -1562,6 +1577,7 @@ export type Database = {
           source_table?: string | null
           type_operation?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {

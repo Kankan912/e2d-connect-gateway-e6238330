@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Plus, Edit, Trash2, Settings, HandHeart, Calendar } from "lucide-react";
+import { Heart, Plus, Edit, Trash2, Settings, HandHeart, Calendar, Download, FileSpreadsheet } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export default function AidesAdmin() {
   const [formOpen, setFormOpen] = useState(false);
@@ -45,6 +48,8 @@ export default function AidesAdmin() {
   const [aideToDelete, setAideToDelete] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatut, setFilterStatut] = useState<string>("all");
+  const [filterReunion, setFilterReunion] = useState<string>("all");
+  const [filterExercice, setFilterExercice] = useState<string>("all");
 
   // Type d'aide management
   const [typeFormOpen, setTypeFormOpen] = useState(false);
@@ -62,6 +67,31 @@ export default function AidesAdmin() {
   const deleteAide = useDeleteAide();
   const createAideType = useCreateAideType();
   const deleteAideType = useDeleteAideType();
+
+  // Récupérer les réunions pour le filtre
+  const { data: reunions } = useQuery({
+    queryKey: ["reunions-filter-aides"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("reunions")
+        .select("id, date_reunion, ordre_du_jour")
+        .order("date_reunion", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+  });
+
+  // Récupérer les exercices pour le filtre
+  const { data: exercices } = useQuery({
+    queryKey: ["exercices-filter-aides"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("exercices")
+        .select("id, nom")
+        .order("date_debut", { ascending: false });
+      return data || [];
+    },
+  });
 
   const handleSubmit = (data: any) => {
     if (selectedAide) {
@@ -92,6 +122,11 @@ export default function AidesAdmin() {
   const filteredAides = aides?.filter(aide => {
     if (filterType !== "all" && aide.type_aide_id !== filterType) return false;
     if (filterStatut !== "all" && aide.statut !== filterStatut) return false;
+    if (filterReunion !== "all") {
+      if (filterReunion === "none" && aide.reunion_id) return false;
+      if (filterReunion !== "none" && aide.reunion_id !== filterReunion) return false;
+    }
+    if (filterExercice !== "all" && aide.exercice_id !== filterExercice) return false;
     return true;
   });
 
@@ -123,6 +158,82 @@ export default function AidesAdmin() {
     }
   };
 
+  // Export PDF
+  const handleExportPDF = async () => {
+    if (!filteredAides || filteredAides.length === 0) {
+      toast({ title: "Aucune donnée", description: "Aucune aide à exporter", variant: "destructive" });
+      return;
+    }
+
+    const { jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(18);
+    doc.setTextColor(41, 128, 185);
+    doc.text("Rapport des Aides", pageWidth / 2, 20, { align: "center" });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Généré le ${new Date().toLocaleDateString("fr-FR")}`, pageWidth / 2, 28, { align: "center" });
+
+    const montantTotalAlloue = filteredAides.filter(a => a.statut === "alloue").reduce((s, a) => s + a.montant, 0);
+    doc.setFontSize(11);
+    doc.setTextColor(0);
+    doc.text(`Total alloué: ${montantTotalAlloue.toLocaleString()} FCFA | ${filteredAides.length} aide(s)`, 14, 40);
+
+    const tableData = filteredAides.map(a => [
+      new Date(a.date_allocation).toLocaleDateString("fr-FR"),
+      `${a.beneficiaire?.nom || ""} ${a.beneficiaire?.prenom || ""}`,
+      a.type_aide?.nom || "-",
+      `${a.montant.toLocaleString()} FCFA`,
+      a.exercice?.nom || "-",
+      a.reunion ? new Date(a.reunion.date_reunion).toLocaleDateString("fr-FR") : "-",
+      a.statut,
+    ]);
+
+    autoTable(doc, {
+      startY: 48,
+      head: [["Date", "Bénéficiaire", "Type", "Montant", "Exercice", "Réunion", "Statut"]],
+      body: tableData,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+    });
+
+    doc.save(`aides_${new Date().toISOString().split("T")[0]}.pdf`);
+    toast({ title: "Export PDF réussi" });
+  };
+
+  // Export Excel
+  const handleExportExcel = async () => {
+    if (!filteredAides || filteredAides.length === 0) {
+      toast({ title: "Aucune donnée", description: "Aucune aide à exporter", variant: "destructive" });
+      return;
+    }
+
+    const XLSX = await import('xlsx');
+    const rows = filteredAides.map(a => ({
+      "Date": new Date(a.date_allocation).toLocaleDateString("fr-FR"),
+      "Bénéficiaire": `${a.beneficiaire?.nom || ""} ${a.beneficiaire?.prenom || ""}`,
+      "Type": a.type_aide?.nom || "-",
+      "Montant (FCFA)": a.montant,
+      "Exercice": a.exercice?.nom || "-",
+      "Réunion": a.reunion ? new Date(a.reunion.date_reunion).toLocaleDateString("fr-FR") : "-",
+      "Contexte": a.contexte_aide,
+      "Statut": a.statut,
+      "Notes": a.notes || "",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Aides");
+    XLSX.writeFile(wb, `aides_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast({ title: "Export Excel réussi" });
+  };
+
   // Statistiques
   const totalAides = aides?.length || 0;
   const aidesAllouees = aides?.filter(a => a.statut === "alloue").length || 0;
@@ -137,12 +248,22 @@ export default function AidesAdmin() {
           <HandHeart className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold">Gestion des Aides</h1>
         </div>
-        {hasPermission('aides', 'create') && (
-          <Button onClick={() => { setSelectedAide(null); setFormOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle Aide
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportPDF}>
+            <Download className="h-4 w-4 mr-2" />
+            PDF
           </Button>
-        )}
+          <Button variant="outline" size="sm" onClick={handleExportExcel}>
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Excel
+          </Button>
+          {hasPermission('aides', 'create') && (
+            <Button onClick={() => { setSelectedAide(null); setFormOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle Aide
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -196,9 +317,9 @@ export default function AidesAdmin() {
         <TabsContent value="aides">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3">
                 <CardTitle>Liste des Aides</CardTitle>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Select value={filterType} onValueChange={setFilterType}>
                     <SelectTrigger className="w-40">
                       <SelectValue placeholder="Type" />
@@ -222,6 +343,31 @@ export default function AidesAdmin() {
                       <SelectItem value="remboursee">Remboursée</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={filterReunion} onValueChange={setFilterReunion}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Réunion" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les réunions</SelectItem>
+                      <SelectItem value="none">Sans réunion</SelectItem>
+                      {reunions?.map(r => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {new Date(r.date_reunion).toLocaleDateString("fr-FR")} - {r.ordre_du_jour || "Réunion"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterExercice} onValueChange={setFilterExercice}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Exercice" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les exercices</SelectItem>
+                      {exercices?.map(e => (
+                        <SelectItem key={e.id} value={e.id}>{e.nom}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardHeader>
@@ -236,6 +382,7 @@ export default function AidesAdmin() {
                       <TableHead>Bénéficiaire</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Montant</TableHead>
+                      <TableHead>Exercice</TableHead>
                       <TableHead>Réunion</TableHead>
                       <TableHead>Contexte</TableHead>
                       <TableHead>Statut</TableHead>
@@ -253,6 +400,13 @@ export default function AidesAdmin() {
                           <Badge variant="outline">{aide.type_aide?.nom}</Badge>
                         </TableCell>
                         <TableCell>{aide.montant.toLocaleString()} FCFA</TableCell>
+                        <TableCell>
+                          {aide.exercice ? (
+                            <Badge variant="secondary">{aide.exercice.nom}</Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {aide.reunion ? (
                             <Badge variant="secondary" className="flex items-center gap-1 w-fit">
@@ -291,7 +445,7 @@ export default function AidesAdmin() {
                     ))}
                     {filteredAides?.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                           Aucune aide trouvée
                         </TableCell>
                       </TableRow>
