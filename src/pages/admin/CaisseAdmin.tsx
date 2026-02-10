@@ -10,8 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Download, Settings, Filter, RefreshCw } from "lucide-react";
+import { Plus, Download, Settings, Filter, RefreshCw, BookOpen, FileSpreadsheet } from "lucide-react";
 import { CaisseDashboard } from "@/components/caisse/CaisseDashboard";
 import { CaisseOperationsTable } from "@/components/caisse/CaisseOperationsTable";
 import { CaisseOperationForm } from "@/components/caisse/CaisseOperationForm";
@@ -152,6 +154,30 @@ const CaisseAdmin = () => {
     toast({ title: "Export réussi", description: `Le fichier ${fileName} a été téléchargé` });
   };
 
+  const handleExportExcel = async () => {
+    if (!operations || operations.length === 0) {
+      toast({ title: "Aucune donnée", description: "Aucune opération à exporter", variant: "destructive" });
+      return;
+    }
+
+    const XLSX = await import('xlsx');
+    const rows = operations.map(op => ({
+      "Date": new Date(op.date_operation).toLocaleDateString("fr-FR"),
+      "Type": op.type_operation === "entree" ? "Entrée" : "Sortie",
+      "Catégorie": CAISSE_CATEGORIES[op.categorie as keyof typeof CAISSE_CATEGORIES]?.label || op.categorie || "-",
+      "Libellé": op.libelle,
+      "Montant (FCFA)": Number(op.montant),
+      "Source": op.source_table || "Manuel",
+      "Opérateur": op.operateur ? `${op.operateur.prenom} ${op.operateur.nom}` : "-",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Caisse");
+    XLSX.writeFile(wb, `caisse_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast({ title: "Export Excel réussi" });
+  };
+
   const handleResetFilters = () => {
     setFilters({});
   };
@@ -196,7 +222,11 @@ const CaisseAdmin = () => {
               </Button>
               <Button variant="outline" size="sm" onClick={handleExportPDF}>
                 <Download className="h-4 w-4 mr-2" />
-                Export PDF
+                PDF
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportExcel}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Excel
               </Button>
               <Button size="sm" onClick={() => setShowOperationForm(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -212,6 +242,10 @@ const CaisseAdmin = () => {
         <Tabs defaultValue="operations" className="space-y-4">
           <TabsList>
             <TabsTrigger value="operations">Opérations</TabsTrigger>
+            <TabsTrigger value="journal" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Journal
+            </TabsTrigger>
             <TabsTrigger value="ventilation">Ventilation</TabsTrigger>
           </TabsList>
 
@@ -334,6 +368,17 @@ const CaisseAdmin = () => {
             </Card>
           </TabsContent>
 
+          <TabsContent value="journal" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Journal Comptable</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <JournalComptable operations={operations || []} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="ventilation" className="space-y-4">
             <Card>
               <CardHeader>
@@ -413,6 +458,82 @@ const CaisseAdmin = () => {
         </DialogContent>
       </Dialog>
     </>
+  );
+};
+
+// Journal comptable centralisé
+const JournalComptable = ({ operations }: { operations: CaisseOperation[] }) => {
+  // Calcul du solde cumulé
+  const sortedOps = [...operations].sort((a, b) => 
+    new Date(a.date_operation).getTime() - new Date(b.date_operation).getTime() ||
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  let soldeCumule = 0;
+  const opsWithSolde = sortedOps.map(op => {
+    const montant = Number(op.montant);
+    soldeCumule += op.type_operation === 'entree' ? montant : -montant;
+    return { ...op, soldeCumule };
+  }).reverse(); // Afficher les plus récents en premier
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Date</TableHead>
+            <TableHead>Libellé</TableHead>
+            <TableHead>Source</TableHead>
+            <TableHead className="text-right">Débit</TableHead>
+            <TableHead className="text-right">Crédit</TableHead>
+            <TableHead className="text-right">Solde</TableHead>
+            <TableHead>Opérateur</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {opsWithSolde.map((op) => {
+            const catInfo = CAISSE_CATEGORIES[op.categorie as keyof typeof CAISSE_CATEGORIES] || CAISSE_CATEGORIES.autre;
+            return (
+              <TableRow key={op.id}>
+                <TableCell className="whitespace-nowrap">
+                  {new Date(op.date_operation).toLocaleDateString("fr-FR")}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${catInfo.color}`} />
+                    <span className="text-sm">{op.libelle}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="text-xs">
+                    {op.source_table ? op.source_table.replace(/_/g, ' ') : "Manuel"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right text-destructive font-medium">
+                  {op.type_operation === 'sortie' ? formatFCFA(Number(op.montant)) : ''}
+                </TableCell>
+                <TableCell className="text-right text-success font-medium">
+                  {op.type_operation === 'entree' ? formatFCFA(Number(op.montant)) : ''}
+                </TableCell>
+                <TableCell className="text-right font-semibold">
+                  {formatFCFA(op.soldeCumule)}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {op.operateur ? `${op.operateur.prenom} ${op.operateur.nom}` : '-'}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+          {opsWithSolde.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                Aucune opération
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 

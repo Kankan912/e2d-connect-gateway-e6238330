@@ -7,6 +7,7 @@ export interface Aide {
   type_aide_id: string;
   beneficiaire_id: string;
   reunion_id: string | null;
+  exercice_id: string | null;
   montant: number;
   date_allocation: string;
   contexte_aide: string;
@@ -30,6 +31,10 @@ export interface Aide {
     date_reunion: string;
     ordre_du_jour: string | null;
   };
+  exercice?: {
+    id: string;
+    nom: string;
+  };
 }
 
 export interface AideType {
@@ -51,7 +56,8 @@ export function useAides() {
           *,
           type_aide:aides_types(id, nom, montant_defaut, mode_repartition),
           beneficiaire:membres!beneficiaire_id(id, nom, prenom),
-          reunion:reunions!reunion_id(id, date_reunion, ordre_du_jour)
+          reunion:reunions!reunion_id(id, date_reunion, ordre_du_jour),
+          exercice:exercices!exercice_id(id, nom)
         `)
         .order("date_allocation", { ascending: false });
       if (error) throw error;
@@ -79,7 +85,7 @@ export function useCreateAide() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (aide: Omit<Aide, "id" | "created_at" | "type_aide" | "beneficiaire">) => {
+    mutationFn: async (aide: Omit<Aide, "id" | "created_at" | "type_aide" | "beneficiaire" | "exercice">) => {
       const { data, error } = await supabase
         .from("aides")
         .insert(aide)
@@ -90,6 +96,8 @@ export function useCreateAide() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["aides"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-operations"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-synthese"] });
       toast({ title: "Aide créée avec succès" });
     },
     onError: (error: any) => {
@@ -119,6 +127,8 @@ export function useUpdateAide() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["aides"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-operations"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-synthese"] });
       toast({ title: "Aide modifiée avec succès" });
     },
     onError: (error: any) => {
@@ -145,6 +155,8 @@ export function useDeleteAide() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["aides"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-operations"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-synthese"] });
       toast({ title: "Aide supprimée" });
     },
     onError: (error: any) => {
