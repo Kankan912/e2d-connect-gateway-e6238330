@@ -24,6 +24,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { addE2DHeader, addE2DFooter } from "@/lib/pdf-utils";
+import type { CotisationWithJoins, PretWithJoins, SanctionWithJoins, EpargneWithJoins } from "@/types/supabase-joins";
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -68,9 +69,11 @@ const RapportsAdmin = () => {
       const { data, error } = await query;
       if (error) throw error;
       
+      const typed = (data || []) as unknown as CotisationWithJoins[];
+      
       // Filtrage par date
       if (dateDebut || dateFin) {
-        return data?.filter(c => {
+        return typed.filter(c => {
           const date = c.date_paiement || c.created_at;
           if (!date) return true;
           const d = parseISO(date);
@@ -84,7 +87,7 @@ const RapportsAdmin = () => {
           return true;
         });
       }
-      return data;
+      return typed;
     },
   });
 
@@ -108,8 +111,10 @@ const RapportsAdmin = () => {
       const { data, error } = await query;
       if (error) throw error;
       
+      const typed = (data || []) as unknown as PretWithJoins[];
+      
       if (dateDebut || dateFin) {
-        return data?.filter(p => {
+        return typed.filter(p => {
           const d = parseISO(p.date_pret);
           if (dateDebut && dateFin) {
             return isWithinInterval(d, { start: parseISO(dateDebut), end: parseISO(dateFin) });
@@ -121,7 +126,7 @@ const RapportsAdmin = () => {
           return true;
         });
       }
-      return data;
+      return typed;
     },
   });
 
@@ -144,8 +149,10 @@ const RapportsAdmin = () => {
 
       if (error) throw error;
       
+      const typed = (data || []) as unknown as SanctionWithJoins[];
+      
       if (dateDebut || dateFin) {
-        return data?.filter(s => {
+        return typed.filter(s => {
           const d = parseISO(s.created_at);
           if (dateDebut && dateFin) {
             return isWithinInterval(d, { start: parseISO(dateDebut), end: parseISO(dateFin) });
@@ -157,7 +164,7 @@ const RapportsAdmin = () => {
           return true;
         });
       }
-      return data;
+      return typed;
     },
   });
 
@@ -180,8 +187,10 @@ const RapportsAdmin = () => {
       const { data, error } = await query;
       if (error) throw error;
       
+      const typed = (data || []) as unknown as EpargneWithJoins[];
+      
       if (dateDebut || dateFin) {
-        return data?.filter(e => {
+        return typed.filter(e => {
           const d = parseISO(e.date_depot);
           if (dateDebut && dateFin) {
             return isWithinInterval(d, { start: parseISO(dateDebut), end: parseISO(dateFin) });
@@ -193,7 +202,7 @@ const RapportsAdmin = () => {
           return true;
         });
       }
-      return data;
+      return typed;
     },
   });
 
@@ -242,7 +251,7 @@ const RapportsAdmin = () => {
     const impaye = cotisations.filter(c => c.statut === "impaye").reduce((sum, c) => sum + (c.montant || 0), 0);
     
     const parType = cotisations.reduce((acc: Record<string, number>, c) => {
-      const type = (c.cotisations_types as any)?.nom || "Autre";
+      const type = c.cotisations_types?.nom || "Autre";
       acc[type] = (acc[type] || 0) + (c.montant || 0);
       return acc;
     }, {});
@@ -292,8 +301,7 @@ const RapportsAdmin = () => {
     const total = epargnes.reduce((sum, e) => sum + (e.montant || 0), 0);
     
     const parMembre = epargnes.reduce((acc: Record<string, number>, e) => {
-      const membre = (e.membres as any);
-      const key = membre ? `${membre.prenom} ${membre.nom}` : "Inconnu";
+      const key = e.membres ? `${e.membres.prenom} ${e.membres.nom}` : "Inconnu";
       acc[key] = (acc[key] || 0) + (e.montant || 0);
       return acc;
     }, {});
@@ -333,6 +341,11 @@ const RapportsAdmin = () => {
     return { entrees, sorties, solde: entrees - sorties, chartData };
   }, [caisseOps]);
 
+  // Helper to format membre name from join
+  const formatMembre = (membres: { prenom: string; nom: string } | null): string => {
+    return membres ? `${membres.prenom} ${membres.nom}` : "-";
+  };
+
   // Export PDF
   const exportPDF = async (type: string) => {
     const doc = new jsPDF();
@@ -346,22 +359,22 @@ const RapportsAdmin = () => {
     // Ajouter l'en-tête E2D avec logo
     const startY = await addE2DHeader(doc, title, `Période : ${periode}`);
 
-    let tableData: any[] = [];
+    let tableData: (string | number)[][] = [];
     let columns: string[] = [];
 
     if (type === "cotisations" && cotisations) {
       columns = ["Membre", "Type", "Montant", "Statut", "Date"];
       tableData = cotisations.map(c => [
-        (c.membres as any) ? `${(c.membres as any).prenom} ${(c.membres as any).nom}` : "-",
-        (c.cotisations_types as any)?.nom || "-",
+        formatMembre(c.membres),
+        c.cotisations_types?.nom || "-",
         `${(c.montant || 0).toLocaleString("fr-FR")} FCFA`,
-        c.statut,
+        c.statut || "-",
         c.date_paiement ? format(parseISO(c.date_paiement), "dd/MM/yyyy") : "-"
       ]);
     } else if (type === "prets" && prets) {
       columns = ["Membre", "Montant", "Payé", "Reste", "Statut", "Échéance"];
       tableData = prets.map(p => [
-        (p.membres as any) ? `${(p.membres as any).prenom} ${(p.membres as any).nom}` : "-",
+        formatMembre(p.membres),
         `${(p.montant || 0).toLocaleString("fr-FR")} FCFA`,
         `${(p.montant_paye || 0).toLocaleString("fr-FR")} FCFA`,
         `${((p.montant_total_du || p.montant) - (p.montant_paye || 0)).toLocaleString("fr-FR")} FCFA`,
@@ -371,7 +384,7 @@ const RapportsAdmin = () => {
     } else if (type === "sanctions" && sanctions) {
       columns = ["Membre", "Motif", "Montant", "Statut"];
       tableData = sanctions.map(s => [
-        (s.membres as any) ? `${(s.membres as any).prenom} ${(s.membres as any).nom}` : "-",
+        formatMembre(s.membres),
         s.motif || "-",
         `${(s.montant_amende || 0).toLocaleString("fr-FR")} FCFA`,
         s.statut
@@ -379,7 +392,7 @@ const RapportsAdmin = () => {
     } else if (type === "epargnes" && epargnes) {
       columns = ["Membre", "Montant", "Date", "Statut"];
       tableData = epargnes.map(e => [
-        (e.membres as any) ? `${(e.membres as any).prenom} ${(e.membres as any).nom}` : "-",
+        formatMembre(e.membres),
         `${(e.montant || 0).toLocaleString("fr-FR")} FCFA`,
         format(parseISO(e.date_depot), "dd/MM/yyyy"),
         e.statut
@@ -401,19 +414,19 @@ const RapportsAdmin = () => {
 
   // Export Excel
   const exportExcel = (type: string) => {
-    let data: any[] = [];
+    let data: Record<string, string | number>[] = [];
 
     if (type === "cotisations" && cotisations) {
       data = cotisations.map(c => ({
-        Membre: (c.membres as any) ? `${(c.membres as any).prenom} ${(c.membres as any).nom}` : "-",
-        Type: (c.cotisations_types as any)?.nom || "-",
+        Membre: formatMembre(c.membres),
+        Type: c.cotisations_types?.nom || "-",
         Montant: c.montant || 0,
-        Statut: c.statut,
+        Statut: c.statut || "-",
         Date: c.date_paiement || ""
       }));
     } else if (type === "prets" && prets) {
       data = prets.map(p => ({
-        Membre: (p.membres as any) ? `${(p.membres as any).prenom} ${(p.membres as any).nom}` : "-",
+        Membre: formatMembre(p.membres),
         Montant: p.montant || 0,
         "Montant Total Dû": p.montant_total_du || p.montant,
         "Montant Payé": p.montant_paye || 0,
@@ -424,7 +437,7 @@ const RapportsAdmin = () => {
       }));
     } else if (type === "sanctions" && sanctions) {
       data = sanctions.map(s => ({
-        Membre: (s.membres as any) ? `${(s.membres as any).prenom} ${(s.membres as any).nom}` : "-",
+        Membre: formatMembre(s.membres),
         Motif: s.motif || "-",
         Montant: s.montant_amende || 0,
         Statut: s.statut,
@@ -432,7 +445,7 @@ const RapportsAdmin = () => {
       }));
     } else if (type === "epargnes" && epargnes) {
       data = epargnes.map(e => ({
-        Membre: (e.membres as any) ? `${(e.membres as any).prenom} ${(e.membres as any).nom}` : "-",
+        Membre: formatMembre(e.membres),
         Montant: e.montant || 0,
         "Date Dépôt": e.date_depot,
         Statut: e.statut
@@ -679,7 +692,7 @@ const RapportsAdmin = () => {
                       {prets.slice(0, 10).map((p) => (
                         <TableRow key={p.id}>
                           <TableCell>
-                            {(p.membres as any) ? `${(p.membres as any).prenom} ${(p.membres as any).nom}` : "-"}
+                            {formatMembre(p.membres)}
                           </TableCell>
                           <TableCell>{(p.montant || 0).toLocaleString("fr-FR")} FCFA</TableCell>
                           <TableCell>
