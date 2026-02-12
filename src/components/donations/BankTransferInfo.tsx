@@ -36,10 +36,11 @@ const BankTransferInfo = ({ config, donorEmail, onNotificationSent }: BankTransf
   };
 
   const handleSendNotification = () => {
-    // TODO: Implement email notification
+    // TODO: Implémenter l'envoi réel via edge function send-email
+    // Pour l'instant, on informe l'utilisateur que la fonctionnalité n'est pas encore disponible
     toast({
-      title: "Notification envoyée",
-      description: "Vous recevrez un récapitulatif par email",
+      title: "Fonctionnalité à venir",
+      description: "L'envoi de récapitulatif par email sera disponible prochainement",
     });
     onNotificationSent();
   };

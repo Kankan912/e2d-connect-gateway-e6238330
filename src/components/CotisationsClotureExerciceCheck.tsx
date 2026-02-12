@@ -106,6 +106,9 @@ export function CotisationsClotureExerciceCheck({ exerciceId }: CotisationsClotu
   const reunionsQuery = useQuery({
     queryKey: ["reunions-exercice", exerciceId],
     queryFn: async () => {
+      // TODO: Le champ exercice_id existe en base sur la table reunions mais n'est pas
+      // dans les types générés (src/integrations/supabase/types.ts). Régénérer les types
+      // Supabase pour supprimer ce cast. Voir: supabase gen types typescript
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await (supabase as any)
         .from("reunions")
