@@ -83,23 +83,32 @@ export function useAlertesGlobales() {
     enabled: !!user,
   });
 
-  // Solde caisse
+  // Solde caisse (avec pagination pour dépasser la limite de 1000 lignes)
   const { data: soldeCaisse } = useQuery({
     queryKey: ['solde-caisse-alertes'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('fond_caisse_operations')
-        .select('montant, type_operation');
+      const allOps: Array<{ montant: number; type_operation: string }> = [];
+      let from = 0;
+      const PAGE_SIZE = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('fond_caisse_operations')
+          .select('montant, type_operation')
+          .range(from, from + PAGE_SIZE - 1);
 
-      const total = (data || []).reduce((acc, op) => {
+        if (error) throw error;
+        if (data) allOps.push(...data);
+        hasMore = (data?.length || 0) === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
+
+      return allOps.reduce((acc, op) => {
         return op.type_operation === 'entree' 
           ? acc + Number(op.montant) 
           : acc - Number(op.montant);
       }, 0);
-
-      return total;
     },
     enabled: !!user,
     refetchInterval: 60000,

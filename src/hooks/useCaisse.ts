@@ -118,30 +118,49 @@ export const useCaisseOperations = (filters?: CaisseFilters) => {
   });
 };
 
-// Hook pour les statistiques de caisse
+// Hook pour les statistiques de caisse (dérive de useCaisseSynthese pour éviter la duplication)
 export const useCaisseStats = () => {
-  const { data: operations } = useCaisseOperations();
   const { data: config } = useCaisseConfig();
 
   return useQuery({
-    queryKey: ["caisse-stats", operations, config],
+    queryKey: ["caisse-stats"],
     queryFn: async (): Promise<CaisseStats> => {
       const now = new Date();
       const debutMois = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
 
-      const total_entrees = operations?.filter(o => o.type_operation === 'entree')
-        .reduce((sum, o) => sum + Number(o.montant), 0) || 0;
-      
-      const total_sorties = operations?.filter(o => o.type_operation === 'sortie')
-        .reduce((sum, o) => sum + Number(o.montant), 0) || 0;
+      // Pagination: récupérer toutes les opérations par blocs de 1000
+      const allOperations: Array<{ montant: number; type_operation: string; date_operation: string }> = [];
+      let from = 0;
+      const PAGE_SIZE = 1000;
+      let hasMore = true;
 
-      const total_entrees_mois = operations?.filter(o => 
-        o.type_operation === 'entree' && o.date_operation >= debutMois
-      ).reduce((sum, o) => sum + Number(o.montant), 0) || 0;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("fond_caisse_operations")
+          .select("montant, type_operation, date_operation")
+          .range(from, from + PAGE_SIZE - 1);
 
-      const total_sorties_mois = operations?.filter(o => 
-        o.type_operation === 'sortie' && o.date_operation >= debutMois
-      ).reduce((sum, o) => sum + Number(o.montant), 0) || 0;
+        if (error) throw error;
+        if (data) allOperations.push(...data);
+        hasMore = (data?.length || 0) === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
+
+      const total_entrees = allOperations
+        .filter(o => o.type_operation === 'entree')
+        .reduce((sum, o) => sum + Number(o.montant), 0);
+
+      const total_sorties = allOperations
+        .filter(o => o.type_operation === 'sortie')
+        .reduce((sum, o) => sum + Number(o.montant), 0);
+
+      const total_entrees_mois = allOperations
+        .filter(o => o.type_operation === 'entree' && o.date_operation >= debutMois)
+        .reduce((sum, o) => sum + Number(o.montant), 0);
+
+      const total_sorties_mois = allOperations
+        .filter(o => o.type_operation === 'sortie' && o.date_operation >= debutMois)
+        .reduce((sum, o) => sum + Number(o.montant), 0);
 
       const solde_global = total_entrees - total_sorties;
       const pourcentage = config?.pourcentage_empruntable || 80;
@@ -174,7 +193,6 @@ export const useCaisseStats = () => {
         alertes
       };
     },
-    enabled: !!operations,
   });
 };
 
