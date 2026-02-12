@@ -177,7 +177,7 @@ export async function cleanupOrphanedEvents() {
     logger.info(`Nettoyage: ${cleaned} événements orphelins supprimés`);
     return { success: true, cleaned };
   } catch (error) {
-    console.error('Erreur lors du nettoyage:', error);
+    logger.error('Erreur lors du nettoyage:', error);
     return { success: false, error };
   }
 }
