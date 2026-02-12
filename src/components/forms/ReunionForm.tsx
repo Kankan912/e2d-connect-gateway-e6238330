@@ -77,7 +77,7 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
       if (initialData?.id) {
         await updateReunion.mutateAsync({ id: initialData.id, ...reunionData });
       } else {
-        await createReunion.mutateAsync(reunionData as any);
+        await createReunion.mutateAsync(reunionData as Parameters<typeof createReunion.mutateAsync>[0]);
       }
       onSuccess();
     } catch (error) {
@@ -126,7 +126,7 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
               <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un membre" /></SelectTrigger></FormControl>
               <SelectContent>
                 <SelectItem value="none">Aucun</SelectItem>
-                {membres?.map((membre: any) => (
+                {membres?.map((membre) => (
                   <SelectItem key={membre.id} value={membre.id}>{membre.prenom} {membre.nom}</SelectItem>
                 ))}
               </SelectContent>
@@ -150,7 +150,7 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
               <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un bénéficiaire" /></SelectTrigger></FormControl>
               <SelectContent>
                 <SelectItem value="none">Aucun</SelectItem>
-                {membres?.map((membre: any) => (
+                {membres?.map((membre) => (
                   <SelectItem key={membre.id} value={membre.id}>{membre.prenom} {membre.nom}</SelectItem>
                 ))}
               </SelectContent>

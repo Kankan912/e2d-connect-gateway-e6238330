@@ -47,7 +47,7 @@ function useLinkedUserAccount(userId: string | null) {
         .select("roles(name)")
         .eq("user_id", userId);
 
-      const roles = userRoles?.map((ur: any) => ur.roles?.name).filter(Boolean) || [];
+      const roles = userRoles?.map((ur: unknown) => (ur as { roles?: { name?: string } }).roles?.name).filter(Boolean) || [];
 
       return {
         ...profile,
@@ -272,8 +272,8 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                           </TableRow>
                         ) : cotisations.map((c) => (
                           <TableRow key={c.id}>
-                            <TableCell>{(c as any).cotisations_types?.nom || "Standard"}</TableCell>
-                            <TableCell className="text-xs">{(c as any).reunions?.sujet || "-"}</TableCell>
+                            <TableCell>{c.type_cotisation?.nom || "Standard"}</TableCell>
+                            <TableCell className="text-xs">{c.reunion?.sujet || "-"}</TableCell>
                             <TableCell>{formatFCFA(c.montant)}</TableCell>
                             <TableCell className="text-xs">{c.date_paiement ? format(new Date(c.date_paiement), 'dd/MM/yyyy', { locale: fr }) : "-"}</TableCell>
                             <TableCell>
@@ -320,7 +320,7 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                         ) : epargnes.map((e) => (
                           <TableRow key={e.id}>
                             <TableCell className="text-xs">{format(new Date(e.date_depot), 'dd/MM/yyyy', { locale: fr })}</TableCell>
-                            <TableCell className="text-xs">{(e as any).reunions?.sujet || "-"}</TableCell>
+                            <TableCell className="text-xs">{e.reunion?.sujet || "-"}</TableCell>
                             <TableCell className="font-medium text-green-600">{formatFCFA(e.montant)}</TableCell>
                             <TableCell><Badge variant="outline">{e.statut}</Badge></TableCell>
                             <TableCell className="text-xs max-w-[150px] truncate">{e.notes || "-"}</TableCell>
@@ -420,7 +420,7 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                             <TableCell className="text-xs">{format(new Date(s.created_at), 'dd/MM/yyyy', { locale: fr })}</TableCell>
                             <TableCell>{s.motif}</TableCell>
                             <TableCell className="font-medium text-red-600">{formatFCFA(s.montant_amende)}</TableCell>
-                            <TableCell className="text-xs">{(s as any).reunions?.sujet || "-"}</TableCell>
+                            <TableCell className="text-xs">{s.reunion?.sujet || "-"}</TableCell>
                             <TableCell>
                               <Badge variant={s.statut === 'payee' ? 'default' : 'secondary'}>
                                 {s.statut}
@@ -507,7 +507,7 @@ export default function MemberDetailSheet({ member, open, onOpenChange, onEdit }
                               {format(new Date(item.date), 'dd/MM/yyyy', { locale: fr })}
                             </span>
                             <span className="font-medium">
-                              {formatFCFA((item.data as any).montant || (item.data as any).montant_amende || 0)}
+                              {formatFCFA('montant' in item.data ? item.data.montant : ('montant_amende' in item.data ? item.data.montant_amende : 0))}
                             </span>
                           </div>
                         ))
