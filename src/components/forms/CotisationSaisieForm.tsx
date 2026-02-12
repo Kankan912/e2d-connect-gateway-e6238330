@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Coins, Loader2, CheckCircle2 } from "lucide-react";
+import { Plus, Coins, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatFCFA } from "@/lib/utils";
 
 interface CotisationSaisieFormProps {
@@ -73,6 +74,30 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
     }
   });
 
+  // Charger les types activés pour l'exercice sélectionné
+  const { data: typesExercice } = useQuery({
+    queryKey: ['exercice-types-actifs', selectedExercice],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exercices_cotisations_types')
+        .select('type_cotisation_id, actif')
+        .eq('exercice_id', selectedExercice)
+        .eq('actif', true);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedExercice
+  });
+
+  // Filtrer les types par ceux activés pour l'exercice
+  const typesFiltered = useMemo(() => {
+    if (!types) return [];
+    if (!typesExercice || typesExercice.length === 0) return [];
+    const activeTypeIds = new Set(typesExercice.map(te => te.type_cotisation_id));
+    return types.filter(t => activeTypeIds.has(t.id));
+  }, [types, typesExercice]);
+
   // Charger les montants personnalisés
   const { data: cotisationsMembres } = useQuery({
     queryKey: ['cotisations-membres-saisie', selectedExercice],
@@ -89,6 +114,22 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
     enabled: !!selectedExercice
   });
 
+  // Charger les montants mensuels configurés par membre/exercice
+  const { data: montantsMensuels } = useQuery({
+    queryKey: ['montants-mensuels-saisie', selectedExercice],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cotisations_mensuelles_exercice')
+        .select('membre_id, montant, actif')
+        .eq('exercice_id', selectedExercice)
+        .eq('actif', true);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedExercice
+  });
+
   // Pré-sélectionner l'exercice actif par défaut
   useEffect(() => {
     if (!selectedExercice && exercices) {
@@ -96,6 +137,15 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
       if (actif) setSelectedExercice(actif.id);
     }
   }, [exercices, selectedExercice]);
+
+  // Vérifier si le montant est configuré pour ce membre/type
+  const selectedTypeData = types?.find(t => t.id === selectedType);
+  const montantNumerique = parseFloat(montant) || 0;
+  const isMontantNonConfigure = selectedType && selectedMembre && montantNumerique === 0 && selectedTypeData?.obligatoire;
+
+  // Vérifier si le membre a un montant mensuel configuré
+  const membreMontantMensuel = montantsMensuels?.find(m => m.membre_id === selectedMembre);
+  const montantMensuelNonConfigure = selectedMembre && selectedExercice && montantsMensuels && !membreMontantMensuel;
 
   // Mutation pour créer la cotisation
   const createCotisation = useMutation({
@@ -117,7 +167,6 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
     onSuccess: () => {
       toast({ title: "Succès", description: "Cotisation enregistrée" });
       queryClient.invalidateQueries({ queryKey: ['cotisations-reunion', reunionId] });
-      // Reset pour nouvelle saisie (garder exercice sélectionné)
       setSelectedMembre("");
       setSelectedType("");
       setMontant("");
@@ -162,8 +211,10 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
     setMontant("");
   };
 
+  const isSubmitBlocked = isMontantNonConfigure || !selectedMembre || !selectedType || !montant || !selectedExercice;
+
   const handleSubmit = () => {
-    if (!selectedMembre || !selectedType || !montant || !selectedExercice) {
+    if (isSubmitBlocked) {
       toast({ title: "Erreur", description: "Veuillez remplir tous les champs", variant: "destructive" });
       return;
     }
@@ -191,6 +242,8 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
     </div>
   );
 
+  const noTypesForExercice = selectedExercice && typesExercice && typesExercice.length === 0;
+
   return (
     <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
       <CardHeader className="pb-3">
@@ -208,7 +261,7 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           {/* Étape 1: Exercice */}
           <div className="space-y-1">
@@ -261,13 +314,13 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
             <Select 
               value={selectedType} 
               onValueChange={handleTypeChange}
-              disabled={!selectedMembre}
+              disabled={!selectedMembre || noTypesForExercice === true}
             >
               <SelectTrigger className={`h-9 ${selectedMembre && !selectedType ? 'ring-2 ring-primary' : ''}`}>
-                <SelectValue placeholder={!selectedMembre ? "Choisir membre d'abord" : "Type..."} />
+                <SelectValue placeholder={!selectedMembre ? "Choisir membre d'abord" : noTypesForExercice ? "Aucun type configuré" : "Type..."} />
               </SelectTrigger>
               <SelectContent>
-                {types?.map(t => (
+                {typesFiltered.map(t => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.nom} {t.obligatoire && "(Oblig.)"} - {formatFCFA(t.montant_defaut || 0)}
                   </SelectItem>
@@ -291,7 +344,7 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
 
           <Button 
             onClick={handleSubmit} 
-            disabled={createCotisation.isPending || !selectedMembre || !selectedType || !montant || !selectedExercice}
+            disabled={createCotisation.isPending || isSubmitBlocked}
             size="sm"
             className="h-9"
           >
@@ -305,6 +358,36 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
             )}
           </Button>
         </div>
+
+        {/* Avertissement: aucun type configuré pour cet exercice */}
+        {noTypesForExercice && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Aucun type de cotisation configuré pour cet exercice. Veuillez activer les types dans <strong>Configuration E2D &gt; Cotisations par exercice</strong>.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Avertissement: montant non configuré pour type obligatoire */}
+        {isMontantNonConfigure && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Montant individuel non configuré pour ce membre sur le type <strong>{selectedTypeData?.nom}</strong> (obligatoire). Veuillez configurer les montants dans <strong>Configuration E2D &gt; Cotisations mensuelles</strong>.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Avertissement: montant mensuel non configuré */}
+        {montantMensuelNonConfigure && selectedMembre && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="text-xs">
+              Ce membre n'a pas de montant mensuel configuré pour cet exercice.
+            </AlertDescription>
+          </Alert>
+        )}
       </CardContent>
     </Card>
   );

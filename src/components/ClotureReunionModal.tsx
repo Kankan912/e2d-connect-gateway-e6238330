@@ -100,13 +100,13 @@ export default function ClotureReunionModal({
     enabled: open
   });
 
-  // Récupérer les cotisations de la réunion
+  // Récupérer les cotisations de la réunion (avec membre_id pour check cohérence)
   const { data: cotisationsReunion } = useQuery({
     queryKey: ['cotisations-reunion', reunionId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('cotisations')
-        .select('montant, statut')
+        .select('montant, statut, membre_id')
         .eq('reunion_id', reunionId)
         .eq('statut', 'paye');
       if (error) throw error;
@@ -169,6 +169,17 @@ export default function ClotureReunionModal({
   // Bénéficiaires impayés
   const beneficiairesImpayes = beneficiairesReunion?.filter((b: any) => b.statut !== 'paye') || [];
   const totalBeneficiairesImpayes = beneficiairesImpayes.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0);
+
+  // Check cohérence : membres présents sans aucune cotisation
+  const membresPresentsIds = presences?.filter(p => p.statut_presence === 'present').map(p => p.membre_id) || [];
+  const membresAvecCotisation = new Set(cotisationsReunion?.map(c => c.membre_id) || []);
+  const membresPresentsSansCotisation = presences
+    ?.filter(p => p.statut_presence === 'present' && !membresAvecCotisation.has(p.membre_id))
+    .map((p: any) => ({
+      id: p.membre_id,
+      nom: p.membres?.nom,
+      prenom: p.membres?.prenom
+    })) || [];
 
   // Calculer les membres non marqués (qui n'ont pas d'enregistrement de présence)
   const membresNonMarques = membresE2D?.filter(
@@ -599,7 +610,29 @@ export default function ClotureReunionModal({
             </Card>
           )}
 
-          {/* Destinataires */}
+          {/* Avertissement membres présents sans cotisation */}
+          {membresPresentsSansCotisation.length > 0 && (
+            <Card className="border-amber-500 bg-amber-50 dark:bg-amber-950">
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  <div className="text-sm text-amber-800 dark:text-amber-200">
+                    <p className="font-medium mb-1">{membresPresentsSansCotisation.length} membre(s) présent(s) sans cotisation</p>
+                    <p className="text-muted-foreground text-xs mb-2">
+                      Ces membres sont marqués présents mais n'ont aucune cotisation enregistrée pour cette réunion.
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {membresPresentsSansCotisation.map((m, i) => (
+                        <Badge key={i} variant="outline" className="text-xs bg-amber-100 dark:bg-amber-900 border-amber-300 dark:border-amber-700">
+                          {m.prenom} {m.nom}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {presentsCount > 0 && (
             <Card>
               <CardHeader>

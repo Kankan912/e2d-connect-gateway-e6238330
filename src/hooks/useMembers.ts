@@ -88,12 +88,34 @@ export const useMembers = () => {
 
   const updateMember = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Member> }) => {
+      // Vérifier l'unicité de l'email avant mise à jour
+      if (data.email && data.email.trim() !== '') {
+        const { data: existing } = await supabase
+          .from("membres")
+          .select("id")
+          .eq("email", data.email.trim())
+          .neq("id", id)
+          .maybeSingle();
+        
+        if (existing) {
+          throw new Error("Cet email est déjà utilisé par un autre membre. Veuillez en choisir un autre.");
+        }
+      }
+
       const { error } = await supabase
         .from("membres")
         .update(data)
         .eq("id", id);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error("Cet email est déjà utilisé par un autre membre.");
+        }
+        if (error.code === '23503') {
+          throw new Error("Impossible de modifier ce membre : une référence liée est invalide (rôle, équipe ou utilisateur inexistant).");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members"] });

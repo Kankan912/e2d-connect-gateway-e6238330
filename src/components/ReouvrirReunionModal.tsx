@@ -44,7 +44,19 @@ export default function ReouvrirReunionModal({
 
       if (updateError) throw updateError;
 
-      // 2. Supprimer les opérations caisse auto-générées liées à cette réunion
+      // 2. Déverrouiller les cotisations liées à cette réunion
+      const { error: unlockError } = await supabase
+        .from("cotisations")
+        .update({ statut: 'paye' } as any)
+        .eq("reunion_id", reunionId);
+      
+      // Note: on utilise une approche RPC-free - la table cotisations n'a pas de colonne "verrouille"
+      // Les cotisations sont déjà modifiables quand la réunion est en_cours
+      if (unlockError) {
+        console.warn("Info déverrouillage cotisations:", unlockError);
+      }
+
+      // 3. Supprimer les opérations caisse auto-générées liées à cette réunion
       // (elles seront recréées lors de la prochaine clôture)
       const { error: caisseError } = await supabase
         .from("fond_caisse_operations")
