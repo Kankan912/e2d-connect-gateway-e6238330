@@ -105,7 +105,7 @@ export default function Beneficiaires() {
       });
       
       // Méthode de calcul
-      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      const finalY = doc.lastAutoTable.finalY + 10;
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
       doc.text('Méthode de calcul:', 14, finalY);

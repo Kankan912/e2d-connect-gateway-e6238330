@@ -47,9 +47,7 @@ export default function ReouvrirReunionModal({
       // 2. Déverrouiller les cotisations liées à cette réunion
       await supabase
         .from("cotisations")
-        // TODO: Le champ verrouille existe en base mais pas dans les types générés — régénérer les types Supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .update({ verrouille: false } as any)
+        .update({ verrouille: false } as Record<string, unknown>)
         .eq("reunion_id", reunionId);
 
       // 3. Supprimer les opérations caisse auto-générées liées à cette réunion

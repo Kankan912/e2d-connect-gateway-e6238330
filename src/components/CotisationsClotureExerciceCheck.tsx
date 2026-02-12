@@ -106,17 +106,15 @@ export function CotisationsClotureExerciceCheck({ exerciceId }: CotisationsClotu
   const reunionsQuery = useQuery({
     queryKey: ["reunions-exercice", exerciceId],
     queryFn: async () => {
-      // TODO: Le champ exercice_id existe en base sur la table reunions mais n'est pas
-      // dans les types générés (src/integrations/supabase/types.ts). Régénérer les types
-      // Supabase pour supprimer ce cast. Voir: supabase gen types typescript
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (supabase as any)
-        .from("reunions")
-        .select("id")
-        .eq("exercice_id", exerciceId);
+      const { data, error } = await supabase
+        .from("cotisations")
+        .select("reunion_id")
+        .eq("exercice_id", exerciceId)
+        .not("reunion_id", "is", null);
       
-      if (result.error) throw result.error;
-      return result.data as { id: string }[];
+      if (error) throw error;
+      const uniqueIds = [...new Set(data?.map(c => c.reunion_id).filter(Boolean))];
+      return uniqueIds.map(id => ({ id: id as string }));
     },
     enabled: !!exerciceId,
   });

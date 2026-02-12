@@ -22,16 +22,14 @@ export function useRealtimeUpdates({
 
     const channelName = `realtime-${table}-${Date.now()}`;
     
-    const channel = supabase.channel(channelName);
-    
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (channel as any).on(
-      'postgres_changes',
-      { event, schema: 'public', table },
-      () => callbackRef.current()
-    );
-    
-    channel.subscribe();
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes' as any,
+        { event, schema: 'public', table },
+        () => callbackRef.current()
+      )
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
