@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PermissionRoute } from "@/components/auth/PermissionRoute";
 import { PageLoader, SuspenseFallback } from "@/components/ui/page-loader";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // ============================================
 // ALL PAGES LAZY LOADED FOR OPTIMAL PERFORMANCE
@@ -92,8 +93,9 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <Suspense fallback={<SuspenseFallback />}>
-        <Routes>
+      <ErrorBoundary>
+        <Suspense fallback={<SuspenseFallback />}>
+          <Routes>
           {/* ==================== MEMBER ROUTES ==================== */}
           <Route path="/" element={<DashboardHome />} />
           <Route path="/profile" element={<Profile />} />
@@ -106,326 +108,61 @@ const Dashboard = () => {
           <Route path="/my-aides" element={<MyAides />} />
           
           {/* ==================== ADMIN ROUTES - FINANCE ==================== */}
-          <Route
-            path="/admin/donations"
-            element={
-              <PermissionRoute resource="donations" permission="read">
-                <DonationsAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/adhesions"
-            element={
-              <PermissionRoute resource="adhesions" permission="read">
-                <AdhesionsAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/payment-config"
-            element={
-              <PermissionRoute resource="config" permission="write">
-                <PaymentConfigAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/membres"
-            element={
-              <PermissionRoute resource="membres" permission="read">
-                <MembresAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/roles"
-            element={
-              <PermissionRoute resource="roles" permission="write">
-                <RolesAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/utilisateurs"
-            element={
-              <PermissionRoute resource="roles" permission="write">
-                <UtilisateursAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/permissions"
-            element={
-              <PermissionRoute resource="configuration" permission="read">
-                <PermissionsAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/stats"
-            element={
-              <PermissionRoute resource="stats" permission="read">
-                <StatsAdmin />
-              </PermissionRoute>
-            }
-          />
+          <Route path="/admin/donations" element={<PermissionRoute resource="donations" permission="read"><DonationsAdmin /></PermissionRoute>} />
+          <Route path="/admin/adhesions" element={<PermissionRoute resource="adhesions" permission="read"><AdhesionsAdmin /></PermissionRoute>} />
+          <Route path="/admin/payment-config" element={<PermissionRoute resource="config" permission="write"><PaymentConfigAdmin /></PermissionRoute>} />
+          <Route path="/admin/membres" element={<PermissionRoute resource="membres" permission="read"><MembresAdmin /></PermissionRoute>} />
+          <Route path="/admin/roles" element={<PermissionRoute resource="roles" permission="write"><RolesAdmin /></PermissionRoute>} />
+          <Route path="/admin/utilisateurs" element={<PermissionRoute resource="roles" permission="write"><UtilisateursAdmin /></PermissionRoute>} />
+          <Route path="/admin/permissions" element={<PermissionRoute resource="configuration" permission="read"><PermissionsAdmin /></PermissionRoute>} />
+          <Route path="/admin/stats" element={<PermissionRoute resource="stats" permission="read"><StatsAdmin /></PermissionRoute>} />
           
           {/* ==================== ROUTES TONTINE ==================== */}
-          <Route
-            path="/admin/tontine/epargnes"
-            element={
-              <PermissionRoute resource="epargnes" permission="read">
-                <Epargnes />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/tontine/beneficiaires"
-            element={
-              <PermissionRoute resource="epargnes" permission="read">
-                <Beneficiaires />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/caisse"
-            element={
-              <PermissionRoute resource="caisse" permission="read">
-                <CaisseAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/tontine/config"
-            element={
-              <PermissionRoute resource="config" permission="write">
-                <TontineConfig />
-              </PermissionRoute>
-            }
-          />
+          <Route path="/admin/tontine/epargnes" element={<PermissionRoute resource="epargnes" permission="read"><Epargnes /></PermissionRoute>} />
+          <Route path="/admin/tontine/beneficiaires" element={<PermissionRoute resource="epargnes" permission="read"><Beneficiaires /></PermissionRoute>} />
+          <Route path="/admin/caisse" element={<PermissionRoute resource="caisse" permission="read"><CaisseAdmin /></PermissionRoute>} />
+          <Route path="/admin/tontine/config" element={<PermissionRoute resource="config" permission="write"><TontineConfig /></PermissionRoute>} />
           
           {/* ==================== ROUTES RÉUNIONS ==================== */}
-          <Route
-            path="/admin/reunions"
-            element={
-              <PermissionRoute resource="reunions" permission="read">
-                <Reunions />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/presences"
-            element={
-              <PermissionRoute resource="presences" permission="read">
-                <GestionPresences />
-              </PermissionRoute>
-            }
-          />
+          <Route path="/admin/reunions" element={<PermissionRoute resource="reunions" permission="read"><Reunions /></PermissionRoute>} />
+          <Route path="/admin/presences" element={<PermissionRoute resource="presences" permission="read"><GestionPresences /></PermissionRoute>} />
           
           {/* ==================== ROUTES SPORT ==================== */}
-          <Route
-            path="/admin/sport"
-            element={
-              <PermissionRoute resource="sport_e2d" permission="read">
-                <Sport />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/sport/e2d"
-            element={
-              <PermissionRoute resource="sport_e2d" permission="read">
-                <SportE2D />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/sport/phoenix"
-            element={
-              <PermissionRoute resource="sport_phoenix" permission="read">
-                <SportPhoenix />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/sport/equipes"
-            element={
-              <PermissionRoute resource="sport_phoenix" permission="read">
-                <SportEquipes />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/sport/entrainements"
-            element={
-              <PermissionRoute resource="sport_phoenix" permission="read">
-                <SportEntrainements />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/sport/sanctions"
-            element={
-              <PermissionRoute resource="sport_phoenix" permission="read">
-                <SportSanctions />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/sport/match-gala"
-            element={
-              <PermissionRoute resource="sport_phoenix" permission="read">
-                <MatchGalaConfig />
-              </PermissionRoute>
-            }
-          />
+          <Route path="/admin/sport" element={<PermissionRoute resource="sport_e2d" permission="read"><Sport /></PermissionRoute>} />
+          <Route path="/admin/sport/e2d" element={<PermissionRoute resource="sport_e2d" permission="read"><SportE2D /></PermissionRoute>} />
+          <Route path="/admin/sport/phoenix" element={<PermissionRoute resource="sport_phoenix" permission="read"><SportPhoenix /></PermissionRoute>} />
+          <Route path="/admin/sport/equipes" element={<PermissionRoute resource="sport_phoenix" permission="read"><SportEquipes /></PermissionRoute>} />
+          <Route path="/admin/sport/entrainements" element={<PermissionRoute resource="sport_phoenix" permission="read"><SportEntrainements /></PermissionRoute>} />
+          <Route path="/admin/sport/sanctions" element={<PermissionRoute resource="sport_phoenix" permission="read"><SportSanctions /></PermissionRoute>} />
+          <Route path="/admin/sport/match-gala" element={<PermissionRoute resource="sport_phoenix" permission="read"><MatchGalaConfig /></PermissionRoute>} />
           
           {/* ==================== ROUTES FINANCES AVANCÉES ==================== */}
-          <Route
-            path="/admin/finances/prets"
-            element={
-              <PermissionRoute resource="prets" permission="read">
-                <PretsAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/finances/prets/config"
-            element={
-              <PermissionRoute resource="config" permission="write">
-                <PretsConfigAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/finances/aides"
-            element={
-              <PermissionRoute resource="aides" permission="read">
-                <AidesAdmin />
-              </PermissionRoute>
-            }
-          />
+          <Route path="/admin/finances/prets" element={<PermissionRoute resource="prets" permission="read"><PretsAdmin /></PermissionRoute>} />
+          <Route path="/admin/finances/prets/config" element={<PermissionRoute resource="config" permission="write"><PretsConfigAdmin /></PermissionRoute>} />
+          <Route path="/admin/finances/aides" element={<PermissionRoute resource="aides" permission="read"><AidesAdmin /></PermissionRoute>} />
           
           {/* ==================== ROUTES COMMUNICATION ==================== */}
-          <Route
-            path="/admin/communication/notifications"
-            element={
-              <PermissionRoute resource="notifications" permission="read">
-                <NotificationsAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/communication/notifications-templates"
-            element={
-              <PermissionRoute resource="notifications" permission="write">
-                <NotificationsTemplatesAdmin />
-              </PermissionRoute>
-            }
-          />
+          <Route path="/admin/communication/notifications" element={<PermissionRoute resource="notifications" permission="read"><NotificationsAdmin /></PermissionRoute>} />
+          <Route path="/admin/communication/notifications-templates" element={<PermissionRoute resource="notifications" permission="write"><NotificationsTemplatesAdmin /></PermissionRoute>} />
           
           {/* ==================== ROUTES CONFIGURATION ==================== */}
-          <Route
-            path="/admin/config/exports"
-            element={
-              <PermissionRoute resource="config" permission="write">
-                <ExportsAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/rapports"
-            element={
-              <PermissionRoute resource="stats" permission="read">
-                <RapportsAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/e2d-config"
-            element={
-              <PermissionRoute resource="config" permission="write">
-                <E2DConfigAdmin />
-              </PermissionRoute>
-            }
-          />
+          <Route path="/admin/config/exports" element={<PermissionRoute resource="config" permission="write"><ExportsAdmin /></PermissionRoute>} />
+          <Route path="/admin/rapports" element={<PermissionRoute resource="stats" permission="read"><RapportsAdmin /></PermissionRoute>} />
+          <Route path="/admin/e2d-config" element={<PermissionRoute resource="config" permission="write"><E2DConfigAdmin /></PermissionRoute>} />
           
           {/* ==================== ROUTES CMS SITE WEB ==================== */}
-          <Route
-            path="/admin/site/hero"
-            element={
-              <PermissionRoute resource="site" permission="write">
-                <HeroAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/site/activities"
-            element={
-              <PermissionRoute resource="site" permission="write">
-                <ActivitiesAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/site/events"
-            element={
-              <PermissionRoute resource="site" permission="write">
-                <EventsAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/site/gallery"
-            element={
-              <PermissionRoute resource="site" permission="write">
-                <GalleryAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/site/partners"
-            element={
-              <PermissionRoute resource="site" permission="write">
-                <PartnersAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/site/config"
-            element={
-              <PermissionRoute resource="site" permission="write">
-                <ConfigAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/site/about"
-            element={
-              <PermissionRoute resource="site" permission="write">
-                <AboutAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/site/messages"
-            element={
-              <PermissionRoute resource="site" permission="write">
-                <MessagesAdmin />
-              </PermissionRoute>
-            }
-          />
-          <Route
-            path="/admin/site/images"
-            element={
-              <PermissionRoute resource="site" permission="write">
-                <ImagesAdmin />
-              </PermissionRoute>
-            }
-          />
-        </Routes>
-      </Suspense>
+          <Route path="/admin/site/hero" element={<PermissionRoute resource="site" permission="write"><HeroAdmin /></PermissionRoute>} />
+          <Route path="/admin/site/activities" element={<PermissionRoute resource="site" permission="write"><ActivitiesAdmin /></PermissionRoute>} />
+          <Route path="/admin/site/events" element={<PermissionRoute resource="site" permission="write"><EventsAdmin /></PermissionRoute>} />
+          <Route path="/admin/site/gallery" element={<PermissionRoute resource="site" permission="write"><GalleryAdmin /></PermissionRoute>} />
+          <Route path="/admin/site/partners" element={<PermissionRoute resource="site" permission="write"><PartnersAdmin /></PermissionRoute>} />
+          <Route path="/admin/site/config" element={<PermissionRoute resource="site" permission="write"><ConfigAdmin /></PermissionRoute>} />
+          <Route path="/admin/site/about" element={<PermissionRoute resource="site" permission="write"><AboutAdmin /></PermissionRoute>} />
+          <Route path="/admin/site/messages" element={<PermissionRoute resource="site" permission="write"><MessagesAdmin /></PermissionRoute>} />
+          <Route path="/admin/site/images" element={<PermissionRoute resource="site" permission="write"><ImagesAdmin /></PermissionRoute>} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
     </DashboardLayout>
   );
 };

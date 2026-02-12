@@ -649,6 +649,7 @@ export default function PretsAdmin() {
                                 </TooltipProvider>
                                 
                                 {/* Reconduire */}
+                                {hasPermission('prets', 'update') && (
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
@@ -670,6 +671,7 @@ export default function PretsAdmin() {
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
+                                )}
                               </>
                             )}
                             

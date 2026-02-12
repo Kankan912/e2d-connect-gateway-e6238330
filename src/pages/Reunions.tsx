@@ -919,11 +919,9 @@ export default function Reunions() {
                               </div>
                             ) : (
                               <div className="flex gap-2">
-                                <Button variant="outline" size="sm" asChild>
-                                  <a href={reunion.compte_rendu_url} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline" size="sm" onClick={() => handleViewCompteRendu(reunion)}>
                                     <FileText className="w-4 h-4 mr-1" />
                                     Voir
-                                  </a>
                                 </Button>
                                 <Button variant="outline" size="sm" onClick={() => {
                                   setSelectedReunion(reunion);
