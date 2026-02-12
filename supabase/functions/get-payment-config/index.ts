@@ -6,6 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface PaymentConfigData {
+  publishable_key?: string;
+  client_id?: string;
+  organization_slug?: string;
+  campaign_url?: string;
+  bank_name?: string;
+  iban?: string;
+  bic?: string;
+  account_holder?: string;
+  instructions?: string;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -36,7 +48,7 @@ serve(async (req) => {
         config_data: {},
       };
 
-      const configData = config.config_data as any;
+      const configData = (config.config_data ?? {}) as PaymentConfigData;
 
       // Ne retourner que les données publiques selon le provider
       if (config.provider === 'stripe' && configData.publishable_key) {
