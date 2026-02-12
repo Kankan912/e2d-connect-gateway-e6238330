@@ -150,7 +150,7 @@ const Don = () => {
                 return (
                   <div key={index} className="bg-white/10 backdrop-blur-sm rounded-xl p-6">
                     <Icon className="w-8 h-8 mx-auto mb-3" />
-                    <div className="text-3xl font-bold mb-1">{stat.value}</div>
+                    <div className="text-2xl sm:text-3xl font-bold mb-1">{stat.value}</div>
                     <div className="text-white/80">{stat.label}</div>
                   </div>
                 );

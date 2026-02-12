@@ -126,7 +126,7 @@ const Auth = () => {
             alt="E2D Logo"
             className="h-20 w-20 mx-auto mb-4 object-contain"
           />
-          <h1 className="text-3xl font-bold text-foreground">E2D Association</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">E2D Association</h1>
           <p className="text-muted-foreground mt-2">Connectez-vous à votre espace membre</p>
         </div>
 

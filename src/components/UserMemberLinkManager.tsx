@@ -254,7 +254,7 @@ export default function UserMemberLinkManager() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">{membersWithAccount.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-green-600">{membersWithAccount.length}</div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-orange-500">
@@ -265,7 +265,7 @@ export default function UserMemberLinkManager() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-600">{membersWithoutAccount.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-orange-600">{membersWithoutAccount.length}</div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-blue-500">
@@ -276,7 +276,7 @@ export default function UserMemberLinkManager() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{orphanProfiles.length}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-blue-600">{orphanProfiles.length}</div>
           </CardContent>
         </Card>
       </div>
