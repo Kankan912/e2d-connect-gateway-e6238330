@@ -52,9 +52,8 @@ serve(async (req) => {
     // Check if user has admin or tresorier role
     const allowedRoles = ["admin", "tresorier", "administrateur"];
     const userRoleNames = userRolesData?.map((ur) => {
-      // deno-lint-ignore no-explicit-any
-      const roleData = ur.roles as any;
-      return roleData?.name?.toLowerCase() as string | undefined;
+      const roleData = ur.roles as { name?: string } | null;
+      return roleData?.name?.toLowerCase();
     }).filter(Boolean) as string[] || [];
     const hasAllowedRole = userRoleNames.some((role) => allowedRoles.includes(role));
     
