@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         permission: rp.permission
       }));
     } catch (error) {
-      console.error('❌ [AuthContext] Error fetching permissions:', error);
+      logger.error('[AuthContext] Error fetching permissions:', error);
       return [];
     }
   };
@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .maybeSingle();
       
       if (error) {
-        console.error('❌ [AuthContext] Error checking member status:', error);
+        logger.error('[AuthContext] Error checking member status:', error);
         return { allowed: true, status: null }; // Allow access if we can't check
       }
       
@@ -112,7 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             ip_address: '0.0.0.0'
           });
         } catch (logError) {
-          console.error('⚠️ [AuthContext] Failed to log blocked attempt:', logError);
+          logger.error('[AuthContext] Failed to log blocked attempt:', logError);
         }
         
         return { allowed: false, status: membre.statut };
@@ -120,7 +120,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       return { allowed: true, status: membre.statut };
     } catch (error) {
-      console.error('❌ [AuthContext] Error in checkMemberStatus:', error);
+      logger.error('[AuthContext] Error in checkMemberStatus:', error);
       return { allowed: true, status: null };
     }
   };
@@ -233,7 +233,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .maybeSingle();
 
       if (roleError) {
-        console.error('❌ [AuthContext] Role fetch error:', roleError);
+        logger.error('[AuthContext] Role fetch error:', roleError);
         throw roleError;
       }
       
@@ -246,7 +246,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logger.success('[AuthContext] Permissions loaded: ' + userPerms.length);
 
     } catch (error) {
-      console.error('❌ [AuthContext] Error fetching user data:', error);
+      logger.error('[AuthContext] Error fetching user data:', error);
     } finally {
       setLoading(false);
     }

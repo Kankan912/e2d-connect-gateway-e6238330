@@ -121,7 +121,9 @@ class Logger {
     //     extra: { error, context }
     //   });
     // }
-    console.error('[SENTRY PLACEHOLDER]', { level, message, error, context });
+    if (this.isDevelopment) {
+      console.error('[SENTRY PLACEHOLDER]', { level, message, error, context });
+    }
   }
 
   /**
