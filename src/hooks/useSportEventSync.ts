@@ -24,7 +24,7 @@ export function useSportEventSync() {
         },
         async (payload) => {
           logger.info('Match E2D modifié', payload);
-          const matchId = (payload.new as any)?.id || (payload.old as any)?.id;
+          const matchId = (payload.new as { id?: string })?.id || (payload.old as { id?: string })?.id;
           
           if (matchId && payload.eventType !== 'DELETE') {
             // La fonction syncE2DMatchToEvent gère la logique de publication

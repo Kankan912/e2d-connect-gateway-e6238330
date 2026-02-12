@@ -27,8 +27,8 @@ export default function RolesAdmin() {
 
   const { data: usersData, isLoading: usersLoading } = useUsersWithRoles();
 
-  // Type assertion to work with current data structure
-  const users = (usersData as any) || [];
+  // Type assertion needed: useUsersWithRoles returns joined Supabase data with unknown relation types
+  const users = (usersData as Array<{ user_id: string; role_id: string | null; profiles: Record<string, string | null>; roles: { id: string; name: string; description: string | null } | null }>) || [];
 
   // Filter users based on search query
   const filteredUsers = users.filter((user: any) => {
