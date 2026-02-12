@@ -30,7 +30,7 @@ const DashboardHome = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
           Bienvenue, {profile?.prenom} {profile?.nom} !
         </h1>
         <p className="text-muted-foreground mt-2">Votre tableau de bord E2D Connect</p>
@@ -139,8 +139,8 @@ const DashboardHome = () => {
 
       {/* Actions rapides */}
       <div>
-        <h2 className="text-2xl font-semibold mb-4">Actions rapides</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <h2 className="text-xl sm:text-2xl font-semibold mb-4">Actions rapides</h2>
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action) => (
             <Card key={action.href} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate(action.href)}>
               <CardHeader className="pb-2">

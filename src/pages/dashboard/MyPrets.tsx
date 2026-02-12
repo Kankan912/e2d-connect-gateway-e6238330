@@ -65,7 +65,7 @@ const MyPrets = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Mes Prêts</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Mes Prêts</h1>
         <p className="text-muted-foreground mt-2">
           Historique de vos prêts et remboursements
         </p>
@@ -81,7 +81,7 @@ const MyPrets = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">
+            <div className="text-2xl sm:text-3xl font-bold text-blue-600">
               {pretsEnCours.count}
             </div>
             {pretsEnCours.count > 0 && (
@@ -99,7 +99,7 @@ const MyPrets = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl sm:text-3xl font-bold">
               {prets?.length || 0}
             </div>
           </CardContent>

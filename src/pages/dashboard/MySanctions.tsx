@@ -52,7 +52,7 @@ const MySanctions = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Mes Sanctions</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Mes Sanctions</h1>
         <p className="text-muted-foreground mt-2">
           Historique de vos sanctions et pénalités
         </p>
@@ -68,7 +68,7 @@ const MySanctions = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl sm:text-3xl font-bold">
               {sanctions?.length || 0}
             </div>
           </CardContent>
@@ -81,7 +81,7 @@ const MySanctions = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-3xl font-bold ${impayees.count > 0 ? 'text-red-600' : 'text-green-600'}`}>
+            <div className={`text-2xl sm:text-3xl font-bold ${impayees.count > 0 ? 'text-red-600' : 'text-green-600'}`}>
               {impayees.count > 0 ? (
                 <>
                   {impayees.count} ({impayees.total.toLocaleString('fr-FR')} FCFA)

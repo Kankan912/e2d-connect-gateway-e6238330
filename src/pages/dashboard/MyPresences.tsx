@@ -26,7 +26,7 @@ const MyPresences = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Mes Présences</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Mes Présences</h1>
         <p className="text-muted-foreground mt-2">
           Historique de votre participation aux réunions
         </p>
@@ -42,7 +42,7 @@ const MyPresences = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">
+            <div className="text-2xl sm:text-3xl font-bold">
               {stats.total}
             </div>
           </CardContent>
@@ -55,7 +55,7 @@ const MyPresences = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">
+            <div className="text-2xl sm:text-3xl font-bold text-green-600">
               {stats.presents}
             </div>
           </CardContent>
@@ -69,7 +69,7 @@ const MyPresences = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="text-3xl font-bold text-blue-600">
+              <div className="text-2xl sm:text-3xl font-bold text-blue-600">
                 {stats.taux}%
               </div>
               <Progress value={stats.taux} className="h-2" />

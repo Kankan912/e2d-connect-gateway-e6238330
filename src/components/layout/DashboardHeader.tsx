@@ -10,9 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, User, Home } from "lucide-react";
+import { LogOut, User, Home, Menu } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export const DashboardHeader = () => {
   const navigate = useNavigate();
@@ -34,9 +35,10 @@ export const DashboardHeader = () => {
   };
 
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
-      <div className="flex items-center gap-4">
-        <h1 className="text-xl font-semibold text-foreground">Tableau de bord</h1>
+    <header className="h-14 sm:h-16 border-b border-border bg-card flex items-center justify-between px-3 sm:px-6">
+      <div className="flex items-center gap-2 sm:gap-4">
+        <SidebarTrigger className="h-8 w-8" />
+        <h1 className="hidden sm:block text-xl font-semibold text-foreground">Tableau de bord</h1>
       </div>
 
       <div className="flex items-center gap-4">

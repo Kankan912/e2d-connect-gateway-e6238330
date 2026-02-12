@@ -246,7 +246,7 @@ export function DashboardSidebar() {
             {!['administrateur', 'tresorier', 'secretaire_general', 'responsable_sportif', 'censeur', 'commissaire_comptes'].includes(userRole) && `📋 ${userRole}`}
           </Badge>
         )}
-        <SidebarTrigger className="absolute top-4 right-2" />
+        
       </div>
 
       <SidebarContent>

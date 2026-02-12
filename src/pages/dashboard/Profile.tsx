@@ -170,7 +170,7 @@ const Profile = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Mon Profil</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Mon Profil</h1>
         <p className="text-muted-foreground mt-2">
           Gérez vos informations personnelles et la sécurité de votre compte
         </p>
