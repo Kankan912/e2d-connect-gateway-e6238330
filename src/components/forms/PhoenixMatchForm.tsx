@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
+import { logger } from "@/lib/logger";
 
 const matchSchema = z.object({
   date_match: z.string().min(1, "Date requise"),
@@ -25,14 +29,37 @@ interface PhoenixMatchFormProps {
 }
 
 export default function PhoenixMatchForm({ open, onOpenChange, onSuccess }: PhoenixMatchFormProps) {
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<MatchFormData>({
     resolver: zodResolver(matchSchema),
     defaultValues: { date_match: "", adversaire: "", lieu: "domicile", buts_marques: 0, buts_encaisses: 0, competition: "" },
   });
 
   const onSubmit = async (data: MatchFormData) => {
-    console.log("Match Phoenix:", data);
-    onSuccess();
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.from('sport_phoenix_matchs').insert({
+        date_match: data.date_match,
+        equipe_adverse: data.adversaire,
+        lieu: data.lieu,
+        score_phoenix: data.buts_marques,
+        score_adverse: data.buts_encaisses,
+        type_match: data.competition || 'amical',
+        statut: 'termine',
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Match enregistré", description: "Le match Phoenix a été créé avec succès." });
+      form.reset();
+      onSuccess();
+    } catch (error) {
+      logger.error('Erreur création match Phoenix', error);
+      toast({ title: "Erreur", description: "Impossible de créer le match.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -51,7 +78,9 @@ export default function PhoenixMatchForm({ open, onOpenChange, onSuccess }: Phoe
             <FormField control={form.control} name="competition" render={({ field }) => (<FormItem><FormLabel>Compétition</FormLabel><FormControl><Input placeholder="Ex: Championnat, Coupe..." {...field} /></FormControl><FormMessage /></FormItem>)} />
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-              <Button type="submit">Enregistrer</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+              </Button>
             </div>
           </form>
         </Form>

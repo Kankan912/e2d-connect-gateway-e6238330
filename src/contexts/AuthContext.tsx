@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { SessionWarningModal } from '@/components/SessionWarningModal';
 import { useToast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 
 interface Profile {
   id: string;
@@ -101,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (membre.statut !== 'actif') {
-        console.log('⚠️ [AuthContext] Member status is not active:', membre.statut);
+        logger.info('[AuthContext] Member status is not active: ' + membre.statut);
         
         // Log blocked login attempt
         try {
@@ -165,7 +166,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      console.log('🔍 [AuthContext] Fetching profile for user:', userId);
+      logger.info('[AuthContext] Fetching profile for user: ' + userId);
       
       // Invalidate permissions cache
       queryClient.invalidateQueries({ 
@@ -211,12 +212,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .maybeSingle();
 
       if (profileError) throw profileError;
-      console.log('✅ [AuthContext] Profile loaded:', profileData?.nom, profileData?.prenom);
+      logger.success('[AuthContext] Profile loaded: ' + profileData?.nom + ' ' + profileData?.prenom);
       setProfile(profileData);
 
       // Check if password change is required
       if (profileData?.must_change_password === true) {
-        console.log('⚠️ [AuthContext] User must change password');
+        logger.info('[AuthContext] User must change password');
         setMustChangePassword(true);
       } else {
         setMustChangePassword(false);
@@ -236,13 +237,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw roleError;
       }
       
-      console.log('✅ [AuthContext] Role data received:', roleData);
+      logger.success('[AuthContext] Role data received: ' + roleData?.roles?.name);
       setUserRole(roleData?.roles?.name || null);
 
       // Fetch permissions
       const userPerms = await fetchUserPermissions(userId);
       setPermissions(userPerms);
-      console.log('✅ [AuthContext] Permissions loaded:', userPerms.length);
+      logger.success('[AuthContext] Permissions loaded: ' + userPerms.length);
 
     } catch (error) {
       console.error('❌ [AuthContext] Error fetching user data:', error);

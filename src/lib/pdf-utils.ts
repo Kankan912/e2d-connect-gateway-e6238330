@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import logoE2D from '@/assets/logo-e2d.png';
+import { logger } from '@/lib/logger';
 
 // Cache du logo en base64
 let logoBase64Cache: string | null = null;
@@ -45,7 +46,7 @@ export async function addE2DHeader(doc: jsPDF, title: string, subtitle?: string)
       doc.addImage(logo, 'PNG', pageWidth - 55, 8, 40, 20);
     }
   } catch (e) {
-    console.log('Logo non chargé, continuation sans logo');
+    logger.debug('Logo non chargé, continuation sans logo');
   }
   
   // Titre principal
@@ -95,7 +96,7 @@ export async function addE2DLogo(doc: jsPDF, x: number = -1, y: number = 8, widt
       doc.addImage(logo, 'PNG', posX, y, width, height);
     }
   } catch (e) {
-    console.log('Logo non chargé');
+    logger.debug('Logo non chargé');
   }
 }
 
@@ -130,7 +131,7 @@ export function addE2DLogoSync(doc: jsPDF, x: number = -1, y: number = 8, width:
       const posX = x === -1 ? pageWidth - width - 15 : x;
       doc.addImage(logoBase64Cache, 'PNG', posX, y, width, height);
     } catch (e) {
-      console.log('Logo non chargé');
+      logger.debug('Logo non chargé');
     }
   }
 }
