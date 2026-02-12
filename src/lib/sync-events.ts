@@ -40,7 +40,7 @@ export async function syncE2DMatchToEvent(matchId: string) {
     if (!match) return;
 
     // Vérifier le statut de publication
-    const statutPublication = (match as any).statut_publication || 'brouillon';
+    const statutPublication = match.statut_publication || 'brouillon';
     
     // Si non publié, retirer du site web
     if (statutPublication !== 'publie') {
@@ -168,7 +168,7 @@ export async function cleanupOrphanedEvents() {
         .eq('id', event.match_id)
         .maybeSingle();
 
-      if (!match || (match as any).statut_publication !== 'publie') {
+      if (!match || match.statut_publication !== 'publie') {
         await supabase.from('site_events').delete().eq('id', event.id);
         cleaned++;
       }

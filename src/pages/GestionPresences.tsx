@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 import LogoHeader from "@/components/LogoHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -117,7 +118,7 @@ const loadData = async () => {
       setPresencesE2D(presE2DRes.data || []);
       setPresencesPhoenix(presPhoenixRes.data || []);
     } catch (error: any) {
-      console.error('Erreur lors du chargement des présences:', error);
+      logger.error('Erreur lors du chargement des présences:', error);
     }
   };
 
