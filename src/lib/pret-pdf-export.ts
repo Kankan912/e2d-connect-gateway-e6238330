@@ -135,7 +135,7 @@ export async function exportPretPDF(
     margin: { left: 25 },
   });
 
-  yPosition = (doc as any).lastAutoTable.finalY + 10;
+  yPosition = doc.lastAutoTable.finalY + 10;
 
   // Résumé financier
   doc.setFontSize(14);
@@ -161,7 +161,7 @@ export async function exportPretPDF(
     margin: { left: 25 },
   });
 
-  yPosition = (doc as any).lastAutoTable.finalY + 10;
+  yPosition = doc.lastAutoTable.finalY + 10;
 
   // Historique des reconductions
   if (reconductions && reconductions.length > 0) {
@@ -185,7 +185,7 @@ export async function exportPretPDF(
       margin: { left: 25, right: 25 },
     });
 
-    yPosition = (doc as any).lastAutoTable.finalY + 10;
+    yPosition = doc.lastAutoTable.finalY + 10;
   }
 
   // Historique des paiements
@@ -214,7 +214,7 @@ export async function exportPretPDF(
 
   // Notes
   if (pret.notes) {
-    yPosition = (doc as any).lastAutoTable?.finalY + 10 || yPosition + 10;
+    yPosition = doc.lastAutoTable?.finalY + 10 || yPosition + 10;
     doc.setFontSize(14);
     doc.text('NOTES', 20, yPosition);
     yPosition += 8;

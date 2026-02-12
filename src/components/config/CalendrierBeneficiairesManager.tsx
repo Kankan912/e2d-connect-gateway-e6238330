@@ -294,7 +294,7 @@ export default function CalendrierBeneficiairesManager() {
 
     // Total
     const totalAnnuel = calendrier.reduce((sum, b) => sum + Number(b.montant_total), 0);
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    const finalY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
     doc.text(`Total Annuel: ${formatFCFA(totalAnnuel)}`, 14, finalY);
