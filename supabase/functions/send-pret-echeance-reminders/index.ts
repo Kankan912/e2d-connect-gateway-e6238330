@@ -128,7 +128,7 @@ serve(async (req) => {
     const errors: string[] = [];
 
     for (const pret of allPrets) {
-      const membre = (pret as any).membres;
+      const membre = (pret as { membres?: { email?: string; nom?: string; prenom?: string }; [k: string]: unknown }).membres;
       if (!membre?.email) continue;
 
       const montantTotal = pret.montant_total_du || (pret.montant + (pret.montant * (pret.taux_interet || 0) / 100) * (1 + (pret.reconductions || 0)));

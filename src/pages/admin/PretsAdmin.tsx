@@ -17,6 +17,7 @@ import ReconduireModal from "@/components/ReconduireModal";
 import PretDetailsModal from "@/components/PretDetailsModal";
 import { formatFCFA } from "@/lib/utils";
 import { exportPretPDF } from "@/lib/pret-pdf-export";
+import type { PretAdminWithJoins } from "@/types/supabase-joins";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,13 +40,13 @@ type StatutFilter = 'tous' | 'en_cours' | 'rembourse' | 'partiel' | 'en_retard' 
 
 export default function PretsAdmin() {
   const [formOpen, setFormOpen] = useState(false);
-  const [selectedPret, setSelectedPret] = useState<any>(null);
+  const [selectedPret, setSelectedPret] = useState<PretAdminWithJoins | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pretToDelete, setPretToDelete] = useState<string | null>(null);
   const [paiementsDialogOpen, setPaiementsDialogOpen] = useState(false);
   const [pretForPaiements, setPretForPaiements] = useState<string | null>(null);
   const [reconduireDialogOpen, setReconduireDialogOpen] = useState(false);
-  const [pretForReconduction, setPretForReconduction] = useState<any>(null);
+  const [pretForReconduction, setPretForReconduction] = useState<PretAdminWithJoins | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [pretForDetails, setPretForDetails] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,7 +69,7 @@ export default function PretsAdmin() {
         `)
         .order("date_pret", { ascending: false });
       if (error) throw error;
-      return data as any[];
+      return (data || []) as unknown as PretAdminWithJoins[];
     },
   });
 
@@ -90,7 +91,7 @@ export default function PretsAdmin() {
   const dureeReconduction = pretsConfig?.duree_reconduction || 2;
 
   // Calculer le total dû actuel (utilise montant_total_du si disponible, sinon calcule)
-  const calculerTotalDu = (pret: any): number => {
+  const calculerTotalDu = (pret: PretAdminWithJoins): number => {
     if (pret.montant_total_du && pret.montant_total_du > 0) {
       return parseFloat(pret.montant_total_du.toString());
     }
@@ -704,7 +705,7 @@ export default function PretsAdmin() {
                                       size="icon"
                                       variant="outline"
                                       className="h-7 w-7"
-                                      onClick={() => window.open(pret.justificatif_url, '_blank')}
+                                      onClick={() => window.open(pret.justificatif_url as string, '_blank')}
                                     >
                                       <FileText className="h-3.5 w-3.5" />
                                     </Button>

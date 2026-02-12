@@ -105,12 +105,13 @@ serve(async (req) => {
     const errors: string[] = [];
 
     for (const [membreId, cotisations] of Object.entries(cotisationsParMembre)) {
-      const membre = (cotisations[0] as any).membres;
+      const firstCot = cotisations[0] as { membres?: { email?: string; nom?: string; prenom?: string }; [k: string]: unknown };
+      const membre = firstCot.membres;
       if (!membre?.email) continue;
 
       const totalDu = cotisations.reduce((sum, c) => sum + (c.montant || 0), 0);
       
-      const cotisationsHtml = cotisations.map((c: any) => {
+      const cotisationsHtml = cotisations.map((c: { reunions?: { date_reunion?: string }; cotisations_types?: { nom?: string }; montant?: number; statut?: string }) => {
         const dateReunion = new Date(c.reunions.date_reunion).toLocaleDateString("fr-FR");
         const typeName = c.cotisations_types?.nom || "Cotisation";
         return `<li>${typeName} - Réunion du ${dateReunion} : ${c.montant.toLocaleString("fr-FR")} FCFA (${c.statut})</li>`;

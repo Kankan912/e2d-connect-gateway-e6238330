@@ -7,7 +7,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreateReunion, useUpdateReunion } from '@/hooks/useReunions';
+import { useCreateReunion, useUpdateReunion, type Reunion } from '@/hooks/useReunions';
 import { useMembers } from '@/hooks/useMembers';
 
 const reunionSchema = z.object({
@@ -23,8 +23,20 @@ const reunionSchema = z.object({
 
 type ReunionFormData = z.infer<typeof reunionSchema>;
 
+interface ReunionInitialData {
+  id?: string;
+  date_reunion?: string;
+  lieu_membre_id?: string | null;
+  lieu_description?: string | null;
+  beneficiaire_id?: string | null;
+  type_reunion?: string;
+  sujet?: string;
+  ordre_du_jour?: string | null;
+  compte_rendu_url?: string | null;
+}
+
 interface ReunionFormProps {
-  initialData?: any;
+  initialData?: ReunionInitialData;
   onSuccess: () => void;
 }
 
@@ -53,7 +65,7 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
         lieu_membre_id: initialData.lieu_membre_id || '',
         lieu_description: initialData.lieu_description || '',
         beneficiaire_id: initialData.beneficiaire_id || '',
-        type_reunion: initialData.type_reunion || 'tontine',
+        type_reunion: (initialData.type_reunion || 'tontine') as ReunionFormData['type_reunion'],
         sujet: initialData.sujet || '',
         ordre_du_jour: initialData.ordre_du_jour || '',
       });
@@ -62,13 +74,12 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
 
   const onSubmit = async (data: ReunionFormData) => {
     try {
-      // Cast explicite pour satisfaire TypeScript
-      const reunionData = {
+      const reunionData: Omit<Reunion, 'id' | 'created_at' | 'statut'> = {
         date_reunion: data.date_reunion,
         lieu_membre_id: data.lieu_membre_id === 'none' ? null : data.lieu_membre_id || null,
         lieu_description: data.lieu_description || null,
         beneficiaire_id: data.beneficiaire_id === 'none' ? null : data.beneficiaire_id || null,
-        type_reunion: data.type_reunion,
+        type_reunion: data.type_reunion as string,
         sujet: data.sujet,
         ordre_du_jour: data.ordre_du_jour || null,
         compte_rendu_url: data.compte_rendu_url || null,
@@ -77,7 +88,7 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
       if (initialData?.id) {
         await updateReunion.mutateAsync({ id: initialData.id, ...reunionData });
       } else {
-        await createReunion.mutateAsync(reunionData as Parameters<typeof createReunion.mutateAsync>[0]);
+        await createReunion.mutateAsync(reunionData);
       }
       onSuccess();
     } catch (error) {
