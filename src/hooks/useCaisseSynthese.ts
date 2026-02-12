@@ -33,7 +33,7 @@ export const useCaisseSynthese = () => {
       while (hasMore) {
         const { data, error } = await supabase
           .from("fond_caisse_operations")
-          .select("*")
+          .select("montant, type_operation, categorie, libelle")
           .range(from, from + PAGE_SIZE - 1);
 
         if (error) throw error;

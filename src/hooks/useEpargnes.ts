@@ -124,6 +124,9 @@ export const useUpdateEpargne = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["all-epargnes"] });
       queryClient.invalidateQueries({ queryKey: ["user-epargnes"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-operations"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-synthese"] });
       toast({
         title: "Succès",
         description: "Épargne mise à jour",
@@ -150,6 +153,9 @@ export const useDeleteEpargne = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["all-epargnes"] });
       queryClient.invalidateQueries({ queryKey: ["user-epargnes"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-operations"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-synthese"] });
       toast({
         title: "Succès",
         description: "Épargne supprimée",
