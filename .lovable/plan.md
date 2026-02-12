@@ -1,57 +1,37 @@
 
-# Batch 2 : Corrections moyennes
+# Correction bug ReouvrirReunionModal + Batch 3
 
-## Points deja OK (pas de modification necessaire)
+## Bug a corriger (Batch 2)
 
-| # | Point | Raison |
-|---|-------|--------|
-| 8 | Beneficiaires logique montant individuel | `calculerMontant` est individuel, aucune division par nombre de beneficiaires |
-| 9 | Multi-beneficiaires meme mois | DB supporte, UI affiche badge position "1/2" |
-| 10 | Drag & drop rang | `reorderBeneficiaires` persiste les rangs correctement |
+### ReouvrirReunionModal.tsx - ligne 49-51
+Le code actuel fait :
+```typescript
+.update({ statut: 'paye' } as any)
+```
+Il faut remplacer par :
+```typescript
+.update({ verrouille: false })
+```
+La colonne `verrouille` existe bien dans la table `cotisations` (confirme dans types.ts ligne 928). Le `as any` masquait l'erreur de typage.
 
-## Corrections a implementer
+---
 
-### 1. Enrichir messages erreur creation/update membre (#5)
-**Fichier** : `src/hooks/useMembers.ts`
+## Batch 3 : Corrections significatives
 
-- Dans `updateMember`, ajouter un try/catch pour le code SQL `23505` (email duplique) avec message UX clair
-- Ajouter un catch generique pour code `23503` (violation FK) avec message explicatif
+### 1. Prets - Paiement partiel logique interet/capital (#13)
+**Fichier** : `src/components/PretsPaiementsManager.tsx`
+- Verifier que le recalcul du capital restant apres paiement partiel ne genere pas de nouveaux interets automatiques
+- Ajouter une protection contre les montants negatifs (capital restant < 0)
 
-### 2. Bloquer saisie cotisation si montant non configure (#6)
-**Fichier** : `src/components/forms/CotisationSaisieForm.tsx`
+### 2. Notifications - Tracabilite campagnes (#14)
+**Fichier** : `src/pages/admin/NotificationsAdmin.tsx`
+- Enrichir l'affichage des campagnes envoyees avec statuts detailles depuis `notifications_logs`
+- Ajouter colonnes : envoyes, echecs, en attente
 
-- Apres selection du type, verifier si le montant resulte a 0 ou n'existe pas
-- Si montant = 0 et type obligatoire : afficher un avertissement "Montant individuel non configure pour ce membre. Veuillez configurer les montants dans la gestion des cotisations mensuelles."
-- Desactiver le bouton "Enregistrer" si montant = 0 sur un type obligatoire
+## Section technique
 
-### 3. Verification types actives par exercice (#7)
-**Fichier** : `src/components/forms/CotisationSaisieForm.tsx`
-
-- Charger les types actives pour l'exercice selectionne via `exercices_cotisations_types`
-- Filtrer la liste des types dans le Select pour n'afficher que ceux lies a l'exercice
-- Si aucun type lie : afficher un message "Aucun type de cotisation configure pour cet exercice"
-
-### 4. Deverrouiller cotisations a la reouverture de reunion (#11)
-**Fichier** : `src/components/ReouvrirReunionModal.tsx`
-
-- Apres le changement de statut (etape 1), ajouter :
-  ```
-  UPDATE cotisations SET verrouille = false WHERE reunion_id = reunionId
-  ```
-- Invalider le cache des cotisations apres la mise a jour
-
-### 5. Check coherence presences/cotisations a la cloture (#12)
-**Fichier** : `src/components/ClotureReunionModal.tsx`
-
-- Avant la cloture, charger les cotisations enregistrees pour la reunion
-- Comparer avec les membres "presents" : si un membre present n'a aucune cotisation, afficher un avertissement (non bloquant) dans le recapitulatif de cloture
-- L'avertissement listera les membres concernes avec un badge "Aucune cotisation"
-
-## Section technique - Resume des modifications
-
-| Fichier | Modifications |
-|---------|--------------|
-| `src/hooks/useMembers.ts` | Catch erreur 23505 dans updateMember, catch 23503 generique |
-| `src/components/forms/CotisationSaisieForm.tsx` | Filtrer types par exercice, bloquer si montant = 0 |
-| `src/components/ReouvrirReunionModal.tsx` | Ajouter UPDATE cotisations SET verrouille = false |
-| `src/components/ClotureReunionModal.tsx` | Avertissement presences sans cotisations |
+| Fichier | Modification |
+|---------|-------------|
+| `src/components/ReouvrirReunionModal.tsx` | Fix: `.update({ verrouille: false })` au lieu de `.update({ statut: 'paye' } as any)` |
+| `src/components/PretsPaiementsManager.tsx` | Verification logique interet/capital, protection montants negatifs |
+| `src/pages/admin/NotificationsAdmin.tsx` | Tracabilite campagnes avec statuts detailles |
