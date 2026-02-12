@@ -10,6 +10,7 @@ import {
   getDefaultSessionConfig,
   calculateRemainingTime 
 } from '@/lib/session-utils';
+import { logger } from '@/lib/logger';
 
 interface UseSessionManagerProps {
   session: Session | null;
@@ -68,7 +69,7 @@ export const useSessionManager = ({
       // Vérifier que la date stockée est valide et pas trop ancienne (ex: 24h max)
       const maxAge = 24 * 60 * 60 * 1000; // 24 heures
       if (!isNaN(storedDate.getTime()) && (Date.now() - storedDate.getTime()) < maxAge) {
-        console.log('🕐 [SessionManager] Session start restored from localStorage:', storedDate.toISOString());
+        logger.info('[SessionManager] Session start restored from localStorage: ' + storedDate.toISOString());
         return storedDate;
       }
     }
@@ -76,7 +77,7 @@ export const useSessionManager = ({
     // Nouvelle session
     const now = new Date();
     localStorage.setItem(storageKey, now.toISOString());
-    console.log('🆕 [SessionManager] New session start saved:', now.toISOString());
+    logger.info('[SessionManager] New session start saved: ' + now.toISOString());
     return now;
   }, []);
 
@@ -88,7 +89,7 @@ export const useSessionManager = ({
     // Nettoyer toutes les clés de session si pas d'userId
     const keys = Object.keys(localStorage).filter(k => k.startsWith(SESSION_START_KEY));
     keys.forEach(k => localStorage.removeItem(k));
-    console.log('🧹 [SessionManager] Session storage cleared');
+    logger.info('[SessionManager] Session storage cleared');
   }, []);
 
   // Charger la configuration de session
@@ -99,11 +100,11 @@ export const useSessionManager = ({
     }
 
     const loadConfig = async () => {
-      console.log('🔐 [SessionManager] Loading config for type:', sessionType);
+      logger.info('[SessionManager] Loading config for type: ' + sessionType);
       const config = await fetchSessionConfig(sessionType);
       const finalConfig = config || getDefaultSessionConfig(sessionType);
       
-      console.log('✅ [SessionManager] Config loaded:', finalConfig);
+      logger.success('[SessionManager] Config loaded', finalConfig);
       
       setState(prev => ({
         ...prev,
@@ -123,7 +124,7 @@ export const useSessionManager = ({
 
   // Fonction pour déclencher la déconnexion
   const triggerLogout = useCallback(async (reason: 'inactivity' | 'session_expired') => {
-    console.log('🚪 [SessionManager] Triggering logout:', reason);
+    logger.info('[SessionManager] Triggering logout: ' + reason);
     setState(prev => ({ ...prev, logoutReason: reason, showWarning: false }));
     
     // Nettoyer tous les timers
@@ -146,7 +147,7 @@ export const useSessionManager = ({
     const config = state.sessionConfig;
     if (!config) return;
 
-    console.log('⚠️ [SessionManager] Showing warning modal:', reason);
+    logger.info('[SessionManager] Showing warning modal: ' + reason);
     
     setState(prev => ({
       ...prev,
@@ -213,10 +214,10 @@ export const useSessionManager = ({
         config.session_duration_minutes
       );
 
-      console.log(`⏱️ [SessionManager] Remaining session time: ${remainingMinutes.toFixed(1)} minutes`);
+      logger.info(`[SessionManager] Remaining session time: ${remainingMinutes.toFixed(1)} minutes`);
 
       if (remainingMinutes <= 0) {
-        console.log('⏰ [SessionManager] Session expired!');
+        logger.info('[SessionManager] Session expired!');
         triggerLogout('session_expired');
         return true; // Session expirée
       }
@@ -268,7 +269,7 @@ export const useSessionManager = ({
 
   // Prolonger la session (fermer le warning et reset les timers)
   const extendSession = useCallback(() => {
-    console.log('🔄 [SessionManager] Extending session');
+    logger.info('[SessionManager] Extending session');
     
     // Annuler les timers de warning
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);

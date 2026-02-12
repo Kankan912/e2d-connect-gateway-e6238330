@@ -3,6 +3,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from "@/integrations/supabase/client";
 import { loadLogoBase64, addE2DFooter } from './pdf-utils';
+import { logger } from './logger';
 
 export class ExportService {
   static async export(options: {
@@ -319,7 +320,7 @@ export class ExportService {
         doc.addImage(logo, 'PNG', 155, 8, 40, 20);
       }
     } catch (e) {
-      console.log('Logo non chargé, continuation sans logo');
+      logger.debug('Logo non chargé, continuation sans logo');
     }
 
     // En-tête avec style

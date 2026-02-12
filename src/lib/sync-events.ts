@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
 
 /**
  * Supprime un événement du site associé à un match E2D
@@ -14,7 +15,7 @@ export async function removeE2DEventFromCMS(matchId: string) {
 
     if (deleteError) throw deleteError;
 
-    console.log('Événement E2D retiré du site, match_id:', matchId);
+    logger.info('Événement E2D retiré du site, match_id: ' + matchId);
     return { success: true };
   } catch (error) {
     console.error('Erreur lors de la suppression événement E2D:', error);
@@ -86,7 +87,6 @@ export async function syncE2DMatchToEvent(matchId: string) {
     };
 
     if (existingEvent) {
-      // Mettre à jour l'événement existant
       const { error: updateError } = await supabase
         .from('site_events')
         .update(eventData)
@@ -94,7 +94,6 @@ export async function syncE2DMatchToEvent(matchId: string) {
 
       if (updateError) throw updateError;
     } else {
-      // Créer un nouvel événement
       const { error: insertError } = await supabase
         .from('site_events')
         .insert([eventData]);
@@ -102,7 +101,7 @@ export async function syncE2DMatchToEvent(matchId: string) {
       if (insertError) throw insertError;
     }
 
-    console.log('Match E2D synchronisé vers site_events:', eventTitre);
+    logger.info('Match E2D synchronisé vers site_events: ' + eventTitre);
     return { success: true, action: 'synced' };
   } catch (error) {
     console.error('Erreur lors de la synchronisation E2D:', error);
@@ -116,14 +115,12 @@ export async function syncE2DMatchToEvent(matchId: string) {
  */
 export async function syncAllSportEventsToWebsite(includeAll: boolean = true) {
   try {
-    // Construire la requête de base - tous les matchs publiés
     let query = supabase
       .from('sport_e2d_matchs')
       .select('id')
       .neq('statut', 'annule')
       .eq('statut_publication', 'publie');
 
-    // Filtrer par date seulement si includeAll est false
     if (!includeAll) {
       const today = new Date().toISOString().split('T')[0];
       query = query.gte('date_match', today);
@@ -133,12 +130,10 @@ export async function syncAllSportEventsToWebsite(includeAll: boolean = true) {
 
     if (error) throw error;
 
-    // Synchroniser tous les matchs E2D publiés vers site_events
     const promises = (e2dMatches || []).map(m => syncE2DMatchToEvent(m.id));
-
     await Promise.all(promises);
 
-    console.log(`✅ Synchronisation terminée: ${e2dMatches?.length || 0} matchs E2D vers site_events`);
+    logger.success(`Synchronisation terminée: ${e2dMatches?.length || 0} matchs E2D vers site_events`);
 
     return { 
       success: true, 
@@ -157,7 +152,6 @@ export async function syncAllSportEventsToWebsite(includeAll: boolean = true) {
  */
 export async function cleanupOrphanedEvents() {
   try {
-    // Récupérer tous les événements auto-sync
     const { data: autoSyncEvents } = await supabase
       .from('site_events')
       .select('id, match_id')
@@ -168,21 +162,19 @@ export async function cleanupOrphanedEvents() {
 
     let cleaned = 0;
     for (const event of autoSyncEvents) {
-      // Vérifier si le match existe encore et est publié
       const { data: match } = await supabase
         .from('sport_e2d_matchs')
         .select('id, statut_publication')
         .eq('id', event.match_id)
         .maybeSingle();
 
-      // Si le match n'existe plus ou n'est plus publié, supprimer l'événement
       if (!match || (match as any).statut_publication !== 'publie') {
         await supabase.from('site_events').delete().eq('id', event.id);
         cleaned++;
       }
     }
 
-    console.log(`🧹 Nettoyage: ${cleaned} événements orphelins supprimés`);
+    logger.info(`Nettoyage: ${cleaned} événements orphelins supprimés`);
     return { success: true, cleaned };
   } catch (error) {
     console.error('Erreur lors du nettoyage:', error);

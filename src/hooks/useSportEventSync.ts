@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { syncE2DMatchToEvent } from "@/lib/sync-events";
+import { logger } from "@/lib/logger";
 
 /**
  * Hook pour synchroniser automatiquement les matchs E2D publiés vers le site web
@@ -22,7 +23,7 @@ export function useSportEventSync() {
           table: 'sport_e2d_matchs'
         },
         async (payload) => {
-          console.log('Match E2D modifié:', payload);
+          logger.info('Match E2D modifié', payload);
           const matchId = (payload.new as any)?.id || (payload.old as any)?.id;
           
           if (matchId && payload.eventType !== 'DELETE') {
