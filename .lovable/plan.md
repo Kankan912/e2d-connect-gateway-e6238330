@@ -1,35 +1,50 @@
 
-# Corrections Batch 4 + Preparation Batch 5
 
-## Corrections a appliquer (2 points)
+# Batch 5 : Nettoyage code mort, bug useEnsureAdmin, coherence securite
 
-### 1. useEpargnes.ts - Invalidations cache manquantes
+## Problemes identifies
 
-Ajouter dans `useUpdateEpargne` et `useDeleteEpargne` les 3 invalidations presentes dans `useCreateEpargne` :
-- `caisse-operations`
-- `caisse-stats`
-- `caisse-synthese`
+### 1. BUG CRITIQUE : `useEnsureAdmin.ts` - role "admin" inexistant
 
-### 2. useCaisseSynthese.ts - Select optimise
+**Fichier** : `src/hooks/useEnsureAdmin.ts`
 
-Remplacer `.select("*")` par `.select("montant, type_operation, categorie, libelle")` dans la boucle de pagination (ligne 36).
+Le hook compare `userRole === "admin"` mais le systeme utilise `"administrateur"` comme nom de role. Resultat : `isAdmin` est toujours `false` et `withEnsureAdmin()` bloque TOUTES les operations dans `GestionPresences.tsx`, meme pour les vrais admins.
+
+**Impact** : Les toggles de presence E2D et Phoenix sont silencieusement bloques pour tout le monde.
+
+**Correction** : Aligner sur les roles reels du systeme. Remplacer `"admin"` par une verification coherente avec `is_admin()` SQL :
+```
+const adminRoles = ["administrateur", "tresorier", "super_admin", "secretaire_general"];
+const isAdmin = adminRoles.includes(userRole || "");
+```
+
+### 2. Code mort : `AdminRoute.tsx`
+
+**Fichier** : `src/components/auth/AdminRoute.tsx`
+
+Ce composant n'est importe nulle part dans l'application. Toutes les routes admin utilisent deja `PermissionRoute`. C'est du code mort qui peut induire en erreur les developpeurs.
+
+**Action** : Supprimer le fichier.
+
+### 3. Code mort : `useEnsureAdmin.ts` apres correction
+
+Apres correction du bug, evaluer si ce hook est encore necessaire. La page `GestionPresences.tsx` est deja protegee par `PermissionRoute` au niveau route (`resource="presences" permission="read"`). Le `withEnsureAdmin` est donc une double verification redondante.
+
+**Action** : Supprimer `useEnsureAdmin` et retirer son usage de `GestionPresences.tsx`. La protection RLS + PermissionRoute est suffisante.
 
 ---
 
-## Batch 5 : Prochaine phase a definir
+## Resume des modifications
 
-Apres application des corrections, analyser le code pour identifier les axes du Batch 5 parmi :
-- Securite RLS (tables sans policies ou policies trop permissives)
-- Edge functions non testees ou fragiles
-- Coherence des routes protegees (PermissionRoute vs AdminRoute)
-- UX / accessibilite (formulaires, messages d'erreur)
-- Performance (requetes N+1, composants lourds)
+| # | Fichier | Action |
+|---|---------|--------|
+| 1 | `src/hooks/useEnsureAdmin.ts` | Supprimer (code mort avec bug) |
+| 2 | `src/components/auth/AdminRoute.tsx` | Supprimer (code mort, jamais utilise) |
+| 3 | `src/pages/GestionPresences.tsx` | Retirer l'import et l'usage de `withEnsureAdmin`, appeler directement les operations |
 
----
+## Impact
 
-## Section technique
+- Les toggles de presence dans GestionPresences fonctionneront enfin pour les utilisateurs autorises
+- Moins de code mort dans le projet
+- La securite reste assuree par PermissionRoute (frontend) + RLS (backend)
 
-| Fichier | Modification |
-|---------|-------------|
-| `src/hooks/useEpargnes.ts` | Ajouter `queryClient.invalidateQueries({ queryKey: ["caisse-operations"] })`, `caisse-stats`, `caisse-synthese` dans `onSuccess` de `useUpdateEpargne` (ligne 124) et `useDeleteEpargne` (ligne 150) |
-| `src/hooks/useCaisseSynthese.ts` | Ligne 36 : `.select("*")` devient `.select("montant, type_operation, categorie, libelle")` |
