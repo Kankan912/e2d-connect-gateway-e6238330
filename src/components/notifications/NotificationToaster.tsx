@@ -22,8 +22,8 @@ export const NotificationToaster = () => {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'prets' },
         (payload) => {
-          const pret = payload.new as any;
-          const oldPret = payload.old as any;
+          const pret = payload.new as { echeance: string; statut: string };
+          const oldPret = payload.old as { echeance: string; statut: string };
           
           // Vérifier si le prêt vient de passer en retard
           const today = new Date().toISOString().split('T')[0];
@@ -48,7 +48,7 @@ export const NotificationToaster = () => {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'reunions_sanctions' },
         (payload) => {
-          const sanction = payload.new as any;
+          const sanction = payload.new as { montant: number; statut: string };
           
           if (sanction.montant > 0 && sanction.statut !== 'paye') {
             toast.warning("Nouvelle sanction", {

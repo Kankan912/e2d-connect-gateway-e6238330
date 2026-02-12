@@ -99,7 +99,7 @@ export const useCreateCotisation = () => {
     mutationFn: async (newCotisation: CotisationInsert) => {
       const { data, error } = await supabase
         .from('cotisations')
-        .insert([newCotisation as any])
+        .insert([newCotisation])
         .select()
         .single();
 
