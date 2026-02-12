@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Activity, Users, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useEnsureAdmin } from "@/hooks/useEnsureAdmin";
+
 
 interface Membre {
   id: string;
@@ -47,7 +47,7 @@ const [loading, setLoading] = useState(true);
 const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 const [selectedTypeSeance, setSelectedTypeSeance] = useState('entrainement');
   const { toast } = useToast();
-  const { withEnsureAdmin } = useEnsureAdmin();
+  
 
   useEffect(() => {
     loadData();
@@ -122,7 +122,7 @@ const loadData = async () => {
   };
 
   const togglePresenceE2D = async (membreId: string, isPresent: boolean) => {
-    const operation = async () => {
+    try {
       const existingPresence = presencesE2D.find(p => p.membre_id === membreId);
 
       if (existingPresence) {
@@ -142,10 +142,7 @@ const loadData = async () => {
           });
         if (error) throw error;
       }
-    };
 
-    try {
-      await withEnsureAdmin(operation);
       await loadPresences();
       toast({
         title: "Succès",
@@ -161,7 +158,7 @@ const loadData = async () => {
   };
 
 const togglePresencePhoenix = async (adherentOrTempId: string, isPresent: boolean) => {
-  const operation = async () => {
+  try {
     let adherentId = adherentOrTempId;
     if (adherentOrTempId.startsWith('new:')) {
       const membreId = adherentOrTempId.replace('new:', '');
@@ -192,10 +189,7 @@ const togglePresencePhoenix = async (adherentOrTempId: string, isPresent: boolea
         });
       if (error) throw error;
     }
-  };
 
-  try {
-    await withEnsureAdmin(operation);
     await loadData();
     toast({
       title: "Succès",
