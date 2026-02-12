@@ -123,7 +123,8 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
           est_adherent_phoenix: member.est_adherent_phoenix || false,
           equipe_e2d: member.equipe_e2d || "",
           equipe_phoenix: member.equipe_phoenix || "",
-          equipe_jaune_rouge: ((member as any).equipe_jaune_rouge as "Jaune" | "Rouge" | "none") || "none",
+          // TODO: equipe_jaune_rouge exists in DB but is missing from generated Supabase types - cast needed until types are regenerated
+          equipe_jaune_rouge: ((member as unknown as Record<string, unknown>).equipe_jaune_rouge as "Jaune" | "Rouge" | "none") || "none",
           fonction: member.fonction || "none",
           photo_url: member.photo_url || "",
           role_id: currentRoleId || "",
@@ -227,7 +228,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
       equipe_phoenix: data.equipe_phoenix === 'none' ? null : data.equipe_phoenix,
       fonction: data.fonction === 'none' ? null : data.fonction,
     };
-    onSubmit(cleanedData as any);
+    onSubmit(cleanedData as MemberFormData);
     if (!member) {
       form.reset();
       setPreviewUrl(null);
