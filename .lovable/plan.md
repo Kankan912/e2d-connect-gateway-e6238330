@@ -1,36 +1,32 @@
 
 
-# Batch 5 : Nettoyage code mort, bug useEnsureAdmin, coherence securite
+# Batch 6 : Nettoyage console.log, bug PhoenixMatchForm, migration vers logger
 
 ## Problemes identifies
 
-### 1. BUG CRITIQUE : `useEnsureAdmin.ts` - role "admin" inexistant
+### 1. BUG : PhoenixMatchForm ne sauvegarde rien
 
-**Fichier** : `src/hooks/useEnsureAdmin.ts`
+**Fichier** : `src/components/forms/PhoenixMatchForm.tsx` (ligne 33-36)
 
-Le hook compare `userRole === "admin"` mais le systeme utilise `"administrateur"` comme nom de role. Resultat : `isAdmin` est toujours `false` et `withEnsureAdmin()` bloque TOUTES les operations dans `GestionPresences.tsx`, meme pour les vrais admins.
+Le formulaire de creation de match Phoenix ne fait qu'un `console.log` puis appelle `onSuccess()` sans jamais persister les donnees en base. C'est un formulaire factice.
 
-**Impact** : Les toggles de presence E2D et Phoenix sont silencieusement bloques pour tout le monde.
+**Action** : Identifier si ce formulaire est utilise et, si oui, implementer la sauvegarde reelle. Sinon, le documenter comme placeholder.
 
-**Correction** : Aligner sur les roles reels du systeme. Remplacer `"admin"` par une verification coherente avec `is_admin()` SQL :
-```
-const adminRoles = ["administrateur", "tresorier", "super_admin", "secretaire_general"];
-const isAdmin = adminRoles.includes(userRole || "");
-```
+### 2. Console.log en production : 152 occurrences
 
-### 2. Code mort : `AdminRoute.tsx`
+Le projet dispose d'un `logger.ts` centralise qui supprime les logs en production, mais 152 `console.log` directs existent dans 8 fichiers, dont :
 
-**Fichier** : `src/components/auth/AdminRoute.tsx`
+- `src/contexts/AuthContext.tsx` : 8 console.log de debug (profils, roles, permissions)
+- `src/hooks/useSessionManager.ts` : 7 console.log de debug session
+- `src/lib/sync-events.ts` : 5 console.log de sync
+- `src/hooks/useSportEventSync.ts` : 1 console.log
+- `src/lib/pdf-utils.ts` / `exportService.ts` : console.log dans les catch
 
-Ce composant n'est importe nulle part dans l'application. Toutes les routes admin utilisent deja `PermissionRoute`. C'est du code mort qui peut induire en erreur les developpeurs.
+**Action** : Remplacer les `console.log` par `logger.info/debug/error` pour que ces logs soient automatiquement supprimes en production.
 
-**Action** : Supprimer le fichier.
+### 3. Console.error/warn : conserver mais standardiser
 
-### 3. Code mort : `useEnsureAdmin.ts` apres correction
-
-Apres correction du bug, evaluer si ce hook est encore necessaire. La page `GestionPresences.tsx` est deja protegee par `PermissionRoute` au niveau route (`resource="presences" permission="read"`). Le `withEnsureAdmin` est donc une double verification redondante.
-
-**Action** : Supprimer `useEnsureAdmin` et retirer son usage de `GestionPresences.tsx`. La protection RLS + PermissionRoute est suffisante.
+Les `console.error` dans les blocs `catch` (46 fichiers) sont acceptables car `logger.error` les transmet deja. Toutefois, les fichiers critiques (AuthContext, SessionManager) beneficieraient d'une migration vers `logger` pour le contexte structure.
 
 ---
 
@@ -38,13 +34,25 @@ Apres correction du bug, evaluer si ce hook est encore necessaire. La page `Gest
 
 | # | Fichier | Action |
 |---|---------|--------|
-| 1 | `src/hooks/useEnsureAdmin.ts` | Supprimer (code mort avec bug) |
-| 2 | `src/components/auth/AdminRoute.tsx` | Supprimer (code mort, jamais utilise) |
-| 3 | `src/pages/GestionPresences.tsx` | Retirer l'import et l'usage de `withEnsureAdmin`, appeler directement les operations |
+| 1 | `src/components/forms/PhoenixMatchForm.tsx` | Verifier l'usage et soit implementer la sauvegarde, soit marquer comme TODO |
+| 2 | `src/contexts/AuthContext.tsx` | Remplacer 8 `console.log` par `logger.info/debug` |
+| 3 | `src/hooks/useSessionManager.ts` | Remplacer 7 `console.log` par `logger.debug` |
+| 4 | `src/lib/sync-events.ts` | Remplacer 5 `console.log` par `logger.info` |
+| 5 | `src/hooks/useSportEventSync.ts` | Remplacer 1 `console.log` par `logger.debug` |
+| 6 | `src/lib/pdf-utils.ts` | Remplacer `console.log` dans les catch par `logger.debug` |
+| 7 | `src/lib/exportService.ts` | Remplacer `console.log` dans le catch par `logger.debug` |
 
 ## Impact
 
-- Les toggles de presence dans GestionPresences fonctionneront enfin pour les utilisateurs autorises
-- Moins de code mort dans le projet
-- La securite reste assuree par PermissionRoute (frontend) + RLS (backend)
+- Zero `console.log` en production (hors ceux du logger lui-meme)
+- Le bug PhoenixMatchForm sera documente ou corrige
+- Meilleure observabilite avec logs structures
+- Aucun changement fonctionnel visible
+
+## Section technique
+
+La migration utilise le `logger` existant (`src/lib/logger.ts`) qui :
+- Supprime `info/debug/success` en production (`import.meta.env.DEV`)
+- Conserve `error` en toute circonstance
+- Supporte les logs structures via `logWithContext`
 
