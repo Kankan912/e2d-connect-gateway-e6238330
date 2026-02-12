@@ -1,32 +1,40 @@
 
 
-# Batch 6 : Nettoyage console.log, bug PhoenixMatchForm, migration vers logger
+# Batch 7 : Nettoyage console.error residuels, type safety, et coherence GestionPresences
 
 ## Problemes identifies
 
-### 1. BUG : PhoenixMatchForm ne sauvegarde rien
+### 1. GestionPresences.tsx - console.error residuel + import logger manquant
 
-**Fichier** : `src/components/forms/PhoenixMatchForm.tsx` (ligne 33-36)
+**Fichier** : `src/pages/GestionPresences.tsx` (ligne 120)
 
-Le formulaire de creation de match Phoenix ne fait qu'un `console.log` puis appelle `onSuccess()` sans jamais persister les donnees en base. C'est un formulaire factice.
+Un `console.error` direct subsiste alors que le fichier n'importe pas `logger`. Pour la coherence avec le Batch 6, migrer vers `logger.error`.
 
-**Action** : Identifier si ce formulaire est utilise et, si oui, implementer la sauvegarde reelle. Sinon, le documenter comme placeholder.
+**Action** : Ajouter l'import de `logger` et remplacer `console.error` par `logger.error`.
 
-### 2. Console.log en production : 152 occurrences
+### 2. sync-events.ts - `as any` pour contourner un type manquant
 
-Le projet dispose d'un `logger.ts` centralise qui supprime les logs en production, mais 152 `console.log` directs existent dans 8 fichiers, dont :
+**Fichier** : `src/lib/sync-events.ts` (lignes 43, 171)
 
-- `src/contexts/AuthContext.tsx` : 8 console.log de debug (profils, roles, permissions)
-- `src/hooks/useSessionManager.ts` : 7 console.log de debug session
-- `src/lib/sync-events.ts` : 5 console.log de sync
-- `src/hooks/useSportEventSync.ts` : 1 console.log
-- `src/lib/pdf-utils.ts` / `exportService.ts` : console.log dans les catch
+Le champ `statut_publication` est accede via `(match as any).statut_publication`. Cela signifie que le type Supabase genere ne contient pas ce champ, ou bien qu'il a ete ajoute en base sans regenerer les types. Ce cast masque des bugs potentiels si le champ est renomme ou supprime.
 
-**Action** : Remplacer les `console.log` par `logger.info/debug/error` pour que ces logs soient automatiquement supprimes en production.
+**Action** : Verifier si `statut_publication` existe dans la table `sport_e2d_matchs` via les types generes. Si oui, le cast est inutile. Si non, documenter le TODO pour regenerer les types.
 
-### 3. Console.error/warn : conserver mais standardiser
+### 3. useSport.ts - meme probleme `as any` sur `statut_publication`
 
-Les `console.error` dans les blocs `catch` (46 fichiers) sont acceptables car `logger.error` les transmet deja. Toutefois, les fichiers critiques (AuthContext, SessionManager) beneficieraient d'une migration vers `logger` pour le contexte structure.
+**Fichier** : `src/hooks/useSport.ts` (lignes 69-70, 108-110)
+
+Memes casts `as any` pour acceder a `statut_publication` et `id` sur le retour d'un insert/update.
+
+**Action** : Aligner avec la correction du point 2.
+
+### 4. useRealtimeUpdates.ts - cast `as any` sur `postgres_changes`
+
+**Fichier** : `src/hooks/useRealtimeUpdates.ts` (ligne 28)
+
+Le cast `'postgres_changes' as any` peut etre supprime car le SDK Supabase v2 supporte ce type nativement.
+
+**Action** : Retirer le cast `as any`.
 
 ---
 
@@ -34,25 +42,18 @@ Les `console.error` dans les blocs `catch` (46 fichiers) sont acceptables car `l
 
 | # | Fichier | Action |
 |---|---------|--------|
-| 1 | `src/components/forms/PhoenixMatchForm.tsx` | Verifier l'usage et soit implementer la sauvegarde, soit marquer comme TODO |
-| 2 | `src/contexts/AuthContext.tsx` | Remplacer 8 `console.log` par `logger.info/debug` |
-| 3 | `src/hooks/useSessionManager.ts` | Remplacer 7 `console.log` par `logger.debug` |
-| 4 | `src/lib/sync-events.ts` | Remplacer 5 `console.log` par `logger.info` |
-| 5 | `src/hooks/useSportEventSync.ts` | Remplacer 1 `console.log` par `logger.debug` |
-| 6 | `src/lib/pdf-utils.ts` | Remplacer `console.log` dans les catch par `logger.debug` |
-| 7 | `src/lib/exportService.ts` | Remplacer `console.log` dans le catch par `logger.debug` |
+| 1 | `src/pages/GestionPresences.tsx` | Ajouter import logger, remplacer console.error L120 par logger.error |
+| 2 | `src/lib/sync-events.ts` | Verifier types pour `statut_publication`, retirer `as any` si possible |
+| 3 | `src/hooks/useSport.ts` | Idem - retirer `as any` sur statut_publication |
+| 4 | `src/hooks/useRealtimeUpdates.ts` | Retirer `'postgres_changes' as any` |
 
 ## Impact
 
-- Zero `console.log` en production (hors ceux du logger lui-meme)
-- Le bug PhoenixMatchForm sera documente ou corrige
-- Meilleure observabilite avec logs structures
-- Aucun changement fonctionnel visible
+- Meilleure securite de type (detection de bugs a la compilation)
+- Coherence complete du logging (zero console.error direct dans les pages)
+- Aucun changement fonctionnel
 
 ## Section technique
 
-La migration utilise le `logger` existant (`src/lib/logger.ts`) qui :
-- Supprime `info/debug/success` en production (`import.meta.env.DEV`)
-- Conserve `error` en toute circonstance
-- Supporte les logs structures via `logWithContext`
+Pour les points 2-3, la verification se fait dans `src/integrations/supabase/types.ts` sur la definition de `sport_e2d_matchs.Row`. Si `statut_publication` n'y figure pas, il faudra regenerer les types avec `supabase gen types` apres la prochaine migration, et en attendant documenter le cast avec un commentaire `// TODO: regenerer types Supabase`.
 
