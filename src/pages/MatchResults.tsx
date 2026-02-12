@@ -63,7 +63,7 @@ export default function MatchResults() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-3 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <BackButton />
@@ -215,9 +215,9 @@ export default function MatchResults() {
                     </div>
                     {match.statut === 'termine' ? (
                       <div className="text-center min-w-[60px]">
-                        <p className="text-3xl font-bold">{match.score_e2d || 0}</p>
+                        <p className="text-2xl sm:text-3xl font-bold">{match.score_e2d || 0}</p>
                         <p className="text-sm text-muted-foreground">-</p>
-                        <p className="text-3xl font-bold">{match.score_adverse || 0}</p>
+                        <p className="text-2xl sm:text-3xl font-bold">{match.score_adverse || 0}</p>
                       </div>
                     ) : (
                       <div className="text-center min-w-[60px]">

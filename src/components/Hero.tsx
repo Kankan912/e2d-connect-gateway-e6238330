@@ -129,17 +129,17 @@ const Hero = () => {
           <div className="grid grid-cols-3 gap-6 mt-16 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom duration-700 delay-500">
             <div className="text-center">
               <Users className="w-8 h-8 text-secondary mx-auto mb-2" />
-              <div className="text-3xl font-bold text-white mb-1">{hero?.stat_1_nombre || 150}+</div>
+              <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{hero?.stat_1_nombre || 150}+</div>
               <div className="text-sm text-white/80">{hero?.stat_1_label || "Membres Actifs"}</div>
             </div>
             <div className="text-center">
               <Trophy className="w-8 h-8 text-secondary mx-auto mb-2" />
-              <div className="text-3xl font-bold text-white mb-1">{hero?.stat_2_nombre || 25}+</div>
+              <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{hero?.stat_2_nombre || 25}+</div>
               <div className="text-sm text-white/80">{hero?.stat_2_label || "Tournois par An"}</div>
             </div>
             <div className="text-center">
               <Heart className="w-8 h-8 text-secondary mx-auto mb-2" />
-              <div className="text-3xl font-bold text-white mb-1">{hero?.stat_3_nombre || 10}+</div>
+              <div className="text-2xl sm:text-3xl font-bold text-white mb-1">{hero?.stat_3_nombre || 10}+</div>
               <div className="text-sm text-white/80">{hero?.stat_3_label || "Années d'Existence"}</div>
             </div>
           </div>
