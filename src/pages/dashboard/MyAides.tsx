@@ -52,7 +52,7 @@ const MyAides = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Mes Aides</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Mes Aides</h1>
         <p className="text-muted-foreground mt-2">
           Aides et soutiens reçus de l'association
         </p>
@@ -68,7 +68,7 @@ const MyAides = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-pink-600">
+            <div className="text-2xl sm:text-3xl font-bold text-pink-600">
               {formatFCFA(getTotalAides())}
             </div>
           </CardContent>
@@ -81,7 +81,7 @@ const MyAides = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-600">
+            <div className="text-2xl sm:text-3xl font-bold text-purple-600">
               {aides?.length || 0}
             </div>
           </CardContent>

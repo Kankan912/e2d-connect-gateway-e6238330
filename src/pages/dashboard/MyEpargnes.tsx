@@ -32,7 +32,7 @@ const MyEpargnes = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Mes Épargnes</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Mes Épargnes</h1>
         <p className="text-muted-foreground mt-2">
           Historique de vos dépôts d'épargne
         </p>
@@ -48,9 +48,9 @@ const MyEpargnes = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">
-              {formatFCFA(getTotalEpargnes())}
-            </div>
+              <div className="text-2xl sm:text-3xl font-bold text-green-600">
+                {formatFCFA(getTotalEpargnes())}
+              </div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-blue-500">
@@ -61,9 +61,9 @@ const MyEpargnes = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">
-              {epargnes?.length || 0}
-            </div>
+              <div className="text-2xl sm:text-3xl font-bold text-blue-600">
+                {epargnes?.length || 0}
+              </div>
           </CardContent>
         </Card>
       </div>
