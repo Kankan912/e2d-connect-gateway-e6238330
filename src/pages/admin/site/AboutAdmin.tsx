@@ -90,7 +90,7 @@ const AboutAdmin = () => {
         <div className="flex items-center gap-4">
           <BackButton />
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Section À Propos</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Section À Propos</h1>
             <p className="text-muted-foreground">Gérez le contenu de la section À Propos du site</p>
           </div>
         </div>

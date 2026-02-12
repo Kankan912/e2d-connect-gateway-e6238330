@@ -186,11 +186,11 @@ export default function TontineConfig() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-3 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <BackButton />
-          <h1 className="text-3xl font-bold mt-4 flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold mt-4 flex items-center gap-2">
             <Settings className="h-8 w-8" />
             Configuration Tontine
           </h1>

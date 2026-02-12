@@ -112,7 +112,7 @@ export default function ExportsAdmin({ embedded = false }: ExportsAdminProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Download className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold">Exports Programmés</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold">Exports Programmés</h1>
             </div>
             <Button onClick={() => { setSelectedExport(null); setFormOpen(true); }}>
               <Plus className="h-4 w-4 mr-2" />

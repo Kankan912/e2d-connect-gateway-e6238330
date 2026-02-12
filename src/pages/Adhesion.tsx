@@ -168,7 +168,7 @@ const Adhesion = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-6xl">
           {/* Adhesion Types */}
           <div className="mb-16">
-            <h2 className="text-3xl font-bold text-center mb-12">Choisissez votre adhésion</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">Choisissez votre adhésion</h2>
             <div className="grid md:grid-cols-3 gap-6">
               {adhesionTypes.map((type) => {
                 const Icon = type.icon;

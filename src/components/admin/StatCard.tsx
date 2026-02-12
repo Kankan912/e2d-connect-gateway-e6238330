@@ -25,7 +25,7 @@ export const StatCard = ({ title, value, icon: Icon, trend, trendLabel, descript
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold text-foreground">{value}</div>
+        <div className="text-2xl sm:text-3xl font-bold text-foreground">{value}</div>
         {trend !== undefined && (
           <div className="flex items-center gap-1 mt-1">
             {isPositiveTrend && <TrendingUp className="h-4 w-4 text-green-600" />}

@@ -62,7 +62,7 @@ export default function ActivitiesAdmin() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Gestion des Activités</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Gestion des Activités</h1>
           <p className="text-muted-foreground">
             Gérez les activités proposées par l'association
           </p>

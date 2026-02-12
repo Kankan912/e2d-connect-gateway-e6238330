@@ -85,7 +85,7 @@ export default function RolesAdmin() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Gestion des Rôles & Permissions</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Gestion des Rôles & Permissions</h1>
           <p className="text-muted-foreground mt-1">
             Configurez les droits d'accès pour chaque rôle de l'application
           </p>

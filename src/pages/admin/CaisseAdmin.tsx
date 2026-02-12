@@ -206,7 +206,7 @@ const CaisseAdmin = () => {
           {/* En-tête */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Caisse</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Caisse</h1>
               <p className="text-muted-foreground">
                 Gestion du fond de caisse et des opérations financières
               </p>

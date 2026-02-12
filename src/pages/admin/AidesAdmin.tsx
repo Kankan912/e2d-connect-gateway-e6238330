@@ -241,12 +241,12 @@ export default function AidesAdmin() {
   const aidesDemandees = aides?.filter(a => a.statut === "demandee").length || 0;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-3 sm:p-6 space-y-6">
       <BackButton />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <HandHeart className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Gestion des Aides</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Gestion des Aides</h1>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExportPDF}>
@@ -273,7 +273,7 @@ export default function AidesAdmin() {
             <CardTitle className="text-sm text-muted-foreground">Total Aides</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{totalAides}</p>
+            <p className="text-2xl sm:text-3xl font-bold">{totalAides}</p>
           </CardContent>
         </Card>
         <Card>
@@ -281,7 +281,7 @@ export default function AidesAdmin() {
             <CardTitle className="text-sm text-muted-foreground">Aides Allouées</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-success">{aidesAllouees}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-success">{aidesAllouees}</p>
           </CardContent>
         </Card>
         <Card>
@@ -289,7 +289,7 @@ export default function AidesAdmin() {
             <CardTitle className="text-sm text-muted-foreground">Montant Total Alloué</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{montantTotal.toLocaleString()} FCFA</p>
+            <p className="text-2xl sm:text-3xl font-bold">{montantTotal.toLocaleString()} FCFA</p>
           </CardContent>
         </Card>
         <Card>
@@ -297,7 +297,7 @@ export default function AidesAdmin() {
             <CardTitle className="text-sm text-muted-foreground">En Attente</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-warning">{aidesDemandees}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-warning">{aidesDemandees}</p>
           </CardContent>
         </Card>
       </div>

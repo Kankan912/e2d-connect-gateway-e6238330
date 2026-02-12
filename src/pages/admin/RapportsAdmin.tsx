@@ -464,7 +464,7 @@ const RapportsAdmin = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Rapports Financiers</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Rapports Financiers</h1>
           <p className="text-muted-foreground">Synthèse et export des données financières</p>
         </div>
       </div>

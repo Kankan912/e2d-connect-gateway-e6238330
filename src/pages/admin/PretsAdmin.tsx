@@ -374,13 +374,13 @@ export default function PretsAdmin() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-3 sm:p-6 space-y-6">
       <BackButton />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-2">
           <DollarSign className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">Gestion des Prêts</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Gestion des Prêts</h1>
             <p className="text-sm text-muted-foreground">
               Reconduction: +{dureeReconduction} mois | Max: {maxReconductions} | Règle: Intérêt avant capital
             </p>
@@ -414,7 +414,7 @@ export default function PretsAdmin() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-blue-600">{pretsActifs}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-blue-600">{pretsActifs}</p>
             </CardContent>
           </Card>
           <Card className="border-l-4 border-l-orange-500">
@@ -425,7 +425,7 @@ export default function PretsAdmin() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-orange-600">{pretsPartiels}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-orange-600">{pretsPartiels}</p>
             </CardContent>
           </Card>
           <Card className="border-l-4 border-l-red-500">

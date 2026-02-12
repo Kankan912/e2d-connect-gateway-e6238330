@@ -58,7 +58,7 @@ export default function PartnersAdmin() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Gestion des Partenaires</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Gestion des Partenaires</h1>
           <p className="text-muted-foreground">
             Gérez les partenaires de l'association
           </p>

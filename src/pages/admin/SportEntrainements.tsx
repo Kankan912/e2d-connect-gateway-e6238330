@@ -4,11 +4,11 @@ import PhoenixEntrainementsManager from "@/components/PhoenixEntrainementsManage
 
 export default function SportEntrainements() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-3 sm:p-6 space-y-6">
       <BackButton />
       <div className="flex items-center gap-2">
         <Calendar className="h-8 w-8 text-primary" />
-        <h1 className="text-3xl font-bold">Gestion des Entraînements</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Gestion des Entraînements</h1>
       </div>
       <p className="text-muted-foreground">
         Planification et suivi des entraînements Phoenix
