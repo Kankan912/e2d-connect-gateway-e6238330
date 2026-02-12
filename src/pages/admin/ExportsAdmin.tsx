@@ -105,7 +105,7 @@ export default function ExportsAdmin({ embedded = false }: ExportsAdminProps) {
   };
 
   return (
-    <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
+    <div className={embedded ? "space-y-6" : "container mx-auto p-3 sm:p-6 space-y-6"}>
       {!embedded && (
         <>
           <BackButton />

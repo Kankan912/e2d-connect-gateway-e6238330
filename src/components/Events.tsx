@@ -191,15 +191,15 @@ const Events = () => {
                 <div className="absolute bottom-0 left-0 right-0 p-8">
                   <div className="grid grid-cols-3 gap-6 text-white text-center">
                     <div>
-                      <div className="text-3xl font-bold">25+</div>
+                      <div className="text-2xl sm:text-3xl font-bold">25+</div>
                       <div className="text-sm text-white/80">Matchs</div>
                     </div>
                     <div>
-                      <div className="text-3xl font-bold">12+</div>
+                      <div className="text-2xl sm:text-3xl font-bold">12+</div>
                       <div className="text-sm text-white/80">Entraînements</div>
                     </div>
                     <div>
-                      <div className="text-3xl font-bold">8+</div>
+                      <div className="text-2xl sm:text-3xl font-bold">8+</div>
                       <div className="text-sm text-white/80">Événements</div>
                     </div>
                   </div>

@@ -157,7 +157,7 @@ export default function NotificationsTemplatesAdmin({ embedded = false }: Notifi
 
   if (isLoading) {
     return (
-      <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
+      <div className={embedded ? "space-y-6" : "container mx-auto p-3 sm:p-6 space-y-6"}>
         {!embedded && <BackButton />}
         <Skeleton className="h-10 w-64" />
         <div className="grid gap-4 md:grid-cols-3">
@@ -169,7 +169,7 @@ export default function NotificationsTemplatesAdmin({ embedded = false }: Notifi
   }
 
   return (
-    <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
+    <div className={embedded ? "space-y-6" : "container mx-auto p-3 sm:p-6 space-y-6"}>
       {!embedded && <BackButton />}
       
       <div className="flex items-center justify-between">

@@ -90,7 +90,7 @@ export default function PretsConfigAdmin({ embedded = false }: PretsConfigAdminP
 
   if (isLoading) {
     return (
-      <div className={embedded ? "flex items-center justify-center py-8" : "container mx-auto p-6 flex items-center justify-center"}>
+      <div className={embedded ? "flex items-center justify-center py-8" : "container mx-auto p-3 sm:p-6 flex items-center justify-center"}>
         <RefreshCw className="h-8 w-8 animate-spin text-primary" />
       </div>
     );

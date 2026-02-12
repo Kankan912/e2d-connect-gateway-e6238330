@@ -187,7 +187,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
   // Afficher une erreur propre en cas de problème de chargement
   if (isError) {
     return (
-      <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
+      <div className={embedded ? "space-y-6" : "container mx-auto p-3 sm:p-6 space-y-6"}>
         {!embedded && <BackButton />}
         <div className="p-8 text-center">
           <AlertTriangle className="h-16 w-16 text-destructive mx-auto mb-4" />
@@ -210,7 +210,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
   }
 
   return (
-    <div className={embedded ? "space-y-6" : "container mx-auto p-6 space-y-6"}>
+    <div className={embedded ? "space-y-6" : "container mx-auto p-3 sm:p-6 space-y-6"}>
       {!embedded && <BackButton />}
       <div className="flex items-center justify-between">
         {!embedded && (
