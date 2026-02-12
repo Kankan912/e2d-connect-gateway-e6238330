@@ -554,7 +554,7 @@ export default function Reunions() {
         throw error;
       }
       
-      setReunions((data || []) as any);
+      setReunions((data || []) as Reunion[]);
     } catch (error: any) {
       console.error('Erreur lors du chargement des réunions:', error);
       toast({
@@ -1198,7 +1198,7 @@ export default function Reunions() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="sm:max-w-[600px]">
           <ReunionForm
-            initialData={editingReunion as any}
+            initialData={editingReunion}
             onSuccess={handleFormSuccess}
           />
         </DialogContent>

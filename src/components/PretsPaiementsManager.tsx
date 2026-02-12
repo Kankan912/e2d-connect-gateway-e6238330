@@ -388,7 +388,7 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
                     </div>
                     <div>
                       <Label>Type de paiement</Label>
-                      <Select value={typePaiement} onValueChange={(v) => setTypePaiement(v as any)}>
+                      <Select value={typePaiement} onValueChange={(v) => setTypePaiement(v as "interet" | "capital" | "mixte")}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
