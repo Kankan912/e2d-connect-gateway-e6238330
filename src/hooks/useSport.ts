@@ -66,8 +66,8 @@ export const useCreateE2DMatch = () => {
       queryClient.invalidateQueries({ queryKey: ["e2d-matchs"] });
       
       // Synchroniser vers le site si publié
-      if (data && (data as any).statut_publication === 'publie') {
-        await syncE2DMatchToEvent((data as any).id);
+      if (data && data.statut_publication === 'publie') {
+        await syncE2DMatchToEvent(data.id);
       }
       
       toast({
@@ -105,11 +105,10 @@ export const useUpdateE2DMatch = () => {
       
       // Synchroniser vers le site selon le statut
       if (data) {
-        const match = data as any;
-        if (match.statut_publication === 'publie') {
-          await syncE2DMatchToEvent(match.id);
+        if (data.statut_publication === 'publie') {
+          await syncE2DMatchToEvent(data.id);
         } else {
-          await removeE2DEventFromCMS(match.id);
+          await removeE2DEventFromCMS(data.id);
         }
       }
       
