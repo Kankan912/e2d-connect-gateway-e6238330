@@ -120,6 +120,17 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
     mutationFn: async () => {
       const montantPaye = parseFloat(montant);
       
+      // Protection contre les montants négatifs ou nuls
+      if (montantPaye <= 0) {
+        throw new Error("Le montant doit être supérieur à 0");
+      }
+
+      // Protection: limiter le montant au reste à payer
+      const maxPayable = totalDu;
+      if (montantPaye > maxPayable && maxPayable > 0) {
+        throw new Error(`Le montant ne peut pas dépasser le reste à payer (${formatFCFA(maxPayable)})`);
+      }
+
       // Insérer le paiement
       const { error } = await supabase.from('prets_paiements').insert({
         pret_id: pretId,
@@ -151,10 +162,13 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
       // Calculer le nouveau solde restant
       const nouveauSolde = totalDu - montantPaye;
       
+      // Protection: garantir qu'aucune valeur ne devienne négative
+      nouveauCapitalPaye = Math.min(nouveauCapitalPaye, capitalInitial);
+      
       const updates: any = { 
         montant_paye: nouveauTotalPaye,
-        interet_paye: nouvelInteretPaye,
-        capital_paye: nouveauCapitalPaye,
+        interet_paye: Math.max(0, nouvelInteretPaye),
+        capital_paye: Math.max(0, nouveauCapitalPaye),
         montant_total_du: Math.max(0, nouveauSolde),
       };
 

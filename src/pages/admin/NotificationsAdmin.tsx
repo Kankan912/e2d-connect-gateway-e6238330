@@ -63,6 +63,26 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
     },
   });
 
+  // Fetch envois détaillés pour traçabilité
+  const { data: envoisStats } = useQuery({
+    queryKey: ["notifications-envois-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notifications_envois")
+        .select("campagne_id, statut");
+      if (error) throw error;
+      // Agréger par campagne
+      const stats: Record<string, { envoyes: number; echecs: number; en_attente: number }> = {};
+      data?.forEach((e) => {
+        if (!stats[e.campagne_id]) stats[e.campagne_id] = { envoyes: 0, echecs: 0, en_attente: 0 };
+        if (e.statut === "sent" || e.statut === "envoye") stats[e.campagne_id].envoyes++;
+        else if (e.statut === "failed" || e.statut === "echec") stats[e.campagne_id].echecs++;
+        else stats[e.campagne_id].en_attente++;
+      });
+      return stats;
+    },
+  });
+
   // Fetch templates pour les déclencheurs
   const { data: templates } = useQuery({
     queryKey: ["notifications-templates"],
@@ -326,6 +346,8 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
                   <TableHead>Type</TableHead>
                   <TableHead>Destinataires</TableHead>
                   <TableHead>Envoyés</TableHead>
+                  <TableHead>Échecs</TableHead>
+                  <TableHead>En attente</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Date d'envoi</TableHead>
                   <TableHead>Actions</TableHead>
@@ -337,7 +359,25 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
                     <TableCell className="font-medium">{campagne.nom}</TableCell>
                     <TableCell>{campagne.type_campagne}</TableCell>
                     <TableCell>{campagne.nb_destinataires || 0}</TableCell>
-                    <TableCell>{campagne.nb_envoyes || 0}</TableCell>
+                    <TableCell>
+                      <span className="text-green-600 font-medium">
+                        {envoisStats?.[campagne.id]?.envoyes ?? campagne.nb_envoyes ?? 0}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {(envoisStats?.[campagne.id]?.echecs ?? campagne.nb_erreurs ?? 0) > 0 ? (
+                        <span className="text-destructive font-medium">
+                          {envoisStats?.[campagne.id]?.echecs ?? campagne.nb_erreurs ?? 0}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-muted-foreground">
+                        {envoisStats?.[campagne.id]?.en_attente ?? 0}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={
