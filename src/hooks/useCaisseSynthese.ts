@@ -24,10 +24,23 @@ export const useCaisseSynthese = () => {
   return useQuery({
     queryKey: ["caisse-synthese"],
     queryFn: async (): Promise<CaisseSynthese> => {
-      // Récupérer toutes les opérations de caisse
-      const { data: operations } = await supabase
-        .from("fond_caisse_operations")
-        .select("*");
+      // Pagination: récupérer TOUTES les opérations par blocs de 1000
+      const operations: Array<any> = [];
+      let from = 0;
+      const PAGE_SIZE = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("fond_caisse_operations")
+          .select("*")
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) throw error;
+        if (data) operations.push(...data);
+        hasMore = (data?.length || 0) === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
 
       // Calculer les totaux par catégorie
       const totalEpargnes = operations

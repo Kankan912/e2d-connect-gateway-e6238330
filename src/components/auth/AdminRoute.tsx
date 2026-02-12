@@ -8,7 +8,7 @@ interface AdminRouteProps {
   allowedRoles?: string[];
 }
 
-export const AdminRoute = ({ children, allowedRoles = ["administrateur", "tresorier"] }: AdminRouteProps) => {
+export const AdminRoute = ({ children, allowedRoles = ["administrateur", "tresorier", "super_admin", "secretaire_general"] }: AdminRouteProps) => {
   const { userRole, loading } = useAuth();
 
   // Mapper les anciens noms de rôles vers les nouveaux (pour compatibilité)

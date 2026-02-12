@@ -109,6 +109,10 @@ export const useCreateCotisation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-cotisations'] });
       queryClient.invalidateQueries({ queryKey: ['all-cotisations'] });
+      queryClient.invalidateQueries({ queryKey: ['cotisations-reunion'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-operations'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-synthese'] });
       toast({ title: "Succès", description: "Cotisation créée avec succès" });
     },
     onError: (error) => {
@@ -136,6 +140,10 @@ export const useUpdateCotisation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-cotisations'] });
       queryClient.invalidateQueries({ queryKey: ['all-cotisations'] });
+      queryClient.invalidateQueries({ queryKey: ['cotisations-reunion'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-operations'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-synthese'] });
       toast({ title: "Succès", description: "Cotisation mise à jour avec succès" });
     },
     onError: (error) => {
@@ -160,6 +168,9 @@ export const useDeleteCotisation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-cotisations'] });
       queryClient.invalidateQueries({ queryKey: ['all-cotisations'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-operations'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-synthese'] });
       toast({ title: "Succès", description: "Cotisation supprimée avec succès" });
     },
     onError: (error) => {
