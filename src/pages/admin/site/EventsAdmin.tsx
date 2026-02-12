@@ -95,7 +95,7 @@ export default function EventsAdmin() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Gestion des Événements</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Gestion des Événements</h1>
           <p className="text-muted-foreground">
             Gérez les événements à venir de l'association
           </p>

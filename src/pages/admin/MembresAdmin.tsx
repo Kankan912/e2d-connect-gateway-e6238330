@@ -216,7 +216,7 @@ export default function MembresAdmin() {
   const membresPhoenix = membres.filter(m => m.est_adherent_phoenix).length;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-3 sm:p-6 space-y-6">
       {/* En-tête */}
       <div className="flex items-center justify-between">
         <div>
@@ -253,7 +253,7 @@ export default function MembresAdmin() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{totalMembres}</div>
+            <div className="text-2xl sm:text-3xl font-bold">{totalMembres}</div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-blue-500">
@@ -264,7 +264,7 @@ export default function MembresAdmin() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{membresActifs}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-blue-600">{membresActifs}</div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-cyan-500">
@@ -275,7 +275,7 @@ export default function MembresAdmin() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-cyan-600">{membresE2D}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-cyan-600">{membresE2D}</div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-red-500">
@@ -286,7 +286,7 @@ export default function MembresAdmin() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">{membresPhoenix}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-red-600">{membresPhoenix}</div>
           </CardContent>
         </Card>
       </div>

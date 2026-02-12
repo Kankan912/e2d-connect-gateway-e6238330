@@ -54,7 +54,7 @@ export default function PhoenixDashboardAnnuel() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Dashboard Annuel Phoenix {new Date().getFullYear()}</h2>
+      <h2 className="text-xl sm:text-2xl font-bold">Dashboard Annuel Phoenix {new Date().getFullYear()}</h2>
 
       <div className="grid md:grid-cols-4 gap-4">
         <StatCard

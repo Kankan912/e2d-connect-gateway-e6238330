@@ -53,7 +53,7 @@ export const CaisseDashboard = () => {
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${(stats?.solde_global || 0) >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+            <div className={`text-2xl sm:text-3xl font-bold ${(stats?.solde_global || 0) >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
               {formatFCFA(stats?.solde_global || 0)}
             </div>
             <p className="text-xs text-muted-foreground">

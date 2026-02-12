@@ -177,7 +177,7 @@ export default function NotificationsTemplatesAdmin({ embedded = false }: Notifi
           <div className="flex items-center gap-2">
             <Mail className="h-8 w-8 text-primary" />
             <div>
-              <h1 className="text-3xl font-bold">Templates de Notifications</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold">Templates de Notifications</h1>
               <p className="text-muted-foreground">Gérez les modèles d'emails automatiques</p>
             </div>
           </div>
@@ -195,7 +195,7 @@ export default function NotificationsTemplatesAdmin({ embedded = false }: Notifi
             <CardTitle className="text-sm text-muted-foreground">Total Templates</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{templates?.length || 0}</p>
+            <p className="text-2xl sm:text-3xl font-bold">{templates?.length || 0}</p>
           </CardContent>
         </Card>
         <Card>
@@ -203,7 +203,7 @@ export default function NotificationsTemplatesAdmin({ embedded = false }: Notifi
             <CardTitle className="text-sm text-muted-foreground">Actifs</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-green-600">
+            <p className="text-2xl sm:text-3xl font-bold text-green-600">
               {templates?.filter(t => t.actif).length || 0}
             </p>
           </CardContent>
@@ -213,7 +213,7 @@ export default function NotificationsTemplatesAdmin({ embedded = false }: Notifi
             <CardTitle className="text-sm text-muted-foreground">Inactifs</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold text-orange-600">
+            <p className="text-2xl sm:text-3xl font-bold text-orange-600">
               {templates?.filter(t => !t.actif).length || 0}
             </p>
           </CardContent>
@@ -223,7 +223,7 @@ export default function NotificationsTemplatesAdmin({ embedded = false }: Notifi
             <CardTitle className="text-sm text-muted-foreground">Catégories</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">
+            <p className="text-2xl sm:text-3xl font-bold">
               {new Set(templates?.map(t => t.categorie)).size || 0}
             </p>
           </CardContent>

@@ -216,7 +216,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
         {!embedded && (
           <div className="flex items-center gap-2">
             <Bell className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold">Notifications & Campagnes</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Notifications & Campagnes</h1>
           </div>
         )}
         <Button onClick={() => setFormOpen(true)} className={embedded ? "ml-auto" : ""}>
@@ -231,7 +231,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
             <CardTitle>Total Campagnes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{campagnes?.length || 0}</p>
+            <p className="text-2xl sm:text-3xl font-bold">{campagnes?.length || 0}</p>
           </CardContent>
         </Card>
         <Card>
@@ -239,7 +239,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
             <CardTitle>En Cours</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">
+            <p className="text-2xl sm:text-3xl font-bold">
               {campagnes?.filter((c) => c.statut === "en_cours").length || 0}
             </p>
           </CardContent>
@@ -249,7 +249,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
             <CardTitle>Envoyées</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">
+            <p className="text-2xl sm:text-3xl font-bold">
               {campagnes?.filter((c) => c.statut === "envoyee").length || 0}
             </p>
           </CardContent>
@@ -259,7 +259,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
             <CardTitle>Taux d'ouverture</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">---%</p>
+            <p className="text-2xl sm:text-3xl font-bold">---%</p>
           </CardContent>
         </Card>
       </div>

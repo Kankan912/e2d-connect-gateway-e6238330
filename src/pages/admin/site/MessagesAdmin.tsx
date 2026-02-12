@@ -195,7 +195,7 @@ const MessagesAdmin = () => {
         <div className="flex items-center gap-4">
           <BackButton />
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Messages de Contact</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Messages de Contact</h1>
             <p className="text-muted-foreground">Gérez les messages reçus via le formulaire de contact</p>
           </div>
         </div>

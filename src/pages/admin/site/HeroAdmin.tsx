@@ -89,7 +89,7 @@ export default function HeroAdmin() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Gestion du Hero</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Gestion du Hero</h1>
         <p className="text-muted-foreground">
           Gérez la section principale de la page d'accueil
         </p>

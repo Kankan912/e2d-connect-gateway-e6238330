@@ -214,23 +214,23 @@ export default function PretsConfigAdmin({ embedded = false }: PretsConfigAdminP
         <CardContent>
           <div className="grid gap-4 md:grid-cols-5">
             <div className="text-center p-4 bg-background rounded-lg border">
-              <p className="text-3xl font-bold text-primary">{dureeMois}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-primary">{dureeMois}</p>
               <p className="text-sm text-muted-foreground">mois (durée initiale)</p>
             </div>
             <div className="text-center p-4 bg-background rounded-lg border">
-              <p className="text-3xl font-bold text-blue-600">+{dureeReconduction}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-blue-600">+{dureeReconduction}</p>
               <p className="text-sm text-muted-foreground">mois par reconduction</p>
             </div>
             <div className="text-center p-4 bg-background rounded-lg border">
-              <p className="text-3xl font-bold text-orange-600">{maxReconductions}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-orange-600">{maxReconductions}</p>
               <p className="text-sm text-muted-foreground">reconductions max</p>
             </div>
             <div className="text-center p-4 bg-background rounded-lg border">
-              <p className="text-3xl font-bold text-green-600">{tauxInteretDefaut}%</p>
+              <p className="text-2xl sm:text-3xl font-bold text-green-600">{tauxInteretDefaut}%</p>
               <p className="text-sm text-muted-foreground">taux d'intérêt</p>
             </div>
             <div className="text-center p-4 bg-background rounded-lg border">
-              <p className="text-3xl font-bold">{interetAvantCapital ? "Oui" : "Non"}</p>
+              <p className="text-2xl sm:text-3xl font-bold">{interetAvantCapital ? "Oui" : "Non"}</p>
               <p className="text-sm text-muted-foreground">intérêt d'abord</p>
             </div>
           </div>
@@ -255,13 +255,13 @@ export default function PretsConfigAdmin({ embedded = false }: PretsConfigAdminP
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-3 sm:p-6 space-y-6">
       <BackButton />
       
       <div className="flex items-center gap-3">
         <Settings className="h-8 w-8 text-primary" />
         <div>
-          <h1 className="text-3xl font-bold">Configuration des Prêts</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Configuration des Prêts</h1>
           <p className="text-muted-foreground">Paramètres globaux pour la gestion des prêts</p>
         </div>
       </div>
