@@ -5022,6 +5022,7 @@ export type Database = {
         Args: { montant_paye: number; montant_total: number }
         Returns: string
       }
+      get_solde_caisse: { Args: never; Returns: number }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

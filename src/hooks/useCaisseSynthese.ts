@@ -149,7 +149,7 @@ export const useCaisseSynthese = () => {
         pourcentageEmpruntable,
       };
     },
-    refetchInterval: 30000, // Actualiser toutes les 30 secondes
-    staleTime: 10000, // Données considérées fraîches pendant 10s
+    refetchInterval: 2 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 };
