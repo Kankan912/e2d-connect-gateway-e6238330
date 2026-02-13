@@ -102,9 +102,9 @@ export default function CompteRenduForm({
       form.reset({ numero_ordre: points.length + 1, sujet: '', description: '', resolution: '', decisions: '' });
       setEditingPoint(null);
       loadPoints();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur ajout point:', error);
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+      toast({ title: 'Erreur', description: error instanceof Error ? error.message : "Erreur", variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -122,8 +122,8 @@ export default function CompteRenduForm({
       if (error) throw error;
       toast({ title: 'Succès', description: 'Point supprimé' });
       loadPoints();
-    } catch (error: any) {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Erreur', description: error instanceof Error ? error.message : "Erreur", variant: 'destructive' });
     }
   };
 

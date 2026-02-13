@@ -69,10 +69,8 @@ class Logger {
     // Toujours logger les audits
     console.log(`🔐 [AUDIT] ${message}`, auditLog);
 
-    // En production, envoyer à un service d'audit
-    if (!this.isDevelopment) {
-      this.sendToAuditService(auditLog);
-    }
+    // Envoyer à la table audit_logs
+    this.sendToAuditService(auditLog);
   }
 
   // Logger structuré avec contexte
@@ -106,38 +104,28 @@ class Logger {
   /**
    * Placeholder pour intégration Sentry
    * TODO: Installer @sentry/browser et configurer
-   * npm install @sentry/browser
-   * 
-   * import * as Sentry from '@sentry/browser';
-   * Sentry.init({ dsn: 'YOUR_SENTRY_DSN' });
    */
   private sendToSentry(level: string, message: string, error?: unknown, context?: LogContext) {
-    // Placeholder pour Sentry
-    // Décommenter après installation de @sentry/browser:
-    // 
-    // if (typeof Sentry !== 'undefined') {
-    //   Sentry.captureMessage(message, {
-    //     level: level as Sentry.SeverityLevel,
-    //     extra: { error, context }
-    //   });
-    // }
     if (this.isDevelopment) {
       console.error('[SENTRY PLACEHOLDER]', { level, message, error, context });
     }
   }
 
   /**
-   * Placeholder pour service d'audit externe
-   * TODO: Envoyer les audits à un service comme LogRocket, Datadog, ou table Supabase
+   * Persiste les logs d'audit dans la table audit_logs de Supabase
    */
-  private sendToAuditService(auditLog: Record<string, unknown>) {
-    // Placeholder - envoyer à Supabase ou service externe
-    // 
-    // supabase.from('audit_logs').insert(auditLog);
-    // 
-    // ou LogRocket:
-    // LogRocket.track('audit', auditLog);
-    console.log('[AUDIT SERVICE PLACEHOLDER]', auditLog);
+  private async sendToAuditService(auditLog: Record<string, unknown>) {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      await supabase.from('audit_logs').insert([{
+        action: String(auditLog.action || auditLog.message || 'unknown'),
+        table_name: String(auditLog.resource || ''),
+        user_id: (auditLog.userId as string) || null,
+        new_data: JSON.parse(JSON.stringify(auditLog)),
+      }]);
+    } catch (e) {
+      console.error('[AUDIT] Failed to persist audit log:', e);
+    }
   }
 }
 

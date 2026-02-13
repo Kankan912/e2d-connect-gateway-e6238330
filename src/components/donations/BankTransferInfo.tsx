@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Copy, Check, Building2 } from "lucide-react";
+import { Copy, Check, Building2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { getErrorMessage } from "@/lib/utils";
 import type { PaymentConfig } from "@/types/donations";
 
 interface BankTransferInfoProps {
@@ -15,6 +17,7 @@ interface BankTransferInfoProps {
 const BankTransferInfo = ({ config, donorEmail, onNotificationSent }: BankTransferInfoProps) => {
   const [copied, setCopied] = useState(false);
   const [email, setEmail] = useState(donorEmail);
+  const [sending, setSending] = useState(false);
   const { toast } = useToast();
 
   const copyToClipboard = async (text: string) => {
@@ -35,14 +38,54 @@ const BankTransferInfo = ({ config, donorEmail, onNotificationSent }: BankTransf
     }
   };
 
-  const handleSendNotification = () => {
-    // TODO: Implémenter l'envoi réel via edge function send-email
-    // Pour l'instant, on informe l'utilisateur que la fonctionnalité n'est pas encore disponible
-    toast({
-      title: "Fonctionnalité à venir",
-      description: "L'envoi de récapitulatif par email sera disponible prochainement",
-    });
-    onNotificationSent();
+  const handleSendNotification = async () => {
+    if (!email) {
+      toast({ title: "Erreur", description: "Veuillez saisir un email", variant: "destructive" });
+      return;
+    }
+
+    setSending(true);
+    try {
+      const bankData = config.config_data;
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #2563eb;">Récapitulatif de virement - E2D</h1>
+          <p>Merci pour votre don ! Voici les informations pour effectuer votre virement bancaire :</p>
+          <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Banque :</strong> ${bankData.bank_name || 'Banque E2D'}</p>
+            <p><strong>Titulaire :</strong> ${bankData.account_holder || 'Association E2D'}</p>
+            <p><strong>IBAN :</strong> <code>${bankData.iban || 'Non configuré'}</code></p>
+            <p><strong>BIC/SWIFT :</strong> ${bankData.bic || 'Non configuré'}</p>
+          </div>
+          ${bankData.instructions ? `<p style="color: #6b7280;">${bankData.instructions}</p>` : ''}
+          <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
+          <p style="font-size: 12px; color: #9ca3af;">
+            Veuillez indiquer votre nom complet comme référence du virement.<br/>
+            Le traitement peut prendre 2-3 jours ouvrés.
+          </p>
+        </div>
+      `;
+
+      const { error } = await supabase.functions.invoke('send-email', {
+        body: { to: email, subject: 'Récapitulatif virement - E2D', html: emailHtml }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Email envoyé",
+        description: `Le récapitulatif a été envoyé à ${email}`,
+      });
+      onNotificationSent();
+    } catch (error: unknown) {
+      toast({
+        title: "Erreur",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   const bankData = config.config_data;
@@ -108,8 +151,16 @@ const BankTransferInfo = ({ config, donorEmail, onNotificationSent }: BankTransf
         <Button 
           onClick={handleSendNotification}
           className="w-full"
+          disabled={sending}
         >
-          Envoyer un récapitulatif par email
+          {sending ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Envoi en cours...
+            </>
+          ) : (
+            "Envoyer un récapitulatif par email"
+          )}
         </Button>
       </div>
 

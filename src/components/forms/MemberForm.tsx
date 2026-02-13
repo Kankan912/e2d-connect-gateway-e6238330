@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState, useRef, useEffect } from "react";
 import { Upload, User, Loader2, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
 
@@ -123,8 +124,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
           est_adherent_phoenix: member.est_adherent_phoenix || false,
           equipe_e2d: member.equipe_e2d || "",
           equipe_phoenix: member.equipe_phoenix || "",
-          // TODO: equipe_jaune_rouge exists in DB but is missing from generated Supabase types - cast needed until types are regenerated
-          equipe_jaune_rouge: ((member as unknown as Record<string, unknown>).equipe_jaune_rouge as "Jaune" | "Rouge" | "none") || "none",
+          equipe_jaune_rouge: (((member as unknown as Record<string, unknown>).equipe_jaune_rouge === "Jaune" || (member as unknown as Record<string, unknown>).equipe_jaune_rouge === "Rouge") ? (member as unknown as Record<string, unknown>).equipe_jaune_rouge as "Jaune" | "Rouge" : "none"),
           fonction: member.fonction || "none",
           photo_url: member.photo_url || "",
           role_id: currentRoleId || "",
@@ -207,11 +207,11 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
         title: "Photo uploadée",
         description: "La photo a été téléchargée avec succès",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur upload:', error);
       toast({
         title: "Erreur d'upload",
-        description: error.message || "Impossible de télécharger l'image",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     } finally {

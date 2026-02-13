@@ -170,11 +170,11 @@ export default function NotifierReunionModal({
       });
 
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur envoi notification:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'envoyer la notification",
+        description: error instanceof Error ? error.message : "Impossible d'envoyer la notification",
         variant: "destructive",
       });
     } finally {

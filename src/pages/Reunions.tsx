@@ -128,12 +128,13 @@ function RappelsTab() {
           description: data.message || "Aucune réunion ou membre trouvé",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur envoi rappels:", error);
-      setLastResult({ error: error.message });
+      const msg = error instanceof Error ? error.message : "Erreur inconnue";
+      setLastResult({ error: msg });
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'envoyer les rappels",
+        description: msg,
         variant: "destructive",
       });
     } finally {
@@ -555,11 +556,11 @@ export default function Reunions() {
       }
       
       setReunions((data || []) as Reunion[]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur lors du chargement des réunions:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de charger les réunions: " + error.message,
+        description: "Impossible de charger les réunions: " + (error instanceof Error ? error.message : "Erreur"),
         variant: "destructive",
       });
     } finally {
@@ -579,8 +580,8 @@ export default function Reunions() {
       if (error) throw error;
       toast({ title: "Succès", description: "Réunion supprimée avec succès" });
       loadReunions();
-    } catch (error: any) {
-      toast({ title: "Erreur", description: "Impossible de supprimer la réunion: " + error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Erreur", description: "Impossible de supprimer la réunion: " + (error instanceof Error ? error.message : "Erreur"), variant: "destructive" });
     }
   };
 

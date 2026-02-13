@@ -211,10 +211,10 @@ export default function UserMemberLinkManager() {
       setSelectedMember(null);
       setNewAccountEmail("");
       setTempPassword("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({ 
         title: "Erreur de création", 
-        description: error.message || "Impossible de créer le compte", 
+        description: error instanceof Error ? error.message : "Impossible de créer le compte", 
         variant: "destructive" 
       });
     } finally {

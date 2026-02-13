@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { AlertTriangle, Unlock, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -112,11 +113,11 @@ export default function ReouvrirReunionModal({
 
       onOpenChange(false);
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur réouverture:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de rouvrir la réunion",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     } finally {

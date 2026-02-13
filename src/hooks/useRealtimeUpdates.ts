@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const POSTGRES_CHANGES: any = 'postgres_changes';
+
 interface UseRealtimeUpdatesOptions {
   table: string;
   onUpdate: () => void;
@@ -25,7 +28,7 @@ export function useRealtimeUpdates({
     const channel = supabase
       .channel(channelName)
       .on(
-        'postgres_changes' as any,
+        POSTGRES_CHANGES,
         { event, schema: 'public', table },
         () => callbackRef.current()
       )

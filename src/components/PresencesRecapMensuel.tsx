@@ -101,10 +101,10 @@ export default function PresencesRecapMensuel() {
         title: "Export réussi",
         description: `Le récapitulatif mensuel a été exporté en ${exportFormat.toUpperCase()}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Erreur d'export",
         variant: "destructive",
       });
     }

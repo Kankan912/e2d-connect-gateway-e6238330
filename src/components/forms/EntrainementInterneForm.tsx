@@ -66,10 +66,10 @@ export default function EntrainementInterneForm({ open, onOpenChange, onSuccess 
       form.reset();
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible d'enregistrer l'entraînement",
+        description: error instanceof Error ? error.message : "Impossible d'enregistrer l'entraînement",
         variant: "destructive",
       });
     }

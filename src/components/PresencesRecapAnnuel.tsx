@@ -131,10 +131,10 @@ export default function PresencesRecapAnnuel() {
         title: "Export réussi",
         description: `Le bilan annuel a été exporté en ${format.toUpperCase()}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Erreur d'export",
         variant: "destructive",
       });
     }

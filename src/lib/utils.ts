@@ -39,3 +39,12 @@ export function formatCurrency(
 export function formatFCFA(amount: number): string {
   return formatCurrency(amount, 'FCFA');
 }
+
+/**
+ * Safely extract an error message from an unknown error type
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Une erreur inattendue est survenue';
+}

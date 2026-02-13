@@ -54,10 +54,10 @@ const Auth = () => {
         description: "Bienvenue sur E2D Connect !",
       });
       navigate("/dashboard");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur de connexion",
-        description: error.message || "Email ou mot de passe incorrect",
+        description: error instanceof Error ? error.message : "Email ou mot de passe incorrect",
         variant: "destructive",
       });
     } finally {
@@ -98,10 +98,10 @@ const Auth = () => {
       setSignUpNom("");
       setSignUpPrenom("");
       setSignUpTelephone("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur d'inscription",
-        description: error.message || "Une erreur est survenue lors de l'inscription",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'inscription",
         variant: "destructive",
       });
     } finally {
