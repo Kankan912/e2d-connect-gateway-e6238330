@@ -132,10 +132,10 @@ export default function PresencesEtatAbsences() {
         title: "Export réussi",
         description: `L'état des absences a été exporté en ${format.toUpperCase()}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Erreur d'export",
         variant: "destructive",
       });
     }

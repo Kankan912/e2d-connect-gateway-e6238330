@@ -109,10 +109,10 @@ export default function SportE2D() {
       } else {
         throw new Error("Échec de la synchronisation");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de synchroniser",
+        description: error instanceof Error ? error.message : "Impossible de synchroniser",
         variant: "destructive",
       });
     } finally {

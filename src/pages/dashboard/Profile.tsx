@@ -101,10 +101,10 @@ const Profile = () => {
         title: "Profil mis à jour",
         description: "Vos informations ont été enregistrées avec succès",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Une erreur est survenue",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
     } finally {
@@ -156,10 +156,10 @@ const Profile = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de modifier le mot de passe",
+        description: error instanceof Error ? error.message : "Impossible de modifier le mot de passe",
         variant: "destructive",
       });
     } finally {

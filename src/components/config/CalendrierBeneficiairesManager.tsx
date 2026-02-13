@@ -332,10 +332,10 @@ export default function CalendrierBeneficiairesManager() {
         title: "Notification envoyée",
         description: `${data?.emailsSent || 0} email(s) envoyé(s) aux membres`
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur d'envoi",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Erreur inconnue",
         variant: "destructive"
       });
     } finally {

@@ -111,9 +111,9 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         membreId: "none",
       });
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating user:", error);
-      toast.error(error.message || "Erreur lors de la création du compte");
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la création du compte");
     } finally {
       setIsLoading(false);
     }

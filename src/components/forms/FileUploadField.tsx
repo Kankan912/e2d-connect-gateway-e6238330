@@ -66,11 +66,11 @@ export default function FileUploadField({
         title: "Fichier téléversé",
         description: "Le fichier a été téléversé avec succès",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur upload:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de téléverser le fichier: " + error.message,
+        description: "Impossible de téléverser le fichier: " + (error instanceof Error ? error.message : "Erreur"),
         variant: "destructive",
       });
     } finally {
@@ -96,7 +96,7 @@ export default function FileUploadField({
         title: "Fichier supprimé",
         description: "Le fichier a été supprimé avec succès",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur suppression:", error);
       // Même si la suppression échoue, on permet de retirer l'URL
       onChange(null);

@@ -93,10 +93,10 @@ export default function MembresAdmin() {
       
       // Invalidate and refetch
       updateMember.mutate({ id: memberId, data: { statut: newStatus } });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de modifier le statut",
+        description: error instanceof Error ? error.message : "Impossible de modifier le statut",
         variant: "destructive"
       });
     } finally {

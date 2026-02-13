@@ -82,11 +82,11 @@ const FirstPasswordChange = () => {
       });
 
       navigate("/dashboard");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error changing password:", error);
       toast({
         title: "Erreur",
-        description: error.message || "Impossible de modifier le mot de passe",
+        description: error instanceof Error ? error.message : "Impossible de modifier le mot de passe",
         variant: "destructive",
       });
     } finally {

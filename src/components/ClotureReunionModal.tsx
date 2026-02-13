@@ -413,11 +413,11 @@ export default function ClotureReunionModal({
 
       onOpenChange(false);
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur clôture réunion:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de clôturer la réunion: " + error.message,
+        description: "Impossible de clôturer la réunion: " + (error instanceof Error ? error.message : "Erreur"),
         variant: "destructive",
       });
     } finally {

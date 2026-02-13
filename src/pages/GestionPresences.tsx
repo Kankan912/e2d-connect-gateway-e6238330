@@ -87,10 +87,10 @@ const loadData = async () => {
 
     // Charger les présences pour la date sélectionnée
     await loadPresences();
-  } catch (error: any) {
+  } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Erreur de chargement",
         variant: "destructive",
       });
     } finally {
@@ -117,7 +117,7 @@ const loadData = async () => {
 
       setPresencesE2D(presE2DRes.data || []);
       setPresencesPhoenix(presPhoenixRes.data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Erreur lors du chargement des présences:', error);
     }
   };
@@ -149,10 +149,10 @@ const loadData = async () => {
         title: "Succès",
         description: `Présence ${isPresent ? 'marquée' : 'annulée'}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Erreur",
         variant: "destructive",
       });
     }
@@ -196,10 +196,10 @@ const togglePresencePhoenix = async (adherentOrTempId: string, isPresent: boolea
       title: "Succès",
       description: `Présence ${isPresent ? 'marquée' : 'annulée'}`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     toast({
       title: "Erreur",
-      description: error.message,
+      description: error instanceof Error ? error.message : "Erreur",
       variant: "destructive",
     });
   }

@@ -321,10 +321,10 @@ export default function ReunionPresencesManager({ reunionId }: ReunionPresencesM
         title: "Export réussi",
         description: `La feuille de présence a été exportée en ${exportFormat.toUpperCase()}`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Erreur d'export",
         variant: "destructive",
       });
     }

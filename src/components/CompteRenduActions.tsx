@@ -175,11 +175,11 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
 
       setOpen(false);
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erreur envoi CR:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'envoyer le compte-rendu: " + error.message,
+        description: "Impossible d'envoyer le compte-rendu: " + (error instanceof Error ? error.message : "Erreur"),
         variant: "destructive",
       });
     } finally {

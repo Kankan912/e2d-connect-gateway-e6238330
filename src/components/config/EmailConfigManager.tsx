@@ -174,9 +174,9 @@ export function EmailConfigManager() {
       
       if (error) throw error;
       toast.success(`Test réussi ! Email envoyé à ${resendOwnerEmail}`, { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Resend test failed:", error);
-      toast.error("Échec du test Resend: " + (error.message || "Vérifiez la clé API"), { icon: <XCircle className="h-4 w-4 text-red-500" /> });
+      toast.error("Échec du test Resend: " + (error instanceof Error ? error.message : "Vérifiez la clé API"), { icon: <XCircle className="h-4 w-4 text-red-500" /> });
     } finally {
       setTestingResend(false);
     }
@@ -213,9 +213,9 @@ export function EmailConfigManager() {
       
       if (error) throw error;
       toast.success(`Email de test envoyé à ${emailExpediteur}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Test email failed:", error);
-      toast.error("Échec de l'envoi: " + (error.message || "Erreur inconnue"));
+      toast.error("Échec de l'envoi: " + (error instanceof Error ? error.message : "Erreur inconnue"));
     } finally {
       setSendingTestEmail(false);
     }
@@ -290,9 +290,9 @@ export function EmailConfigManager() {
       
       // Rafraîchir les données
       queryClient.invalidateQueries({ queryKey: ["smtp-config"] });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("SMTP test failed:", error);
-      toast.error("Échec du test SMTP: " + (error.message || "Connexion échouée"), { 
+      toast.error("Échec du test SMTP: " + (error instanceof Error ? error.message : "Connexion échouée"), { 
         icon: <XCircle className="h-4 w-4 text-red-500" /> 
       });
     } finally {
