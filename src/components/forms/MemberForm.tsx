@@ -124,7 +124,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
           est_adherent_phoenix: member.est_adherent_phoenix || false,
           equipe_e2d: member.equipe_e2d || "",
           equipe_phoenix: member.equipe_phoenix || "",
-          equipe_jaune_rouge: (((member as unknown as Record<string, unknown>).equipe_jaune_rouge === "Jaune" || (member as unknown as Record<string, unknown>).equipe_jaune_rouge === "Rouge") ? (member as unknown as Record<string, unknown>).equipe_jaune_rouge as "Jaune" | "Rouge" : "none"),
+          equipe_jaune_rouge: member.equipe_jaune_rouge === "Jaune" || member.equipe_jaune_rouge === "Rouge" ? member.equipe_jaune_rouge : "none",
           fonction: member.fonction || "none",
           photo_url: member.photo_url || "",
           role_id: currentRoleId || "",

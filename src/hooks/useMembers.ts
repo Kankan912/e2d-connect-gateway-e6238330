@@ -16,6 +16,7 @@ export interface Member {
   est_adherent_phoenix: boolean;
   equipe_e2d: string | null;
   equipe_phoenix: string | null;
+  equipe_jaune_rouge: string | null;
   fonction: string | null;
   created_at: string;
   updated_at: string;
