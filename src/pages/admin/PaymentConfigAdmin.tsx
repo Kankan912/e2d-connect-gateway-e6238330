@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CreditCard, Save, Eye, EyeOff, Heart, Landmark, Building2, CheckCircle, XCircle, Loader2, Wifi } from "lucide-react";
+import { CreditCard, Save, Eye, EyeOff, Heart, Landmark, Building2, CheckCircle, XCircle, Loader2, Wifi, Smartphone } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,9 @@ export default function PaymentConfigAdmin() {
     stripe: { status: 'idle' },
     paypal: { status: 'idle' },
     helloasso: { status: 'idle' },
-    bank_transfer: { status: 'idle' }
+    bank_transfer: { status: 'idle' },
+    orange_money: { status: 'idle' },
+    mtn_money: { status: 'idle' },
   });
   const { toast } = useToast();
 
@@ -63,6 +65,18 @@ export default function PaymentConfigAdmin() {
     account_holder: "",
     iban: "",
     bic: "",
+    instructions: ""
+  });
+
+  const [orangeMoneyConfig, setOrangeMoneyConfig] = useState({
+    mobile_number: "",
+    account_name: "",
+    instructions: ""
+  });
+
+  const [mtnMoneyConfig, setMtnMoneyConfig] = useState({
+    mobile_number: "",
+    account_name: "",
     instructions: ""
   });
 
@@ -106,6 +120,18 @@ export default function PaymentConfigAdmin() {
             account_holder: (configData.account_holder as string) || "",
             iban: (configData.iban as string) || "",
             bic: (configData.bic as string) || "",
+            instructions: (configData.instructions as string) || ""
+          });
+        } else if (config.provider === 'orange_money' && configData) {
+          setOrangeMoneyConfig({
+            mobile_number: (configData.mobile_number as string) || "",
+            account_name: (configData.account_name as string) || "",
+            instructions: (configData.instructions as string) || ""
+          });
+        } else if (config.provider === 'mtn_money' && configData) {
+          setMtnMoneyConfig({
+            mobile_number: (configData.mobile_number as string) || "",
+            account_name: (configData.account_name as string) || "",
             instructions: (configData.instructions as string) || ""
           });
         }
@@ -362,6 +388,34 @@ export default function PaymentConfigAdmin() {
     }
   };
 
+  const handleSaveMobileMoney = async (provider: 'orange_money' | 'mtn_money') => {
+    setLoading(true);
+    const config = provider === 'orange_money' ? orangeMoneyConfig : mtnMoneyConfig;
+    const label = provider === 'orange_money' ? 'Orange Money' : 'MTN Mobile Money';
+    try {
+      const existingConfig = configs.find(c => c.provider === provider);
+      if (existingConfig) {
+        const { error } = await supabase
+          .from('payment_configs')
+          .update({ config_data: config, updated_at: new Date().toISOString() })
+          .eq('id', existingConfig.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('payment_configs')
+          .insert({ provider, config_data: config, is_active: false });
+        if (error) throw error;
+      }
+      toast({ title: `Configuration ${label} enregistrée` });
+      fetchConfigs();
+    } catch (error) {
+      console.error(`Erreur sauvegarde ${label}:`, error);
+      toast({ title: "Erreur", description: `Impossible d'enregistrer la configuration ${label}`, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleActive = async (id: string, isActive: boolean) => {
     try {
       const { error } = await supabase
@@ -407,26 +461,36 @@ export default function PaymentConfigAdmin() {
       </div>
 
       <Tabs defaultValue="stripe" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="stripe" className="flex items-center gap-2">
-            <CreditCard className="h-4 w-4" />
-            Stripe
-            {isActive('stripe') && <Badge className="ml-1 bg-green-600 text-xs">Actif</Badge>}
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+          <TabsTrigger value="stripe" className="flex items-center gap-1 text-xs sm:text-sm">
+            <CreditCard className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Stripe</span>
+            {isActive('stripe') && <Badge className="ml-1 bg-green-600 text-xs hidden lg:inline-flex">Actif</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="paypal" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            PayPal
-            {isActive('paypal') && <Badge className="ml-1 bg-green-600 text-xs">Actif</Badge>}
+          <TabsTrigger value="paypal" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Building2 className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">PayPal</span>
+            {isActive('paypal') && <Badge className="ml-1 bg-green-600 text-xs hidden lg:inline-flex">Actif</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="helloasso" className="flex items-center gap-2">
-            <Heart className="h-4 w-4" />
-            HelloAsso
-            {isActive('helloasso') && <Badge className="ml-1 bg-green-600 text-xs">Actif</Badge>}
+          <TabsTrigger value="helloasso" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Heart className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">HelloAsso</span>
+            {isActive('helloasso') && <Badge className="ml-1 bg-green-600 text-xs hidden lg:inline-flex">Actif</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="virement" className="flex items-center gap-2">
-            <Landmark className="h-4 w-4" />
-            Virement
-            {isActive('bank_transfer') && <Badge className="ml-1 bg-green-600 text-xs">Actif</Badge>}
+          <TabsTrigger value="virement" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Landmark className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">Virement</span>
+            {isActive('bank_transfer') && <Badge className="ml-1 bg-green-600 text-xs hidden lg:inline-flex">Actif</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="orange_money" className="flex items-center gap-1 text-xs sm:text-sm">
+            <span className="text-base leading-none shrink-0">🟠</span>
+            <span className="hidden sm:inline">Orange</span>
+            {isActive('orange_money') && <Badge className="ml-1 bg-green-600 text-xs hidden lg:inline-flex">Actif</Badge>}
+          </TabsTrigger>
+          <TabsTrigger value="mtn_money" className="flex items-center gap-1 text-xs sm:text-sm">
+            <span className="text-base leading-none shrink-0">🟡</span>
+            <span className="hidden sm:inline">MTN</span>
+            {isActive('mtn_money') && <Badge className="ml-1 bg-green-600 text-xs hidden lg:inline-flex">Actif</Badge>}
           </TabsTrigger>
         </TabsList>
 
@@ -835,6 +899,134 @@ export default function PaymentConfigAdmin() {
                   {connectionStatus['bank_transfer'].message && ` - ${connectionStatus['bank_transfer'].message}`}
                 </p>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Orange Money */}
+        <TabsContent value="orange_money">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <span className="text-2xl">🟠</span>
+                    Orange Money Cameroun
+                  </CardTitle>
+                  <CardDescription>
+                    Configuration du compte Orange Money pour recevoir les dons
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="orange-active">Activer</Label>
+                  <Switch
+                    id="orange-active"
+                    checked={isActive('orange_money')}
+                    onCheckedChange={() => {
+                      const id = getConfigId('orange_money');
+                      if (id) toggleActive(id, isActive('orange_money'));
+                    }}
+                    disabled={!getConfigId('orange_money')}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Numéro Orange Money</Label>
+                  <Input
+                    value={orangeMoneyConfig.mobile_number}
+                    onChange={(e) => setOrangeMoneyConfig({ ...orangeMoneyConfig, mobile_number: e.target.value })}
+                    placeholder="+237 6XX XXX XXX"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nom du titulaire du compte</Label>
+                  <Input
+                    value={orangeMoneyConfig.account_name}
+                    onChange={(e) => setOrangeMoneyConfig({ ...orangeMoneyConfig, account_name: e.target.value })}
+                    placeholder="ASSOCIATION E2D"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Instructions de paiement (optionnel)</Label>
+                <Textarea
+                  value={orangeMoneyConfig.instructions}
+                  onChange={(e) => setOrangeMoneyConfig({ ...orangeMoneyConfig, instructions: e.target.value })}
+                  placeholder="Composez *150# et suivez les instructions pour envoyer de l'argent..."
+                  rows={3}
+                />
+              </div>
+              <Button onClick={() => handleSaveMobileMoney('orange_money')} disabled={loading} className="w-full sm:w-auto">
+                <Save className="w-4 h-4 mr-2" />
+                {loading ? 'Enregistrement...' : 'Enregistrer Orange Money'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* MTN Mobile Money */}
+        <TabsContent value="mtn_money">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <span className="text-2xl">🟡</span>
+                    MTN Mobile Money
+                  </CardTitle>
+                  <CardDescription>
+                    Configuration du compte MTN MoMo pour recevoir les dons
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="mtn-active">Activer</Label>
+                  <Switch
+                    id="mtn-active"
+                    checked={isActive('mtn_money')}
+                    onCheckedChange={() => {
+                      const id = getConfigId('mtn_money');
+                      if (id) toggleActive(id, isActive('mtn_money'));
+                    }}
+                    disabled={!getConfigId('mtn_money')}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Numéro MTN MoMo</Label>
+                  <Input
+                    value={mtnMoneyConfig.mobile_number}
+                    onChange={(e) => setMtnMoneyConfig({ ...mtnMoneyConfig, mobile_number: e.target.value })}
+                    placeholder="+237 6XX XXX XXX"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nom du titulaire du compte</Label>
+                  <Input
+                    value={mtnMoneyConfig.account_name}
+                    onChange={(e) => setMtnMoneyConfig({ ...mtnMoneyConfig, account_name: e.target.value })}
+                    placeholder="ASSOCIATION E2D"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Instructions de paiement (optionnel)</Label>
+                <Textarea
+                  value={mtnMoneyConfig.instructions}
+                  onChange={(e) => setMtnMoneyConfig({ ...mtnMoneyConfig, instructions: e.target.value })}
+                  placeholder="Composez *126# et suivez les instructions pour envoyer de l'argent..."
+                  rows={3}
+                />
+              </div>
+              <Button onClick={() => handleSaveMobileMoney('mtn_money')} disabled={loading} className="w-full sm:w-auto">
+                <Save className="w-4 h-4 mr-2" />
+                {loading ? 'Enregistrement...' : 'Enregistrer MTN MoMo'}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,4 +1,4 @@
-import { CreditCard, DollarSign, Building2, Heart } from "lucide-react";
+import { CreditCard, DollarSign, Building2, Heart, Smartphone } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { PaymentConfig } from "@/types/donations";
 
@@ -18,8 +18,12 @@ const PaymentMethodTabs = ({ activeConfigs, children }: PaymentMethodTabsProps) 
         return <Heart className="w-4 h-4" />;
       case 'bank_transfer':
         return <Building2 className="w-4 h-4" />;
+      case 'orange_money':
+        return <span className="text-base leading-none">🟠</span>;
+      case 'mtn_money':
+        return <span className="text-base leading-none">🟡</span>;
       default:
-        return null;
+        return <Smartphone className="w-4 h-4" />;
     }
   };
 
@@ -33,6 +37,10 @@ const PaymentMethodTabs = ({ activeConfigs, children }: PaymentMethodTabsProps) 
         return 'HelloAsso';
       case 'bank_transfer':
         return 'Virement';
+      case 'orange_money':
+        return 'Orange Money';
+      case 'mtn_money':
+        return 'MTN MoMo';
       default:
         return provider;
     }

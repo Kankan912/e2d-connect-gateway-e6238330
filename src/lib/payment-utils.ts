@@ -34,6 +34,8 @@ export function getPaymentMethodLabel(method: PaymentMethod): string {
     paypal: 'PayPal',
     helloasso: 'HelloAsso',
     bank_transfer: 'Virement Bancaire',
+    orange_money: 'Orange Money',
+    mtn_money: 'MTN Mobile Money',
   };
   return labels[method];
 }
@@ -44,6 +46,8 @@ export function getPaymentMethodIcon(method: PaymentMethod): string {
     paypal: '🅿️',
     helloasso: '🇫🇷',
     bank_transfer: '🏦',
+    orange_money: '🟠',
+    mtn_money: '🟡',
   };
   return icons[method];
 }
