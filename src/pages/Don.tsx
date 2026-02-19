@@ -201,7 +201,7 @@ const Don = () => {
                         id="donor-name"
                         value={donorName}
                         onChange={(e) => setDonorName(e.target.value)}
-                        placeholder="Jean Dupont"
+                        placeholder="Alex FOTSO"
                         required
                       />
                     </div>
@@ -213,7 +213,7 @@ const Don = () => {
                         type="email"
                         value={donorEmail}
                         onChange={(e) => setDonorEmail(e.target.value)}
-                        placeholder="jean.dupont@exemple.com"
+                        placeholder="alex.fotso@exemple.com"
                         required
                       />
                     </div>
@@ -225,7 +225,7 @@ const Don = () => {
                         type="tel"
                         value={donorPhone}
                         onChange={(e) => setDonorPhone(e.target.value)}
-                        placeholder="+33 X XX XX XX XX"
+                        placeholder="+237 XXX XXX XXX"
                       />
                     </div>
 
