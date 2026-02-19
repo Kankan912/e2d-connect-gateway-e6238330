@@ -1,113 +1,72 @@
 
-# Mobile Money Cameroun — Alertes Admin, Page de Réconciliation & Sandbox de Test
+# Correction : Orange Money & MTN MoMo — Contraintes SQL bloquantes
 
-## Vue d'ensemble
+## Cause racine identifiée
 
-Les trois fonctionnalités demandées s'articulent autour du même flux : un donateur envoie de l'argent via Orange Money ou MTN MoMo, soumet une référence de transaction, et le don reste en statut `pending` jusqu'à validation manuelle. L'objectif est de :
+La migration SQL originale (`20251031170843`) a défini deux contraintes `CHECK` qui bloquent l'insertion des nouveaux providers Mobile Money :
 
-1. Alerter les admins sur les transactions en attente ou échouées avec possibilité de retenter
-2. Offrir une page de suivi/réconciliation dédiée aux paiements Mobile Money
-3. Fournir des données de test (sandbox) pour valider le flux de bout en bout
+**Contrainte 1 — table `payment_configs` (ligne 4) :**
+```sql
+provider TEXT NOT NULL CHECK (provider IN ('stripe', 'paypal', 'helloasso', 'bank_transfer'))
+```
+→ C'est la cause directe de l'erreur `23514` dans les logs console.
 
----
+**Contrainte 2 — table `donations` (ligne 22) :**
+```sql
+payment_method TEXT NOT NULL CHECK (payment_method IN ('stripe', 'paypal', 'helloasso', 'bank_transfer'))
+```
+→ Cette contrainte bloquerait également l'enregistrement d'un don avec `orange_money` ou `mtn_money`.
 
-## Fonctionnalité 1 — Alertes Admin pour transactions Mobile Money
-
-### Problème constaté
-
-La page `DonationsAdmin.tsx` ne met pas en évidence les dons Mobile Money en attente (`payment_status = 'pending'`) ni n'offre d'actions spécifiques (valider, marquer comme échoué, relancer une notification au donateur).
-
-La table `DonationsTable` dans `src/components/admin/DonationsTable.tsx` :
-- N'affiche pas `orange_money` ni `mtn_money` avec un badge coloré distinctif
-- N'a pas de bouton "Valider" ou "Rejeter" pour les paiements manuels
-- N'a pas de colonne "Référence de transaction" (pourtant stockée dans `bank_transfer_reference`)
-
-### Fichiers à modifier
-
-**`src/components/admin/DonationsTable.tsx`**
-- Ajouter `orange_money` et `mtn_money` dans `getPaymentMethodBadge()` avec couleurs distinctives (orange/jaune)
-- Ajouter une colonne "Référence" affichant `bank_transfer_reference` en code mono tronqué
-- Ajouter deux boutons d'action pour les dons `pending` : "Valider" (passe à `completed`) et "Rejeter" (passe à `failed`)
-- Passer `onValidate` et `onReject` comme props callbacks depuis le parent
-
-**`src/pages/admin/DonationsAdmin.tsx`**
-- Ajouter un `StatCard` d'alerte "Mobile Money en attente" avec count des `pending` sur `orange_money` + `mtn_money`
-- Ajouter les filtres "Orange Money" et "MTN MoMo" dans le `<Select>` de méthode de paiement
-- Ajouter les mutations `validateMobileMoney` et `rejectMobileMoney` via `useMutation`
-- Câbler ces mutations aux callbacks `onValidate` / `onReject` du tableau
+**Effet de bord — bouton "Activer" grisé :**
+Le `Switch` est désactivé (`disabled={!getConfigId('orange_money')}`) tant qu'il n'y a aucune ligne en base pour ce provider. Puisque l'enregistrement échoue à cause de la contrainte, le toggle reste toujours désactivé.
 
 ---
 
-## Fonctionnalité 2 — Page de réconciliation Mobile Money
+## Solution : Une migration SQL + aucun changement de code React
 
-### Problème constaté
-
-Il n'existe pas de vue dédiée pour l'état des paiements Mobile Money. Les admins doivent filtrer manuellement dans la liste générale. Il n'y a pas de vue de synthèse montrant :
-- Total en attente de validation
-- Historique des validations du jour/mois
-- Références de transaction pour rapprochement manuel avec les relevés Orange/MTN
-
-### Fichiers à créer / modifier
-
-**Nouveau fichier : `src/pages/admin/MobileMoneyAdmin.tsx`**
-Un tableau de bord dédié avec :
-- 3 `StatCard` : "En attente de validation", "Validés ce mois", "Rejetés ce mois"
-- Tableau "Transactions à vérifier" filtré sur `payment_method IN (orange_money, mtn_money)` et `payment_status = pending`
-  - Colonnes : Date, Nom donateur, Téléphone, Montant, Opérateur (🟠/🟡), Référence SMS, Actions (Valider / Rejeter)
-- Tableau "Historique récent" : 30 derniers jours, tous statuts confondus pour Mobile Money
-- Export CSV des transactions Mobile Money (bouton simple `window.open` sur un filtre Supabase)
-
-**`src/pages/Dashboard.tsx`**
-- Ajouter `lazy(() => import("./admin/MobileMoneyAdmin"))` 
-- Ajouter la route `/admin/donations/mobile-money`
-- L'entourer d'un `PermissionRoute resource="donations" permission="read"`
-
-**`src/components/layout/DashboardSidebar.tsx`**
-- Ajouter "Réconciliation MoMo" dans la section `adminPublicItems` avec l'icône `Smartphone`
-- URL : `/dashboard/admin/donations/mobile-money`
+Le code React (`PaymentConfigAdmin.tsx`) est **correct** — il envoie bien les bons providers. Seules les contraintes SQL côté base de données doivent être modifiées.
 
 ---
 
-## Fonctionnalité 3 — Sandbox / données de test
+## Fichier à créer
 
-### Approche choisie
+### `supabase/migrations/[timestamp]_fix_payment_providers_check.sql`
 
-Il n'y a pas de vrai sandbox Orange Money / MTN MoMo accessible sans agrégateur. La sandbox ici est un **générateur de données de test** côté admin qui insère des donations fictives dans la table `donations` avec des références de transaction réalistes, pour permettre de tester le workflow complet (alerte → validation → réconciliation).
+Cette migration :
 
-Cela est cohérent avec l'approche manuelle déjà choisie pour ces paiements.
+1. **Supprime** la contrainte `payment_configs_provider_check` existante
+2. **Recrée** la contrainte en ajoutant `orange_money` et `mtn_money`
+3. **Supprime** la contrainte `donations_payment_method_check` existante
+4. **Recrée** la contrainte en ajoutant `orange_money` et `mtn_money`
 
-### Fichiers à modifier
+```sql
+-- Étape 1 : Modifier la contrainte sur payment_configs.provider
+ALTER TABLE public.payment_configs
+  DROP CONSTRAINT IF EXISTS payment_configs_provider_check;
 
-**`src/pages/admin/MobileMoneyAdmin.tsx`** (même fichier que ci-dessus)
-- Ajouter un onglet "Sandbox / Tests" visible uniquement en développement (`import.meta.env.DEV`) ou via un toggle admin
-- Ce panneau permet d'insérer N donations de test avec :
-  - Opérateur : Orange Money ou MTN MoMo (sélectionnable)
-  - Montant aléatoire parmi les presets FCFA
-  - Référence générée automatiquement au format `TXN{timestamp}{random}`
-  - Nom/email de donateur fictif ("Test Donateur", "test@e2d.test")
-- Un bouton "Nettoyer les données de test" supprime les donations `donor_email = 'test@e2d.test'`
+ALTER TABLE public.payment_configs
+  ADD CONSTRAINT payment_configs_provider_check
+  CHECK (provider IN ('stripe', 'paypal', 'helloasso', 'bank_transfer', 'orange_money', 'mtn_money'));
 
-**`src/hooks/useDonations.ts`**
-- Ajouter un hook `useMobileMoneyDonations()` qui filtre directement sur les deux providers Mobile Money — réutilisé par la page de réconciliation et par les alertes du dashboard
+-- Étape 2 : Modifier la contrainte sur donations.payment_method
+ALTER TABLE public.donations
+  DROP CONSTRAINT IF EXISTS donations_payment_method_check;
+
+ALTER TABLE public.donations
+  ADD CONSTRAINT donations_payment_method_check
+  CHECK (payment_method IN ('stripe', 'paypal', 'helloasso', 'bank_transfer', 'orange_money', 'mtn_money'));
+```
 
 ---
 
-## Résumé des fichiers touchés
+## Résultat attendu après la migration
 
-| Fichier | Action | Fonctionnalité |
+| Problème | Cause | Après correction |
 |---|---|---|
-| `src/components/admin/DonationsTable.tsx` | Modifier | 1 — Alertes |
-| `src/pages/admin/DonationsAdmin.tsx` | Modifier | 1 — Alertes |
-| `src/pages/admin/MobileMoneyAdmin.tsx` | Créer | 2 + 3 |
-| `src/pages/Dashboard.tsx` | Modifier | 2 — Route |
-| `src/components/layout/DashboardSidebar.tsx` | Modifier | 2 — Nav |
-| `src/hooks/useDonations.ts` | Modifier | 1 + 2 |
+| Erreur rouge "Impossible d'enregistrer" | Contrainte `payment_configs_provider_check` | Enregistrement réussi |
+| Bouton "Activer" grisé | Pas de ligne en base (échec d'insertion) | Toggle cliquable après 1er enregistrement |
+| Don Orange/MTN bloqué | Contrainte `donations_payment_method_check` | Don enregistré avec statut `pending` |
 
-## Note technique
+## Aucun changement de code React
 
-Aucune migration SQL n'est nécessaire. La table `donations` existante contient toutes les colonnes requises :
-- `payment_method` (text) pour filtrer orange_money / mtn_money
-- `payment_status` (text) pour les transitions pending → completed / failed
-- `bank_transfer_reference` (text) pour stocker la référence SMS Mobile Money
-
-Les mutations de validation/rejet utilisent simplement `supabase.from('donations').update(...)`.
+Le composant `PaymentConfigAdmin.tsx` est déjà correctement implémenté. La logique de sauvegarde (`handleSaveMobileMoney`) et le toggle (`toggleActive`) fonctionneront dès que la contrainte SQL sera levée.
