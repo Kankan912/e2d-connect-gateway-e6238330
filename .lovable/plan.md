@@ -1,29 +1,82 @@
 
-# Remplacement du favicon par le logo E2D
+# Corrections ciblées - Problèmes réels confirmés
 
-## Contexte
+Après lecture de tous les fichiers mentionnés dans l'audit, voici l'état réel :
 
-Le projet contient déjà le logo officiel de l'association à `src/assets/logo-e2d.png`. Il suffit de le copier dans le dossier `public/` et de mettre à jour `index.html` pour le référencer correctement.
+## Ce qui est DEJA correct (faux positifs de l'audit)
 
-## Actions
+- MyAides, MyCotisations, MyDonations, MyEpargnes, MyPresences, MyPrets, MySanctions : tous les fichiers contiennent bien leur bon composant.
+- StatCard, PermissionsMatrix, CreateUserDialog, DataTable, DonationsTable : tous corrects.
+- PaymentMethodTabs, PermissionRoute : corrects.
+- Les composants de caisse, config, formulaires, notifications : corrects.
 
-### 1. Copier le logo dans `public/`
+## Vrais problèmes confirmés a corriger
 
-Copier `src/assets/logo-e2d.png` vers `public/logo-e2d.png` pour le rendre accessible à la racine du site.
+---
 
-### 2. Mettre à jour `index.html`
+### 1. NotFound.tsx - Lien avec rechargement complet
 
-Remplacer la ligne du favicon actuel (absente dans le HTML — le favicon.ico est chargé par défaut par le navigateur) par une balise `<link>` explicite pointant vers le logo PNG :
+Fichier : `src/pages/NotFound.tsx` (ligne 16)
 
-```html
-<link rel="icon" type="image/png" href="/logo-e2d.png" />
-<link rel="apple-touch-icon" href="/logo-e2d.png" />
-```
+Actuellement : `<a href="/">Return to Home</a>`
 
-La balise `apple-touch-icon` assure également que le logo s'affiche correctement sur les appareils Apple (iPhone, iPad) quand on ajoute le site à l'écran d'accueil.
+Correction : Remplacer par `<Link to="/">` de react-router-dom. Egalement franciser le message.
 
-## Résultat attendu
+---
 
-- Le favicon visible dans l'onglet du navigateur sera le logo E2D
-- Le logo s'affichera également comme icône sur mobile
-- Aucune autre modification nécessaire
+### 2. useAdhesions.ts - Mauvaise table
+
+Fichier : `src/hooks/useAdhesions.ts`
+
+La table utilisee est `demandes_adhesion` alors que la table reelle du projet est `adhesions`. Il faut verifier laquelle existe vraiment dans la base.
+
+D'apres l'audit Supabase et les autres hooks du projet : la table s'appelle `adhesions`. Le hook doit pointer vers `adhesions`.
+
+---
+
+### 3. Adhesion.tsx - Devise € au lieu de FCFA
+
+Fichier : `src/pages/Adhesion.tsx`
+
+Les montants sont affiches en euros. Correction : remplacer les occurrences de `€` et `EUR` par `FCFA`.
+
+---
+
+### 4. Don.tsx - Devise € au lieu de FCFA
+
+Fichier : `src/pages/Don.tsx`
+
+Meme probleme de devise sur la page publique des dons.
+
+---
+
+## Plan d'execution
+
+### Etape 1 - NotFound.tsx
+
+Remplacer `<a href="/">` par `<Link to="/">` et importer `Link` depuis react-router-dom. Traduire le message en francais.
+
+### Etape 2 - useAdhesions.ts
+
+Pointer la table vers `adhesions` (la bonne table confirmee dans d'autres parties du projet comme `AdhesionsAdmin.tsx`).
+
+### Etape 3 - Verifier et corriger les devises
+
+Corriger les occurrences de `€` dans `Adhesion.tsx` et `Don.tsx`.
+
+---
+
+## Fichiers modifies
+
+| Fichier | Correction |
+|---------|-----------|
+| `src/pages/NotFound.tsx` | `<Link>` au lieu de `<a>` + traduction FR |
+| `src/hooks/useAdhesions.ts` | Table `demandes_adhesion` -> `adhesions` |
+| `src/pages/Adhesion.tsx` | Devise € -> FCFA |
+| `src/pages/Don.tsx` | Devise € -> FCFA |
+
+---
+
+## Note importante
+
+L'audit contenait de nombreux faux positifs : les fichiers ont en realite les bons contenus. Les "corruptions" et "mauvais nommages" mentionnes ne correspondent pas a l'etat reel du code. Seuls les 4 problemes ci-dessus sont confirmes comme reels apres lecture directe des fichiers.
