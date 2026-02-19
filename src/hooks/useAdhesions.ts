@@ -7,11 +7,17 @@ export interface Adhesion {
   nom: string;
   prenom: string;
   email: string;
-  telephone: string | null;
+  telephone: string;
   type_adhesion: string;
-  motivation: string | null;
-  statut: string;
+  montant_paye: number;
+  payment_method: string;
+  payment_status: string;
+  message: string | null;
+  processed: boolean;
+  membre_id: string | null;
+  payment_id: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export const useAdhesions = () => {
@@ -22,7 +28,7 @@ export const useAdhesions = () => {
     queryKey: ["adhesions"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("demandes_adhesion")
+        .from("adhesions")
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -34,8 +40,8 @@ export const useAdhesions = () => {
   const updateAdhesionStatus = useMutation({
     mutationFn: async ({ id, statut }: { id: string; statut: string }) => {
       const { error } = await supabase
-        .from("demandes_adhesion")
-        .update({ statut })
+        .from("adhesions")
+        .update({ payment_status: statut })
         .eq("id", id);
 
       if (error) throw error;
