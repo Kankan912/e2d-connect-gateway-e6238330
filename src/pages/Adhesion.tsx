@@ -193,7 +193,7 @@ const Adhesion = () => {
                       </div>
                       <CardTitle>{type.title}</CardTitle>
                       <CardDescription>
-                        <span className="text-3xl font-bold text-primary">{type.amount}€</span>
+                        <span className="text-3xl font-bold text-primary">{type.amount} FCFA</span>
                         <span className="text-muted-foreground"> /an</span>
                       </CardDescription>
                     </CardHeader>
@@ -294,7 +294,7 @@ const Adhesion = () => {
                   <p className="text-center">
                     <span className="text-muted-foreground">Montant total : </span>
                     <span className="text-2xl font-bold text-primary">
-                      {ADHESION_TARIFS[formData.type_adhesion].amount}€
+                      {ADHESION_TARIFS[formData.type_adhesion].amount} FCFA
                     </span>
                   </p>
                 </div>
