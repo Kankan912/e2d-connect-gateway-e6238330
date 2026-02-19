@@ -1,45 +1,29 @@
 
-# Suppression des 2 derniers casts `Record<string, unknown>`
+# Remplacement du favicon par le logo E2D
 
-Les types Supabase generees contiennent deja `verrouille` et `equipe_jaune_rouge`. Les casts sont donc **inutiles** et peuvent etre supprimes directement sans regeneration de types.
+## Contexte
 
----
+Le projet contient déjà le logo officiel de l'association à `src/assets/logo-e2d.png`. Il suffit de le copier dans le dossier `public/` et de mettre à jour `index.html` pour le référencer correctement.
 
-## Corrections
+## Actions
 
-### 1. `src/components/ReouvrirReunionModal.tsx` (ligne 51)
+### 1. Copier le logo dans `public/`
 
-Supprimer le cast `as Record<string, unknown>` :
+Copier `src/assets/logo-e2d.png` vers `public/logo-e2d.png` pour le rendre accessible à la racine du site.
 
-```typescript
-// Avant
-.update({ verrouille: false } as Record<string, unknown>)
+### 2. Mettre à jour `index.html`
 
-// Apres
-.update({ verrouille: false })
+Remplacer la ligne du favicon actuel (absente dans le HTML — le favicon.ico est chargé par défaut par le navigateur) par une balise `<link>` explicite pointant vers le logo PNG :
+
+```html
+<link rel="icon" type="image/png" href="/logo-e2d.png" />
+<link rel="apple-touch-icon" href="/logo-e2d.png" />
 ```
 
-### 2. `src/components/forms/MemberForm.tsx` (ligne 127)
+La balise `apple-touch-icon` assure également que le logo s'affiche correctement sur les appareils Apple (iPhone, iPad) quand on ajoute le site à l'écran d'accueil.
 
-Simplifier l'acces a `member.equipe_jaune_rouge` qui est type `string | null` dans les types generes :
+## Résultat attendu
 
-```typescript
-// Avant
-equipe_jaune_rouge: (((member as unknown as Record<string, unknown>).equipe_jaune_rouge === "Jaune" || (member as unknown as Record<string, unknown>).equipe_jaune_rouge === "Rouge") ? (member as unknown as Record<string, unknown>).equipe_jaune_rouge as "Jaune" | "Rouge" : "none"),
-
-// Apres
-equipe_jaune_rouge: member.equipe_jaune_rouge === "Jaune" || member.equipe_jaune_rouge === "Rouge" ? member.equipe_jaune_rouge : "none",
-```
-
-Le champ `member.equipe_jaune_rouge` est de type `string | null`. On compare directement aux valeurs attendues par le formulaire Zod (`"Jaune"`, `"Rouge"`, `"none"`), et TypeScript infere correctement le type dans la branche ternaire grace au narrowing.
-
----
-
-## Resume
-
-| Fichier | Action |
-|---------|--------|
-| `ReouvrirReunionModal.tsx` | Supprimer `as Record<string, unknown>` |
-| `MemberForm.tsx` | Acces direct a `member.equipe_jaune_rouge` sans cast |
-
-**Resultat : 0 cast `Record<string, unknown>` restant** (hors `PaymentConfigAdmin.tsx` qui est un cast legitime de `Json` vers un type structure).
+- Le favicon visible dans l'onglet du navigateur sera le logo E2D
+- Le logo s'affichera également comme icône sur mobile
+- Aucune autre modification nécessaire
