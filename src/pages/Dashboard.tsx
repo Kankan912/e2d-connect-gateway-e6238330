@@ -23,6 +23,7 @@ const MyAides = lazy(() => import("./dashboard/MyAides"));
 
 // Admin Pages - Core
 const DonationsAdmin = lazy(() => import("./admin/DonationsAdmin"));
+const MobileMoneyAdmin = lazy(() => import("./admin/MobileMoneyAdmin"));
 const RolesAdmin = lazy(() => import("./admin/RolesAdmin"));
 const PermissionsAdmin = lazy(() => import("./admin/PermissionsAdmin"));
 const MembresAdmin = lazy(() => import("./admin/MembresAdmin"));
@@ -109,6 +110,7 @@ const Dashboard = () => {
           
           {/* ==================== ADMIN ROUTES - FINANCE ==================== */}
           <Route path="/admin/donations" element={<PermissionRoute resource="donations" permission="read"><DonationsAdmin /></PermissionRoute>} />
+          <Route path="/admin/donations/mobile-money" element={<PermissionRoute resource="donations" permission="read"><MobileMoneyAdmin /></PermissionRoute>} />
           <Route path="/admin/adhesions" element={<PermissionRoute resource="adhesions" permission="read"><AdhesionsAdmin /></PermissionRoute>} />
           <Route path="/admin/payment-config" element={<PermissionRoute resource="config" permission="write"><PaymentConfigAdmin /></PermissionRoute>} />
           <Route path="/admin/membres" element={<PermissionRoute resource="membres" permission="read"><MembresAdmin /></PermissionRoute>} />

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { StatCard } from "@/components/admin/StatCard";
 import { DonationsTable } from "@/components/admin/DonationsTable";
 import { useDonations, useDonationStats } from "@/hooks/useDonations";
-import { DollarSign, TrendingUp, Users, BarChart3, Loader2, RefreshCw, Settings, ExternalLink, XCircle } from "lucide-react";
+import { DollarSign, TrendingUp, Users, BarChart3, Loader2, RefreshCw, Settings, ExternalLink, XCircle, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +71,11 @@ export default function DonationsAdmin() {
     }
   });
 
+  // Compter les Mobile Money en attente
+  const pendingMomoCount = (donations || []).filter(
+    (d) => (d.payment_method === 'orange_money' || d.payment_method === 'mtn_money') && d.payment_status === 'pending'
+  ).length;
+
   // Récupérer les configs de paiement
   const { data: paymentConfigs = [] } = useQuery({
     queryKey: ['payment-configs'],
@@ -99,6 +104,37 @@ export default function DonationsAdmin() {
     onError: () => {
       toast({ title: "Erreur", description: "Impossible d'annuler l'abonnement", variant: "destructive" });
     }
+  });
+
+  // Mutations Mobile Money
+  const validateMomoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('donations')
+        .update({ payment_status: 'completed', updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['donations'] });
+      toast({ title: "✅ Paiement Mobile Money validé" });
+    },
+    onError: () => toast({ title: "Erreur", variant: "destructive" }),
+  });
+
+  const rejectMomoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('donations')
+        .update({ payment_status: 'failed', updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['donations'] });
+      toast({ title: "❌ Paiement Mobile Money rejeté" });
+    },
+    onError: () => toast({ title: "Erreur", variant: "destructive" }),
   });
 
   const getDonationsChartData = () => {
@@ -177,6 +213,26 @@ export default function DonationsAdmin() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          {pendingMomoCount > 0 && (
+            <div className="flex items-center justify-between p-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+              <div className="flex items-center gap-3">
+                <Smartphone className="h-5 w-5 text-amber-600" />
+                <div>
+                  <p className="font-semibold text-amber-800 dark:text-amber-200">
+                    {pendingMomoCount} paiement{pendingMomoCount > 1 ? "s" : ""} Mobile Money en attente
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                    Vérifiez les transactions Orange Money / MTN MoMo à valider
+                  </p>
+                </div>
+              </div>
+              <Link to="/dashboard/admin/donations/mobile-money">
+                <Button size="sm" variant="outline" className="border-amber-400 text-amber-800 hover:bg-amber-100">
+                  Réconciliation MoMo →
+                </Button>
+              </Link>
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Total du mois"
@@ -199,11 +255,10 @@ export default function DonationsAdmin() {
               description={`${stats?.currentMonth?.newDonors || 0} nouveaux ce mois`}
             />
             <StatCard
-              title="Montant moyen"
-              value={formatFCFA(stats?.currentMonth?.average || 0)}
-              icon={BarChart3}
-              trend={stats?.currentMonth?.averageTrend || 0}
-              trendLabel="vs mois dernier"
+              title="Mobile Money en attente"
+              value={pendingMomoCount}
+              icon={Smartphone}
+              description={pendingMomoCount > 0 ? "⚠️ À valider manuellement" : "Aucune en attente"}
             />
           </div>
 
@@ -257,6 +312,8 @@ export default function DonationsAdmin() {
                     <SelectItem value="paypal">PayPal</SelectItem>
                     <SelectItem value="bank_transfer">Virement</SelectItem>
                     <SelectItem value="helloasso">HelloAsso</SelectItem>
+                    <SelectItem value="orange_money">🟠 Orange Money</SelectItem>
+                    <SelectItem value="mtn_money">🟡 MTN MoMo</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select
@@ -294,7 +351,11 @@ export default function DonationsAdmin() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DonationsTable donations={donations || []} />
+              <DonationsTable
+                donations={donations || []}
+                onValidate={(id) => validateMomoMutation.mutate(id)}
+                onReject={(id) => rejectMomoMutation.mutate(id)}
+              />
             </CardContent>
           </Card>
         </TabsContent>
