@@ -1,4 +1,4 @@
-export type PaymentMethod = 'stripe' | 'paypal' | 'helloasso' | 'bank_transfer';
+export type PaymentMethod = 'stripe' | 'paypal' | 'helloasso' | 'bank_transfer' | 'orange_money' | 'mtn_money';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 export type RecurringFrequency = 'monthly' | 'yearly';
 export type DonationCurrency = 'FCFA' | 'EUR' | 'USD' | 'GBP' | 'CAD' | 'CHF';
@@ -30,6 +30,10 @@ export interface PaymentConfig {
     bic?: string;
     account_holder?: string;
     instructions?: string;
+    // Mobile Money
+    mobile_number?: string;
+    account_name?: string;
+    payment_code?: string;
   };
   created_at: string;
   updated_at: string;

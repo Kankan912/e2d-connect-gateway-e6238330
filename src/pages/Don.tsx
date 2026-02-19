@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import DonationAmountSelector from "@/components/donations/DonationAmountSelector";
 import PaymentMethodTabs from "@/components/donations/PaymentMethodTabs";
 import BankTransferInfo from "@/components/donations/BankTransferInfo";
+import MobileMoneyInfo from "@/components/donations/MobileMoneyInfo";
 import DonationSuccessModal from "@/components/donations/DonationSuccessModal";
 import type { PaymentConfig, DonationCurrency } from "@/types/donations";
 
@@ -56,7 +57,7 @@ const Don = () => {
     }
   };
 
-  const handleDonationSubmit = async (paymentMethod: string) => {
+  const handleDonationSubmit = async (paymentMethod: string, mobileReference?: string) => {
     if (!donorName || !donorEmail) {
       toast({
         title: "Informations manquantes",
@@ -68,6 +69,9 @@ const Don = () => {
 
     setLoading(true);
     try {
+      const isMobileMoney = paymentMethod === 'orange_money' || paymentMethod === 'mtn_money';
+      const isManual = paymentMethod === 'bank_transfer' || isMobileMoney;
+
       const { data, error } = await supabase
         .from('donations')
         .insert([
@@ -78,10 +82,11 @@ const Don = () => {
             amount,
             currency,
             payment_method: paymentMethod,
-            payment_status: paymentMethod === 'bank_transfer' ? 'pending' : 'completed',
+            payment_status: isManual ? 'pending' : 'completed',
             is_recurring: isRecurring,
             recurring_frequency: isRecurring ? frequency : null,
             donor_message: donorMessage,
+            bank_transfer_reference: mobileReference || null,
           },
         ])
         .select()
@@ -247,6 +252,16 @@ const Don = () => {
                               config={config}
                               donorEmail={donorEmail}
                               onNotificationSent={() => handleDonationSubmit('bank_transfer')}
+                            />
+                          ) : config.provider === 'orange_money' || config.provider === 'mtn_money' ? (
+                            <MobileMoneyInfo
+                              config={config}
+                              donorName={donorName}
+                              donorEmail={donorEmail}
+                              amount={amount}
+                              currency={currency}
+                              onConfirm={(reference) => handleDonationSubmit(config.provider, reference)}
+                              loading={loading}
                             />
                           ) : (
                             <div className="text-center py-8">
