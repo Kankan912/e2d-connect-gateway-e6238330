@@ -32,6 +32,7 @@ import {
   HandHeart,
   Wallet,
   FileText,
+  Smartphone,
 } from "lucide-react";
 import {
   Sidebar,
@@ -87,6 +88,7 @@ const e2dGestionItems = [
 // Section Administration site public
 const adminPublicItems = [
   { title: "Gestion des Dons", url: "/dashboard/admin/donations", icon: DollarSign, resource: "donations" },
+  { title: "Réconciliation MoMo", url: "/dashboard/admin/donations/mobile-money", icon: Smartphone, resource: "donations" },
   { title: "Gestion des Adhésions", url: "/dashboard/admin/adhesions", icon: UserPlus, resource: "adhesions" },
   { title: "Configuration Paiements", url: "/dashboard/admin/payment-config", icon: Settings, resource: "config" },
 ];
