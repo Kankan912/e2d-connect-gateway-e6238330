@@ -23,7 +23,7 @@ const Don = () => {
   const [loading, setLoading] = useState(false);
   const [activeConfigs, setActiveConfigs] = useState<PaymentConfig[]>([]);
   const [amount, setAmount] = useState(25);
-  const [currency, setCurrency] = useState<DonationCurrency>('EUR');
+  const [currency, setCurrency] = useState<DonationCurrency>('FCFA');
   const [isRecurring, setIsRecurring] = useState(false);
   const [frequency, setFrequency] = useState<'monthly' | 'yearly'>('monthly');
   const [donorName, setDonorName] = useState("");

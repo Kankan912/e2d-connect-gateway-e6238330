@@ -1,11 +1,11 @@
 import type { PaymentMethod, DonationCurrency } from "@/types/donations";
 
 export const PRESET_AMOUNTS = [
-  { value: 10, label: "10€", badge: "Supporter" },
-  { value: 25, label: "25€", badge: "Contributeur" },
-  { value: 50, label: "50€", badge: "Bienfaiteur" },
-  { value: 100, label: "100€", badge: "Mécène" },
-  { value: 200, label: "200€", badge: "Grand Mécène" },
+  { value: 1000, label: "1 000 FCFA", badge: "Supporter" },
+  { value: 5000, label: "5 000 FCFA", badge: "Contributeur" },
+  { value: 10000, label: "10 000 FCFA", badge: "Bienfaiteur" },
+  { value: 25000, label: "25 000 FCFA", badge: "Mécène" },
+  { value: 50000, label: "50 000 FCFA", badge: "Grand Mécène" },
 ];
 
 export const ADHESION_TARIFS = {
@@ -15,6 +15,7 @@ export const ADHESION_TARIFS = {
 };
 
 export const CURRENCIES: { value: DonationCurrency; label: string; symbol: string }[] = [
+  { value: 'FCFA', label: 'Franc CFA', symbol: 'FCFA' },
   { value: 'EUR', label: 'Euro', symbol: '€' },
   { value: 'USD', label: 'Dollar US', symbol: '$' },
   { value: 'GBP', label: 'Livre Sterling', symbol: '£' },
@@ -22,9 +23,9 @@ export const CURRENCIES: { value: DonationCurrency; label: string; symbol: strin
   { value: 'CHF', label: 'Franc Suisse', symbol: 'CHF' },
 ];
 
-export function formatAmount(amount: number, currency: DonationCurrency = 'EUR'): string {
+export function formatAmount(amount: number, currency: DonationCurrency = 'FCFA'): string {
   const currencyData = CURRENCIES.find(c => c.value === currency);
-  return `${amount}${currencyData?.symbol || '€'}`;
+  return `${amount.toLocaleString('fr-FR')} ${currencyData?.symbol || 'FCFA'}`;
 }
 
 export function getPaymentMethodLabel(method: PaymentMethod): string {

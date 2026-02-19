@@ -1,9 +1,10 @@
 export type PaymentMethod = 'stripe' | 'paypal' | 'helloasso' | 'bank_transfer';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 export type RecurringFrequency = 'monthly' | 'yearly';
-export type DonationCurrency = 'EUR' | 'USD' | 'GBP' | 'CAD' | 'CHF';
+export type DonationCurrency = 'FCFA' | 'EUR' | 'USD' | 'GBP' | 'CAD' | 'CHF';
 
 export const CURRENCIES: { value: DonationCurrency; label: string; symbol: string }[] = [
+  { value: 'FCFA', label: 'Franc CFA', symbol: 'FCFA' },
   { value: 'EUR', label: 'Euro', symbol: '€' },
   { value: 'USD', label: 'Dollar US', symbol: '$' },
   { value: 'GBP', label: 'Livre Sterling', symbol: '£' },
