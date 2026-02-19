@@ -1,106 +1,113 @@
 
-# Ajout du Mobile Money camerounais (Orange Money, MTN MoMo)
+# Mobile Money Cameroun — Alertes Admin, Page de Réconciliation & Sandbox de Test
 
-## Contexte et état actuel
+## Vue d'ensemble
 
-La page de don affiche "Aucune méthode de paiement configurée" car la table `payment_configs` est vide. Le système est construit autour d'un provider `payment_configs` en base (colonne `provider: text`), ce qui permet d'ajouter de nouveaux prestataires sans migration de schéma.
+Les trois fonctionnalités demandées s'articulent autour du même flux : un donateur envoie de l'argent via Orange Money ou MTN MoMo, soumet une référence de transaction, et le don reste en statut `pending` jusqu'à validation manuelle. L'objectif est de :
 
-Orange Money et MTN Mobile Money sont les modes de paiement dominants au Cameroun. Ils fonctionnent via un numéro de compte (MSISDN) et non via une API REST complexe, similaire au virement bancaire.
-
-## Stratégie choisie : Mobile Money manuel (sans API tierce)
-
-Orange Money et MTN MoMo ne disposent pas d'API publiques accessibles directement depuis le front sans agrégateur de paiement (comme CinetPay, Monetbil, Kkiapay, etc.). Pour ne pas introduire de dépendances coûteuses et rester cohérent avec l'architecture existante (le virement bancaire est aussi "manuel"), on adopte le même modele : l'utilisateur effectue le paiement depuis son téléphone, puis enregistre le don avec la référence de transaction.
-
-Si l'association souhaite plus tard une intégration automatisée (CinetPay, Monetbil), cela pourra être ajouté en tant que provider séparé.
-
-## Fichiers à modifier
+1. Alerter les admins sur les transactions en attente ou échouées avec possibilité de retenter
+2. Offrir une page de suivi/réconciliation dédiée aux paiements Mobile Money
+3. Fournir des données de test (sandbox) pour valider le flux de bout en bout
 
 ---
 
-### 1. `src/types/donations.ts`
+## Fonctionnalité 1 — Alertes Admin pour transactions Mobile Money
 
-Ajouter `'orange_money'` et `'mtn_money'` au type `PaymentMethod` :
+### Problème constaté
 
-```ts
-export type PaymentMethod = 'stripe' | 'paypal' | 'helloasso' | 'bank_transfer' | 'orange_money' | 'mtn_money';
-```
+La page `DonationsAdmin.tsx` ne met pas en évidence les dons Mobile Money en attente (`payment_status = 'pending'`) ni n'offre d'actions spécifiques (valider, marquer comme échoué, relancer une notification au donateur).
 
-Etendre `PaymentConfig.config_data` pour les champs Mobile Money :
+La table `DonationsTable` dans `src/components/admin/DonationsTable.tsx` :
+- N'affiche pas `orange_money` ni `mtn_money` avec un badge coloré distinctif
+- N'a pas de bouton "Valider" ou "Rejeter" pour les paiements manuels
+- N'a pas de colonne "Référence de transaction" (pourtant stockée dans `bank_transfer_reference`)
 
-```ts
-// Mobile Money
-mobile_number?: string;       // Ex: +237 6XX XXX XXX
-account_name?: string;        // Nom du titulaire du compte
-payment_code?: string;        // Code court si applicable
-instructions?: string;        // Instructions de paiement
-```
+### Fichiers à modifier
 
----
+**`src/components/admin/DonationsTable.tsx`**
+- Ajouter `orange_money` et `mtn_money` dans `getPaymentMethodBadge()` avec couleurs distinctives (orange/jaune)
+- Ajouter une colonne "Référence" affichant `bank_transfer_reference` en code mono tronqué
+- Ajouter deux boutons d'action pour les dons `pending` : "Valider" (passe à `completed`) et "Rejeter" (passe à `failed`)
+- Passer `onValidate` et `onReject` comme props callbacks depuis le parent
 
-### 2. `src/lib/payment-utils.ts`
-
-Ajouter les labels et icônes pour les deux nouveaux providers dans `getPaymentMethodLabel` et `getPaymentMethodIcon`.
-
----
-
-### 3. `src/components/donations/PaymentMethodTabs.tsx`
-
-Ajouter les icônes et labels pour `orange_money` et `mtn_money` dans `getIcon()` et `getLabel()`.
+**`src/pages/admin/DonationsAdmin.tsx`**
+- Ajouter un `StatCard` d'alerte "Mobile Money en attente" avec count des `pending` sur `orange_money` + `mtn_money`
+- Ajouter les filtres "Orange Money" et "MTN MoMo" dans le `<Select>` de méthode de paiement
+- Ajouter les mutations `validateMobileMoney` et `rejectMobileMoney` via `useMutation`
+- Câbler ces mutations aux callbacks `onValidate` / `onReject` du tableau
 
 ---
 
-### 4. `src/components/donations/MobileMoneyInfo.tsx` (nouveau fichier)
+## Fonctionnalité 2 — Page de réconciliation Mobile Money
 
-Creer un composant similaire a `BankTransferInfo.tsx` pour afficher :
-- Le logo/icône Orange Money ou MTN MoMo
-- Le numéro de compte Mobile Money
-- Le nom du titulaire
-- Instructions de paiement (ex: "Composez *150# et suivez les instructions")
-- Un champ pour saisir la référence de transaction reçue par SMS
-- Un bouton "Confirmer le paiement" qui enregistre le don
+### Problème constaté
+
+Il n'existe pas de vue dédiée pour l'état des paiements Mobile Money. Les admins doivent filtrer manuellement dans la liste générale. Il n'y a pas de vue de synthèse montrant :
+- Total en attente de validation
+- Historique des validations du jour/mois
+- Références de transaction pour rapprochement manuel avec les relevés Orange/MTN
+
+### Fichiers à créer / modifier
+
+**Nouveau fichier : `src/pages/admin/MobileMoneyAdmin.tsx`**
+Un tableau de bord dédié avec :
+- 3 `StatCard` : "En attente de validation", "Validés ce mois", "Rejetés ce mois"
+- Tableau "Transactions à vérifier" filtré sur `payment_method IN (orange_money, mtn_money)` et `payment_status = pending`
+  - Colonnes : Date, Nom donateur, Téléphone, Montant, Opérateur (🟠/🟡), Référence SMS, Actions (Valider / Rejeter)
+- Tableau "Historique récent" : 30 derniers jours, tous statuts confondus pour Mobile Money
+- Export CSV des transactions Mobile Money (bouton simple `window.open` sur un filtre Supabase)
+
+**`src/pages/Dashboard.tsx`**
+- Ajouter `lazy(() => import("./admin/MobileMoneyAdmin"))` 
+- Ajouter la route `/admin/donations/mobile-money`
+- L'entourer d'un `PermissionRoute resource="donations" permission="read"`
+
+**`src/components/layout/DashboardSidebar.tsx`**
+- Ajouter "Réconciliation MoMo" dans la section `adminPublicItems` avec l'icône `Smartphone`
+- URL : `/dashboard/admin/donations/mobile-money`
 
 ---
 
-### 5. `src/pages/Don.tsx`
+## Fonctionnalité 3 — Sandbox / données de test
 
-Dans le bloc `{activeConfigs.map(...)}`, ajouter un `case` pour `orange_money` et `mtn_money` qui affiche le composant `MobileMoneyInfo`.
+### Approche choisie
+
+Il n'y a pas de vrai sandbox Orange Money / MTN MoMo accessible sans agrégateur. La sandbox ici est un **générateur de données de test** côté admin qui insère des donations fictives dans la table `donations` avec des références de transaction réalistes, pour permettre de tester le workflow complet (alerte → validation → réconciliation).
+
+Cela est cohérent avec l'approche manuelle déjà choisie pour ces paiements.
+
+### Fichiers à modifier
+
+**`src/pages/admin/MobileMoneyAdmin.tsx`** (même fichier que ci-dessus)
+- Ajouter un onglet "Sandbox / Tests" visible uniquement en développement (`import.meta.env.DEV`) ou via un toggle admin
+- Ce panneau permet d'insérer N donations de test avec :
+  - Opérateur : Orange Money ou MTN MoMo (sélectionnable)
+  - Montant aléatoire parmi les presets FCFA
+  - Référence générée automatiquement au format `TXN{timestamp}{random}`
+  - Nom/email de donateur fictif ("Test Donateur", "test@e2d.test")
+- Un bouton "Nettoyer les données de test" supprime les donations `donor_email = 'test@e2d.test'`
+
+**`src/hooks/useDonations.ts`**
+- Ajouter un hook `useMobileMoneyDonations()` qui filtre directement sur les deux providers Mobile Money — réutilisé par la page de réconciliation et par les alertes du dashboard
 
 ---
 
-### 6. `src/pages/admin/PaymentConfigAdmin.tsx`
+## Résumé des fichiers touchés
 
-Ajouter deux nouveaux onglets "Orange Money" et "MTN MoMo" avec :
-- Champ "Numéro de compte" (format +237 6XX XXX XXX)
-- Champ "Nom du titulaire"
-- Champ "Instructions" (textarea)
-- Switch "Activer"
-- Bouton "Enregistrer"
+| Fichier | Action | Fonctionnalité |
+|---|---|---|
+| `src/components/admin/DonationsTable.tsx` | Modifier | 1 — Alertes |
+| `src/pages/admin/DonationsAdmin.tsx` | Modifier | 1 — Alertes |
+| `src/pages/admin/MobileMoneyAdmin.tsx` | Créer | 2 + 3 |
+| `src/pages/Dashboard.tsx` | Modifier | 2 — Route |
+| `src/components/layout/DashboardSidebar.tsx` | Modifier | 2 — Nav |
+| `src/hooks/useDonations.ts` | Modifier | 1 + 2 |
 
-Passer les onglets de 4 à 6 (`grid-cols-6`).
+## Note technique
 
----
+Aucune migration SQL n'est nécessaire. La table `donations` existante contient toutes les colonnes requises :
+- `payment_method` (text) pour filtrer orange_money / mtn_money
+- `payment_status` (text) pour les transitions pending → completed / failed
+- `bank_transfer_reference` (text) pour stocker la référence SMS Mobile Money
 
-## Résultat attendu
-
-| Element | Detail |
-|---|---|
-| Nouveau type PaymentMethod | `orange_money`, `mtn_money` |
-| Page admin | 2 nouveaux onglets de configuration |
-| Page don | 2 nouvelles méthodes si activées |
-| Flux utilisateur | Saisir la référence de transaction après paiement |
-| Migration SQL | Aucune (colonne `provider` est `text`, pas un enum) |
-
-## Flux utilisateur Mobile Money
-
-```text
-1. Donateur choisit "Orange Money" ou "MTN MoMo"
-2. Il voit le numéro de compte et les instructions
-3. Il effectue le paiement sur son téléphone
-4. Il saisit la référence de transaction reçue par SMS
-5. Il clique "Confirmer" -> don enregistré avec statut "pending"
-6. L'admin valide manuellement la transaction
-```
-
-## Note importante
-
-La colonne `provider` de `payment_configs` est de type `text` : aucune migration SQL n'est nécessaire pour ajouter les nouveaux providers. La colonne `config_data` est de type `jsonb` : les nouveaux champs (numéro, instructions) sont stockés librement.
+Les mutations de validation/rejet utilisent simplement `supabase.from('donations').update(...)`.
