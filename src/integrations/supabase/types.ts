@@ -4126,6 +4126,7 @@ export type Database = {
       site_events: {
         Row: {
           actif: boolean
+          album_id: string | null
           auto_sync: boolean | null
           created_at: string
           date: string
@@ -4144,6 +4145,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          album_id?: string | null
           auto_sync?: boolean | null
           created_at?: string
           date: string
@@ -4162,6 +4164,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          album_id?: string | null
           auto_sync?: boolean | null
           created_at?: string
           date?: string
@@ -4178,7 +4181,15 @@ export type Database = {
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "site_events_album_id_fkey"
+            columns: ["album_id"]
+            isOneToOne: false
+            referencedRelation: "site_gallery_albums"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_events_carousel_config: {
         Row: {

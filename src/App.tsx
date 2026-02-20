@@ -16,16 +16,17 @@ const Don = lazy(() => import("./pages/Don"));
 const Adhesion = lazy(() => import("./pages/Adhesion"));
 const FirstPasswordChange = lazy(() => import("./pages/FirstPasswordChange"));
 const EventDetail = lazy(() => import("./pages/EventDetail"));
+const AlbumDetail = lazy(() => import("./pages/AlbumDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Configuration optimisée du QueryClient
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60 * 1000, // 1 minute - données considérées fraîches
-      gcTime: 10 * 60 * 1000, // 10 minutes - garbage collection
-      refetchOnWindowFocus: false, // Évite les refetch inutiles
-      retry: 1, // Limite les retries
+      staleTime: 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 1,
     },
   },
 });
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/adhesion" element={<Adhesion />} />
                 <Route path="/change-password" element={<FirstPasswordChange />} />
                 <Route path="/evenements/:id" element={<EventDetail />} />
+                <Route path="/albums/:albumId" element={<AlbumDetail />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

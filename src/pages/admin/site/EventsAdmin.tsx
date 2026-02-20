@@ -9,8 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Pencil, Trash2, Calendar, Clock, MapPin, Settings } from "lucide-react";
-import { useSiteEvents, useCreateEvent, useUpdateEvent, useDeleteEvent, useSiteEventsCarouselConfig, useUpdateEventsCarouselConfig } from "@/hooks/useSiteContent";
+import { Loader2, Plus, Pencil, Trash2, Calendar, Clock, MapPin, Settings, Image } from "lucide-react";
+import { useSiteEvents, useCreateEvent, useUpdateEvent, useDeleteEvent, useSiteEventsCarouselConfig, useUpdateEventsCarouselConfig, useSiteGalleryAlbums } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -20,6 +20,7 @@ import { toast } from "sonner";
 export default function EventsAdmin() {
   const { data: events, isLoading } = useSiteEvents();
   const { data: carouselConfig, isLoading: configLoading } = useSiteEventsCarouselConfig();
+  const { data: galleryAlbums = [] } = useSiteGalleryAlbums();
   const createEvent = useCreateEvent();
   const updateEvent = useUpdateEvent();
   const deleteEvent = useDeleteEvent();
@@ -156,6 +157,23 @@ export default function EventsAdmin() {
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" {...register("description")} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="album_id" className="flex items-center gap-2">
+                  <Image className="w-4 h-4" />
+                  Lier à un album galerie (optionnel)
+                </Label>
+                <select
+                  id="album_id"
+                  {...register("album_id")}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Aucun album lié</option>
+                  {(galleryAlbums as any[]).map((album: any) => (
+                    <option key={album.id} value={album.id}>{album.titre}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">L'album sera affiché sur la page détail de l'événement.</p>
               </div>
               <div className="flex justify-end gap-4">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
