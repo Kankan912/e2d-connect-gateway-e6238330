@@ -219,7 +219,7 @@ const Contact = () => {
                       <FormItem>
                         <FormLabel>Téléphone</FormLabel>
                         <FormControl>
-                          <Input type="tel" placeholder="+33 X XX XX XX XX" {...field} />
+                          <Input type="tel" placeholder="+237 XXX XXXX XXX" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -234,7 +234,7 @@ const Contact = () => {
                     <FormItem>
                       <FormLabel>Email *</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="votre.email@exemple.com" {...field} />
+                        <Input type="email" placeholder="alex.fotso@exemple.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
