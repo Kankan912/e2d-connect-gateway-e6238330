@@ -6,9 +6,10 @@ import { useNavigate } from "react-router-dom";
 const Gallery = () => {
   const navigate = useNavigate();
   const { data: albums, isLoading: loadingAlbums } = useSiteGalleryAlbums();
+  // useSiteGallery est nécessaire uniquement pour compter les items par album et trouver la cover
   const { data: galleryItems, isLoading: loadingItems } = useSiteGallery();
 
-  const isLoading = loadingAlbums || loadingItems;
+  const isLoading = loadingAlbums;
 
   if (isLoading) {
     return (
