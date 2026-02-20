@@ -325,7 +325,7 @@ export default function EventDetail() {
           )}
 
           {/* Compte Rendu du match */}
-          {isMatch && compteRendu && (
+          {isMatch && compteRendu && !!(
             compteRendu.resume || 
             compteRendu.faits_marquants || 
             compteRendu.conditions_jeu || 

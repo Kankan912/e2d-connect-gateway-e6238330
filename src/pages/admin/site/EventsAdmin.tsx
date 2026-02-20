@@ -46,10 +46,12 @@ export default function EventsAdmin() {
   }, [carouselConfig]);
 
   const onSubmit = (data: any) => {
+    // Normaliser album_id : chaîne vide → null
+    const payload = { ...data, album_id: data.album_id || null };
     if (editingEvent) {
-      updateEvent.mutate({ ...data, id: editingEvent.id });
+      updateEvent.mutate({ ...payload, id: editingEvent.id });
     } else {
-      createEvent.mutate(data);
+      createEvent.mutate(payload);
     }
     setOpen(false);
     reset();
