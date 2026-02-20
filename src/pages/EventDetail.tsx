@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Calendar, Clock, MapPin, ArrowLeft, Trophy, Users, Image, Film, FileText, Target, Star, Award } from "lucide-react";
+import { Calendar, Clock, MapPin, ArrowLeft, Trophy, Users, Image, Film, FileText, Target, Star, Award, Folder } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +14,18 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { LazyImage } from "@/components/ui/lazy-image";
 import { ImageLightbox, LightboxImage } from "@/components/ui/image-lightbox";
+import { useSiteGalleryAlbums, useSiteGalleryByAlbum } from "@/hooks/useSiteContent";
 
 export default function EventDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
 
   const { data: event, isLoading } = useQuery({
     queryKey: ["site-event-detail", id],
@@ -107,6 +114,11 @@ export default function EventDetail() {
     isVideo: media.type === "video",
   }));
 
+  // Album galerie lié à l'événement
+  const { data: linkedAlbumItems = [] } = useSiteGalleryByAlbum(event?.album_id || undefined);
+  const { data: allAlbums } = useSiteGalleryAlbums();
+  const linkedAlbum = allAlbums?.find((a: any) => a.id === event?.album_id);
+
   const openLightbox = (index: number) => {
     setLightboxIndex(index);
     setLightboxOpen(true);
@@ -167,10 +179,13 @@ export default function EventDetail() {
       <main className="min-h-screen bg-background pt-24">
         <div className="container mx-auto px-4 py-8">
           {/* Bouton retour */}
-          <Link to="/#evenements" className="inline-flex items-center text-muted-foreground hover:text-primary mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center text-muted-foreground hover:text-primary mb-6 transition-colors"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Retour aux événements
-          </Link>
+          </button>
 
           {/* En-tête de l'événement */}
           <div className="grid lg:grid-cols-2 gap-8 mb-8">
@@ -497,6 +512,36 @@ export default function EventDetail() {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+          {/* Album galerie lié à l'événement */}
+          {linkedAlbum && linkedAlbumItems.length > 0 && (
+            <Card className="mb-6">
+              <CardContent className="p-6">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Folder className="h-5 w-5" />
+                  Album Photos : {linkedAlbum.titre}
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  {linkedAlbumItems.slice(0, 8).map((item: any) => (
+                    <Link key={item.id} to={`/albums/${linkedAlbum.id}`}>
+                      <img
+                        src={item.image_url || item.video_url}
+                        alt={item.titre || "Photo"}
+                        className="w-full aspect-square object-cover rounded-lg hover:opacity-80 transition-opacity"
+                        loading="lazy"
+                      />
+                    </Link>
+                  ))}
+                </div>
+                <Link
+                  to={`/albums/${linkedAlbum.id}`}
+                  className="inline-flex items-center text-primary hover:underline text-sm font-medium"
+                >
+                  <Folder className="h-4 w-4 mr-2" />
+                  Voir l'album complet ({linkedAlbumItems.length} médias)
+                </Link>
               </CardContent>
             </Card>
           )}

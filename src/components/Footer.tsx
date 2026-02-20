@@ -1,4 +1,5 @@
 import { Facebook, Mail, Heart } from "lucide-react";
+import { Link } from "react-router-dom";
 import logoE2D from "@/assets/logo-e2d.png";
 import { useSiteConfig } from "@/hooks/useSiteContent";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,20 +24,20 @@ const Footer = () => {
 
   const footerLinks = {
     "Navigation": [
-      { label: "Accueil", href: "#accueil" },
-      { label: "À propos", href: "#apropos" },
-      { label: "Activités", href: "#activites" },
-      { label: "Événements", href: "#evenements" }
+      { label: "Accueil", to: "/#accueil", external: false },
+      { label: "À propos", to: "/#apropos", external: false },
+      { label: "Activités", to: "/#activites", external: false },
+      { label: "Événements", to: "/#evenements", external: false }
     ],
     "Ressources": [
-      { label: "Galerie", href: "#galerie" },
-      { label: "Partenaires", href: "#partenaires" },
-      { label: "Contact", href: "#contact" },
-      { label: "Portail Membre", href: "/portal" }
+      { label: "Galerie", to: "/#galerie", external: false },
+      { label: "Partenaires", to: "/#partenaires", external: false },
+      { label: "Contact", to: "/#contact", external: false },
+      { label: "Portail Membre", to: "/dashboard", external: false }
     ],
     "Soutenir": [
-      { label: "Faire un don", href: "/don" },
-      { label: "Devenir membre", href: "/adhesion" }
+      { label: "Faire un don", to: "/don", external: false },
+      { label: "Devenir membre", to: "/adhesion", external: false }
     ]
   };
 
@@ -78,12 +79,12 @@ const Footer = () => {
               <ul className="space-y-2">
                 {links.map((link) => (
                   <li key={link.label}>
-                     <a
-                      href={link.href}
+                    <Link
+                      to={link.to}
                       className="text-primary-foreground/80 hover:text-secondary transition-colors duration-200"
                     >
                       {link.label}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
