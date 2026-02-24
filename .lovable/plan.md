@@ -1,79 +1,87 @@
 
 
-# Plan : Service de Calcul Centralise pour les Prets
+# Plan : Corriger le filtre d'etat et la colonne Reste des prets
 
-## Probleme identifie
+## Problemes identifies
 
-L'ecart de "Reste a payer" entre la liste (14 256,25 FCFA) et le detail (35 125 FCFA) provient de **4 formules de calcul differentes** reparties dans le code :
+### 1. Colonne "Reste" incorrecte
+Ligne 540 : `const totalDu = pret.montant_total_du || calculerTotalDu(pret)` — priorite donnee a `montant_total_du` (valeur DB potentiellement obsolete) au lieu d'utiliser systematiquement le service centralise. Meme probleme ligne 554 pour "Total du".
 
-| Composant | Formule actuelle | Resultat (Guillaume Toto) |
-|---|---|---|
-| `PretHistoriqueComplet` | `capital + interetInitial + SUM(reconductions.interet_mois)` | **55 125** (correct) |
-| `PretDetailsModal` | `capital + interetInitial + (montant*taux/100/12) * nbRecon` | **52 708** (faux — divise par 12) |
-| `PretsAdmin` (liste) | `montant_total_du` depuis la DB | Depend de la valeur stockee |
-| `PretsPaiementsManager` | `montant_total_du` depuis la DB | Idem |
-| `pret-pdf-export` | `montant_total_du` depuis la DB | Idem |
+De plus, la requete principale (lignes 59-74) ne charge ni `prets_paiements` ni `prets_reconductions`, donc `calculerResumePret` utilise le fallback compose au lieu des donnees reelles. C'est la source de l'ecart.
 
-Le bug principal est dans `PretDetailsModal.tsx` ligne 81-82 : `interetMensuel = (montant * taux/100) / 12` qui divise l'interet par 12 sans raison valable. Les composants qui lisent `montant_total_du` depuis la DB dependent d'une valeur qui a pu etre mal calculee lors d'un paiement ou d'une reconduction.
+### 2. Filtre d'etat defaillant
+`getEffectiveStatus` (lignes 259-270) a un probleme de priorite :
+- Ligne 266 : `paye > 0 && paye < totalDu` retourne `partiel` **avant** de verifier `en_retard`
+- Un pret en retard avec un paiement partiel est affiche comme "Partiel" au lieu de "En retard"
+- Un pret reconduit avec un paiement partiel est affiche comme "Partiel" au lieu de "Reconduit"
+- Le filtre "En retard" ne trouve donc aucun pret (0 resultats dans la capture)
 
-## Solution
+## Corrections
 
-Creer un service centralise `pretCalculsService.ts` et l'utiliser dans les 5 fichiers concernes.
+### Fichier : `src/pages/admin/PretsAdmin.tsx`
 
-## Actions
+**Action 1 — Charger paiements et reconductions dans la requete principale**
 
-### 1. Creer `src/lib/pretCalculsService.ts`
-
-Service centralise avec :
-- `calculerResumePret()` : calcul unique du totalDu, resteAPayer, progression
-- Priorite aux donnees reelles de reconductions (`prets_reconductions.interet_mois`) quand disponibles
-- Fallback sur la formule composee quand l'historique n'est pas charge
-- Interfaces typees `PretCalculs`, `Paiement`, `Reconduction`
-
-### 2. Modifier `PretDetailsModal.tsx`
-
-Remplacer les lignes 78-96 (calcul manuel avec la formule fausse `/12`) par un appel a `calculerResumePret()` avec les donnees `pret`, `paiements`, `reconductions` deja chargees par React Query.
-
-### 3. Modifier `PretHistoriqueComplet.tsx`
-
-Remplacer les lignes 80-84 (calcul local) par un appel a `calculerResumePret()`. Le resultat sera identique (cette formule etait deja correcte), mais cela garantit la coherence.
-
-### 4. Modifier `PretsAdmin.tsx`
-
-Remplacer `calculerTotalDu()` et `calculerSoldeRestant()` (lignes 94-110) par `calculerResumePret()`. Necessitequote de charger les reconductions pour chaque pret (soit via une sous-requete, soit en utilisant les champs `interet_initial` et `reconductions` deja disponibles dans la requete principale).
-
-### 5. Modifier `PretsPaiementsManager.tsx`
-
-Remplacer le calcul `totalDu` (ligne 98) et `montantRestant` (ligne 104) par `calculerResumePret()` au lieu de lire `montant_total_du` directement depuis la DB.
-
-### 6. Modifier `pret-pdf-export.ts`
-
-Remplacer le calcul local (lignes 109-113) par `calculerResumePret()`.
-
-## Details techniques
-
-La formule correcte est :
+Ajouter au `.select()` (ligne 64) :
 ```
-totalInterets = interetInitial + SUM(reconductions[].interet_mois)
-totalDu = capital + totalInterets
-resteAPayer = totalDu - SUM(paiements[].montant_paye)
+prets_paiements(*),
+prets_reconductions(*)
 ```
 
-Quand l'historique des reconductions n'est pas disponible, le fallback utilise les champs de la table `prets` :
+Cela permet a `calculerResumePret` d'utiliser les donnees reelles au lieu du fallback.
+
+**Action 2 — Supprimer toute reference a `montant_total_du` pour l'affichage**
+
+Lignes 540-541 et 554 : remplacer par un appel direct a `calculerResumePret` avec les paiements et reconductions charges. Ne plus utiliser `pret.montant_total_du` pour le calcul d'affichage.
+
+**Action 3 — Corriger l'ordre de priorite dans `getEffectiveStatus`**
+
+Nouvel ordre :
+1. `rembourse` si paye >= totalDu
+2. `en_retard` si echeance depassee et pas rembourse (que ce soit partiel ou non)
+3. `reconduit` si reconductions > 0
+4. `partiel` si paye > 0
+5. `en_cours` par defaut
+
+```typescript
+const getEffectiveStatus = (pret: any) => {
+  const calculs = calculerResumePret(pret, pret.prets_paiements, pret.prets_reconductions);
+  const echeance = new Date(pret.echeance);
+  const now = new Date();
+
+  if (calculs.totalPaye >= calculs.totalDu && calculs.totalDu > 0) return 'rembourse';
+  if (echeance < now) return 'en_retard';
+  if (pret.reconductions > 0) return 'reconduit';
+  if (calculs.totalPaye > 0) return 'partiel';
+  return 'en_cours';
+};
 ```
-totalInterets = interet_initial + (dernier_interet - interet_initial) si reconductions > 0
+
+**Action 4 — Uniformiser le rendu de la colonne "Reste" et "Total du"**
+
+Dans le `map` du tableau (ligne 537+), utiliser un seul appel a `calculerResumePret` avec les donnees jointes :
+```typescript
+const calculs = calculerResumePret(
+  pret,
+  pret.prets_paiements || [],
+  pret.prets_reconductions || []
+);
 ```
 
-Le service ne modifie aucune donnee en base. Il calcule dynamiquement a partir des donnees chargees.
+Puis utiliser `calculs.totalDu` et `calculs.resteAPayer` directement.
 
-## Fichiers
+**Action 5 — Mettre a jour les statistiques du dashboard**
 
-| Fichier | Action |
+Les lignes 339-350 (stats) utilisent `getEffectiveStatus` et `calculerTotalDu` — elles beneficieront automatiquement des corrections ci-dessus car elles appellent les memes fonctions. Verifier que `montantRestant` (ligne 345) utilise aussi `calculerResumePret` au lieu de `calculerTotalDu`.
+
+## Fichiers modifies
+
+| Fichier | Modification |
 |---|---|
-| `src/lib/pretCalculsService.ts` | Creer (service centralise) |
-| `src/components/PretDetailsModal.tsx` | Remplacer calculs lignes 78-96 |
-| `src/components/PretHistoriqueComplet.tsx` | Remplacer calculs lignes 80-84 |
-| `src/pages/admin/PretsAdmin.tsx` | Remplacer `calculerTotalDu`/`calculerSoldeRestant` lignes 94-110 |
-| `src/components/PretsPaiementsManager.tsx` | Remplacer calculs lignes 76-108 |
-| `src/lib/pret-pdf-export.ts` | Remplacer calculs lignes 109-113 |
+| `src/pages/admin/PretsAdmin.tsx` | Requete enrichie + getEffectiveStatus corrige + colonne Reste via service centralise |
+
+## Impact
+- Le filtre "En retard" affichera correctement les prets en retard (meme partiellement payes)
+- La colonne "Reste" utilisera les reconductions reelles au lieu du fallback compose
+- Coherence garantie entre liste, detail et PDF
 
