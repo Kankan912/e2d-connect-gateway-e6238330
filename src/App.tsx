@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,17 +7,18 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FullPageFallback } from "@/components/ui/page-loader";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
-// Lazy load des pages principales pour réduire le bundle initial
-const Index = lazy(() => import("./pages/Index"));
-const Auth = lazy(() => import("./pages/Auth"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Don = lazy(() => import("./pages/Don"));
-const Adhesion = lazy(() => import("./pages/Adhesion"));
-const FirstPasswordChange = lazy(() => import("./pages/FirstPasswordChange"));
-const EventDetail = lazy(() => import("./pages/EventDetail"));
-const AlbumDetail = lazy(() => import("./pages/AlbumDetail"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+// Lazy load des pages principales avec retry automatique après déploiement
+const Index = lazyWithRetry(() => import("./pages/Index"));
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
+const Don = lazyWithRetry(() => import("./pages/Don"));
+const Adhesion = lazyWithRetry(() => import("./pages/Adhesion"));
+const FirstPasswordChange = lazyWithRetry(() => import("./pages/FirstPasswordChange"));
+const EventDetail = lazyWithRetry(() => import("./pages/EventDetail"));
+const AlbumDetail = lazyWithRetry(() => import("./pages/AlbumDetail"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
 // Configuration optimisée du QueryClient
 const queryClient = new QueryClient({

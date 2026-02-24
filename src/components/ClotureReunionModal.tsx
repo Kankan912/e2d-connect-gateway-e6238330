@@ -377,7 +377,10 @@ export default function ClotureReunionModal({
         }
       });
 
-      if (emailError) throw emailError;
+      if (emailError) {
+        console.error("Email error details:", emailError);
+        // Don't block cloture if email fails, just warn
+      }
 
       // === ÉTAPE 6: Calculer le taux de présence et mettre à jour le statut ===
       const totalMembresE2D = membresE2D?.length || 0;

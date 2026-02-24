@@ -212,7 +212,11 @@ export function EmailConfigManager() {
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        const errorMessage = data?.error || error.message;
+        throw new Error(errorMessage);
+      }
+      if (data?.error) throw new Error(data.error);
       toast.success(`Email de test envoyé à ${emailExpediteur}`);
     } catch (error: unknown) {
       console.error("Test email failed:", error);
@@ -413,7 +417,10 @@ export function EmailConfigManager() {
                     const { error } = await supabase.functions.invoke("update-email-config", {
                       body: { resend_api_key: resendApiKey, email_mode: "resend" }
                     });
-                    if (error) throw error;
+                    if (error) {
+                      const errorMessage = (error as any)?.message || "Impossible d'enregistrer la clé";
+                      throw new Error(errorMessage);
+                    }
                     toast.success("Clé API Resend enregistrée");
                   } catch (err: any) {
                     toast.error("Erreur: " + (err.message || "Impossible d'enregistrer la clé"));

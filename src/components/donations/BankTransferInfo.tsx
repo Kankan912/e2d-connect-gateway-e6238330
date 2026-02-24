@@ -66,11 +66,15 @@ const BankTransferInfo = ({ config, donorEmail, onNotificationSent }: BankTransf
         </div>
       `;
 
-      const { error } = await supabase.functions.invoke('send-email', {
+      const { data, error } = await supabase.functions.invoke('send-email', {
         body: { to: email, subject: 'Récapitulatif virement - E2D', html: emailHtml }
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = data?.error || error.message;
+        throw new Error(errorMessage);
+      }
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: "Email envoyé",
