@@ -172,9 +172,9 @@ const DashboardHome = () => {
       {hasAdminAccess && (
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader>
-            <CardTitle>{isAdmin ? '👑 Accès Super Administrateur' : '💰 Accès Administration'}</CardTitle>
+            <CardTitle>{isAdmin ? '👑 Accès Super Administrateur' : '🔧 Accès Administration'}</CardTitle>
             <CardDescription>
-              {isAdmin ? 'Accès complet à toutes les fonctionnalités' : 'Accès aux fonctionnalités financières'}
+              {isAdmin ? 'Accès complet à toutes les fonctionnalités' : "Accès aux fonctionnalités d'administration"}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex gap-2">
