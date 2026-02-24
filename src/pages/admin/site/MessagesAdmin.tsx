@@ -118,7 +118,7 @@ const MessagesAdmin = () => {
 
     setIsSendingReply(true);
     try {
-      const { error } = await supabase.functions.invoke('send-contact-notification', {
+      const { data, error } = await supabase.functions.invoke('send-contact-notification', {
         body: {
           type: 'admin_reply',
           to: selectedMessage.email,
@@ -131,7 +131,11 @@ const MessagesAdmin = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = data?.error || error.message;
+        throw new Error(errorMessage);
+      }
+      if (data?.error) throw new Error(data.error);
 
       // Marquer comme traité après réponse
       await updateMessage.mutateAsync({ id: selectedMessage.id, statut: "traite" });
