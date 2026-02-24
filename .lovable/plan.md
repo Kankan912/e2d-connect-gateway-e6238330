@@ -1,69 +1,102 @@
 
 
-# Plan : Corriger l'erreur de creation de compte et ameliorer la gestion d'erreurs
+# Code Review Complet — Problemes identifies et corrections
 
-## Probleme identifie
+## Probleme principal visible (capture d'ecran)
 
-L'erreur visible dans la capture est `"Erreur de creation - Edge Function returned a non-2xx status code"`. Les logs revelent la cause reelle : `"A user with this email address has already been registered"` (code `email_exists`, status 422).
+L'erreur **"Failed to fetch dynamically imported module: .../MembresAdmin-po6ly24a.js"** est causee par les **chunks Vite perimees apres un nouveau deploiement**. Quand l'application est redeployee, les noms de fichiers JS changent (hashes differents). Si un utilisateur a un onglet ouvert avec l'ancien manifest, la navigation lazy charge un fichier qui n'existe plus → crash.
 
-Deux problemes distincts :
+## Problemes identifies
 
-1. **Edge function `create-user-account`** (ligne 107-109) : quand `createUser` echoue avec `email_exists`, l'erreur est propagee via `throw createError` qui retourne un status 400 avec le message brut en anglais. Aucun traitement specifique pour ce cas courant.
+### 1. Chunks perimees — Lazy loading sans retry (CRITIQUE)
 
-2. **Frontend `UserMemberLinkManager`** (ligne 191-202) : `supabase.functions.invoke()` retourne `{ data, error }`. Quand l'edge function retourne un status non-2xx, le SDK met le body de la reponse dans `data` et un objet `FunctionsHttpError` generique dans `error` avec le message `"Edge Function returned a non-2xx status code"`. Le code fait `if (error) throw error` sans jamais lire `data?.error` qui contient le vrai message.
+**Fichiers** : `src/App.tsx`, `src/pages/Dashboard.tsx`
 
-## Corrections
+Toutes les ~40 routes utilisent `lazy(() => import(...))` sans mecanisme de retry. Apres chaque deploiement, les utilisateurs avec un onglet ouvert obtiennent le crash montre dans la capture.
 
-### Fichier 1 : `supabase/functions/create-user-account/index.ts`
-
-**Action — Gerer `email_exists` explicitement** (lignes 107-110)
-
-Remplacer le `throw createError` par un retour d'erreur avec message francais :
+**Correction** : Creer un helper `lazyWithRetry` qui detecte les erreurs de chargement de module et force un rechargement de la page (une seule fois pour eviter une boucle infinie) :
 
 ```typescript
-if (createError) {
-  console.error('❌ Error creating user:', createError);
-  const message = (createError as any).code === 'email_exists'
-    ? 'Un compte avec cet email existe déjà. Veuillez utiliser un autre email ou lier le membre au compte existant.'
-    : (createError as Error).message;
-  return new Response(
-    JSON.stringify({ error: message }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+// src/lib/lazyWithRetry.ts
+import { lazy, ComponentType } from "react";
+
+export function lazyWithRetry<T extends ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(() =>
+    factory().catch((err) => {
+      // Si c'est une erreur de chunk (deploiement), recharger une seule fois
+      const key = "chunk_reload_" + window.location.pathname;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+        window.location.reload();
+        return new Promise(() => {}); // ne jamais resoudre
+      }
+      sessionStorage.removeItem(key);
+      throw err;
+    })
   );
 }
 ```
 
-### Fichier 2 : `src/components/UserMemberLinkManager.tsx`
+Puis remplacer tous les `lazy(() => import(...))` par `lazyWithRetry(() => import(...))` dans `App.tsx` et `Dashboard.tsx`.
 
-**Action — Lire le message d'erreur du body de la reponse** (lignes 191-202)
+### 2. Edge function invocations — messages d'erreur generiques (MOYEN)
 
-Modifier le handling pour extraire le vrai message d'erreur :
+**Fichiers** : 12 fichiers avec `supabase.functions.invoke`
 
+Le meme probleme que `UserMemberLinkManager` (corrige precedemment) existe dans **11 autres endroits**. Quand une edge function retourne un status non-2xx, le SDK met l'erreur reelle dans `data?.error` mais le code fait `if (error) throw error`, affichant "Edge Function returned a non-2xx status code" au lieu du vrai message.
+
+**Fichiers concernes** :
+- `src/hooks/useDonations.ts` (ligne 53)
+- `src/pages/admin/NotificationsAdmin.tsx` (ligne 146)
+- `src/components/CompteRenduActions.tsx` (ligne 163)
+- `src/components/donations/BankTransferInfo.tsx` (ligne 69)
+- `src/components/donations/MobileMoneyInfo.tsx` (ligne 88)
+- `src/components/config/EmailConfigManager.tsx` (lignes 159, 196, 263, 413)
+- `src/components/config/CalendrierBeneficiairesManager.tsx` (ligne 318)
+- `src/components/ClotureReunionModal.tsx` (ligne 362)
+- `src/components/NotifierReunionModal.tsx` (ligne 152)
+- `src/pages/Reunions.tsx` (ligne 112)
+- `src/components/admin/CreateUserDialog.tsx` (ligne 95)
+
+**Correction** : Pour chaque appel, remplacer :
 ```typescript
-const { data, error } = await supabase.functions.invoke('create-user-account', {
-  body: { ... }
-});
-
+if (error) throw error;
+```
+par :
+```typescript
 if (error) {
-  // data contient le body de la reponse avec le vrai message d'erreur
   const errorMessage = data?.error || error.message;
   throw new Error(errorMessage);
 }
-
 if (data?.error) {
   throw new Error(data.error);
 }
 ```
 
-## Resume des fichiers modifies
+### 3. Routes — Verification de coherence
 
-| Fichier | Modification |
-|---|---|
-| `supabase/functions/create-user-account/index.ts` | Message francais pour `email_exists`, retour propre au lieu de throw |
-| `src/components/UserMemberLinkManager.tsx` | Extraction du vrai message d'erreur depuis `data?.error` |
+Toutes les routes definies dans `Dashboard.tsx` ont un lien correspondant dans `DashboardSidebar.tsx`. **Aucune route orpheline ou lien mort detecte.** Les 42 routes du sidebar pointent toutes vers des composants existants.
+
+Une page existe sans route directe : `src/pages/MatchResults.tsx` — mais elle est utilisee comme **composant** dans `Sport.tsx` (tab "e2d-resultats"), donc c'est correct.
+
+### 4. `.replace()` sur valeurs potentiellement nulles (MINEUR)
+
+Deja corrige dans les messages precedents pour `NotificationsTemplatesAdmin.tsx` et `CompteRenduViewer.tsx`. Les autres appels `.replace()` dans le projet operent sur des valeurs garanties non-null (chaines statiques, parametres requis, ou protegees par des gardes existantes).
+
+## Resume des modifications
+
+| # | Fichier | Action | Priorite |
+|---|---|---|---|
+| 1 | **`src/lib/lazyWithRetry.ts`** (nouveau) | Helper de retry pour lazy loading | CRITIQUE |
+| 2 | **`src/App.tsx`** | Remplacer `lazy` par `lazyWithRetry` (8 imports) | CRITIQUE |
+| 3 | **`src/pages/Dashboard.tsx`** | Remplacer `lazy` par `lazyWithRetry` (33 imports) | CRITIQUE |
+| 4 | **11 fichiers** avec `functions.invoke` | Extraire `data?.error` avant de throw | MOYEN |
 
 ## Impact
-- L'utilisateur verra "Un compte avec cet email existe deja..." au lieu de "Edge Function returned a non-2xx status code"
-- Les autres erreurs de creation seront aussi affichees correctement avec leur message reel
-- Aucun changement de comportement pour les cas qui fonctionnent deja
+
+- Plus de crash apres deploiement (les utilisateurs avec un onglet ouvert seront redirigees proprement)
+- Messages d'erreur reels affiches partout (pas de "Edge Function returned a non-2xx status code" generique)
+- Aucun changement fonctionnel visible pour les cas qui fonctionnent deja
 
