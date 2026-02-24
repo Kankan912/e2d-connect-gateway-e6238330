@@ -1,80 +1,84 @@
 
 
-# Phase 3 — Verdict : CONFORME
+# Code Review Phase 4 + Plan Phase 5
 
-Les 3 points du plan ont ete correctement implementes :
+## Phase 4 — Verdict : CONFORME
 
-**1. Apercu montant total dans dialog d'ajout** — `CalendrierBeneficiairesManager.tsx` lignes 590-601 : le dialog d'ajout affiche desormais un calcul `montant_mensuel x 12 = montant_total` base sur les cotisations mensuelles du membre selectionne. Conforme.
+Les 4 points du plan ont ete correctement implementes :
 
-**2. Tri automatique des rangs apres changement de mois** — Lignes 356-371 : apres `updateBeneficiaire`, le code trie par `mois_benefice` croissant, detecte si l'ordre a change, et propose un `window.confirm` pour reordonner automatiquement. Conforme.
+**1. GestionPresences — Migration React Query** — `GestionPresences.tsx` utilise desormais `useQuery` pour les 4 sources de donnees (membres E2D, adherents Phoenix, presences E2D, presences Phoenix) et `useMutation` pour les toggles. Les `queryKey` incluent `selectedDate` et `selectedTypeSeance` (lignes 81, 95), garantissant un rechargement automatique au changement de date ou type. Conforme.
 
-**3. Edge Function notifications** — `send-calendrier-beneficiaires` est deployee et operationnelle. L'envoi echoue uniquement a cause de la configuration SMTP (Outlook AUTH desactive) — pas un bug de code. Conforme.
+**2. DashboardHome — Section admin basee sur permissions** — `DashboardHome.tsx` ligne 30-40 : `hasAdminAccess` utilise `hasAnyPermission` avec 9 ressources au lieu du hardcoded `userRole === "administrateur" || userRole === "tresorier"`. Tous les roles avec au moins une permission de lecture voient la section admin. Conforme.
 
-**Phase 3 validee. Passage a la Phase 4.**
+**3. DashboardSidebar — Badge role "membre"** — `DashboardSidebar.tsx` ligne 248 : `{userRole === 'membre' && '👤 Membre'}` est present. Le catch-all (ligne 249) ne s'applique que pour les roles non reconnus. Conforme.
+
+**4. CalendrierBeneficiairesManager — AlertDialog au lieu de window.confirm** — `CalendrierBeneficiairesManager.tsx` lignes 145-146 : state `showReorderDialog` et `pendingReorderUpdates`. Lignes 608-628 : `AlertDialog` shadcn/ui avec boutons "Non" et "Oui, reordonner". Le `window.confirm` a ete completement remplace. Conforme.
+
+**Aucun bug detecte. Phase 4 validee. Passage a la Phase 5.**
 
 ---
 
-# Phase 4 — Robustesse & Qualite de Code
+## Phase 5 — Securite, Exports & Statistiques
 
-Audit des modules restants non encore revus : Presences, Sidebar, DashboardHome, Espaces personnels, Gestion de session.
+Audit des modules restants non encore revus dans les phases 1-4.
 
-## Audit du code existant
+### Audit du code existant
 
 | Module | Statut | Observations |
 |---|---|---|
-| DashboardSidebar | OK | Filtrage permissions correct, badge prets en retard fonctionnel |
-| DashboardHome | OK | Resume personnel, actions rapides, badge role |
-| PermissionRoute | OK | Redirect `/dashboard` si pas de permission |
-| usePermissions | OK | Cache 5min, enforcePermission avec toast |
-| useSessionManager | OK | Gestion inactivite + expiration session |
-| MyPrets | OK | Progress bar remboursement, badges statut |
-| MyCotisations | OK | Recap par type, total paye |
+| ExportsAdmin | PARTIEL | React Query OK, mais pas de permission check (ni `enforcePermission` ni `hasPermission`) |
+| NotificationsAdmin | PARTIEL | React Query OK, mais pas de permission check sur les actions CRUD |
+| StatsAdmin | PROBLEME | Utilise `useState` + `useEffect` au lieu de React Query (meme probleme que GestionPresences avait) |
+| RapportsAdmin | OK | React Query utilise correctement |
+| CaisseAdmin | PARTIEL | React Query OK, mais pas de permission check sur les operations |
+| NotificationToaster | OK | Realtime subscriptions correctes |
+| PermissionRoute | OK | Protection de route fonctionnelle |
 
-## Points a corriger (Phase 4)
+### Points a corriger (Phase 5)
 
-### 1. GestionPresences — pas de React Query, state manuel
+**1. StatsAdmin — pas de React Query, state manuel**
 
-`GestionPresences.tsx` utilise `useState` + `useEffect` + `supabase` directement au lieu de React Query. C'est le seul module majeur qui n'utilise pas ce pattern. Consequences :
-- Pas de cache (rechargement complet a chaque visite)
-- Pas de refetch automatique
-- Pas de gestion optimiste des mutations
-- `loadData()` dans `useEffect([], [])` sans dependance sur `selectedDate` — les presences ne se rechargent pas automatiquement quand la date change (il faut appeler `loadPresences()` manuellement)
+`StatsAdmin.tsx` utilise `useState` + `useEffect` + `fetchStats()` au lieu de React Query. C'est le dernier module majeur avec ce pattern. De plus, la section "Sport" (lignes 109-114) retourne des donnees statiques codees en dur (`victoires: 12, nuls: 5, defaites: 3`) au lieu de les charger depuis la base.
 
-**Action** : Refactorer `GestionPresences.tsx` pour utiliser React Query (`useQuery` pour le chargement, `useMutation` pour les toggles de presence). Ajouter `selectedDate` et `selectedTypeSeance` dans les `queryKey` pour que les presences se rechargent automatiquement.
+**Action** : Migrer vers React Query avec `selectedYear` dans le `queryKey`. Remplacer les donnees sport statiques par une requete reelle vers `sport_e2d_matchs` et `phoenix_matchs`.
 
-### 2. DashboardHome — section admin limitee a 2 roles
+**2. ExportsAdmin, NotificationsAdmin, CaisseAdmin — aucun controle de permissions sur les boutons CRUD**
 
-Ligne 28 : `hasAdminAccess = userRole === "administrateur" || userRole === "tresorier"`. Les roles secretaire, responsable sportif, censeur, commissaire n'ont pas de section admin dans le dashboard home, meme s'ils ont des permissions d'acces. La sidebar leur donne acces, mais le dashboard ne le montre pas.
+Ces 3 pages admin n'utilisent ni `enforcePermission` ni `hasPermission` pour conditionner l'affichage ou le clic des boutons Creer/Modifier/Supprimer. Un utilisateur avec un role `"membre"` qui accederait a ces routes (via URL directe par exemple) pourrait voir et tenter d'utiliser les actions CRUD.
 
-**Action** : Remplacer le check `hasAdminAccess` par une verification basee sur les permissions (`hasAnyPermission`) au lieu de hardcoder les noms de roles. Afficher la section admin si l'utilisateur a au moins une permission de lecture sur n'importe quelle ressource admin.
+Note : la protection de route via `PermissionRoute` dans `Dashboard.tsx` bloque normalement l'acces. Mais par principe de defense en profondeur, les boutons CRUD eux-memes devraient etre conditionnes.
 
-### 3. DashboardSidebar — role "membre" non affiche dans le badge
+**Action** : Ajouter `enforcePermission` sur les actions de mutation et `hasPermission` pour conditionner l'affichage des boutons, comme deja fait dans `PretsAdmin`, `AidesAdmin`, `MembresAdmin`, etc.
 
-Ligne 248 : le badge role ne couvre pas le role `"membre"`. Un utilisateur avec `userRole === "membre"` voit `📋 membre` au lieu de `👤 Membre` car la condition catch-all affiche le nom brut du role.
+**3. ExportsAdmin — suppression sans confirmation**
 
-**Action** : Ajouter `{userRole === 'membre' && '👤 Membre'}` dans la liste des conditions du badge sidebar.
+`ExportsAdmin.tsx` ligne 200 : `onClick={() => deleteExport.mutate(exp.id)}` — la suppression se fait directement sans `AlertDialog` de confirmation. Tous les autres modules admin utilisent un dialog de confirmation pour les suppressions.
 
-### 4. window.confirm dans CalendrierBeneficiairesManager
+**Action** : Ajouter un `AlertDialog` de confirmation avant suppression, identique au pattern utilise dans `PretsAdmin`.
 
-Le `window.confirm` ajoute en Phase 3 (ligne 362) casse l'UX de l'application qui utilise des `AlertDialog` shadcn/ui partout ailleurs. Cela genere aussi un warning dans certains navigateurs mobiles.
+**4. DashboardHome — description admin non adaptee au role**
 
-**Action** : Remplacer le `window.confirm` par un `AlertDialog` shadcn/ui avec state gere localement (`showReorderDialog`).
+`DashboardHome.tsx` ligne 177 : la description de la carte admin est hardcodee "Acces aux fonctionnalites financieres" pour les non-admins. Un `responsable_sportif` n'a pas d'acces financier mais sportif, ce texte est trompeur.
+
+**Action** : Adapter la description en fonction des permissions reelles de l'utilisateur, ou utiliser un texte generique "Acces aux fonctionnalites d'administration".
 
 ---
 
-## Fichiers a modifier (Phase 4)
+## Fichiers a modifier (Phase 5)
 
 | Fichier | Modification | Impact |
 |---|---|---|
-| `src/pages/GestionPresences.tsx` | Migrer vers React Query | Performance, cache, coherence |
-| `src/pages/dashboard/DashboardHome.tsx` | Section admin basee sur permissions | Acces correct pour tous les roles |
-| `src/components/layout/DashboardSidebar.tsx` | Badge role "membre" | Affichage coherent |
-| `src/components/config/CalendrierBeneficiairesManager.tsx` | Remplacer `window.confirm` par `AlertDialog` | UX coherente, compatibilite mobile |
+| `src/pages/admin/StatsAdmin.tsx` | Migrer vers React Query + donnees sport reelles | Performance, cache, donnees reelles |
+| `src/pages/admin/ExportsAdmin.tsx` | Ajouter permissions + AlertDialog suppression | Securite, UX coherente |
+| `src/pages/admin/NotificationsAdmin.tsx` | Ajouter permissions sur boutons CRUD | Securite |
+| `src/pages/admin/CaisseAdmin.tsx` | Ajouter permissions sur boutons CRUD | Securite |
+| `src/pages/dashboard/DashboardHome.tsx` | Description admin generique | UX coherente |
 
 ## Ce qui n'est PAS modifie
-- `usePermissions.ts` — cache et logique corrects
-- `PermissionRoute.tsx` — protection de route fonctionnelle
-- `useSessionManager.ts` — gestion de session complete avec inactivite et expiration
-- `usePersonalData.ts` — hooks React Query pour les espaces membres
-- Pages `My*.tsx` — espaces personnels complets et fonctionnels
+- `RapportsAdmin.tsx` — React Query correct, exports PDF/XLSX fonctionnels
+- `NotificationToaster.tsx` — subscriptions temps reel conformes
+- `usePermissions.ts` — cache et logique corrects (audite Phase 4)
+- `PermissionRoute.tsx` — protection de route fonctionnelle (audite Phase 4)
+- `CalendrierBeneficiairesManager.tsx` — AlertDialog conforme (corrige Phase 4)
+- `GestionPresences.tsx` — React Query conforme (corrige Phase 4)
 
