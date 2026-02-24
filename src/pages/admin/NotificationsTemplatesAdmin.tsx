@@ -144,7 +144,8 @@ export default function NotificationsTemplatesAdmin({ embedded = false }: Notifi
   };
 
   // Remplacer les variables par des valeurs d'exemple pour la prévisualisation
-  const getPreviewContent = (content: string) => {
+  const getPreviewContent = (content: string | null | undefined) => {
+    if (!content) return '';
     return content
       .replace(/\{\{nom\}\}/g, 'DUPONT')
       .replace(/\{\{prenom\}\}/g, 'Jean')
@@ -475,13 +476,13 @@ export default function NotificationsTemplatesAdmin({ embedded = false }: Notifi
             <div className="space-y-4">
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">Sujet:</p>
-                <p className="font-medium">{getPreviewContent(selectedTemplate.template_sujet)}</p>
+                <p className="font-medium">{getPreviewContent(selectedTemplate.template_sujet || '')}</p>
               </div>
               
               <div className="border rounded-lg p-4 max-h-96 overflow-y-auto">
                 <div 
                   className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: getPreviewContent(selectedTemplate.template_contenu) }}
+                  dangerouslySetInnerHTML={{ __html: getPreviewContent(selectedTemplate.template_contenu || '') }}
                 />
               </div>
             </div>

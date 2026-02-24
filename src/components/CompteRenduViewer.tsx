@@ -427,7 +427,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       addE2DFooter(doc);
 
       // Télécharger le PDF
-      const fileName = `CR_${reunion.sujet?.replace(/[^a-zA-Z0-9]/g, '_') || 'reunion'}_${format(new Date(reunion.date_reunion), 'yyyy-MM-dd')}.pdf`;
+      const fileName = `CR_${(reunion.sujet ?? 'reunion').replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(reunion.date_reunion), 'yyyy-MM-dd')}.pdf`;
       doc.save(fileName);
 
       toast({
