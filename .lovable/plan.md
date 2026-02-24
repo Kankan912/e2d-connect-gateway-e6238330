@@ -1,90 +1,65 @@
 
 
-# Plan : Corriger la persistance du choix de service email
+# Plan : Corriger le crash "replace" sur les templates de notification + securiser les appels fragiles
 
-## Probleme
+## Probleme identifie
 
-Le composant `EmailConfigManager` initialise `emailService` a `"resend"` par defaut (ligne 24) avant que la valeur sauvegardee en base (`smtp`) ne soit chargee par le `useEffect` (ligne 66-78). Lors d'un changement de page et retour, le cache React Query peut ne pas declencher le `useEffect` au bon moment, laissant le choix fige sur la valeur par defaut `"resend"` au lieu de la valeur DB `"smtp"`.
+L'erreur `Cannot read properties of undefined (reading 'replace')` se produit dans `NotificationsTemplatesAdmin.tsx` ligne 147-156. La fonction `getPreviewContent(content: string)` est appelee avec `selectedTemplate.template_sujet` ou `selectedTemplate.template_contenu`, qui peut etre `null` ou `undefined` si un template en base a des champs vides.
 
-**Cause racine** : L'etat local (`useState`) avec une valeur par defaut statique est desynchronise du cache React Query. Le `useEffect` qui synchronise ne se relance que quand la **reference** de `configs` change, pas forcement quand le composant remonte avec des donnees en cache.
+La previsualisation (bouton Eye) et le rendu HTML (`dangerouslySetInnerHTML`) appellent tous deux `getPreviewContent` sans guard.
 
-## Solution
+## Corrections
 
-Remplacer l'approche `useState` + `useEffect` par une initialisation directe depuis les donnees React Query, en utilisant les donnees du cache comme source de verite.
+### Fichier 1 : `src/pages/admin/NotificationsTemplatesAdmin.tsx`
 
-### Fichier : `src/components/config/EmailConfigManager.tsx`
+**Action 1 — Securiser `getPreviewContent`** (ligne 147)
 
-**Action 1 — Deriver `emailService` directement des donnees chargees**
-
-Au lieu de :
-```typescript
-const [emailService, setEmailService] = useState<"resend" | "smtp">("resend");
-// ... useEffect qui synchronise
-```
-
-Utiliser un pattern ou l'etat local n'est initialise qu'une seule fois via une ref, ou mieux : garder le `useState` mais forcer la synchronisation a chaque changement de `configs` en ajoutant un indicateur `isInitialized` :
+Ajouter un guard contre les valeurs nulles/undefined :
 
 ```typescript
-const [emailService, setEmailService] = useState<"resend" | "smtp" | null>(null);
+const getPreviewContent = (content: string | null | undefined) => {
+  if (!content) return '';
+  return content
+    .replace(/\{\{nom\}\}/g, 'DUPONT')
+    // ... reste identique
+};
 ```
 
-Puis dans le `useEffect`, toujours ecrire la valeur (pas seulement si truthy). Le composant affiche un loader tant que `emailService === null`.
+**Action 2 — Securiser l'affichage du preview dialog** (lignes 478, 484)
 
-**Action 2 — Supprimer les gardes conditionnelles dans le useEffect**
-
-Lignes 73-76 : remplacer les `if (config?.valeur)` par des affectations inconditionnelles avec fallback :
+Ajouter un fallback pour les champs potentiellement null :
 
 ```typescript
-useEffect(() => {
-  if (configs) {
-    const emailServiceConfig = configs.find(c => c.cle === "email_service");
-    const appUrlConfig = configs.find(c => c.cle === "app_url");
-    const emailExpConfig = configs.find(c => c.cle === "email_expediteur");
-    const emailExpNomConfig = configs.find(c => c.cle === "email_expediteur_nom");
-    
-    setEmailService((emailServiceConfig?.valeur as "resend" | "smtp") || "resend");
-    setAppUrl(appUrlConfig?.valeur || "");
-    setEmailExpediteur(emailExpConfig?.valeur || "");
-    setEmailExpediteurNom(emailExpNomConfig?.valeur || "");
-  }
-}, [configs]);
+<p className="font-medium">{getPreviewContent(selectedTemplate.template_sujet || '')}</p>
+// ...
+dangerouslySetInnerHTML={{ __html: getPreviewContent(selectedTemplate.template_contenu || '') }}
 ```
 
-**Action 3 — Afficher le loader tant que l'etat n'est pas initialise**
+### Fichier 2 : `src/components/CompteRenduViewer.tsx` (ligne 430)
 
-Modifier la condition de chargement (ligne 304) pour inclure `emailService === null` :
+Securiser le `.replace()` sur `reunion.sujet` qui peut etre null :
 
 ```typescript
-if (configsLoading || smtpLoading || emailService === null) {
-  return (
-    <div className="flex items-center justify-center py-8">
-      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-    </div>
-  );
-}
+const fileName = `CR_${(reunion.sujet ?? 'reunion').replace(/[^a-zA-Z0-9]/g, '_')}_${...}`;
 ```
 
-**Action 4 — Forcer le refetch apres sauvegarde**
+### Fichier 3 : `src/pages/admin/CaisseAdmin.tsx` (ligne 520)
 
-Dans `onSuccess` de `saveConfigMutation` (ligne 140), ajouter `refetchType: 'all'` pour garantir le rechargement :
+Deja protege par l'operateur ternaire (`op.source_table ? ... : "Manuel"`). Aucune modification.
 
-```typescript
-onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: ["email-configurations"], refetchType: "all" });
-  queryClient.invalidateQueries({ queryKey: ["smtp-config"], refetchType: "all" });
-  toast.success("Configuration email sauvegardée");
-},
-```
+### Fichier 4 : `src/components/Contact.tsx` (ligne 149)
 
-## Fichier modifie
+`getConfigValue` retourne toujours une string — pas de risque. Aucune modification.
+
+## Resume des fichiers modifies
 
 | Fichier | Modification |
 |---|---|
-| `src/components/config/EmailConfigManager.tsx` | Init `emailService` a `null`, sync inconditionnelle depuis DB, loader en attendant, refetch force apres save |
+| `src/pages/admin/NotificationsTemplatesAdmin.tsx` | Guard `if (!content) return ''` dans `getPreviewContent` |
+| `src/components/CompteRenduViewer.tsx` | Fallback `?? 'reunion'` avant `.replace()` sur `reunion.sujet` |
 
 ## Impact
-- Le choix Resend / SMTP est toujours lu depuis la base au montage
-- Aucun flash de valeur par defaut incorrecte
-- Le changement de page et retour conserve le bon choix
-- La sauvegarde force un rechargement complet des donnees
+- Corrige le crash immediat lors du clic sur un modele de notification
+- Securise les autres appels `.replace()` sur des valeurs potentiellement nulles
+- Aucun changement de comportement visible pour les donnees valides
 
