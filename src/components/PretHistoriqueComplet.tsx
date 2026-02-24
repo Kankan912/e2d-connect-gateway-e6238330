@@ -11,6 +11,7 @@ import {
   Clock
 } from "lucide-react";
 import { formatFCFA } from "@/lib/utils";
+import { calculerResumePret } from "@/lib/pretCalculsService";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -76,12 +77,13 @@ export default function PretHistoriqueComplet({ pret, paiements, reconductions }
     return events.sort((a, b) => b.date.getTime() - a.date.getTime());
   }, [pret, paiements, reconductions]);
 
-  // Calculer les totaux
-  const totalPaiements = paiements?.reduce((sum, p) => sum + Number(p.montant_paye), 0) || 0;
-  const totalInteretsReconductions = reconductions?.reduce((sum, r) => sum + Number(r.interet_mois), 0) || 0;
-  const interetInitial = pret.interet_initial || (pret.montant * (pret.taux_interet || 5) / 100);
-  const totalDu = pret.montant + interetInitial + totalInteretsReconductions;
-  const resteAPayer = Math.max(0, totalDu - totalPaiements);
+  // Calculer les totaux via le service centralisé
+  const calculs = calculerResumePret(
+    { montant: pret.montant, taux_interet: pret.taux_interet, interet_initial: pret.interet_initial, reconductions: pret.reconductions, montant_paye: pret.montant_paye },
+    paiements?.map(p => ({ montant_paye: p.montant_paye, date_paiement: p.date_paiement })),
+    reconductions?.map(r => ({ date_reconduction: r.date_reconduction, interet_mois: r.interet_mois }))
+  );
+  const { totalInterets: interetInitialPlusRecon, totalDu, totalPaye: totalPaiements, resteAPayer } = calculs;
 
   return (
     <Card>
@@ -100,7 +102,7 @@ export default function PretHistoriqueComplet({ pret, paiements, reconductions }
           </div>
           <div className="text-center">
             <p className="text-muted-foreground">Total Intérêts</p>
-            <p className="font-bold text-amber-600">{formatFCFA(interetInitial + totalInteretsReconductions)}</p>
+            <p className="font-bold text-amber-600">{formatFCFA(interetInitialPlusRecon)}</p>
           </div>
           <div className="text-center">
             <p className="text-muted-foreground">Total Payé</p>

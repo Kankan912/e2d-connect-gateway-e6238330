@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Plus, Trash2, RefreshCw, Info, Calendar, AlertTriangle, Lock } from "lucide-react";
 import { formatFCFA } from "@/lib/utils";
+import { calculerResumePret } from "@/lib/pretCalculsService";
 import { addMonths, format } from "date-fns";
 
 interface PretsPaiementsManagerProps {
@@ -73,35 +74,25 @@ export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPa
     enabled: !!pretId && open,
   });
 
-  // Capital initial et payé
-  const capitalInitial = pret ? parseFloat(pret.montant.toString()) : 0;
+  // Calculs centralisés
+  const capitalInitial = pret ? Number(pret.montant) : 0;
   const capitalPayeDB = pret?.capital_paye || 0;
   const capitalRestant = Math.max(0, capitalInitial - capitalPayeDB);
-
-  // Intérêt initial (calculé à la création du prêt)
-  const interetInitial = pret?.interet_initial || (capitalInitial * ((pret?.taux_interet || 5) / 100));
-
-  // Dernier intérêt calculé (après reconductions) ou intérêt initial
-  const dernierInteret = pret?.dernier_interet || interetInitial;
-
-  // Intérêts payés (de la base de données)
-  const interetPayeDB = pret?.interet_paye || 0;
-
-  // Statut remboursé
   const estRembourse = pret?.statut === 'rembourse';
 
-  // Pour un prêt REMBOURSÉ: tout est payé, intérêt restant = 0
-  // Pour un prêt EN COURS: utiliser dernier_interet - interet_paye
+  const calculs = pret ? calculerResumePret(
+    { montant: pret.montant, taux_interet: pret.taux_interet, interet_initial: pret.interet_initial, reconductions: pret.reconductions, montant_paye: pret.montant_paye },
+    paiements?.map(p => ({ montant_paye: p.montant_paye, date_paiement: p.date_paiement, type_paiement: p.type_paiement })),
+    reconductions?.map(r => ({ date_reconduction: r.date_reconduction, interet_mois: r.interet_mois }))
+  ) : null;
+
+  const interetInitial = calculs?.interetInitial || 0;
+  const dernierInteret = pret?.dernier_interet || interetInitial;
+  const interetPayeDB = pret?.interet_paye || 0;
   const interetRestant = estRembourse ? 0 : Math.max(0, dernierInteret - interetPayeDB);
-
-  // Montant total actuellement dû (directement de la base)
-  const totalDu = estRembourse ? 0 : (pret?.montant_total_du || (capitalInitial + interetInitial));
-
-  // Total payé depuis l'historique des paiements
-  const totalPaye = paiements?.reduce((sum, p) => sum + parseFloat(p.montant_paye.toString()), 0) || 0;
-
-  // Reste à payer = montant_total_du (stocké directement en base)
-  const montantRestant = estRembourse ? 0 : (pret?.montant_total_du || 0);
+  const totalDu = estRembourse ? 0 : (calculs?.totalDu || 0);
+  const totalPaye = calculs?.totalPaye || 0;
+  const montantRestant = estRembourse ? 0 : (calculs?.resteAPayer || 0);
 
   // Valeurs pour les barres de progression
   const capitalPaye = estRembourse ? capitalInitial : capitalPayeDB;

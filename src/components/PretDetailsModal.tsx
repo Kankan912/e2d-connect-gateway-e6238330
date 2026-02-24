@@ -12,6 +12,7 @@ import {
   CheckCircle, Clock, AlertTriangle, FileText, Building, Download, History
 } from "lucide-react";
 import { formatFCFA } from "@/lib/utils";
+import { calculerResumePret } from "@/lib/pretCalculsService";
 import { exportPretPDF } from "@/lib/pret-pdf-export";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -75,23 +76,25 @@ export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsM
 
   if (!pret) return null;
 
-  // Calculs
-  const taux = pret.taux_interet || 0;
-  const interetInitial = pret.interet_initial || (pret.montant * (taux / 100));
-  const interetMensuel = (pret.montant * (taux / 100)) / 12;
-  const interetsReconductions = interetMensuel * (pret.reconductions || 0);
-  const totalInterets = interetInitial + interetsReconductions;
-  const totalDu = pret.montant + totalInterets;
-  
+  // Calculs centralisés
+  const calculs = calculerResumePret(
+    {
+      montant: pret.montant,
+      taux_interet: pret.taux_interet,
+      interet_initial: pret.interet_initial,
+      reconductions: pret.reconductions,
+      montant_paye: pret.montant_paye,
+    },
+    paiements?.map(p => ({ montant_paye: p.montant_paye, date_paiement: p.date_paiement, type_paiement: p.type_paiement })),
+    reconductions?.map(r => ({ date_reconduction: r.date_reconduction, interet_mois: r.interet_mois }))
+  );
+
+  const { totalInterets, totalDu, totalPaye, resteAPayer, progression: progressionGlobale } = calculs;
+
   const interetPaye = pret.interet_paye || 0;
   const capitalPaye = pret.capital_paye || 0;
-  const totalPaye = paiements?.reduce((sum, p) => sum + parseFloat(p.montant_paye.toString()), 0) || pret.montant_paye || 0;
-  
   const interetRestant = Math.max(0, totalInterets - interetPaye);
   const capitalRestant = Math.max(0, pret.montant - capitalPaye);
-  const resteAPayer = totalDu - totalPaye;
-
-  const progressionGlobale = totalDu > 0 ? (totalPaye / totalDu) * 100 : 0;
   const progressionInteret = totalInterets > 0 ? (interetPaye / totalInterets) * 100 : 0;
   const progressionCapital = pret.montant > 0 ? (capitalPaye / pret.montant) * 100 : 0;
 
@@ -222,7 +225,7 @@ export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsM
                   <div className="text-center p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
                     <p className="text-xs text-muted-foreground">Total intérêts</p>
                     <p className="text-xl font-bold text-amber-600">{formatFCFA(totalInterets)}</p>
-                    <p className="text-xs text-muted-foreground">{taux}% + {pret.reconductions || 0} recon.</p>
+                    <p className="text-xs text-muted-foreground">{pret.taux_interet || 5}% + {pret.reconductions || 0} recon.</p>
                   </div>
                   <div className="text-center p-3 bg-primary/10 rounded-lg">
                     <p className="text-xs text-muted-foreground">Total dû</p>
