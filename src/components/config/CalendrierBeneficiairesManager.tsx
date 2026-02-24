@@ -329,7 +329,11 @@ export default function CalendrierBeneficiairesManager() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = data?.error || error.message;
+        throw new Error(errorMessage);
+      }
+      if (data?.error) throw new Error(data.error);
       
       toast({ 
         title: "Notification envoyée",

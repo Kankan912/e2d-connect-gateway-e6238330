@@ -143,7 +143,11 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
       const { data, error } = await supabase.functions.invoke('send-campaign-emails', {
         body: { campaignId }
       });
-      if (error) throw error;
+      if (error) {
+        const errorMessage = data?.error || error.message;
+        throw new Error(errorMessage);
+      }
+      if (data?.error) throw new Error(data.error);
       return data;
     },
     onSuccess: (data) => {

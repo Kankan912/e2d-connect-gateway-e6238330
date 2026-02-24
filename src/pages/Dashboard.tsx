@@ -1,76 +1,77 @@
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect, Suspense } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PermissionRoute } from "@/components/auth/PermissionRoute";
 import { PageLoader, SuspenseFallback } from "@/components/ui/page-loader";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
 // ============================================
-// ALL PAGES LAZY LOADED FOR OPTIMAL PERFORMANCE
+// ALL PAGES LAZY LOADED WITH AUTO-RETRY
 // ============================================
 
 // Dashboard Pages (Member)
-const DashboardHome = lazy(() => import("./dashboard/DashboardHome"));
-const Profile = lazy(() => import("./dashboard/Profile"));
-const MyDonations = lazy(() => import("./dashboard/MyDonations"));
-const MyCotisations = lazy(() => import("./dashboard/MyCotisations"));
-const MyEpargnes = lazy(() => import("./dashboard/MyEpargnes"));
-const MySanctions = lazy(() => import("./dashboard/MySanctions"));
-const MyPrets = lazy(() => import("./dashboard/MyPrets"));
-const MyPresences = lazy(() => import("./dashboard/MyPresences"));
-const MyAides = lazy(() => import("./dashboard/MyAides"));
+const DashboardHome = lazyWithRetry(() => import("./dashboard/DashboardHome"));
+const Profile = lazyWithRetry(() => import("./dashboard/Profile"));
+const MyDonations = lazyWithRetry(() => import("./dashboard/MyDonations"));
+const MyCotisations = lazyWithRetry(() => import("./dashboard/MyCotisations"));
+const MyEpargnes = lazyWithRetry(() => import("./dashboard/MyEpargnes"));
+const MySanctions = lazyWithRetry(() => import("./dashboard/MySanctions"));
+const MyPrets = lazyWithRetry(() => import("./dashboard/MyPrets"));
+const MyPresences = lazyWithRetry(() => import("./dashboard/MyPresences"));
+const MyAides = lazyWithRetry(() => import("./dashboard/MyAides"));
 
 // Admin Pages - Core
-const DonationsAdmin = lazy(() => import("./admin/DonationsAdmin"));
-const MobileMoneyAdmin = lazy(() => import("./admin/MobileMoneyAdmin"));
-const RolesAdmin = lazy(() => import("./admin/RolesAdmin"));
-const PermissionsAdmin = lazy(() => import("./admin/PermissionsAdmin"));
-const MembresAdmin = lazy(() => import("./admin/MembresAdmin"));
-const AdhesionsAdmin = lazy(() => import("./admin/AdhesionsAdmin"));
-const PaymentConfigAdmin = lazy(() => import("./admin/PaymentConfigAdmin"));
-const StatsAdmin = lazy(() => import("./admin/StatsAdmin"));
-const UtilisateursAdmin = lazy(() => import("./admin/UtilisateursAdmin"));
+const DonationsAdmin = lazyWithRetry(() => import("./admin/DonationsAdmin"));
+const MobileMoneyAdmin = lazyWithRetry(() => import("./admin/MobileMoneyAdmin"));
+const RolesAdmin = lazyWithRetry(() => import("./admin/RolesAdmin"));
+const PermissionsAdmin = lazyWithRetry(() => import("./admin/PermissionsAdmin"));
+const MembresAdmin = lazyWithRetry(() => import("./admin/MembresAdmin"));
+const AdhesionsAdmin = lazyWithRetry(() => import("./admin/AdhesionsAdmin"));
+const PaymentConfigAdmin = lazyWithRetry(() => import("./admin/PaymentConfigAdmin"));
+const StatsAdmin = lazyWithRetry(() => import("./admin/StatsAdmin"));
+const UtilisateursAdmin = lazyWithRetry(() => import("./admin/UtilisateursAdmin"));
 
 // Admin Pages - Tontine/Finance
-const Epargnes = lazy(() => import("./Epargnes"));
-const Beneficiaires = lazy(() => import("./admin/Beneficiaires"));
-const TontineConfig = lazy(() => import("./admin/TontineConfig"));
-const CaisseAdmin = lazy(() => import("./admin/CaisseAdmin"));
-const PretsAdmin = lazy(() => import("./admin/PretsAdmin"));
-const PretsConfigAdmin = lazy(() => import("./admin/PretsConfigAdmin"));
-const AidesAdmin = lazy(() => import("./admin/AidesAdmin"));
-const RapportsAdmin = lazy(() => import("./admin/RapportsAdmin"));
+const Epargnes = lazyWithRetry(() => import("./Epargnes"));
+const Beneficiaires = lazyWithRetry(() => import("./admin/Beneficiaires"));
+const TontineConfig = lazyWithRetry(() => import("./admin/TontineConfig"));
+const CaisseAdmin = lazyWithRetry(() => import("./admin/CaisseAdmin"));
+const PretsAdmin = lazyWithRetry(() => import("./admin/PretsAdmin"));
+const PretsConfigAdmin = lazyWithRetry(() => import("./admin/PretsConfigAdmin"));
+const AidesAdmin = lazyWithRetry(() => import("./admin/AidesAdmin"));
+const RapportsAdmin = lazyWithRetry(() => import("./admin/RapportsAdmin"));
 
 // Admin Pages - Reunions
-const Reunions = lazy(() => import("./Reunions"));
-const GestionPresences = lazy(() => import("./GestionPresences"));
+const Reunions = lazyWithRetry(() => import("./Reunions"));
+const GestionPresences = lazyWithRetry(() => import("./GestionPresences"));
 
 // Admin Pages - Sport
-const Sport = lazy(() => import("./Sport"));
-const SportE2D = lazy(() => import("./SportE2D"));
-const SportPhoenix = lazy(() => import("./SportPhoenix"));
-const SportEquipes = lazy(() => import("./SportEquipes"));
-const SportEntrainements = lazy(() => import("./admin/SportEntrainements"));
-const SportSanctions = lazy(() => import("./admin/SportSanctions"));
-const MatchGalaConfig = lazy(() => import("./admin/MatchGalaConfig"));
-const E2DConfigAdmin = lazy(() => import("./admin/E2DConfigAdmin"));
+const Sport = lazyWithRetry(() => import("./Sport"));
+const SportE2D = lazyWithRetry(() => import("./SportE2D"));
+const SportPhoenix = lazyWithRetry(() => import("./SportPhoenix"));
+const SportEquipes = lazyWithRetry(() => import("./SportEquipes"));
+const SportEntrainements = lazyWithRetry(() => import("./admin/SportEntrainements"));
+const SportSanctions = lazyWithRetry(() => import("./admin/SportSanctions"));
+const MatchGalaConfig = lazyWithRetry(() => import("./admin/MatchGalaConfig"));
+const E2DConfigAdmin = lazyWithRetry(() => import("./admin/E2DConfigAdmin"));
 
 // Admin Pages - Communication
-const NotificationsAdmin = lazy(() => import("./admin/NotificationsAdmin"));
-const NotificationsTemplatesAdmin = lazy(() => import("./admin/NotificationsTemplatesAdmin"));
-const ExportsAdmin = lazy(() => import("./admin/ExportsAdmin"));
+const NotificationsAdmin = lazyWithRetry(() => import("./admin/NotificationsAdmin"));
+const NotificationsTemplatesAdmin = lazyWithRetry(() => import("./admin/NotificationsTemplatesAdmin"));
+const ExportsAdmin = lazyWithRetry(() => import("./admin/ExportsAdmin"));
 
 // Admin Pages - Site CMS
-const HeroAdmin = lazy(() => import("./admin/site/HeroAdmin"));
-const ActivitiesAdmin = lazy(() => import("./admin/site/ActivitiesAdmin"));
-const EventsAdmin = lazy(() => import("./admin/site/EventsAdmin"));
-const GalleryAdmin = lazy(() => import("./admin/site/GalleryAdmin"));
-const PartnersAdmin = lazy(() => import("./admin/site/PartnersAdmin"));
-const ConfigAdmin = lazy(() => import("./admin/site/ConfigAdmin"));
-const AboutAdmin = lazy(() => import("./admin/site/AboutAdmin"));
-const MessagesAdmin = lazy(() => import("./admin/site/MessagesAdmin"));
-const ImagesAdmin = lazy(() => import("./admin/site/ImagesAdmin"));
+const HeroAdmin = lazyWithRetry(() => import("./admin/site/HeroAdmin"));
+const ActivitiesAdmin = lazyWithRetry(() => import("./admin/site/ActivitiesAdmin"));
+const EventsAdmin = lazyWithRetry(() => import("./admin/site/EventsAdmin"));
+const GalleryAdmin = lazyWithRetry(() => import("./admin/site/GalleryAdmin"));
+const PartnersAdmin = lazyWithRetry(() => import("./admin/site/PartnersAdmin"));
+const ConfigAdmin = lazyWithRetry(() => import("./admin/site/ConfigAdmin"));
+const AboutAdmin = lazyWithRetry(() => import("./admin/site/AboutAdmin"));
+const MessagesAdmin = lazyWithRetry(() => import("./admin/site/MessagesAdmin"));
+const ImagesAdmin = lazyWithRetry(() => import("./admin/site/ImagesAdmin"));
 
 const Dashboard = () => {
   const navigate = useNavigate();

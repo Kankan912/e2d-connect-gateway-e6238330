@@ -160,7 +160,11 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = data?.error || error.message;
+        throw new Error(errorMessage);
+      }
+      if (data?.error) throw new Error(data.error);
 
       // Mettre à jour le statut de la réunion
       await supabase

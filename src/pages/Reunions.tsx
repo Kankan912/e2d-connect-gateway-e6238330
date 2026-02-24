@@ -113,7 +113,11 @@ function RappelsTab() {
         body: { joursAvant: parseInt(joursAvant), testMode },
       });
 
-      if (error) throw error;
+      if (error) {
+        const errorMessage = data?.error || error.message;
+        throw new Error(errorMessage);
+      }
+      if (data?.error) throw new Error(data.error);
 
       setLastResult(data);
 
