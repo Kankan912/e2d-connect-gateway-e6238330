@@ -1,79 +1,72 @@
 
 
-# Phase 1 — Stabilité & Corrections de bugs critiques (pages blanches)
+# Code Review Phase 1 + Plan Phase 2
 
-## Diagnostic confirmé
+## Phase 1 — Verdict : CONFORME
 
-### 1. ErrorBoundary : une seule instance globale insuffisante
-`Dashboard.tsx` ligne 97 enveloppe **toutes les routes** dans un seul `ErrorBoundary`. Si un module crash (ex: Trésorerie, Notifications), c'est l'intégralité du dashboard qui affiche l'écran d'erreur. L'utilisateur perd tout contexte de navigation.
+Tous les 4 points du plan ont ete correctement implementes :
 
-### 2. Notifications : pas de page blanche détectée
-`NotificationsAdmin.tsx` gère déjà `isError` avec un fallback propre (lignes 188-210) et utilise `fk_notifications_campagnes_created_by` pour la jointure. Le module est robuste. Pas de correction nécessaire.
+**A. ErrorBoundary par route** — `Dashboard.tsx` enveloppe individuellement chacune des ~40 routes avec `<ErrorBoundary fallbackTitle="...">`. Un crash dans un module (ex: Caisse) n'affecte plus le reste du dashboard. Conforme.
 
-### 3. Cotisations : "Aucun exercice actif"
-`CotisationsCumulAnnuel.tsx` (lignes 27-34) cherche `statut = 'actif'` avec `maybeSingle()` — gère correctement l'absence d'exercice actif et affiche un message (ligne 193). `CotisationsGridView.tsx` affiche un avertissement si pas d'exercice (lignes 312-321).
-**Le vrai problème** : `Reunions.tsx` > `CotisationsTabContent` (ligne 299) initialise `selectedExercice = "all"` au lieu de pré-sélectionner l'exercice actif, ce qui force l'utilisateur à le choisir manuellement. Le `exerciceId` passé à `CotisationsGridView` est `currentExercice?.id` (ligne 471), qui dépend de `getExerciceForReunion` — si la date de la réunion ne tombe dans aucun exercice, il reste `undefined`.
+**B. ErrorBoundary reset** — `ErrorBoundary.tsx` dispose de `handleReset` qui fait `setState({ hasError: false })` + appelle `onReset?.()`. Les 3 boutons (Reessayer, Actualiser, Dashboard) sont presents. Conforme.
 
-### 4. AuthApiError : Refresh Token expiré
-La console montre `AuthApiError: Invalid Refresh Token`. Pas de gestion gracieuse dans `AuthContext` — le token expiré peut provoquer des boucles de requêtes échouées.
+**C. Cotisations exercice actif** — `Reunions.tsx` ligne 299 initialise avec `"__init__"`, et le `useEffect` (lignes 315-320) pre-selectionne automatiquement l'exercice ou `statut === 'actif'`. Fallback vers `"all"` si aucun actif. Conforme.
 
----
+**D. Auth token expire** — `AuthContext.tsx` lignes 135-147 intercepte `TOKEN_REFRESHED` sans session, appelle `signOut()` avec toast "Session expiree". Le flag `isSigningOut` empeche les boucles. Conforme.
 
-## Plan d'exécution
-
-### A. ErrorBoundary par groupe de routes (Dashboard.tsx)
-
-Envelopper chaque `Route` critique dans un `ErrorBoundary` individuel au lieu d'un seul global. Créer un wrapper réutilisable `SafeRoute` :
-
-```tsx
-const SafeRoute = ({ children }: { children: React.ReactNode }) => (
-  <ErrorBoundary>{children}</ErrorBoundary>
-);
-```
-
-Appliquer sur les groupes de routes à risque :
-- Routes Finance (Caisse, Épargnes, Bénéficiaires, Prêts)
-- Routes Réunions (Réunions, Présences)
-- Routes Sport (E2D, Phoenix, Équipes)
-- Routes Communication (Notifications, Templates)
-- Routes CMS (toutes les pages site/*)
-- Routes Membre (cotisations perso, sanctions perso, etc.)
-
-Chaque crash sera isolé à sa section sans affecter le reste du dashboard.
-
-### B. Cotisations : pré-sélection exercice actif
-
-**Fichier : `src/pages/Reunions.tsx`** — `CotisationsTabContent`
-- Ligne 299 : remplacer `useState("all")` par un `useEffect` qui pré-sélectionne l'exercice avec `statut === 'actif'` dès le chargement des exercices
-- Ajouter un fallback : si aucun exercice actif, afficher un message explicite au lieu d'un état vide silencieux
-
-### C. AuthContext : gestion du refresh token expiré
-
-**Fichier : `src/contexts/AuthContext.tsx`**
-- Dans le listener `onAuthStateChange`, intercepter l'événement `TOKEN_REFRESHED` échoué
-- Si `event === 'TOKEN_REFRESHED'` et pas de session valide : appeler `signOut()` proprement et rediriger vers `/auth`
-- Éviter les boucles de requêtes avec un token invalide
-
-### D. ErrorBoundary : ajout d'un reset de state
-
-**Fichier : `src/components/ErrorBoundary.tsx`**
-- Ajouter une prop optionnelle `onReset` et un bouton "Réessayer" qui appelle `setState({ hasError: false })` au lieu de `window.location.reload()` — plus léger et conserve la session
-- Ajouter le support d'une `key` prop pour reset automatique au changement de route
+**Aucun bug detecte. Phase 1 validee. Passage a la Phase 2.**
 
 ---
 
-## Fichiers modifiés
+## Phase 2 — Site Public & Evenements
+
+D'apres le fichier de remarques, les points Phase 2 restants sont :
+
+### Deja corriges (audit confirme dans le code actuel)
+
+| Point | Statut | Preuve |
+|---|---|---|
+| Galerie : albums uniquement | OK | `Gallery.tsx` n'affiche que les albums, zero section "tous les medias" |
+| Galerie : page album dediee | OK | `AlbumDetail.tsx` existe avec lightbox + grid |
+| Galerie : route `/albums/:albumId` | OK | Presente dans `App.tsx` |
+| EventDetail : scroll to top | OK | `useEffect` ligne 26-28 avec `window.scrollTo(0,0)` |
+| EventDetail : bouton retour `navigate(-1)` | OK | Ligne 182-188 utilise `navigate(-1)` |
+| Footer : liens SPA `<Link>` | OK | Lignes 27-41 utilisent toutes `<Link to="...">` |
+| Footer : Portail Membre → `/dashboard` | OK | Ligne 36 |
+| EventDetail : album lie | OK | Lignes 518-547 affichent la section album |
+| Reunions `target="_blank"` | NON EXISTANT | Aucun `target="_blank"` dans `DashboardSidebar.tsx` — pas un bug |
+
+### Points restants a corriger (Phase 2)
+
+**1. EventDetail — Ordre chronologique des sections**
+Le fichier de remarques indique que les "dernieres informations apparaissent en haut". Actuellement `EventDetail.tsx` affiche dans cet ordre : Score → Match Info → Compte Rendu → Stats → Medias du match → Album lie. La section "Album lie" (lignes 518-547) est rendue **apres** la section Medias (lignes 473-517), mais elle est positionnee avec `className="mb-6"` tandis que la Card Medias n'a pas de margin-bottom, ce qui cree un probleme de layout. Plus important : l'album lie est rendu apres le footer du container parce qu'il est place apres la derniere `Card` des medias sans marge. L'ordre logique devrait etre : Info evenement → Match → CR → Stats → Album → Medias match (ou fusionner).
+
+**Action** : Reordonner les sections JSX pour suivre la chronologie naturelle : Info evenement → Infos match → Score → CR → Stats individuelles → Album photos → Medias match. Deplacer le bloc album lie (lignes 518-547) avant le bloc medias match (lignes 473-517).
+
+**2. EventDetail — CR des matchs E2D non visibles si pas de `match_id`**
+Le CR est charge uniquement si `event?.match_id` existe (ligne 59). Si un evenement E2D n'a pas ete lie via `match_id` dans la table `site_events`, le CR ne s'affiche jamais sur le site public, meme s'il est publie dans le back-office. Ce n'est pas un bug de code mais un probleme de flux admin : il faut s'assurer que la synchronisation automatique `useSportEventSync` ecrit bien le `match_id`.
+
+**Action** : Verifier `useSportEventSync.ts` pour confirmer que lors de la creation d'un evenement depuis un match E2D, le `match_id` est bien persiste dans `site_events`. Si ce n'est pas le cas, corriger la mutation d'insertion.
+
+**3. AlbumDetail — Amelioration mineure**
+La page `AlbumDetail.tsx` est fonctionnelle mais le bouton retour utilise `navigate(-1)` sans fallback. Si l'utilisateur arrive par lien direct (pas d'historique), il n'a aucune destination de retour.
+
+**Action** : Ajouter un fallback : `if (window.history.length <= 1) navigate('/#galerie'); else navigate(-1);`
+
+---
+
+## Fichiers a modifier (Phase 2)
 
 | Fichier | Modification | Impact |
 |---|---|---|
-| `src/components/ErrorBoundary.tsx` | Ajout reset state + key prop | Meilleure UX de récupération |
-| `src/pages/Dashboard.tsx` | ErrorBoundary par groupe de routes via `SafeRoute` | Isolation des crashs |
-| `src/pages/Reunions.tsx` | Pré-sélection exercice actif dans `CotisationsTabContent` | Fin du message "aucun exercice" |
-| `src/contexts/AuthContext.tsx` | Gestion gracieuse du refresh token expiré | Fin des boucles d'erreurs auth |
+| `src/pages/EventDetail.tsx` | Reordonner JSX : album lie avant medias match | Chronologie naturelle |
+| `src/hooks/useSportEventSync.ts` | Verifier/corriger persistance `match_id` | CR visibles sur site public |
+| `src/pages/AlbumDetail.tsx` | Fallback navigation si pas d'historique | UX acces direct |
 
-## Ce qui n'est PAS modifié
-- `NotificationsAdmin.tsx` — déjà robuste avec `isError` handler
-- `useCotisations.ts` — hooks corrects, pas de bug détecté
-- `CotisationsGridView.tsx` — affiche déjà un message si pas d'exercice
-- `CotisationsCumulAnnuel.tsx` — gère déjà `maybeSingle()` correctement
+## Ce qui n'est PAS modifie
+- `Gallery.tsx` — deja conforme (albums uniquement + navigation)
+- `Footer.tsx` — deja conforme (tous liens SPA)
+- `DashboardSidebar.tsx` — aucun `target="_blank"` a supprimer
+- `Events.tsx` — liste publique correcte avec `<Link to>` sur chaque carte
+- `AlbumDetail.tsx` — lightbox et grid fonctionnels
 
