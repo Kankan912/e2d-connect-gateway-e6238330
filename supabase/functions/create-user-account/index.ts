@@ -106,7 +106,13 @@ serve(async (req) => {
 
     if (createError) {
       console.error('❌ Error creating user:', createError);
-      throw createError;
+      const message = (createError as any).code === 'email_exists'
+        ? 'Un compte avec cet email existe déjà. Veuillez utiliser un autre email ou lier le membre au compte existant.'
+        : (createError as Error).message;
+      return new Response(
+        JSON.stringify({ error: message }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
     }
 
     console.log('✅ User created:', newUser.user?.id);
