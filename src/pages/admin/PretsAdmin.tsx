@@ -16,6 +16,7 @@ import PretsPaiementsManager from "@/components/PretsPaiementsManager";
 import ReconduireModal from "@/components/ReconduireModal";
 import PretDetailsModal from "@/components/PretDetailsModal";
 import { formatFCFA } from "@/lib/utils";
+import { calculerResumePret } from "@/lib/pretCalculsService";
 import { exportPretPDF } from "@/lib/pret-pdf-export";
 import type { PretAdminWithJoins } from "@/types/supabase-joins";
 import {
@@ -90,23 +91,15 @@ export default function PretsAdmin() {
   const maxReconductions = pretsConfig?.max_reconductions || 3;
   const dureeReconduction = pretsConfig?.duree_reconduction || 2;
 
-  // Calculer le total dû actuel (utilise montant_total_du si disponible, sinon calcule)
+  // Calculer via le service centralisé
   const calculerTotalDu = (pret: PretAdminWithJoins): number => {
-    if (pret.montant_total_du && pret.montant_total_du > 0) {
-      return parseFloat(pret.montant_total_du.toString());
-    }
-    // Sinon calculer: capital + intérêt initial (5%)
-    const taux = pret.taux_interet || 5;
-    const capital = parseFloat(pret.montant.toString());
-    const interet = capital * (taux / 100);
-    return capital + interet;
+    const calculs = calculerResumePret({ montant: pret.montant, taux_interet: pret.taux_interet, interet_initial: pret.interet_initial, reconductions: pret.reconductions, montant_paye: pret.montant_paye });
+    return calculs.totalDu;
   };
 
-  // Calculer le solde restant (total dû - montant payé)
   const calculerSoldeRestant = (pret: any): number => {
-    const totalDu = calculerTotalDu(pret);
-    const paye = pret.montant_paye || 0;
-    return Math.max(0, totalDu - paye);
+    const calculs = calculerResumePret({ montant: pret.montant, taux_interet: pret.taux_interet, interet_initial: pret.interet_initial, reconductions: pret.reconductions, montant_paye: pret.montant_paye });
+    return calculs.resteAPayer;
   };
 
   const createPret = useMutation({

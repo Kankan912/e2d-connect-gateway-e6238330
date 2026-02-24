@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatFCFA } from './utils';
+import { calculerResumePret } from './pretCalculsService';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { addE2DLogo, addE2DFooter } from './pdf-utils';
@@ -107,10 +108,15 @@ export async function exportPretPDF(
   yPosition += 8;
 
   const taux = pret.taux_interet || 5;
-  const interetInitial = pret.interet_initial || (pret.montant * (taux / 100));
-  const totalDu = pret.montant_total_du || (pret.montant + interetInitial);
-  const montantPaye = pret.montant_paye || 0;
-  const resteAPayer = totalDu - montantPaye;
+  const calculs = calculerResumePret(
+    { montant: pret.montant, taux_interet: pret.taux_interet, interet_initial: pret.interet_initial, reconductions: pret.reconductions, montant_paye: pret.montant_paye },
+    paiements?.map(p => ({ montant_paye: p.montant_paye, date_paiement: p.date_paiement, type_paiement: p.type_paiement })),
+    reconductions?.map(r => ({ date_reconduction: r.date_reconduction, interet_mois: r.interet_mois }))
+  );
+  const interetInitial = calculs.interetInitial;
+  const totalDu = calculs.totalDu;
+  const montantPaye = calculs.totalPaye;
+  const resteAPayer = calculs.resteAPayer;
 
   const detailsData = [
     ['Capital emprunté', formatFCFA(pret.montant)],
