@@ -36,8 +36,12 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { formatFCFA } from "@/lib/utils";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const CaisseAdmin = () => {
+  const { hasPermission, enforcePermission } = usePermissions();
+  const canCreate = hasPermission('caisse', 'create');
+  const canConfig = hasPermission('config', 'update');
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<CaisseFilters>({});
   const [showFilters, setShowFilters] = useState(false);
@@ -216,10 +220,12 @@ const CaisseAdmin = () => {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualiser
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowConfigForm(true)}>
-                <Settings className="h-4 w-4 mr-2" />
-                Configuration
-              </Button>
+              {canConfig && (
+                <Button variant="outline" size="sm" onClick={() => setShowConfigForm(true)}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configuration
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={handleExportPDF}>
                 <Download className="h-4 w-4 mr-2" />
                 PDF
@@ -228,10 +234,15 @@ const CaisseAdmin = () => {
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Excel
               </Button>
-              <Button size="sm" onClick={() => setShowOperationForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nouvelle opération
-              </Button>
+              {canCreate && (
+                <Button size="sm" onClick={() => {
+                  if (!enforcePermission('caisse', 'create')) return;
+                  setShowOperationForm(true);
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nouvelle opération
+                </Button>
+              )}
             </div>
           </div>
 

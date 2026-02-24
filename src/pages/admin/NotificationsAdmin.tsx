@@ -12,6 +12,7 @@ import BackButton from "@/components/BackButton";
 import NotificationCampagneForm from "@/components/forms/NotificationCampagneForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface NotificationsAdminProps {
   embedded?: boolean;
@@ -32,6 +33,10 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
   const [sendingId, setSendingId] = useState<string | null>(null);
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { hasPermission, enforcePermission } = usePermissions();
+
+  const canCreate = hasPermission('notifications', 'create');
+  const canSend = hasPermission('notifications', 'update');
 
   const { data: currentMembre } = useQuery({
     queryKey: ['current-membre', user?.id],
@@ -219,10 +224,12 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
             <h1 className="text-2xl sm:text-3xl font-bold">Notifications & Campagnes</h1>
           </div>
         )}
-        <Button onClick={() => setFormOpen(true)} className={embedded ? "ml-auto" : ""}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvelle Campagne
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setFormOpen(true)} className={embedded ? "ml-auto" : ""}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvelle Campagne
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
@@ -397,11 +404,14 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
                         : "-"}
                     </TableCell>
                     <TableCell>
-                      {campagne.statut !== "envoyee" && (
+                      {campagne.statut !== "envoyee" && canSend && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => sendCampagne.mutate(campagne.id)}
+                          onClick={() => {
+                            if (!enforcePermission('notifications', 'update')) return;
+                            sendCampagne.mutate(campagne.id);
+                          }}
                           disabled={sendingId === campagne.id}
                         >
                           {sendingId === campagne.id ? (
