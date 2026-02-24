@@ -173,7 +173,11 @@ export function EmailConfigManager() {
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        const errorMessage = data?.error || error.message;
+        throw new Error(errorMessage);
+      }
+      if (data?.error) throw new Error(data.error);
       toast.success(`Test réussi ! Email envoyé à ${resendOwnerEmail}`, { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
     } catch (error: unknown) {
       console.error("Resend test failed:", error);
@@ -286,7 +290,10 @@ export function EmailConfigManager() {
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        const errorMessage = data?.error || error.message;
+        throw new Error(errorMessage);
+      }
       if (data?.error) throw new Error(data.error);
       
       toast.success(`Test SMTP réussi ! Email envoyé à ${smtpUser.trim()}`, { 
