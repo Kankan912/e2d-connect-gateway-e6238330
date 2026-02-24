@@ -21,7 +21,7 @@ export function EmailConfigManager() {
   const [savingResendKey, setSavingResendKey] = useState(false);
   
   // Local state for form
-  const [emailService, setEmailService] = useState<"resend" | "smtp">("resend");
+  const [emailService, setEmailService] = useState<"resend" | "smtp" | null>(null);
   const [appUrl, setAppUrl] = useState("");
   const [emailExpediteur, setEmailExpediteur] = useState("");
   const [emailExpediteurNom, setEmailExpediteurNom] = useState("");
@@ -70,10 +70,10 @@ export function EmailConfigManager() {
       const emailExpConfig = configs.find(c => c.cle === "email_expediteur");
       const emailExpNomConfig = configs.find(c => c.cle === "email_expediteur_nom");
       
-      if (emailServiceConfig?.valeur) setEmailService(emailServiceConfig.valeur as "resend" | "smtp");
-      if (appUrlConfig?.valeur) setAppUrl(appUrlConfig.valeur);
-      if (emailExpConfig?.valeur) setEmailExpediteur(emailExpConfig.valeur);
-      if (emailExpNomConfig?.valeur) setEmailExpediteurNom(emailExpNomConfig.valeur);
+      setEmailService((emailServiceConfig?.valeur as "resend" | "smtp") || "resend");
+      setAppUrl(appUrlConfig?.valeur || "");
+      setEmailExpediteur(emailExpConfig?.valeur || "");
+      setEmailExpediteurNom(emailExpNomConfig?.valeur || "");
     }
   }, [configs]);
 
@@ -137,8 +137,8 @@ export function EmailConfigManager() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["email-configurations"] });
-      queryClient.invalidateQueries({ queryKey: ["smtp-config"] });
+      queryClient.invalidateQueries({ queryKey: ["email-configurations"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["smtp-config"], refetchType: "all" });
       toast.success("Configuration email sauvegardée");
     },
     onError: (error) => {
@@ -301,7 +301,7 @@ export function EmailConfigManager() {
     }
   };
 
-  if (configsLoading || smtpLoading) {
+  if (configsLoading || smtpLoading || emailService === null) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -324,7 +324,7 @@ export function EmailConfigManager() {
         </CardHeader>
         <CardContent>
           <RadioGroup
-            value={emailService}
+            value={emailService || "resend"}
             onValueChange={(value) => setEmailService(value as "resend" | "smtp")}
             className="grid gap-4 md:grid-cols-2"
           >
