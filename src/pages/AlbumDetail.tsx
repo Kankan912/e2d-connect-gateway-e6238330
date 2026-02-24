@@ -48,7 +48,13 @@ export default function AlbumDetail() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Bouton retour */}
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (window.history.length <= 1) {
+                navigate('/#galerie');
+              } else {
+                navigate(-1);
+              }
+            }}
             className="inline-flex items-center text-muted-foreground hover:text-primary mb-8 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

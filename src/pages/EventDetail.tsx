@@ -470,9 +470,40 @@ export default function EventDetail() {
             </Card>
           )}
 
+          {/* Album galerie lié à l'événement */}
+          {linkedAlbum && linkedAlbumItems.length > 0 && (
+            <Card className="mb-6">
+              <CardContent className="p-6">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Folder className="h-5 w-5" />
+                  Album Photos : {linkedAlbum.titre}
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  {linkedAlbumItems.slice(0, 8).map((item: any) => (
+                    <Link key={item.id} to={`/albums/${linkedAlbum.id}`}>
+                      <img
+                        src={item.image_url || item.video_url}
+                        alt={item.titre || "Photo"}
+                        className="w-full aspect-square object-cover rounded-lg hover:opacity-80 transition-opacity"
+                        loading="lazy"
+                      />
+                    </Link>
+                  ))}
+                </div>
+                <Link
+                  to={`/albums/${linkedAlbum.id}`}
+                  className="inline-flex items-center text-primary hover:underline text-sm font-medium"
+                >
+                  <Folder className="h-4 w-4 mr-2" />
+                  Voir l'album complet ({linkedAlbumItems.length} médias)
+                </Link>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Galerie médias du match */}
           {matchMedias.length > 0 && (
-            <Card>
+            <Card className="mb-6">
               <CardContent className="p-6">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                   <Image className="h-5 w-5" />
@@ -512,36 +543,6 @@ export default function EventDetail() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-          {/* Album galerie lié à l'événement */}
-          {linkedAlbum && linkedAlbumItems.length > 0 && (
-            <Card className="mb-6">
-              <CardContent className="p-6">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <Folder className="h-5 w-5" />
-                  Album Photos : {linkedAlbum.titre}
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                  {linkedAlbumItems.slice(0, 8).map((item: any) => (
-                    <Link key={item.id} to={`/albums/${linkedAlbum.id}`}>
-                      <img
-                        src={item.image_url || item.video_url}
-                        alt={item.titre || "Photo"}
-                        className="w-full aspect-square object-cover rounded-lg hover:opacity-80 transition-opacity"
-                        loading="lazy"
-                      />
-                    </Link>
-                  ))}
-                </div>
-                <Link
-                  to={`/albums/${linkedAlbum.id}`}
-                  className="inline-flex items-center text-primary hover:underline text-sm font-medium"
-                >
-                  <Folder className="h-4 w-4 mr-2" />
-                  Voir l'album complet ({linkedAlbumItems.length} médias)
-                </Link>
               </CardContent>
             </Card>
           )}
