@@ -159,7 +159,13 @@ async function sendViaResend(config: FullEmailConfig, params: EmailParams): Prom
   }
 
   try {
-    const fromAddress = `${config.fromName} <${config.fromEmail}>`;
+    // If fromEmail already contains "Name <email>" format, extract just the email
+    let cleanEmail = config.fromEmail;
+    const emailMatch = config.fromEmail.match(/<([^>]+)>/);
+    if (emailMatch) {
+      cleanEmail = emailMatch[1];
+    }
+    const fromAddress = `${config.fromName} <${cleanEmail}>`;
     
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
