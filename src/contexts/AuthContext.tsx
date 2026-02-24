@@ -126,9 +126,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
+    let isSigningOut = false;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        // Handle expired/invalid refresh token gracefully
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          if (!isSigningOut) {
+            isSigningOut = true;
+            logger.info('[AuthContext] Token refresh failed — signing out');
+            await signOut();
+            toast({
+              title: "Session expirée",
+              description: "Votre session a expiré. Veuillez vous reconnecter.",
+              variant: "default"
+            });
+          }
+          return;
+        }
+
+        if (event === 'SIGNED_OUT') {
+          isSigningOut = false;
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setUserRole(null);
+          setPermissions([]);
+          setMustChangePassword(false);
+          setMemberBlocked(false);
+          setLoading(false);
+          return;
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
         

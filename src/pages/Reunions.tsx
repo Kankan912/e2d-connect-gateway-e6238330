@@ -296,7 +296,7 @@ function CotisationsTabContent({
   selectedReunion: Reunion | null; 
   onSelectReunion: (r: Reunion) => void;
 }) {
-  const [selectedExercice, setSelectedExercice] = useState<string>("all");
+  const [selectedExercice, setSelectedExercice] = useState<string>("__init__");
 
   // Charger les exercices
   const { data: exercices } = useQuery({
@@ -310,6 +310,14 @@ function CotisationsTabContent({
       return data;
     }
   });
+
+  // Pré-sélectionner l'exercice actif au chargement
+  useEffect(() => {
+    if (selectedExercice === "__init__" && exercices?.length) {
+      const actif = exercices.find(e => e.statut === 'actif');
+      setSelectedExercice(actif ? actif.id : "all");
+    }
+  }, [exercices, selectedExercice]);
 
   // Filtrer réunions par exercice
   const reunionsFiltrees = reunions.filter(r => {

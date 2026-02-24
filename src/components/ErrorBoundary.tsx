@@ -1,6 +1,12 @@
 import React from "react";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { AlertTriangle, RefreshCw, Home, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallbackTitle?: string;
+  onReset?: () => void;
+}
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -8,10 +14,10 @@ interface ErrorBoundaryState {
 }
 
 export class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
+  ErrorBoundaryProps,
   ErrorBoundaryState
 > {
-  constructor(props: { children: React.ReactNode }) {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }
@@ -24,27 +30,38 @@ export class ErrorBoundary extends React.Component<
     console.error("ErrorBoundary caught:", error, errorInfo);
   }
 
+  handleReset = () => {
+    this.setState({ hasError: false, error: undefined });
+    this.props.onReset?.();
+  };
+
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <div className="min-h-[300px] flex items-center justify-center bg-muted/30 rounded-lg">
           <div className="text-center space-y-4 p-8 max-w-md">
-            <AlertTriangle className="h-16 w-16 text-destructive mx-auto" />
-            <h1 className="text-2xl font-bold">Une erreur est survenue</h1>
-            <p className="text-muted-foreground">
-              Nous nous excusons pour ce désagrément. Veuillez réessayer.
+            <AlertTriangle className="h-12 w-12 text-destructive mx-auto" />
+            <h2 className="text-xl font-bold">
+              {this.props.fallbackTitle || "Une erreur est survenue"}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Ce module a rencontré un problème. Le reste de l'application fonctionne normalement.
             </p>
             {this.state.error && (
-              <p className="text-sm text-destructive bg-destructive/10 p-2 rounded">
+              <p className="text-xs text-destructive bg-destructive/10 p-2 rounded">
                 {this.state.error.message}
               </p>
             )}
-            <div className="flex gap-4 justify-center">
-              <Button variant="outline" onClick={() => window.location.reload()}>
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" size="sm" onClick={this.handleReset}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Réessayer
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualiser
               </Button>
-              <Button onClick={() => window.location.href = "/dashboard"}>
+              <Button size="sm" onClick={() => window.location.href = "/dashboard"}>
                 <Home className="h-4 w-4 mr-2" />
                 Dashboard
               </Button>
