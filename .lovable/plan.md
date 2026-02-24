@@ -1,114 +1,79 @@
 
-# Refonte Site Public — Galerie Albums, Événements & Navigation
 
-## Audit de l'état actuel
+# Phase 1 — Stabilité & Corrections de bugs critiques (pages blanches)
 
-### Ce qui existe déjà (à ne pas recréer)
-- Table `site_gallery_albums` : id, titre, description, cover_image_url, ordre, actif — complète
-- Table `site_gallery` : id, titre, categorie, image_url, video_url, album_id (nullable), ordre, actif — complète
-- Hooks `useSiteGalleryAlbums`, `useCreateGalleryAlbum`, etc. — tous opérationnels
-- Interface admin `GalleryAdmin.tsx` avec onglets Photos / Vidéos / Albums — complète
-- `ImageLightbox` — intégrée dans Gallery.tsx et EventDetail.tsx
+## Diagnostic confirmé
 
-### Problèmes confirmés
+### 1. ErrorBoundary : une seule instance globale insuffisante
+`Dashboard.tsx` ligne 97 enveloppe **toutes les routes** dans un seul `ErrorBoundary`. Si un module crash (ex: Trésorerie, Notifications), c'est l'intégralité du dashboard qui affiche l'écran d'erreur. L'utilisateur perd tout contexte de navigation.
 
-**1. Galerie publique — Médias orphelins affichés**
-`Gallery.tsx` (lignes 140–200) affiche une section "Tous les médias" pour les items sans `album_id`. La spec veut que seuls les albums soient visibles.
+### 2. Notifications : pas de page blanche détectée
+`NotificationsAdmin.tsx` gère déjà `isError` avec un fallback propre (lignes 188-210) et utilise `fk_notifications_campagnes_created_by` pour la jointure. Le module est robuste. Pas de correction nécessaire.
 
-**2. EventDetail — Pas de scroll to top**
-`EventDetail.tsx` n'a aucun `useEffect` avec `window.scrollTo(0,0)` au mount.
+### 3. Cotisations : "Aucun exercice actif"
+`CotisationsCumulAnnuel.tsx` (lignes 27-34) cherche `statut = 'actif'` avec `maybeSingle()` — gère correctement l'absence d'exercice actif et affiche un message (ligne 193). `CotisationsGridView.tsx` affiche un avertissement si pas d'exercice (lignes 312-321).
+**Le vrai problème** : `Reunions.tsx` > `CotisationsTabContent` (ligne 299) initialise `selectedExercice = "all"` au lieu de pré-sélectionner l'exercice actif, ce qui force l'utilisateur à le choisir manuellement. Le `exerciceId` passé à `CotisationsGridView` est `currentExercice?.id` (ligne 471), qui dépend de `getExerciceForReunion` — si la date de la réunion ne tombe dans aucun exercice, il reste `undefined`.
 
-**3. EventDetail — Bouton retour hardcodé**
-Ligne 170 : `<Link to="/#evenements">` — redirige toujours vers la home au lieu de `navigate(-1)`.
-
-**4. Footer — Liens non fonctionnels pour navigation SPA**
-`Footer.tsx` lignes 24–40 : les liens internes de la section "Navigation" (`#accueil`, `#apropos`, etc.) sont des ancres `href` classiques dans des balises `<a>`. Sur une page autre que `/` (ex: `/evenements/:id`), ces ancres ne ramèneront pas à la section de la home page. Le lien "Portail Membre" pointe vers `/portal` inexistant (devrait être `/dashboard`). Il faut remplacer par des `<Link to="/#section">` pour navigation SPA complète.
-
-**5. Galerie — Pas de page dédiée par album**
-Le clic sur un album ouvre directement le lightbox (ligne 100 de Gallery.tsx). La spec demande une navigation vers une vue détaillée de l'album avant le lightbox.
+### 4. AuthApiError : Refresh Token expiré
+La console montre `AuthApiError: Invalid Refresh Token`. Pas de gestion gracieuse dans `AuthContext` — le token expiré peut provoquer des boucles de requêtes échouées.
 
 ---
 
-## Plan d'implémentation
+## Plan d'exécution
 
-### Priorité 1 — Corrections critiques rapides (sans DB)
+### A. ErrorBoundary par groupe de routes (Dashboard.tsx)
 
-#### A. EventDetail — scroll to top + bouton retour
-**Fichier : `src/pages/EventDetail.tsx`**
-- Ajouter `useEffect(() => { window.scrollTo(0, 0); }, []);` au mount
-- Remplacer `<Link to="/#evenements">` par un bouton avec `navigate(-1)` pour retour intelligent
-- Si pas d'historique précédent : fallback vers `/#evenements`
+Envelopper chaque `Route` critique dans un `ErrorBoundary` individuel au lieu d'un seul global. Créer un wrapper réutilisable `SafeRoute` :
 
-#### B. Footer — liens de navigation SPA
-**Fichier : `src/components/Footer.tsx`**
-- Importer `Link` depuis `react-router-dom`
-- Remplacer les `<a href="#section">` de la colonne "Navigation" par `<Link to="/#section">` (navigue vers home puis scroll)
-- Corriger "Portail Membre" : `href="/portal"` → `<Link to="/dashboard">`
-- Garder les liens externes (Facebook, mailto) en `<a>` avec `target="_blank"`
-
-### Priorité 2 — Galerie publique restructurée
-
-#### C. Page dédiée par album (nouvelle route)
-**Nouveau fichier : `src/pages/AlbumDetail.tsx`**
-- Récupère `albumId` depuis `useParams`
-- Charge les données de l'album via `useSiteGalleryAlbums` + filtrage
-- Charge les médias via `useSiteGalleryByAlbum(albumId)`
-- Affiche : header album (titre + description + date), grille responsive des médias
-- Clic sur une photo → `ImageLightbox` avec navigation ← →
-- Bouton retour → `navigate(-1)` ou `/#galerie`
-
-**Fichier : `src/App.tsx`** (ou fichier de routes)
-- Ajouter route `/albums/:albumId`
-
-#### D. Gallery.tsx — Vue albums uniquement
-**Fichier : `src/components/Gallery.tsx`**
-- Supprimer toute la section "Tous les médias" (lignes 141–200)
-- Changer `onClick={() => openAlbumLightbox(album)}` → navigation vers `/albums/${album.id}`
-- Utiliser `<Link to={/albums/${album.id}}>` sur chaque carte d'album
-- Ajouter état vide si aucun album : message "Galerie en cours de préparation"
-- Garder le CTA Facebook en bas
-
-#### E. Liaison Événement → Album (proposition auto)
-**Fichier : `src/pages/admin/site/EventsAdmin.tsx`** (vérification)
-- Ajouter dans le formulaire d'édition d'événement un champ "Lier à un album galerie" (Select optionnel)
-- Nécessite ajout colonne `album_id` nullable dans `site_events` — **1 migration SQL légère**
-
-**Fichier : `src/pages/EventDetail.tsx`**
-- Si l'événement a un `album_id`, afficher une section "Album Photos" avec miniatures et lien vers `/albums/:albumId`
-
-### Priorité 3 — Cohérence navigation SPA globale
-
-#### F. Audit liens `target="_blank"` internes
-**Fichier : `src/components/Gallery.tsx`** : le bouton Facebook ouvre `_blank` — correct car lien externe, à conserver.
-Vérifier `src/components/Navbar.tsx` pour tout lien interne mal configuré.
-
----
-
-## Migrations SQL nécessaires
-
-### Migration unique : ajouter `album_id` sur `site_events`
-```sql
-ALTER TABLE public.site_events
-  ADD COLUMN IF NOT EXISTS album_id uuid REFERENCES public.site_gallery_albums(id) ON DELETE SET NULL;
+```tsx
+const SafeRoute = ({ children }: { children: React.ReactNode }) => (
+  <ErrorBoundary>{children}</ErrorBoundary>
+);
 ```
-Petite migration non destructive. Permet de lier un événement publié à un album galerie existant pour affichage automatique sur la page détail.
+
+Appliquer sur les groupes de routes à risque :
+- Routes Finance (Caisse, Épargnes, Bénéficiaires, Prêts)
+- Routes Réunions (Réunions, Présences)
+- Routes Sport (E2D, Phoenix, Équipes)
+- Routes Communication (Notifications, Templates)
+- Routes CMS (toutes les pages site/*)
+- Routes Membre (cotisations perso, sanctions perso, etc.)
+
+Chaque crash sera isolé à sa section sans affecter le reste du dashboard.
+
+### B. Cotisations : pré-sélection exercice actif
+
+**Fichier : `src/pages/Reunions.tsx`** — `CotisationsTabContent`
+- Ligne 299 : remplacer `useState("all")` par un `useEffect` qui pré-sélectionne l'exercice avec `statut === 'actif'` dès le chargement des exercices
+- Ajouter un fallback : si aucun exercice actif, afficher un message explicite au lieu d'un état vide silencieux
+
+### C. AuthContext : gestion du refresh token expiré
+
+**Fichier : `src/contexts/AuthContext.tsx`**
+- Dans le listener `onAuthStateChange`, intercepter l'événement `TOKEN_REFRESHED` échoué
+- Si `event === 'TOKEN_REFRESHED'` et pas de session valide : appeler `signOut()` proprement et rediriger vers `/auth`
+- Éviter les boucles de requêtes avec un token invalide
+
+### D. ErrorBoundary : ajout d'un reset de state
+
+**Fichier : `src/components/ErrorBoundary.tsx`**
+- Ajouter une prop optionnelle `onReset` et un bouton "Réessayer" qui appelle `setState({ hasError: false })` au lieu de `window.location.reload()` — plus léger et conserve la session
+- Ajouter le support d'une `key` prop pour reset automatique au changement de route
 
 ---
 
-## Résumé des fichiers
+## Fichiers modifiés
 
-| Fichier | Action | Priorité |
+| Fichier | Modification | Impact |
 |---|---|---|
-| `src/pages/EventDetail.tsx` | Scroll to top + navigate(-1) + section album | Critique |
-| `src/components/Footer.tsx` | Liens SPA + correction /portal | Critique |
-| `src/components/Gallery.tsx` | Suppression section orphelins + navigation albums | Critique |
-| `src/pages/AlbumDetail.tsx` | Création page album | Haute |
-| `src/App.tsx` | Route /albums/:albumId | Haute |
-| `src/pages/admin/site/EventsAdmin.tsx` | Champ album_id optionnel | Haute |
-| Migration SQL | ADD COLUMN album_id sur site_events | Haute |
+| `src/components/ErrorBoundary.tsx` | Ajout reset state + key prop | Meilleure UX de récupération |
+| `src/pages/Dashboard.tsx` | ErrorBoundary par groupe de routes via `SafeRoute` | Isolation des crashs |
+| `src/pages/Reunions.tsx` | Pré-sélection exercice actif dans `CotisationsTabContent` | Fin du message "aucun exercice" |
+| `src/contexts/AuthContext.tsx` | Gestion gracieuse du refresh token expiré | Fin des boucles d'erreurs auth |
 
 ## Ce qui n'est PAS modifié
-- Table `site_gallery` — aucune contrainte NOT NULL ajoutée sur `album_id` (médias existants sans album seraient perdus)
-- Interface admin `GalleryAdmin.tsx` — déjà complète et fonctionnelle
-- Hooks `useSiteGalleryAlbums`, `useSiteGalleryByAlbum` — déjà corrects
-- `ImageLightbox` — déjà intégrée et opérationnelle
+- `NotificationsAdmin.tsx` — déjà robuste avec `isError` handler
+- `useCotisations.ts` — hooks corrects, pas de bug détecté
+- `CotisationsGridView.tsx` — affiche déjà un message si pas d'exercice
+- `CotisationsCumulAnnuel.tsx` — gère déjà `maybeSingle()` correctement
+
