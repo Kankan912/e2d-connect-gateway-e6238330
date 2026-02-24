@@ -349,10 +349,29 @@ export default function CalendrierBeneficiairesManager() {
     await updateBeneficiaire.mutateAsync({ id, data: { montant_mensuel: montant } });
   };
 
-  // Mise à jour du mois de bénéfice
+  // Mise à jour du mois de bénéfice avec tri automatique optionnel
   const handleMoisChange = async (id: string, mois: number | null) => {
     if (isLocked && !isAdmin) return;
     await updateBeneficiaire.mutateAsync({ id, data: { mois_benefice: mois } });
+    
+    // Proposer un tri automatique des rangs par mois croissant
+    if (mois !== null && calendrier.length > 1) {
+      const updatedCalendrier = calendrier.map(b => b.id === id ? { ...b, mois_benefice: mois } : b);
+      const sorted = [...updatedCalendrier]
+        .sort((a, b) => (a.mois_benefice || 13) - (b.mois_benefice || 13));
+      
+      // Vérifier si l'ordre a changé
+      const orderChanged = sorted.some((b, i) => b.id !== calendrier[i]?.id);
+      if (orderChanged) {
+        const doReorder = window.confirm(
+          "Le mois a été modifié. Voulez-vous réordonner automatiquement les rangs selon l'ordre chronologique des mois ?"
+        );
+        if (doReorder) {
+          const updates = sorted.map((b, idx) => ({ id: b.id, rang: idx + 1 }));
+          await reorderBeneficiaires.mutateAsync(updates);
+        }
+      }
+    }
   };
 
   // Drag-and-drop sensors
@@ -568,6 +587,19 @@ export default function CalendrierBeneficiairesManager() {
               )}
             </div>
           </div>
+          {/* Aperçu du montant total prévu */}
+          {selectedMembre && selectedMois && (() => {
+            const cotisation = cotisationsMensuelles.find(c => c.membre_id === selectedMembre);
+            const montantMensuel = cotisation?.montant || 20000;
+            const montantTotal = montantMensuel * 12;
+            return (
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                <p className="text-sm font-medium text-primary">
+                  Montant total prévu : {formatFCFA(montantMensuel)} × 12 = <span className="font-bold">{formatFCFA(montantTotal)}</span>
+                </p>
+              </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>Annuler</Button>
             <Button onClick={handleAdd} disabled={!selectedMembre || !selectedMois}>Ajouter</Button>
