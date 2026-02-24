@@ -66,7 +66,9 @@ export default function PretsAdmin() {
           emprunteur:membres!membre_id(id, nom, prenom),
           avaliste:membres!avaliste_id(id, nom, prenom),
           reunion:reunions!reunion_id(id, date_reunion, ordre_du_jour),
-          exercice:exercices!exercice_id(id, nom)
+          exercice:exercices!exercice_id(id, nom),
+          prets_paiements(*),
+          prets_reconductions(*)
         `)
         .order("date_pret", { ascending: false });
       if (error) throw error;
@@ -91,16 +93,17 @@ export default function PretsAdmin() {
   const maxReconductions = pretsConfig?.max_reconductions || 3;
   const dureeReconduction = pretsConfig?.duree_reconduction || 2;
 
-  // Calculer via le service centralisé
-  const calculerTotalDu = (pret: PretAdminWithJoins): number => {
-    const calculs = calculerResumePret({ montant: pret.montant, taux_interet: pret.taux_interet, interet_initial: pret.interet_initial, reconductions: pret.reconductions, montant_paye: pret.montant_paye });
-    return calculs.totalDu;
+  // Calculer via le service centralisé avec données jointes
+  const getCalculsPret = (pret: any) => {
+    return calculerResumePret(
+      { montant: pret.montant, taux_interet: pret.taux_interet, interet_initial: pret.interet_initial, reconductions: pret.reconductions, montant_paye: pret.montant_paye },
+      pret.prets_paiements || [],
+      pret.prets_reconductions || []
+    );
   };
 
-  const calculerSoldeRestant = (pret: any): number => {
-    const calculs = calculerResumePret({ montant: pret.montant, taux_interet: pret.taux_interet, interet_initial: pret.interet_initial, reconductions: pret.reconductions, montant_paye: pret.montant_paye });
-    return calculs.resteAPayer;
-  };
+  const calculerTotalDu = (pret: any): number => getCalculsPret(pret).totalDu;
+  const calculerSoldeRestant = (pret: any): number => getCalculsPret(pret).resteAPayer;
 
   const createPret = useMutation({
     mutationFn: async (data: any) => {
@@ -255,18 +258,17 @@ export default function PretsAdmin() {
     }
   };
 
-  // Statut effectif
+  // Statut effectif — priorité: remboursé > en_retard > reconduit > partiel > en_cours
   const getEffectiveStatus = (pret: any) => {
-    const totalDu = calculerTotalDu(pret);
-    const paye = pret.montant_paye || 0;
+    const calculs = getCalculsPret(pret);
     const echeance = new Date(pret.echeance);
     const now = new Date();
 
-    if (paye >= totalDu) return 'rembourse';
-    if (paye > 0 && paye < totalDu) return 'partiel';
-    if (echeance < now && pret.statut !== 'rembourse') return 'en_retard';
+    if (calculs.totalPaye >= calculs.totalDu && calculs.totalDu > 0) return 'rembourse';
+    if (echeance < now) return 'en_retard';
     if (pret.reconductions > 0) return 'reconduit';
-    return pret.statut;
+    if (calculs.totalPaye > 0) return 'partiel';
+    return 'en_cours';
   };
 
   const getRowClass = (pret: any) => {
@@ -342,7 +344,7 @@ export default function PretsAdmin() {
   const totalReconductions = prets?.reduce((sum, p) => sum + (p.reconductions || 0), 0) || 0;
   const montantPrete = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + p.montant, 0) || 0;
   const pretsRembourses = prets?.filter((p) => getEffectiveStatus(p) === "rembourse").length || 0;
-  const montantRestant = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + calculerTotalDu(p) - (p.montant_paye || 0), 0) || 0;
+  const montantRestant = prets?.filter((p) => getEffectiveStatus(p) !== "rembourse").reduce((sum, p) => sum + getCalculsPret(p).resteAPayer, 0) || 0;
   const totalInterets = prets?.reduce((sum, p) => {
     // Somme des intérêts initiaux (générés à la création) - toujours positif
     const interet = p.interet_initial ?? (p.montant * (p.taux_interet || 5) / 100);
@@ -535,10 +537,8 @@ export default function PretsAdmin() {
                 </TableHeader>
                 <TableBody>
                   {filteredPrets?.map((pret) => {
-                    // RESTE = Total dû - Montant payé (correction bug: déduire les paiements effectués)
-                    const estRembourse = getEffectiveStatus(pret) === 'rembourse';
-                    const totalDu = pret.montant_total_du || calculerTotalDu(pret);
-                    const resteAPayer = estRembourse ? 0 : Math.max(0, totalDu - (pret.montant_paye || 0));
+                    const calculs = getCalculsPret(pret);
+                    const resteAPayer = calculs.resteAPayer;
                     
                     // Vérification pour reconduction
                     const verifReconduction = peutReconduirePret(pret);
@@ -551,7 +551,7 @@ export default function PretsAdmin() {
                         </TableCell>
                         <TableCell>{formatFCFA(pret.montant)}</TableCell>
                         <TableCell>{pret.taux_interet}%</TableCell>
-                        <TableCell className="font-medium">{formatFCFA(pret.montant_total_du || calculerTotalDu(pret))}</TableCell>
+                        <TableCell className="font-medium">{formatFCFA(calculs.totalDu)}</TableCell>
                         <TableCell>{new Date(pret.echeance).toLocaleDateString('fr-FR')}</TableCell>
                         <TableCell>
                           {pret.reconductions > 0 ? (
@@ -602,7 +602,7 @@ export default function PretsAdmin() {
                               </Tooltip>
                             </TooltipProvider>
                             
-                            {!estRembourse && (
+                            {getEffectiveStatus(pret) !== 'rembourse' && (
                               <>
                                 {/* Payer Total */}
                                 <TooltipProvider>
