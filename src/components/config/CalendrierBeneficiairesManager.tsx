@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Calendar, Users, GripVertical, Plus, Trash2, Download, Send, Lock, Loader2 } from "lucide-react";
 import { useCalendrierBeneficiaires } from "@/hooks/useCalendrierBeneficiaires";
@@ -141,6 +142,8 @@ export default function CalendrierBeneficiairesManager() {
   const [selectedMembre, setSelectedMembre] = useState<string>("");
   const [selectedMois, setSelectedMois] = useState<string>("");
   const [sending, setSending] = useState(false);
+  const [showReorderDialog, setShowReorderDialog] = useState(false);
+  const [pendingReorderUpdates, setPendingReorderUpdates] = useState<Array<{ id: string; rang: number }>>([]);
   const { userRole } = useAuth();
   const { toast } = useToast();
 
@@ -360,16 +363,10 @@ export default function CalendrierBeneficiairesManager() {
       const sorted = [...updatedCalendrier]
         .sort((a, b) => (a.mois_benefice || 13) - (b.mois_benefice || 13));
       
-      // Vérifier si l'ordre a changé
       const orderChanged = sorted.some((b, i) => b.id !== calendrier[i]?.id);
       if (orderChanged) {
-        const doReorder = window.confirm(
-          "Le mois a été modifié. Voulez-vous réordonner automatiquement les rangs selon l'ordre chronologique des mois ?"
-        );
-        if (doReorder) {
-          const updates = sorted.map((b, idx) => ({ id: b.id, rang: idx + 1 }));
-          await reorderBeneficiaires.mutateAsync(updates);
-        }
+        setPendingReorderUpdates(sorted.map((b, idx) => ({ id: b.id, rang: idx + 1 })));
+        setShowReorderDialog(true);
       }
     }
   };
@@ -606,6 +603,29 @@ export default function CalendrierBeneficiairesManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog pour réordonner les rangs */}
+      <AlertDialog open={showReorderDialog} onOpenChange={setShowReorderDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Réordonner les rangs ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le mois a été modifié. Voulez-vous réordonner automatiquement les rangs selon l'ordre chronologique des mois ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingReorderUpdates([])}>Non</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (pendingReorderUpdates.length > 0) {
+                await reorderBeneficiaires.mutateAsync(pendingReorderUpdates);
+                setPendingReorderUpdates([]);
+              }
+            }}>
+              Oui, réordonner
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

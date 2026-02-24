@@ -7,11 +7,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { User, Heart, Receipt, Settings, PiggyBank, AlertTriangle, Wallet, Calendar, HandHeart } from "lucide-react";
 import { formatFCFA } from "@/lib/utils";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const DashboardHome = () => {
   const navigate = useNavigate();
   const { profile, userRole } = useAuth();
   const { membre, summary, isLoading } = usePersonalSummary();
+  const { hasAnyPermission } = usePermissions();
 
   const quickActions = [
     { title: "Mon Profil", description: "Informations personnelles", icon: User, href: "/dashboard/profile", color: "text-blue-500" },
@@ -25,7 +27,17 @@ const DashboardHome = () => {
   ];
 
   const isAdmin = userRole === "administrateur";
-  const hasAdminAccess = userRole === "administrateur" || userRole === "tresorier";
+  const hasAdminAccess = hasAnyPermission([
+    { resource: 'membres', permission: 'read' },
+    { resource: 'prets', permission: 'read' },
+    { resource: 'cotisations', permission: 'read' },
+    { resource: 'epargnes', permission: 'read' },
+    { resource: 'reunions', permission: 'read' },
+    { resource: 'aides', permission: 'read' },
+    { resource: 'donations', permission: 'read' },
+    { resource: 'config', permission: 'read' },
+    { resource: 'stats', permission: 'read' },
+  ]);
 
   return (
     <div className="space-y-6">

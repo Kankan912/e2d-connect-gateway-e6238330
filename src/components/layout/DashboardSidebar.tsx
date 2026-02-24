@@ -245,7 +245,8 @@ export function DashboardSidebar() {
             {userRole === 'responsable_sportif' && '⚽ Resp. Sportif'}
             {userRole === 'censeur' && '⚖️ Censeur'}
             {userRole === 'commissaire_comptes' && '🔍 Commissaire'}
-            {!['administrateur', 'tresorier', 'secretaire_general', 'responsable_sportif', 'censeur', 'commissaire_comptes'].includes(userRole) && `📋 ${userRole}`}
+            {userRole === 'membre' && '👤 Membre'}
+            {!['administrateur', 'tresorier', 'secretaire_general', 'responsable_sportif', 'censeur', 'commissaire_comptes', 'membre'].includes(userRole) && `📋 ${userRole}`}
           </Badge>
         )}
         
