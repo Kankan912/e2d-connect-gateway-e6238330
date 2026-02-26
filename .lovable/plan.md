@@ -1,73 +1,36 @@
 
 
-# Plan : Cotisations individuelles — Affichage du montant attendu par membre et correction du modal États
+# Correction urgente : Onglet "Caisse" invisible dans le sidebar
 
-## Analyse du code actuel
+## Cause
 
-Apres analyse exhaustive de tout le code (`CotisationsGridView`, `CotisationCellModal`, `CotisationsEtatsModal`, `CotisationsReunionView`), **aucune logique de "partage", "répartition" ou "montant global" n'existe dans le code**. La recherche textuelle dans les 8 fichiers contenant ces mots confirme qu'ils n'apparaissent que dans des contextes sans rapport (statistiques sportives, bénéficiaires, donations).
+La ressource `caisse` n'existe pas dans la table `role_permissions`. Le sidebar filtre les liens par permission (`hasPermission('caisse', 'read')`), et comme aucun role n'a cette permission, le lien est masque pour tous les utilisateurs.
 
-Le systeme utilise deja des montants individuels via `cotisations_mensuelles_exercice`. Cependant, **deux problemes concrets provoquent la confusion** :
+Les ressources existantes sont : `adhesions`, `aides`, `config`, `cotisations`, `donations`, `epargnes`, `membres`, `presences`, `prets`, `reunions`, `roles`, `sanctions`, `site`, `sport_e2d`, `sport_entrainements`, `sport_phoenix`, `stats`.
 
-### Probleme 1 : Le montant individuel attendu est INVISIBLE dans la grille
+## Deux options
 
-Dans `CotisationsGridView.tsx`, chaque cellule non payee affiche uniquement un bouton "+" sans aucune indication du montant attendu pour ce membre. L'en-tete de colonne affiche le `montant_defaut` generique (ex: 20 000 FCFA), ce qui donne l'impression que tous les membres paient le meme montant. L'utilisateur ne peut pas savoir combien chaque membre doit individuellement.
+**Option A (recommandee)** : Ajouter les permissions `caisse` dans `role_permissions` pour les roles concernes (administrateur, tresorier, commissaire_comptes au minimum). C'est la solution propre qui respecte le systeme de permissions existant.
 
-### Probleme 2 : Le modal "Etats" ignore les montants mensuels individuels
+**Option B (rapide)** : Changer le `resource` du lien Caisse dans le sidebar et la route de `"caisse"` vers `"epargnes"` (puisque la Caisse est dans la meme section que les Epargnes/Tontine et les memes roles y ont acces). Cela evite toute modification en base de donnees.
 
-Dans `CotisationsEtatsModal.tsx` (ligne 118), le calcul du montant attendu utilise uniquement `cotisationsMembres` (table `cotisations_membres`). Il ne consulte jamais `cotisations_mensuelles_exercice` pour les types "Cotisation mensuelle". Resultat : tous les membres s'affichent avec le `montant_defaut` au lieu de leur montant individuel configure.
+## Plan retenu : Option A
 
-## Corrections prevues
+### Etape 1 — Ajouter les permissions en base
 
-### Fichier 1 : `src/components/CotisationsGridView.tsx`
+Inserer dans `role_permissions` les lignes pour la ressource `caisse` avec les 4 operations (read, create, update, delete) pour les roles qui doivent y avoir acces :
+- `administrateur` : read, create, update, delete
+- `tresorier` : read, create, update, delete
+- `commissaire_comptes` : read
+- `censeur` : read
 
-**1a — Afficher le montant attendu individuel dans chaque cellule non payee**
+### Etape 2 — Aucun changement de code
 
-Lignes 413-422 : Remplacer le simple bouton "+" par l'affichage du montant attendu + le bouton de saisie :
-
-```
-Avant :  [  +  ]
-Apres :  20 000 F   (montant individuel de CE membre)
-         [  +  ]
-```
-
-**1b — Signaler les anomalies dans les cellules payees**
-
-Lignes 394-412 : Quand un paiement a ete effectue, comparer le montant paye au montant attendu individuel. Si different, afficher un indicateur visuel (badge orange "Ecart") dans la cellule de ce membre uniquement.
-
-**1c — Remplacer le montant generique dans l'en-tete de colonne**
-
-Lignes 347-349 : Remplacer `formatFCFA(type.montant_defaut || 0)` par "Individuel" pour les types dont les montants varient par membre, afin de ne pas laisser croire que le montant est unique pour tous.
-
-### Fichier 2 : `src/components/CotisationsEtatsModal.tsx`
-
-**2a — Charger `cotisations_mensuelles_exercice` dans le modal**
-
-Ajouter un `useQuery` pour recuperer les montants mensuels individuels filtres par `exerciceId` (meme pattern que dans `CotisationsGridView` et `CotisationsReunionView`).
-
-**2b — Utiliser les montants individuels dans le calcul `etats`**
-
-Lignes 116-129 : Pour les types "cotisation mensuelle", utiliser `cotisations_mensuelles_exercice` au lieu du fallback `montant_defaut`. Pattern :
-
-```typescript
-if (isCotisationMensuelle) {
-  const configMensuelle = cotisationsMensuelles?.find(cm => cm.membre_id === membre.id);
-  expected = (configMensuelle?.montant ?? type.montant_defaut ?? 0) * multiplier;
-} else {
-  // Garder la logique existante avec cotisationsMembres
-}
-```
-
-## Resume
-
-| Fichier | Modification | Impact |
-|---|---|---|
-| `CotisationsGridView.tsx` | Afficher montant individuel dans chaque cellule + badge anomalie + header "Individuel" | Transparence totale par membre |
-| `CotisationsEtatsModal.tsx` | Charger et utiliser `cotisations_mensuelles_exercice` dans le calcul | Montants attendus corrects dans le modal |
+Le sidebar et la route utilisent deja `resource: "caisse"`. Une fois les permissions inserees, le lien apparaitra automatiquement pour les roles concernes.
 
 ## Impact
 
-- Chaque cellule du tableau affiche le montant individuel attendu pour ce membre specifique
-- Les ecarts sont signales par membre uniquement, sans aucune notion de repartition
-- Le modal "Etats" reflète les montants individuels configures
-- Aucune modification de la base de donnees necessaire (la table `cotisations_mensuelles_exercice` existe deja et est deja utilisee par la logique `getMontant`)
+- Le lien "Caisse" reapparait immediatement dans le sidebar pour les roles autorises
+- La route `/dashboard/admin/caisse` reste protegee par `PermissionRoute`
+- Zero modification de fichier TypeScript
 
