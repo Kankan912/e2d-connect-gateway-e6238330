@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Users, Coins } from "lucide-react";
+import { TrendingUp, Users, Coins, Loader2 } from "lucide-react";
 
 interface CotisationsCumulAnnuelProps {
   exerciceId?: string;
@@ -12,7 +12,7 @@ interface CotisationsCumulAnnuelProps {
 
 export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulAnnuelProps) {
   // Récupérer l'exercice actif si non fourni
-  const { data: exercice } = useQuery({
+  const { data: exercice, isLoading: loadingExercice, error: errorExercice } = useQuery({
     queryKey: ['exercice-actif-cotisations', exerciceId],
     queryFn: async () => {
       if (exerciceId) {
@@ -195,11 +195,32 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
     return 'destructive';
   };
 
+  if (loadingExercice) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+          Chargement de l'exercice...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (errorExercice) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-destructive">
+          Erreur lors du chargement de l'exercice. Veuillez rafraîchir la page.
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!exercice) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          Aucun exercice actif trouvé
+          Aucun exercice actif. Veuillez activer un exercice dans Administration &gt; Configuration E2D &gt; Exercices.
         </CardContent>
       </Card>
     );
