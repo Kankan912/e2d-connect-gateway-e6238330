@@ -52,10 +52,19 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
     },
   });
 
-  // Récupérer les types de cotisations obligatoires
+  // Récupérer les types de cotisations actifs pour cet exercice
   const { data: typesCotisations } = useQuery({
-    queryKey: ['types-cotisations-obligatoires'],
+    queryKey: ['types-cotisations-obligatoires', exercice?.id],
     queryFn: async () => {
+      if (exercice?.id) {
+        const { data, error } = await supabase
+          .from('exercices_cotisations_types')
+          .select('cotisations_types(*)')
+          .eq('exercice_id', exercice.id)
+          .eq('actif', true);
+        if (error) throw error;
+        return (data || []).map((d: any) => d.cotisations_types).filter(Boolean);
+      }
       const { data, error } = await supabase
         .from('cotisations_types')
         .select('*')

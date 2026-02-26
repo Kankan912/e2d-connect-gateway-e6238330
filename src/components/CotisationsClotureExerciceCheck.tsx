@@ -40,15 +40,23 @@ export function CotisationsClotureExerciceCheck({ exerciceId }: CotisationsClotu
     },
   });
 
-  // Charger les types obligatoires
+  // Charger les types obligatoires actifs pour cet exercice
   const { data: typesObligatoires = [] } = useQuery<TypeCotisation[]>({
-    queryKey: ["types-obligatoires-clot"],
+    queryKey: ["types-obligatoires-clot", exerciceId],
     queryFn: async () => {
+      if (exerciceId) {
+        const { data, error } = await supabase
+          .from("exercices_cotisations_types")
+          .select("cotisations_types(id, nom, montant_defaut)")
+          .eq("exercice_id", exerciceId)
+          .eq("actif", true);
+        if (error) throw error;
+        return ((data || []).map((d: any) => d.cotisations_types).filter(Boolean)) as TypeCotisation[];
+      }
       const { data, error } = await supabase
         .from("cotisations_types")
         .select("id, nom, montant_defaut")
         .eq("obligatoire", true);
-      
       if (error) throw error;
       return (data || []) as TypeCotisation[];
     },
