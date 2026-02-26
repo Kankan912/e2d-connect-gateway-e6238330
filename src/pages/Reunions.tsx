@@ -44,7 +44,7 @@ import CompteRenduViewer from "@/components/CompteRenduViewer";
 import ClotureReunionModal from "@/components/ClotureReunionModal";
 import ReouvrirReunionModal from "@/components/ReouvrirReunionModal";
 import NotifierReunionModal from "@/components/NotifierReunionModal";
-import CalendrierBeneficiaires from "@/components/CalendrierBeneficiaires";
+import CalendrierBeneficiairesManager from "@/components/config/CalendrierBeneficiairesManager";
 import BeneficiairesReunionWidget from "@/components/BeneficiairesReunionWidget";
 import ReunionSanctionsManager from "@/components/ReunionSanctionsManager";
 import ReunionPresencesManager from "@/components/ReunionPresencesManager";
@@ -1220,7 +1220,7 @@ export default function Reunions() {
           )}
 
           {/* Calendrier complet des bénéficiaires */}
-          <CalendrierBeneficiaires />
+          <CalendrierBeneficiairesManager />
         </TabsContent>
 
         <TabsContent value="rappels">

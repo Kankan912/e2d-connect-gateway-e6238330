@@ -144,6 +144,7 @@ export default function CalendrierBeneficiairesManager() {
   const [sending, setSending] = useState(false);
   const [showReorderDialog, setShowReorderDialog] = useState(false);
   const [pendingReorderUpdates, setPendingReorderUpdates] = useState<Array<{ id: string; rang: number }>>([]);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const { userRole } = useAuth();
   const { toast } = useToast();
 
@@ -516,7 +517,7 @@ export default function CalendrierBeneficiairesManager() {
                         isAdmin={!!isAdmin}
                         onMontantChange={handleMontantChange}
                         onMoisChange={handleMoisChange}
-                        onDelete={() => deleteBeneficiaire.mutate(b.id)}
+                        onDelete={() => setDeleteTargetId(b.id)}
                       />
                     ))}
                   </TableBody>
@@ -607,6 +608,29 @@ export default function CalendrierBeneficiairesManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog pour confirmer la suppression */}
+      <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => { if (!open) setDeleteTargetId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer ce bénéficiaire ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ce bénéficiaire sera retiré du calendrier. Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (deleteTargetId) {
+                deleteBeneficiaire.mutate(deleteTargetId);
+                setDeleteTargetId(null);
+              }
+            }}>
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* AlertDialog pour réordonner les rangs */}
       <AlertDialog open={showReorderDialog} onOpenChange={setShowReorderDialog}>
