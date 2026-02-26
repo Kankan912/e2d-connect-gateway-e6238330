@@ -1,50 +1,29 @@
 
+# Fix: "Invalid time value" crash in ExercicesManager
 
-# Plan : Filtrer les types de cotisations par exercice dans tous les composants
+## Cause
 
-## Constat
+Lines 310-311 and 339-340 in `ExercicesManager.tsx` call `format(new Date(exercice.date_debut), ...)` and `format(new Date(exercice.date_fin), ...)` without checking if the dates are valid. If any exercise in the database has a null or malformed date, `new Date(null)` produces an Invalid Date, and `date-fns format()` throws `RangeError: Invalid time value`.
 
-La table `exercices_cotisations_types` et le composant de configuration `ExercicesCotisationsTypesManager` **existent deja**. `CotisationsGridView` et `CotisationSaisieForm` filtrent deja correctement via cette table.
+## Fix
 
-Cependant, **3 composants** ignorent cette table et affichent tous les types obligatoires sans filtrage par exercice :
+### File: `src/components/config/ExercicesManager.tsx`
 
-| Composant | Requete actuelle | Impact |
-|---|---|---|
-| `CotisationsReunionView.tsx` (l.61-71) | `cotisations_types` WHERE `obligatoire=true` | Bilan reunion affiche des types inactifs |
-| `CotisationsCumulAnnuel.tsx` (l.56-66) | `cotisations_types` WHERE `obligatoire=true` | Suivi annuel affiche des types inactifs |
-| `CotisationsClotureExerciceCheck.tsx` (l.44-54) | `cotisations_types` WHERE `obligatoire=true` | Cloture verifie des types inactifs |
-
-## Corrections
-
-Pour chacun des 3 fichiers, remplacer la requete directe sur `cotisations_types` par une requete sur `exercices_cotisations_types` filtree par `exercice_id` et `actif=true`, avec JOIN sur `cotisations_types`. Pattern identique a celui deja utilise dans `CotisationsGridView` (lignes 78-95) :
+Add a safe date formatting helper and use it in all 4 locations:
 
 ```typescript
-const { data, error } = await supabase
-  .from('exercices_cotisations_types')
-  .select('cotisations_types(id, nom, montant_defaut, obligatoire, type_saisie)')
-  .eq('exercice_id', exerciceId)
-  .eq('actif', true);
-// Extraire les types imbriques
-const types = data?.map(d => d.cotisations_types).filter(Boolean);
+const safeFormat = (dateStr: string | null | undefined, fmt: string, options?: any) => {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "—";
+  return format(d, fmt, options);
+};
 ```
 
-Avec fallback sur la requete directe `cotisations_types` si aucun exercice n'est fourni.
+Replace:
+- Line 310: `format(new Date(activeExercice.date_debut), "d MMMM yyyy", { locale: fr })` → `safeFormat(activeExercice.date_debut, "d MMMM yyyy", { locale: fr })`
+- Line 311: `format(new Date(activeExercice.date_fin), "d MMMM yyyy", { locale: fr })` → `safeFormat(activeExercice.date_fin, "d MMMM yyyy", { locale: fr })`
+- Line 339: `format(new Date(exercice.date_debut), "dd/MM/yyyy")` → `safeFormat(exercice.date_debut, "dd/MM/yyyy")`
+- Line 340: `format(new Date(exercice.date_fin), "dd/MM/yyyy")` → `safeFormat(exercice.date_fin, "dd/MM/yyyy")`
 
-### Fichier 1 : `CotisationsReunionView.tsx`
-- Lignes 60-71 : Remplacer la requete `cotisations_types` par `exercices_cotisations_types` filtree par `exerciceId` (deja disponible en prop)
-- Ajouter `exerciceId` a la `queryKey`
-
-### Fichier 2 : `CotisationsCumulAnnuel.tsx`
-- Lignes 55-66 : Meme remplacement, en utilisant `exercice?.id` (deja disponible)
-- Ajouter `exercice?.id` a la `queryKey`
-
-### Fichier 3 : `CotisationsClotureExerciceCheck.tsx`
-- Lignes 43-54 : Meme remplacement, en utilisant `exerciceId` (deja disponible en prop)
-- Ajouter `exerciceId` a la `queryKey`
-
-## Impact
-
-- Seuls les types actives pour l'exercice concerne apparaissent dans les bilans, suivis et verifications de cloture
-- Coherence totale avec la grille de saisie et le formulaire
-- Aucune modification de base de donnees necessaire
-
+No other files affected. Single file, 5 edits (1 helper + 4 replacements).
