@@ -1,29 +1,58 @@
 
-# Fix: "Invalid time value" crash in ExercicesManager
+
+# Fix: "Aucun exercice actif trouvé" affiché pendant le chargement
 
 ## Cause
 
-Lines 310-311 and 339-340 in `ExercicesManager.tsx` call `format(new Date(exercice.date_debut), ...)` and `format(new Date(exercice.date_fin), ...)` without checking if the dates are valid. If any exercise in the database has a null or malformed date, `new Date(null)` produces an Invalid Date, and `date-fns format()` throws `RangeError: Invalid time value`.
+Le composant `CotisationsCumulAnnuel.tsx` ne distingue pas l'état "en cours de chargement" de l'état "aucune donnée". Pendant que la requête Supabase s'exécute, `exercice` est `undefined`, et le composant affiche immédiatement le message d'erreur "Aucun exercice actif trouvé" au lieu d'un indicateur de chargement.
 
-## Fix
+La requête elle-même (`.eq('statut', 'actif')`) est correcte et correspond bien aux données en base (exercice "2026-2027" avec statut "actif"). Les permissions RLS autorisent la lecture pour tous.
 
-### File: `src/components/config/ExercicesManager.tsx`
+## Correction
 
-Add a safe date formatting helper and use it in all 4 locations:
+### Fichier : `src/components/CotisationsCumulAnnuel.tsx`
+
+1. Extraire `isLoading` et `error` du hook `useQuery` pour la requête exercice (ligne 15)
+2. Ajouter un état de chargement avec spinner avant le check `!exercice` (ligne 198)
+3. Afficher un message d'erreur explicite si `error` est présent
+4. Conserver le message "Aucun exercice actif" uniquement quand `isLoading === false && !exercice`
 
 ```typescript
-const safeFormat = (dateStr: string | null | undefined, fmt: string, options?: any) => {
-  if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "—";
-  return format(d, fmt, options);
-};
+// Ligne 15: ajouter isLoading et error
+const { data: exercice, isLoading: loadingExercice, error: errorExercice } = useQuery({ ... });
+
+// Ligne 198: remplacer le check
+if (loadingExercice) {
+  return (
+    <Card>
+      <CardContent className="py-8 text-center text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+        Chargement de l'exercice...
+      </CardContent>
+    </Card>
+  );
+}
+
+if (errorExercice) {
+  return (
+    <Card>
+      <CardContent className="py-8 text-center text-destructive">
+        Erreur lors du chargement de l'exercice. Veuillez rafraîchir la page.
+      </CardContent>
+    </Card>
+  );
+}
+
+if (!exercice) {
+  return (
+    <Card>
+      <CardContent className="py-8 text-center text-muted-foreground">
+        Aucun exercice actif. Veuillez activer un exercice dans Administration &gt; Configuration E2D &gt; Exercices.
+      </CardContent>
+    </Card>
+  );
+}
 ```
 
-Replace:
-- Line 310: `format(new Date(activeExercice.date_debut), "d MMMM yyyy", { locale: fr })` → `safeFormat(activeExercice.date_debut, "d MMMM yyyy", { locale: fr })`
-- Line 311: `format(new Date(activeExercice.date_fin), "d MMMM yyyy", { locale: fr })` → `safeFormat(activeExercice.date_fin, "d MMMM yyyy", { locale: fr })`
-- Line 339: `format(new Date(exercice.date_debut), "dd/MM/yyyy")` → `safeFormat(exercice.date_debut, "dd/MM/yyyy")`
-- Line 340: `format(new Date(exercice.date_fin), "dd/MM/yyyy")` → `safeFormat(exercice.date_fin, "dd/MM/yyyy")`
+5. Ajouter `Loader2` à l'import lucide-react (ligne 7)
 
-No other files affected. Single file, 5 edits (1 helper + 4 replacements).
