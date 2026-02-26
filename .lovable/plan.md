@@ -1,59 +1,75 @@
 
 
-# Réponse aux deux points soulevés
+# Refactoring: Reunions.tsx into feature-based slices
 
-## 1. Clé Supabase en dur dans client.ts — Aucune action requise
+## Current state
+`src/pages/Reunions.tsx` is 1339 lines containing 9 tab contents, inline components (`RappelsTab`, `CotisationsTabContent`, `StatCard`), data loading, CRUD handlers, and modal management — all in one file.
 
-La clé présente dans `client.ts` est la **clé publique anon** (publishable key). C'est le comportement **normal et recommandé** par Supabase. Voici pourquoi :
+## Target structure
 
-- Les variables d'environnement Vite (`VITE_*`) sont injectées **au build** dans le bundle JavaScript client — elles sont donc **tout aussi visibles** dans les DevTools que des constantes en dur. Les déplacer dans `.env` ne change rien à la sécurité.
-- Le fichier `.env` existe déjà avec `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY`, mais `client.ts` est auto-généré par Lovable et utilise les constantes directement. C'est cosmétique, pas un risque.
-- La **vraie sécurité** repose sur les **politiques RLS**, qui sont déjà en place dans votre projet (cf. `is_admin()`, `has_permission()`, `has_role()`). La clé `service_role` n'est jamais exposée côté client.
-- Toutes les opérations sensibles passent déjà par des Edge Functions avec vérification JWT.
+```text
+src/pages/reunions/
+├── index.tsx                    (~120 lines) — Main shell: header, stats, tabs routing, modals
+├── types.ts                     (~15 lines)  — Reunion interface
+├── components/
+│   ├── ReunionsListTab.tsx       (~220 lines) — Table with search, status badges, action buttons
+│   ├── CotisationsTab.tsx       (~180 lines) — Exercise selector, reunion picker, grid/comparative views
+│   ├── PresencesTab.tsx         (~50 lines)  — Reunion selector + ReunionPresencesManager
+│   ├── SanctionsTab.tsx         (~50 lines)  — Reunion selector + ReunionSanctionsManager
+│   ├── BeneficiairesTab.tsx     (~80 lines)  — Reunion selector + widget + CalendrierBeneficiairesManager
+│   ├── RappelsTab.tsx           (~170 lines) — Email reminder config (extracted as-is from lines 70-291)
+│   ├── RecapitulatifsTab.tsx    (~30 lines)  — Monthly/annual sub-tabs
+│   ├── HistoriqueTab.tsx        (~30 lines)  — Member history placeholder card
+│   └── ReunionStatCards.tsx     (~60 lines)  — 4 stat cards
+└── hooks/
+    └── useReunionsData.ts       (~80 lines)  — loadReunions, CRUD handlers, filtering, member map
+```
 
-**Recommandation** : Aucune modification de code. Concentrer les efforts sur l'audit RLS (déjà fait selon les mémoires projet) plutôt que sur le déplacement de la clé anon.
+## Changes
 
----
+### 1. Create `src/pages/reunions/types.ts`
+Extract the `Reunion` interface (lines 528-539).
 
-## 2. Tests automatisés — Plan d'implémentation
+### 2. Create `src/pages/reunions/hooks/useReunionsData.ts`
+Extract from the main component:
+- `loadReunions` function (lines 578-601)
+- `handleEdit`, `handleDelete`, `handleCompteRendu`, `handleViewCompteRendu`, form success handlers (lines 603-644)
+- `filteredReunions` logic (lines 642-645)
+- `membresMap` and `getMemberName` (lines 563-572)
+- Stats computations (lines 735-742)
+- All related state (`reunions`, `loading`, `searchTerm`, `selectedReunion`, modal states)
 
-### Périmètre initial (réaliste dans Lovable)
+Returns all state + handlers as a single hook.
 
-Lovable ne peut pas exécuter de CI/CD, Playwright, ou des scripts npm. Le plan se concentre sur ce qui est faisable : **tests unitaires Vitest** exécutables via l'outil de test intégré.
+### 3. Create tab components (8 files)
+Each receives only needed props from the hook. All existing child components (`ReunionPresencesManager`, `CotisationsGridView`, etc.) remain unchanged.
 
-### Fichiers à créer/modifier
+- **ReunionsListTab**: Lines 835-1053 (table + search + action buttons + `getStatutBadge`)
+- **CotisationsTab**: Lines 293-526 (current `CotisationsTabContent`, moved to its own file)
+- **PresencesTab**: Lines 1063-1095
+- **SanctionsTab**: Lines 1132-1166
+- **BeneficiairesTab**: Lines 1168-1224
+- **RappelsTab**: Lines 70-291 (current inline `RappelsTab` function)
+- **RecapitulatifsTab**: Lines 1101-1114
+- **HistoriqueTab**: Lines 1116-1130
+- **ReunionStatCards**: Lines 647-669 + 766-792
 
-#### A. Configuration (3 fichiers)
+### 4. Rewrite `src/pages/reunions/index.tsx`
+- Import `useReunionsData` hook
+- Render header, stat cards, `<Tabs>` shell with lazy-loaded tab contents
+- Render modals (Dialog, ClotureReunionModal, ReouvrirReunionModal, NotifierReunionModal, CompteRenduViewer)
+- ~120 lines total
 
-1. **`vitest.config.ts`** — Config Vitest avec jsdom, alias `@/`, setup file
-2. **`src/test/setup.ts`** — Setup avec `@testing-library/jest-dom` et mocks globaux (matchMedia)
-3. **`tsconfig.app.json`** — Ajouter `"vitest/globals"` aux types
+### 5. Update `src/App.tsx`
+Change the import path from `src/pages/Reunions` to `src/pages/reunions` (the index.tsx will be auto-resolved).
 
-#### B. Dépendances à installer
+### 6. Delete old `src/pages/Reunions.tsx`
+After all references are updated.
 
-`@testing-library/jest-dom`, `@testing-library/react`, `@testing-library/user-event`, `jsdom`, `vitest` (devDependencies)
-
-#### C. Tests unitaires prioritaires (4 fichiers)
-
-1. **`src/lib/utils.test.ts`** — Tests pour `formatCurrency`, `formatFCFA`, `getErrorMessage`, `cn`
-2. **`src/lib/payment-utils.test.ts`** — Tests pour les utilitaires de paiement
-3. **`src/lib/session-utils.test.ts`** — Tests pour les utilitaires de session
-4. **`src/lib/pdf-utils.test.ts`** — Tests pour la génération PDF
-
-#### D. Mock Supabase (1 fichier)
-
-5. **`src/test/mocks/supabase.ts`** — Mock du client Supabase pour les tests de hooks
-
-#### E. Test composant (1 fichier)
-
-6. **`src/components/ui/badge.test.tsx`** — Test simple de rendu du Badge (validation du setup)
-
-### Ce qui n'est PAS faisable dans Lovable
-
-- Playwright/Cypress (pas d'exécution de navigateur headless)
-- GitHub Actions workflows (pas d'accès au repo Git)
-- Badge de couverture (pas de CI)
-- MSW (nécessite un service worker, complexe dans le sandbox)
-
-Ces éléments devront être ajoutés manuellement dans le repository par un développeur.
+## What stays unchanged
+- All child components (`ReunionPresencesManager`, `CotisationsGridView`, `CalendrierBeneficiairesManager`, etc.)
+- All hooks (`usePermissions`, `useMembers`, `useBackNavigation`)
+- All form components (`ReunionForm`, `CompteRenduForm`)
+- All modal components (`ClotureReunionModal`, `ReouvrirReunionModal`, `NotifierReunionModal`)
+- Routing structure in App.tsx (same path, different import)
 
