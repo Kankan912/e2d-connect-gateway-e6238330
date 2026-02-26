@@ -168,7 +168,7 @@ export default function Reunions() {
             onSuccess={() => {
               data.loadReunions();
               const currentId = data.selectedReunion!.id;
-              data.setSelectedReunion(null as any);
+              data.setSelectedReunion(null);
               setTimeout(() => { data.loadReunions(); }, 100);
             }}
           />
