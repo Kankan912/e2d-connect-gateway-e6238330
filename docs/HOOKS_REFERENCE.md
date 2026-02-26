@@ -6,7 +6,8 @@
 |------|---------|-------------|
 | `useSupabaseQuery` | `hooks/generic/useSupabaseQuery.ts` | Wrapper léger pour les requêtes SELECT simples |
 | `useSupabaseMutation` | `hooks/generic/useSupabaseMutation.ts` | Wrapper pour INSERT/UPDATE/DELETE avec invalidation cache |
-| `useRealtimeUpdates` | `hooks/useRealtimeUpdates.ts` | Souscription temps réel Supabase (postgres_changes) |
+| `useSupabaseRealtime` | `hooks/generic/useSupabaseRealtime.ts` | Écoute temps réel Supabase avec invalidation automatique du cache React Query |
+| `useRealtimeUpdates` | `hooks/useRealtimeUpdates.ts` | Souscription temps réel bas-niveau (postgres_changes) |
 
 ## Hooks par Domaine
 
@@ -76,16 +77,55 @@
 
 ## Utilisation des hooks génériques
 
+### useSupabaseQuery — Requêtes SELECT
+
 ```typescript
+import { useSupabaseQuery } from '@/hooks/generic/useSupabaseQuery';
+
 // Requête simple
 const { data } = useSupabaseQuery<ConfigRow[]>('configurations', ['config'], {
   orderBy: 'cle',
 });
 
-// Mutation simple
+// Avec filtres
+const { data } = useSupabaseQuery<Member[]>('membres', ['members-active'], {
+  filters: { statut: 'actif' },
+  orderBy: 'nom',
+  limit: 50,
+});
+```
+
+### useSupabaseMutation — Mutations INSERT/UPDATE/DELETE
+
+```typescript
+import { useSupabaseMutation } from '@/hooks/generic/useSupabaseMutation';
+
+// Suppression avec invalidation de cache
 const deleteMutation = useSupabaseMutation('configurations', 'delete', {
   invalidateKeys: [['config']],
   successMessage: 'Configuration supprimée',
 });
 deleteMutation.mutate(configId);
+```
+
+### useSupabaseRealtime — Temps réel avec invalidation cache
+
+```typescript
+import { useSupabaseRealtime } from '@/hooks/generic/useSupabaseRealtime';
+
+// Écouter les changements sur fond_caisse_operations et invalider le cache
+useSupabaseRealtime('fond_caisse_operations', [
+  ['caisse-operations'],
+  ['caisse-stats'],
+]);
+
+// Écouter uniquement les INSERT sur cotisations
+useSupabaseRealtime('cotisations', [['cotisations']], {
+  event: 'INSERT',
+});
+
+// Désactiver temporairement
+useSupabaseRealtime('membres', [['members']], {
+  enabled: isOnline,
+});
 ```

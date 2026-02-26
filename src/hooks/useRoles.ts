@@ -1,3 +1,10 @@
+/**
+ * @module useRoles
+ * Hook CRUD pour la gestion des rôles et permissions (admin).
+ *
+ * @example
+ * const { roles, createRole, updateRole, deleteRole } = useRoles();
+ */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";

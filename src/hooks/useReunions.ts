@@ -1,3 +1,10 @@
+/**
+ * @module useReunions
+ * Hook CRUD pour la gestion des réunions, présences et sanctions.
+ *
+ * @example
+ * const { reunions, createReunion, updateReunion, deleteReunion } = useReunions();
+ */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
