@@ -44,7 +44,7 @@ const AidesAdmin = lazyWithRetry(() => import("./admin/AidesAdmin"));
 const RapportsAdmin = lazyWithRetry(() => import("./admin/RapportsAdmin"));
 
 // Admin Pages - Reunions
-const Reunions = lazyWithRetry(() => import("./Reunions"));
+const Reunions = lazyWithRetry(() => import("./reunions"));
 const GestionPresences = lazyWithRetry(() => import("./GestionPresences"));
 
 // Admin Pages - Sport
