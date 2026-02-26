@@ -1,49 +1,59 @@
 
 
-# Fix: Group beneficiaries by month in calendar display
+# Réponse aux deux points soulevés
 
-## Problem
-The calendar table renders one row per beneficiary, causing month name duplication when multiple beneficiaries share a month (e.g., "Décembre" appears 3 times).
+## 1. Clé Supabase en dur dans client.ts — Aucune action requise
 
-## Solution
-Replace the flat 1-row-per-beneficiary table with a grouped 1-row-per-month table. Each month row shows all its beneficiaries as `Badge` components in a single cell. Individual editing (delete, amount change, month reassignment) is preserved via per-badge actions.
+La clé présente dans `client.ts` est la **clé publique anon** (publishable key). C'est le comportement **normal et recommandé** par Supabase. Voici pourquoi :
 
-## Changes
+- Les variables d'environnement Vite (`VITE_*`) sont injectées **au build** dans le bundle JavaScript client — elles sont donc **tout aussi visibles** dans les DevTools que des constantes en dur. Les déplacer dans `.env` ne change rien à la sécurité.
+- Le fichier `.env` existe déjà avec `VITE_SUPABASE_URL` et `VITE_SUPABASE_PUBLISHABLE_KEY`, mais `client.ts` est auto-généré par Lovable et utilise les constantes directement. C'est cosmétique, pas un risque.
+- La **vraie sécurité** repose sur les **politiques RLS**, qui sont déjà en place dans votre projet (cf. `is_admin()`, `has_permission()`, `has_role()`). La clé `service_role` n'est jamais exposée côté client.
+- Toutes les opérations sensibles passent déjà par des Edge Functions avec vérification JWT.
 
-### 1. `src/components/config/CalendrierBeneficiairesManager.tsx`
+**Recommandation** : Aucune modification de code. Concentrer les efforts sur l'audit RLS (déjà fait selon les mémoires projet) plutôt que sur le déplacement de la clé anon.
 
-**Remove** the `SortableBeneficiaireRow` component and replace the table rendering with a month-grouped view:
+---
 
-- Group `calendrier` by `mois_benefice` using a reduce/Map
-- Render 12 month rows (+ 1 "Non attribué" row for `null` months)
-- Each row shows:
-  - Month name (single occurrence)
-  - Beneficiary badges with names, wrapped in flexbox (`flex flex-wrap gap-1`)
-  - Count badge: "(3 bénéficiaires)"
-  - Sum of `montant_mensuel` and `montant_total` for that month
-- In admin/editable mode: each badge has an `X` button for deletion, and clicking a badge opens inline editing
-- Keep drag-and-drop at the badge level within/between month groups (or simplify to just use the month selector per beneficiary via a popover on badge click)
-- Beneficiaries with no month assigned go in a separate "Non attribué" section at the bottom
+## 2. Tests automatisés — Plan d'implémentation
 
-**New table structure:**
-```text
-| Mois       | Bénéficiaires                      | Montant Mensuel | Total (×12) | Actions |
-|------------|-------------------------------------|-----------------|-------------|---------|
-| Janvier    | [Jean Dupont ×] [Marie Martin ×]   | 40 000          | 480 000     | +       |
-| Février    | [Paul Bernard ×]                    | 20 000          | 240 000     | +       |
-| ...        |                                     |                 |             |         |
-| Non défini | [Luc Lefèvre ×]                    | 20 000          | 240 000     | +       |
-```
+### Périmètre initial (réaliste dans Lovable)
 
-### 2. PDF export update (`handleExportPDF`)
+Lovable ne peut pas exécuter de CI/CD, Playwright, ou des scripts npm. Le plan se concentre sur ce qui est faisable : **tests unitaires Vitest** exécutables via l'outil de test intégré.
 
-- Group `tableData` by month before generating the autoTable
-- Each month row lists beneficiaries separated by `\n` (multi-line cell)
-- Aggregate amounts per month
+### Fichiers à créer/modifier
 
-### 3. Keep individual management
+#### A. Configuration (3 fichiers)
 
-- The "Ajouter un bénéficiaire" dialog already supports month selection — no change needed
-- Delete confirmation AlertDialog remains as-is, triggered from badge `X` buttons
-- Month reassignment: clicking a beneficiary badge in admin mode shows a small popover or inline select to change their month
+1. **`vitest.config.ts`** — Config Vitest avec jsdom, alias `@/`, setup file
+2. **`src/test/setup.ts`** — Setup avec `@testing-library/jest-dom` et mocks globaux (matchMedia)
+3. **`tsconfig.app.json`** — Ajouter `"vitest/globals"` aux types
+
+#### B. Dépendances à installer
+
+`@testing-library/jest-dom`, `@testing-library/react`, `@testing-library/user-event`, `jsdom`, `vitest` (devDependencies)
+
+#### C. Tests unitaires prioritaires (4 fichiers)
+
+1. **`src/lib/utils.test.ts`** — Tests pour `formatCurrency`, `formatFCFA`, `getErrorMessage`, `cn`
+2. **`src/lib/payment-utils.test.ts`** — Tests pour les utilitaires de paiement
+3. **`src/lib/session-utils.test.ts`** — Tests pour les utilitaires de session
+4. **`src/lib/pdf-utils.test.ts`** — Tests pour la génération PDF
+
+#### D. Mock Supabase (1 fichier)
+
+5. **`src/test/mocks/supabase.ts`** — Mock du client Supabase pour les tests de hooks
+
+#### E. Test composant (1 fichier)
+
+6. **`src/components/ui/badge.test.tsx`** — Test simple de rendu du Badge (validation du setup)
+
+### Ce qui n'est PAS faisable dans Lovable
+
+- Playwright/Cypress (pas d'exécution de navigateur headless)
+- GitHub Actions workflows (pas d'accès au repo Git)
+- Badge de couverture (pas de CI)
+- MSW (nécessite un service worker, complexe dans le sandbox)
+
+Ces éléments devront être ajoutés manuellement dans le repository par un développeur.
 
