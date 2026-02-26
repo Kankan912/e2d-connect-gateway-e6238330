@@ -315,13 +315,33 @@ function CotisationsTabContent({
     }
   });
 
-  // Pré-sélectionner l'exercice actif au chargement
+  // Pré-sélectionner l'exercice intelligemment au chargement
   useEffect(() => {
     if (selectedExercice === "__init__" && exercices?.length) {
       const actif = exercices.find(e => e.statut === 'actif');
-      setSelectedExercice(actif ? actif.id : "all");
+      
+      // Vérifier si l'exercice actif contient des réunions
+      const actifHasReunions = actif && reunions.some(r => 
+        r.date_reunion >= actif.date_debut && r.date_reunion <= actif.date_fin
+      );
+      
+      if (actifHasReunions) {
+        setSelectedExercice(actif!.id);
+      } else {
+        // Trouver l'exercice de la réunion en_cours la plus récente
+        const enCoursReunion = reunions.find(r => r.statut === 'en_cours');
+        if (enCoursReunion) {
+          const matchingExercice = exercices.find(e => 
+            enCoursReunion.date_reunion >= e.date_debut && 
+            enCoursReunion.date_reunion <= e.date_fin
+          );
+          setSelectedExercice(matchingExercice?.id || actif?.id || "all");
+        } else {
+          setSelectedExercice(actif?.id || "all");
+        }
+      }
     }
-  }, [exercices, selectedExercice]);
+  }, [exercices, selectedExercice, reunions]);
 
   // Filtrer réunions par exercice
   const reunionsFiltrees = reunions.filter(r => {

@@ -10,7 +10,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Coins, Plus, Check, Edit2, BarChart2, Loader2 } from 'lucide-react';
+import { Coins, Plus, Check, Edit2, BarChart2, Loader2, AlertCircle } from 'lucide-react';
 import { formatFCFA } from '@/lib/utils';
 import CotisationCellModal from './CotisationCellModal';
 import CotisationsEtatsModal from './CotisationsEtatsModal';
@@ -61,7 +61,7 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
   const { hasPermission } = usePermissions();
 
   // Fetch types de cotisations - filtrés par exercice via exercices_cotisations_types
-  const { data: types, isLoading: loadingTypes } = useQuery({
+  const { data: types, isLoading: loadingTypes, error: errorTypes } = useQuery({
     queryKey: ['cotisations-types-grid', exerciceId],
     queryFn: async () => {
       // Si pas d'exercice, charger tous les types obligatoires (fallback)
@@ -109,7 +109,7 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
   });
 
   // Fetch membres E2D actifs
-  const { data: membres, isLoading: loadingMembres } = useQuery({
+  const { data: membres, isLoading: loadingMembres, error: errorMembres } = useQuery({
     queryKey: ['membres-e2d-grid'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -276,6 +276,19 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
         </CardHeader>
         <CardContent>
           <Skeleton className="h-64 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (errorTypes || errorMembres) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-destructive">
+          <AlertCircle className="h-6 w-6 mx-auto mb-2" />
+          Erreur lors du chargement des données. Veuillez rafraîchir la page.
+          {errorTypes && <p className="text-xs mt-1">Types: {(errorTypes as Error).message}</p>}
+          {errorMembres && <p className="text-xs mt-1">Membres: {(errorMembres as Error).message}</p>}
         </CardContent>
       </Card>
     );
