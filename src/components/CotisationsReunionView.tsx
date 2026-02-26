@@ -57,15 +57,24 @@ export default function CotisationsReunionView({ reunionId, exerciceId }: Cotisa
     }
   });
 
-  // Charger les types obligatoires
+  // Charger les types obligatoires actifs pour cet exercice
   const { data: typesObligatoires, isLoading: loadingTypes } = useQuery({
-    queryKey: ['types-cotisations-obligatoires'],
+    queryKey: ['types-cotisations-obligatoires', exerciceId],
     queryFn: async () => {
+      if (exerciceId) {
+        const { data, error } = await supabase
+          .from('exercices_cotisations_types')
+          .select('cotisations_types(id, nom, montant_defaut, obligatoire)')
+          .eq('exercice_id', exerciceId)
+          .eq('actif', true);
+        if (error) throw error;
+        return (data || []).map((d: any) => d.cotisations_types).filter(Boolean);
+      }
+      // Fallback si pas d'exercice
       const { data, error } = await supabase
         .from('cotisations_types')
         .select('id, nom, montant_defaut, obligatoire')
         .eq('obligatoire', true);
-      
       if (error) throw error;
       return data;
     }
