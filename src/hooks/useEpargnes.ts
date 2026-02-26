@@ -1,3 +1,10 @@
+/**
+ * @module useEpargnes
+ * Hook CRUD pour la gestion des épargnes des membres par exercice.
+ *
+ * @example
+ * const { epargnes, createEpargne, deleteEpargne } = useEpargnes(exerciceId);
+ */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";

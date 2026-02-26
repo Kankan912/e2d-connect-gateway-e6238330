@@ -1,3 +1,12 @@
+/**
+ * @module useMembers
+ * Hook CRUD pour la gestion des membres de l'association.
+ * Inclut les détails membre (cotisations, épargnes, prêts, sanctions) depuis l'ancien useMemberDetails.
+ *
+ * @example
+ * const { members, createMember, updateMember, deleteMember } = useMembers();
+ * const { data: details } = useMemberDetails(membreId);
+ */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";

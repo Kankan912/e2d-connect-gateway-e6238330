@@ -1,3 +1,13 @@
+/**
+ * @module useCaisse
+ * Hook consolidé pour la gestion du fond de caisse (trésorerie).
+ * Regroupe les anciennes fonctions de useCaisseDetails et useCaisseSynthese.
+ *
+ * @example
+ * const { operations, stats, config } = useCaisseOperations({ exerciceId });
+ * const { data: synthese } = useCaisseSynthese();
+ * const { data: details } = useCaisseDetails('epargnes', true);
+ */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";

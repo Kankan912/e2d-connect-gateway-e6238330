@@ -1,3 +1,10 @@
+/**
+ * @module useAides
+ * Hook CRUD pour la gestion des aides aux bénéficiaires (allocations, remboursements).
+ *
+ * @example
+ * const { aides, createAide, updateAide, deleteAide } = useAides();
+ */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";

@@ -1,3 +1,12 @@
+/**
+ * @module usePermissions
+ * Hook pour vérifier les permissions de l'utilisateur connecté.
+ * Charge les rôles et permissions via les tables user_roles → roles → role_permissions.
+ *
+ * @example
+ * const { hasPermission, isAdmin } = usePermissions();
+ * if (hasPermission('membres.write')) { ... }
+ */
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
