@@ -1,62 +1,66 @@
 
 
-# Plan: Hook consolidation + Technical documentation
+# Code Review — Modifications du jour
 
-## Part 1: Hook architecture improvement
+## Résumé
 
-After analyzing the hooks, the "duplication" is more about **organizational sprawl** than true code duplication. Each hook serves a distinct purpose with different queries, joins, and business logic. Creating fully generic `useSupabaseQuery`/`useSupabaseMutation` hooks would lose type safety and domain specificity.
-
-**Pragmatic approach**: Consolidate closely related hooks into single files with view parameters, without creating overly abstract generic wrappers.
-
-### Changes
-
-#### 1. Merge `useCaisseDetails.ts` + `useCaisseSynthese.ts` into `useCaisse.ts`
-
-Move `useCaisseDetails`, `useCaisseSynthese`, `getDetailTitle` exports into `useCaisse.ts`. Delete the two separate files. Update all imports (approximately 3-4 component files).
-
-#### 2. Merge `useMemberDetails.ts` into `useMembers.ts`
-
-Move `useMemberDetails` and its interfaces into `useMembers.ts`. Delete `useMemberDetails.ts`. Update imports (approximately 2 component files).
-
-#### 3. Create `src/hooks/generic/useSupabaseQuery.ts` — lightweight helper
-
-A thin wrapper around `useQuery` + `supabase.from(table).select()` for simple cases only. Not intended to replace domain hooks, but to reduce boilerplate for new features.
-
-```typescript
-export function useSupabaseQuery<T>(
-  table: string, 
-  queryKey: string[], 
-  options?: { select?: string; filters?: Record<string, any>; enabled?: boolean; orderBy?: string }
-)
-```
-
-#### 4. Create `src/hooks/generic/useSupabaseMutation.ts` — lightweight helper
-
-Wraps `useMutation` for simple insert/update/delete with automatic cache invalidation.
-
-### Files to update imports
-
-- `src/components/caisse/CaisseDashboard.tsx`
-- `src/components/caisse/CaisseSidePanel.tsx`
-- `src/components/caisse/CaisseSyntheseDetailModal.tsx`
-- `src/components/MemberDetailSheet.tsx`
-- Any other files importing from the deleted hooks
+Trois chantiers ont été implémentés aujourd'hui. Après inspection complète du code, voici les conclusions.
 
 ---
 
-## Part 2: Technical documentation
+## 1. Tests automatisés (Vitest) — OK
 
-### Files to create
+- `vitest.config.ts` : Configuration correcte (jsdom, globals, alias `@/`, setup file)
+- `src/test/setup.ts` : Mock `matchMedia` + import `@testing-library/jest-dom`
+- `src/test/mocks/supabase.ts` : Mock complet du client Supabase
+- `tsconfig.app.json` : Types `vitest/globals` ajoutés
+- 4 fichiers de tests créés : `utils.test.ts`, `payment-utils.test.ts`, `session-utils.test.ts`, `badge.test.tsx`
 
-1. **`docs/ARCHITECTURE.md`** — Project structure overview: folder conventions, feature-based slices, hook patterns, Supabase integration, auth flow
-2. **`docs/HOOKS_REFERENCE.md`** — Table of all hooks with purpose, parameters, return values, and usage examples (grouped by domain: caisse, members, reunions, sport, etc.)
-3. **`docs/DATABASE_SCHEMA.md`** — Mermaid ERD diagram of key tables and relationships, generated from current schema
-4. **`docs/RLS_PERMISSIONS.md`** — Summary of RLS policies, roles (`is_admin`, `has_permission`, `has_role`), and which resources require which permissions
-5. **`docs/CONTRIBUTING.md`** — How to add a new feature: create hook, component, page, update routing
-6. **`README.md`** — Update with Quick Start section and links to all docs
+**Verdict** : Aucun problème détecté. Infrastructure fonctionnelle.
 
-### Not implemented (requires external tooling)
-- Storybook (requires `npx storybook init`, not feasible in Lovable)
-- TypeDoc generation
-- Chromatic/GitHub Pages deployment
+---
+
+## 2. Refactoring Reunions.tsx — OK
+
+- `src/pages/Reunions.tsx` supprimé, remplacé par `src/pages/reunions/index.tsx`
+- Import dans `Dashboard.tsx` ligne 47 : `import("./reunions")` — correct, résolu via `index.tsx`
+- Aucune référence résiduelle à l'ancien fichier `Reunions.tsx` dans le codebase
+- 8 composants d'onglets créés, tous avec default export (compatible `React.lazy`)
+- `useReunionsData` hook : contient toute la logique d'état et les handlers CRUD
+- Types dans `src/pages/reunions/types.ts` : interface `Reunion` correcte
+
+**Problème mineur potentiel** : Dans `index.tsx` ligne 171, `data.setSelectedReunion(null as any)` utilise un cast `as any` car le type attend `Reunion | null` mais le setter est typé `(r: Reunion) => void` dans certains props. Cela fonctionne mais n'est pas propre. Non bloquant.
+
+**Verdict** : Fonctionnel. Routes, lazy loading, et modals sont correctement câblés.
+
+---
+
+## 3. Consolidation des hooks — OK
+
+- `useCaisseDetails.ts` et `useCaisseSynthese.ts` supprimés, contenu fusionné dans `useCaisse.ts`
+- `useMemberDetails.ts` supprimé, contenu fusionné dans `useMembers.ts`
+- **Aucune référence résiduelle** aux fichiers supprimés (`useCaisseDetails`, `useCaisseSynthese`, `useMemberDetails`) — vérifié par search
+- Imports mis à jour dans :
+  - `CaisseSidePanel.tsx` → `from "@/hooks/useCaisse"` ✓
+  - `CaisseSyntheseDetailModal.tsx` → `from "@/hooks/useCaisse"` ✓
+  - `MemberDetailSheet.tsx` → `from "@/hooks/useMembers"` ✓
+  - `MembresAdmin.tsx` → `from "@/hooks/useMembers"` ✓
+- `useSupabaseQuery.ts` et `useSupabaseMutation.ts` créés dans `src/hooks/generic/` — code propre, bien documenté
+
+**Verdict** : Aucun import cassé. Consolidation correcte.
+
+---
+
+## 4. Documentation — OK
+
+- 5 fichiers Markdown créés dans `docs/` : ARCHITECTURE, HOOKS_REFERENCE, DATABASE_SCHEMA, RLS_PERMISSIONS, CONTRIBUTING
+- README.md mis à jour avec liens
+
+**Verdict** : Pas de risque fonctionnel (fichiers doc uniquement).
+
+---
+
+## Conclusion générale
+
+**Aucun problème bloquant détecté.** Toutes les routes fonctionnent, les imports sont cohérents, les fichiers supprimés n'ont plus de références résiduelles, et les dépendances entre fonctions sont correctement maintenues. Le seul point cosmétique est le `null as any` dans le callback `ReouvrirReunionModal.onSuccess` (ligne 171 de `reunions/index.tsx`), qui pourrait être nettoyé en typant correctement le setter `setSelectedReunion` pour accepter `null`.
 
