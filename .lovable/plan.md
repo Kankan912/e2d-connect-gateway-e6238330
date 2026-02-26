@@ -1,75 +1,62 @@
 
 
-# Refactoring: Reunions.tsx into feature-based slices
+# Plan: Hook consolidation + Technical documentation
 
-## Current state
-`src/pages/Reunions.tsx` is 1339 lines containing 9 tab contents, inline components (`RappelsTab`, `CotisationsTabContent`, `StatCard`), data loading, CRUD handlers, and modal management — all in one file.
+## Part 1: Hook architecture improvement
 
-## Target structure
+After analyzing the hooks, the "duplication" is more about **organizational sprawl** than true code duplication. Each hook serves a distinct purpose with different queries, joins, and business logic. Creating fully generic `useSupabaseQuery`/`useSupabaseMutation` hooks would lose type safety and domain specificity.
 
-```text
-src/pages/reunions/
-├── index.tsx                    (~120 lines) — Main shell: header, stats, tabs routing, modals
-├── types.ts                     (~15 lines)  — Reunion interface
-├── components/
-│   ├── ReunionsListTab.tsx       (~220 lines) — Table with search, status badges, action buttons
-│   ├── CotisationsTab.tsx       (~180 lines) — Exercise selector, reunion picker, grid/comparative views
-│   ├── PresencesTab.tsx         (~50 lines)  — Reunion selector + ReunionPresencesManager
-│   ├── SanctionsTab.tsx         (~50 lines)  — Reunion selector + ReunionSanctionsManager
-│   ├── BeneficiairesTab.tsx     (~80 lines)  — Reunion selector + widget + CalendrierBeneficiairesManager
-│   ├── RappelsTab.tsx           (~170 lines) — Email reminder config (extracted as-is from lines 70-291)
-│   ├── RecapitulatifsTab.tsx    (~30 lines)  — Monthly/annual sub-tabs
-│   ├── HistoriqueTab.tsx        (~30 lines)  — Member history placeholder card
-│   └── ReunionStatCards.tsx     (~60 lines)  — 4 stat cards
-└── hooks/
-    └── useReunionsData.ts       (~80 lines)  — loadReunions, CRUD handlers, filtering, member map
+**Pragmatic approach**: Consolidate closely related hooks into single files with view parameters, without creating overly abstract generic wrappers.
+
+### Changes
+
+#### 1. Merge `useCaisseDetails.ts` + `useCaisseSynthese.ts` into `useCaisse.ts`
+
+Move `useCaisseDetails`, `useCaisseSynthese`, `getDetailTitle` exports into `useCaisse.ts`. Delete the two separate files. Update all imports (approximately 3-4 component files).
+
+#### 2. Merge `useMemberDetails.ts` into `useMembers.ts`
+
+Move `useMemberDetails` and its interfaces into `useMembers.ts`. Delete `useMemberDetails.ts`. Update imports (approximately 2 component files).
+
+#### 3. Create `src/hooks/generic/useSupabaseQuery.ts` — lightweight helper
+
+A thin wrapper around `useQuery` + `supabase.from(table).select()` for simple cases only. Not intended to replace domain hooks, but to reduce boilerplate for new features.
+
+```typescript
+export function useSupabaseQuery<T>(
+  table: string, 
+  queryKey: string[], 
+  options?: { select?: string; filters?: Record<string, any>; enabled?: boolean; orderBy?: string }
+)
 ```
 
-## Changes
+#### 4. Create `src/hooks/generic/useSupabaseMutation.ts` — lightweight helper
 
-### 1. Create `src/pages/reunions/types.ts`
-Extract the `Reunion` interface (lines 528-539).
+Wraps `useMutation` for simple insert/update/delete with automatic cache invalidation.
 
-### 2. Create `src/pages/reunions/hooks/useReunionsData.ts`
-Extract from the main component:
-- `loadReunions` function (lines 578-601)
-- `handleEdit`, `handleDelete`, `handleCompteRendu`, `handleViewCompteRendu`, form success handlers (lines 603-644)
-- `filteredReunions` logic (lines 642-645)
-- `membresMap` and `getMemberName` (lines 563-572)
-- Stats computations (lines 735-742)
-- All related state (`reunions`, `loading`, `searchTerm`, `selectedReunion`, modal states)
+### Files to update imports
 
-Returns all state + handlers as a single hook.
+- `src/components/caisse/CaisseDashboard.tsx`
+- `src/components/caisse/CaisseSidePanel.tsx`
+- `src/components/caisse/CaisseSyntheseDetailModal.tsx`
+- `src/components/MemberDetailSheet.tsx`
+- Any other files importing from the deleted hooks
 
-### 3. Create tab components (8 files)
-Each receives only needed props from the hook. All existing child components (`ReunionPresencesManager`, `CotisationsGridView`, etc.) remain unchanged.
+---
 
-- **ReunionsListTab**: Lines 835-1053 (table + search + action buttons + `getStatutBadge`)
-- **CotisationsTab**: Lines 293-526 (current `CotisationsTabContent`, moved to its own file)
-- **PresencesTab**: Lines 1063-1095
-- **SanctionsTab**: Lines 1132-1166
-- **BeneficiairesTab**: Lines 1168-1224
-- **RappelsTab**: Lines 70-291 (current inline `RappelsTab` function)
-- **RecapitulatifsTab**: Lines 1101-1114
-- **HistoriqueTab**: Lines 1116-1130
-- **ReunionStatCards**: Lines 647-669 + 766-792
+## Part 2: Technical documentation
 
-### 4. Rewrite `src/pages/reunions/index.tsx`
-- Import `useReunionsData` hook
-- Render header, stat cards, `<Tabs>` shell with lazy-loaded tab contents
-- Render modals (Dialog, ClotureReunionModal, ReouvrirReunionModal, NotifierReunionModal, CompteRenduViewer)
-- ~120 lines total
+### Files to create
 
-### 5. Update `src/App.tsx`
-Change the import path from `src/pages/Reunions` to `src/pages/reunions` (the index.tsx will be auto-resolved).
+1. **`docs/ARCHITECTURE.md`** — Project structure overview: folder conventions, feature-based slices, hook patterns, Supabase integration, auth flow
+2. **`docs/HOOKS_REFERENCE.md`** — Table of all hooks with purpose, parameters, return values, and usage examples (grouped by domain: caisse, members, reunions, sport, etc.)
+3. **`docs/DATABASE_SCHEMA.md`** — Mermaid ERD diagram of key tables and relationships, generated from current schema
+4. **`docs/RLS_PERMISSIONS.md`** — Summary of RLS policies, roles (`is_admin`, `has_permission`, `has_role`), and which resources require which permissions
+5. **`docs/CONTRIBUTING.md`** — How to add a new feature: create hook, component, page, update routing
+6. **`README.md`** — Update with Quick Start section and links to all docs
 
-### 6. Delete old `src/pages/Reunions.tsx`
-After all references are updated.
-
-## What stays unchanged
-- All child components (`ReunionPresencesManager`, `CotisationsGridView`, `CalendrierBeneficiairesManager`, etc.)
-- All hooks (`usePermissions`, `useMembers`, `useBackNavigation`)
-- All form components (`ReunionForm`, `CompteRenduForm`)
-- All modal components (`ClotureReunionModal`, `ReouvrirReunionModal`, `NotifierReunionModal`)
-- Routing structure in App.tsx (same path, different import)
+### Not implemented (requires external tooling)
+- Storybook (requires `npx storybook init`, not feasible in Lovable)
+- TypeDoc generation
+- Chromatic/GitHub Pages deployment
 
