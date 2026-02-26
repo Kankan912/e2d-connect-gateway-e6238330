@@ -39,6 +39,11 @@ interface CotisationMembre {
   montant_personnalise: number;
 }
 
+interface CotisationMensuelle {
+  membre_id: string;
+  montant: number;
+}
+
 interface CotisationsEtatsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -72,6 +77,22 @@ export default function CotisationsEtatsModal({
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatut, setFilterStatut] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'reunion' | 'annuel'>('reunion');
+
+  // Fetch cotisations mensuelles individuelles par membre
+  const { data: cotisationsMensuelles } = useQuery({
+    queryKey: ['cotisations-mensuelles-etats', exerciceId],
+    queryFn: async () => {
+      if (!exerciceId) return [];
+      const { data, error } = await supabase
+        .from('cotisations_mensuelles_exercice')
+        .select('membre_id, montant')
+        .eq('actif', true)
+        .eq('exercice_id', exerciceId);
+      if (error) throw error;
+      return data as CotisationMensuelle[];
+    },
+    enabled: open && !!exerciceId
+  });
 
   // Fetch all cotisations for the entire exercice (for annual view)
   const { data: cotisationsAnnuelles } = useQuery({
@@ -114,11 +135,19 @@ export default function CotisationsEtatsModal({
       const multiplier = viewMode === 'annuel' ? 12 : 1;
 
       typesToConsider.forEach(type => {
-        // Get expected amount (personalized or default)
-        const perso = cotisationsMembres.find(
-          cm => cm.membre_id === membre.id && cm.type_cotisation_id === type.id
-        );
-        const expected = (perso?.montant_personnalise ?? type.montant_defaut ?? 0) * multiplier;
+        // Get expected amount: use cotisations_mensuelles_exercice for monthly types
+        const isCotisationMensuelle = type.nom.toLowerCase().includes('cotisation mensuelle');
+        let expected: number;
+        
+        if (isCotisationMensuelle) {
+          const configMensuelle = cotisationsMensuelles?.find(cm => cm.membre_id === membre.id);
+          expected = (configMensuelle?.montant ?? type.montant_defaut ?? 0) * multiplier;
+        } else {
+          const perso = cotisationsMembres.find(
+            cm => cm.membre_id === membre.id && cm.type_cotisation_id === type.id
+          );
+          expected = (perso?.montant_personnalise ?? type.montant_defaut ?? 0) * multiplier;
+        }
         montantTotal += expected;
 
         // Get paid amount
@@ -135,7 +164,7 @@ export default function CotisationsEtatsModal({
 
       return { membre, montantTotal, montantPaye, reste: Math.max(0, reste), statut };
     });
-  }, [membres, standardTypes, cotisationsToUse, cotisationsMembres, filterType, viewMode]);
+  }, [membres, standardTypes, cotisationsToUse, cotisationsMembres, cotisationsMensuelles, filterType, viewMode]);
 
   // Apply statut filter
   const filteredEtats = useMemo(() => {

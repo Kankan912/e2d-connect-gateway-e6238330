@@ -345,7 +345,9 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
                         <div className="flex flex-col items-center gap-1">
                           <span className="font-medium">{type.nom}</span>
                           <span className="text-xs text-muted-foreground">
-                            {formatFCFA(type.montant_defaut || 0)}
+                            {cotisationsMensuelles && cotisationsMensuelles.length > 0 && type.nom.toLowerCase().includes('cotisation mensuelle')
+                              ? 'Individuel'
+                              : formatFCFA(type.montant_defaut || 0)}
                           </span>
                           {type.obligatoire && (
                             <Badge variant="secondary" className="text-[10px] px-1 py-0">
@@ -404,6 +406,11 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
                                 <div className="text-xs text-muted-foreground mt-1">
                                   {formatFCFA(cotisation.montant)}
                                 </div>
+                                {montant > 0 && cotisation.montant !== montant && (
+                                  <Badge variant="outline" className="mt-1 text-[10px] px-1 py-0 border-warning text-warning">
+                                    Écart
+                                  </Badge>
+                                )}
                                 {cotisation.date_paiement && (
                                   <div className="text-[10px] text-muted-foreground">
                                     {new Date(cotisation.date_paiement).toLocaleDateString('fr-FR')}
@@ -411,15 +418,22 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
                                 )}
                               </button>
                             ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={!canEdit}
-                                onClick={() => handleCellClick(membre, type)}
-                                className="h-10 w-10 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/10"
-                              >
-                                <Plus className="h-4 w-4 text-muted-foreground" />
-                              </Button>
+                              <div className="flex flex-col items-center gap-1">
+                                {montant > 0 && (
+                                  <span className="text-xs text-muted-foreground font-medium">
+                                    {formatFCFA(montant)}
+                                  </span>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={!canEdit}
+                                  onClick={() => handleCellClick(membre, type)}
+                                  className="h-10 w-10 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary hover:bg-primary/10"
+                                >
+                                  <Plus className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                              </div>
                             )}
                           </TableCell>
                         );
