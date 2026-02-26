@@ -1,27 +1,64 @@
 
 
-# Remaining items from Architecture audit
+# Code Review — Modifications du jour
 
-## Already completed (previous sessions)
-- ✅ `useCaisseDetails` + `useCaisseSynthese` merged into `useCaisse.ts`
-- ✅ `useMemberDetails` merged into `useMembers.ts`
-- ✅ `useSupabaseQuery` and `useSupabaseMutation` generic hooks created
-- ✅ `docs/ARCHITECTURE.md`, `HOOKS_REFERENCE.md`, `DATABASE_SCHEMA.md`, `RLS_PERMISSIONS.md`, `CONTRIBUTING.md` created
-- ✅ `README.md` updated with Quick Start and doc links
+## Verdict global : Fonctionnel, 1 bug mineur détecté
 
-## Still to do
+---
 
-### 1. Create `src/hooks/generic/useSupabaseRealtime.ts`
-Thin wrapper around the existing `useRealtimeUpdates` that integrates with React Query cache invalidation. Accepts `table`, `queryKeys` to invalidate, and optional `event` filter.
+## 1. Hook `useSupabaseRealtime` — OK
 
-### 2. Add JSDoc to existing public hooks
-Add `@param`, `@returns`, `@example` to the most-used hooks: `useCaisse`, `useMembers`, `useReunions`, `useCotisations`, `usePermissions`, `useRoles`, `useAides`, `useEpargnes`.
+- Créé dans `src/hooks/generic/useSupabaseRealtime.ts`
+- Utilise correctement `useRealtimeUpdates` et `useQueryClient`
+- API propre : `(table, queryKeys, options?)`
+- Compatible avec l'interface existante de `useRealtimeUpdates` (event, enabled, onUpdate)
 
-### 3. Update `docs/HOOKS_REFERENCE.md`
-Add the new `useSupabaseRealtime` hook documentation and update examples for consolidated hooks.
+## 2. JSDoc sur les hooks domaine — OK
 
-### Implementation steps
-1. Create `src/hooks/generic/useSupabaseRealtime.ts` (~30 lines)
-2. Add JSDoc comments to 8 domain hooks
-3. Update `docs/HOOKS_REFERENCE.md` with realtime hook docs
+- JSDoc ajoutés sur `useCaisse`, `useMembers`, `useReunions`, `useCotisations`, `usePermissions`, `useRoles`, `useAides`, `useEpargnes`
+- Format correct avec `@module`, `@example`
+
+## 3. Documentation `HOOKS_REFERENCE.md` — OK
+
+- Mise à jour avec les 3 hooks génériques et les hooks domaine
+- Liens cohérents dans le README principal
+
+## 4. Consolidation hooks (session précédente) — OK
+
+- Aucune référence résiduelle aux fichiers supprimés (`useCaisseDetails.ts`, `useCaisseSynthese.ts`, `useMemberDetails.ts`)
+- Tous les imports redirigés vers `useCaisse.ts` et `useMembers.ts`
+- `CaisseSidePanel.tsx` → `from "@/hooks/useCaisse"` ✓
+- `CaisseSyntheseDetailModal.tsx` → `from "@/hooks/useCaisse"` ✓
+- `MemberDetailSheet.tsx` → `from "@/hooks/useMembers"` ✓
+- `MembresAdmin.tsx` → `from "@/hooks/useMembers"` ✓
+
+## 5. Fix `null as any` dans reunions — OK
+
+- Ligne 171 de `src/pages/reunions/index.tsx` : `data.setSelectedReunion(null)` sans cast
+
+## 6. Bug existant détecté (non lié aux modifications du jour)
+
+**Console warning** : `Function components cannot be given refs` sur le composant `Badge`.
+
+Le composant `Badge` (`src/components/ui/badge.tsx`) est une fonction simple sans `React.forwardRef`. Quand il est utilisé comme enfant d'un composant Radix qui tente de lui passer une ref (ex: `Popover.Trigger` dans `CalendrierBeneficiairesManager`), React émet un warning.
+
+**Correction recommandée** : Wrapper `Badge` avec `React.forwardRef` pour accepter les refs, comme c'est la convention pour les composants UI shadcn/ui.
+
+---
+
+## Résumé
+
+| Chantier | Statut |
+|---|---|
+| useSupabaseRealtime | ✅ OK |
+| JSDoc hooks domaine | ✅ OK |
+| HOOKS_REFERENCE.md | ✅ OK |
+| Consolidation hooks | ✅ OK |
+| Fix null as any | ✅ OK |
+| Routes et imports | ✅ Aucun broken import |
+| Badge forwardRef | ⚠️ Warning console (préexistant, non bloquant) |
+
+### Action recommandée
+
+Corriger le composant `Badge` en ajoutant `React.forwardRef` pour éliminer le warning console. Changement de 3 lignes, aucun impact sur les usages existants.
 
