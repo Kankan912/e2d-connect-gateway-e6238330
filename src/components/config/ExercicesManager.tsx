@@ -11,6 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Plus, Edit, Lock, Trash2, Loader2, Percent, ClipboardCheck } from "lucide-react";
 import { format } from "date-fns";
+
+const safeFormat = (dateStr: string | null | undefined, fmt: string, options?: any) => {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "—";
+  return format(d, fmt, options);
+};
 import { fr } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CotisationsClotureExerciceCheck } from "@/components/CotisationsClotureExerciceCheck";
@@ -307,8 +314,8 @@ export function ExercicesManager() {
             <p className="text-sm font-medium">Exercice actif :</p>
             <p className="text-lg font-bold">{activeExercice.nom}</p>
             <p className="text-sm text-muted-foreground">
-              Du {format(new Date(activeExercice.date_debut), "d MMMM yyyy", { locale: fr })} au{" "}
-              {format(new Date(activeExercice.date_fin), "d MMMM yyyy", { locale: fr })}
+              Du {safeFormat(activeExercice.date_debut, "d MMMM yyyy", { locale: fr })} au{" "}
+              {safeFormat(activeExercice.date_fin, "d MMMM yyyy", { locale: fr })}
             </p>
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
@@ -336,8 +343,8 @@ export function ExercicesManager() {
               <TableRow key={exercice.id}>
                 <TableCell className="font-medium">{exercice.nom}</TableCell>
                 <TableCell>
-                  {format(new Date(exercice.date_debut), "dd/MM/yyyy")} -{" "}
-                  {format(new Date(exercice.date_fin), "dd/MM/yyyy")}
+                  {safeFormat(exercice.date_debut, "dd/MM/yyyy")} -{" "}
+                  {safeFormat(exercice.date_fin, "dd/MM/yyyy")}
                 </TableCell>
                 <TableCell>
                   <Badge variant={exercice.statut === "actif" ? "default" : "secondary"}>
