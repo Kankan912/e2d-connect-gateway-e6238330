@@ -1,36 +1,50 @@
 
 
-# Correction urgente : Onglet "Caisse" invisible dans le sidebar
+# Plan : Filtrer les types de cotisations par exercice dans tous les composants
 
-## Cause
+## Constat
 
-La ressource `caisse` n'existe pas dans la table `role_permissions`. Le sidebar filtre les liens par permission (`hasPermission('caisse', 'read')`), et comme aucun role n'a cette permission, le lien est masque pour tous les utilisateurs.
+La table `exercices_cotisations_types` et le composant de configuration `ExercicesCotisationsTypesManager` **existent deja**. `CotisationsGridView` et `CotisationSaisieForm` filtrent deja correctement via cette table.
 
-Les ressources existantes sont : `adhesions`, `aides`, `config`, `cotisations`, `donations`, `epargnes`, `membres`, `presences`, `prets`, `reunions`, `roles`, `sanctions`, `site`, `sport_e2d`, `sport_entrainements`, `sport_phoenix`, `stats`.
+Cependant, **3 composants** ignorent cette table et affichent tous les types obligatoires sans filtrage par exercice :
 
-## Deux options
+| Composant | Requete actuelle | Impact |
+|---|---|---|
+| `CotisationsReunionView.tsx` (l.61-71) | `cotisations_types` WHERE `obligatoire=true` | Bilan reunion affiche des types inactifs |
+| `CotisationsCumulAnnuel.tsx` (l.56-66) | `cotisations_types` WHERE `obligatoire=true` | Suivi annuel affiche des types inactifs |
+| `CotisationsClotureExerciceCheck.tsx` (l.44-54) | `cotisations_types` WHERE `obligatoire=true` | Cloture verifie des types inactifs |
 
-**Option A (recommandee)** : Ajouter les permissions `caisse` dans `role_permissions` pour les roles concernes (administrateur, tresorier, commissaire_comptes au minimum). C'est la solution propre qui respecte le systeme de permissions existant.
+## Corrections
 
-**Option B (rapide)** : Changer le `resource` du lien Caisse dans le sidebar et la route de `"caisse"` vers `"epargnes"` (puisque la Caisse est dans la meme section que les Epargnes/Tontine et les memes roles y ont acces). Cela evite toute modification en base de donnees.
+Pour chacun des 3 fichiers, remplacer la requete directe sur `cotisations_types` par une requete sur `exercices_cotisations_types` filtree par `exercice_id` et `actif=true`, avec JOIN sur `cotisations_types`. Pattern identique a celui deja utilise dans `CotisationsGridView` (lignes 78-95) :
 
-## Plan retenu : Option A
+```typescript
+const { data, error } = await supabase
+  .from('exercices_cotisations_types')
+  .select('cotisations_types(id, nom, montant_defaut, obligatoire, type_saisie)')
+  .eq('exercice_id', exerciceId)
+  .eq('actif', true);
+// Extraire les types imbriques
+const types = data?.map(d => d.cotisations_types).filter(Boolean);
+```
 
-### Etape 1 — Ajouter les permissions en base
+Avec fallback sur la requete directe `cotisations_types` si aucun exercice n'est fourni.
 
-Inserer dans `role_permissions` les lignes pour la ressource `caisse` avec les 4 operations (read, create, update, delete) pour les roles qui doivent y avoir acces :
-- `administrateur` : read, create, update, delete
-- `tresorier` : read, create, update, delete
-- `commissaire_comptes` : read
-- `censeur` : read
+### Fichier 1 : `CotisationsReunionView.tsx`
+- Lignes 60-71 : Remplacer la requete `cotisations_types` par `exercices_cotisations_types` filtree par `exerciceId` (deja disponible en prop)
+- Ajouter `exerciceId` a la `queryKey`
 
-### Etape 2 — Aucun changement de code
+### Fichier 2 : `CotisationsCumulAnnuel.tsx`
+- Lignes 55-66 : Meme remplacement, en utilisant `exercice?.id` (deja disponible)
+- Ajouter `exercice?.id` a la `queryKey`
 
-Le sidebar et la route utilisent deja `resource: "caisse"`. Une fois les permissions inserees, le lien apparaitra automatiquement pour les roles concernes.
+### Fichier 3 : `CotisationsClotureExerciceCheck.tsx`
+- Lignes 43-54 : Meme remplacement, en utilisant `exerciceId` (deja disponible en prop)
+- Ajouter `exerciceId` a la `queryKey`
 
 ## Impact
 
-- Le lien "Caisse" reapparait immediatement dans le sidebar pour les roles autorises
-- La route `/dashboard/admin/caisse` reste protegee par `PermissionRoute`
-- Zero modification de fichier TypeScript
+- Seuls les types actives pour l'exercice concerne apparaissent dans les bilans, suivis et verifications de cloture
+- Coherence totale avec la grille de saisie et le formulaire
+- Aucune modification de base de donnees necessaire
 
