@@ -20,8 +20,7 @@ import {
   ArrowLeft, Edit, Users, PiggyBank, Banknote, AlertTriangle, 
   Wallet, History, BarChart3, Phone, Mail, CheckCircle, XCircle, Clock, UserCircle, Shield
 } from "lucide-react";
-import { Member } from "@/hooks/useMembers";
-import { useMemberDetails } from "@/hooks/useMemberDetails";
+import { Member, useMemberDetails } from "@/hooks/useMembers";
 import { formatFCFA } from "@/lib/utils";
 import logoE2D from "@/assets/logo-e2d.png";
 

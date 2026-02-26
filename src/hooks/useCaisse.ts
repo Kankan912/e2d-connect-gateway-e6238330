@@ -3,6 +3,69 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { formatFCFA } from "@/lib/utils";
 
+// ─── Re-exported from former useCaisseDetails.ts ────────────────────────────
+
+export type DetailType = 
+  | 'fond_total' 
+  | 'epargnes' 
+  | 'cotisations' 
+  | 'prets_decaisses' 
+  | 'prets_en_cours' 
+  | 'sanctions_encaissees' 
+  | 'sanctions_impayees' 
+  | 'aides' 
+  | 'reliquat' 
+  | 'fond_sport';
+
+export interface CaisseDetailItem {
+  id: string;
+  date: string;
+  libelle: string;
+  montant: number;
+  type?: string;
+  categorie?: string;
+  membre_nom?: string;
+  notes?: string;
+}
+
+export const getDetailTitle = (type: DetailType): string => {
+  const titles: Record<DetailType, string> = {
+    fond_total: "Détail du Fond Total Caisse",
+    epargnes: "Détail des Épargnes Collectées",
+    cotisations: "Détail des Cotisations Encaissées",
+    prets_decaisses: "Détail des Prêts Décaissés",
+    prets_en_cours: "Détail des Prêts en Cours",
+    sanctions_encaissees: "Détail des Sanctions Encaissées",
+    sanctions_impayees: "Détail des Sanctions Impayées",
+    aides: "Détail des Aides Distribuées",
+    reliquat: "Calcul du Reliquat Cotisations",
+    fond_sport: "Détail du Fond Sport"
+  };
+  return titles[type];
+};
+
+// ─── Re-exported from former useCaisseSynthese.ts ───────────────────────────
+
+export interface CaisseSynthese {
+  fondTotal: number;
+  totalEpargnes: number;
+  totalCotisations: number;
+  sanctionsEncaissees: number;
+  sanctionsImpayees: number;
+  aidesDistribuees: number;
+  pretsDecaisses: number;
+  pretsRembourses: number;
+  pretsEnCours: number;
+  fondSport: number;
+  reliquatCotisations: number;
+  totalDistributionsBeneficiaires: number;
+  tauxRecouvrement: number;
+  soldeEmpruntable: number;
+  pourcentageEmpruntable: number;
+}
+
+// ─── Original useCaisse.ts types ────────────────────────────────────────────
+
 export interface CaisseOperation {
   id: string;
   date_operation: string;
@@ -377,5 +440,189 @@ export const useCaisseVentilation = (type: 'entree' | 'sortie' | 'toutes' = 'tou
       return Object.values(grouped).sort((a, b) => b.total - a.total);
     },
     enabled: !!operations,
+  });
+};
+
+// ─── useCaisseDetails (merged from useCaisseDetails.ts) ─────────────────────
+
+export const useCaisseDetails = (type: DetailType | null, enabled: boolean) => {
+  return useQuery({
+    queryKey: ['caisse-details', type],
+    queryFn: async (): Promise<CaisseDetailItem[]> => {
+      if (!type) return [];
+
+      switch (type) {
+        case 'fond_total': {
+          const { data, error } = await supabase
+            .from('fond_caisse_operations')
+            .select(`id, date_operation, libelle, montant, type_operation, categorie, beneficiaire:beneficiaire_id(nom, prenom)`)
+            .order('date_operation', { ascending: false })
+            .limit(100);
+          if (error) throw error;
+          return (data || []).map((op: any) => ({
+            id: op.id, date: op.date_operation, libelle: op.libelle,
+            montant: op.type_operation === 'sortie' ? -op.montant : op.montant,
+            type: op.type_operation, categorie: op.categorie,
+            membre_nom: op.beneficiaire ? `${op.beneficiaire.prenom} ${op.beneficiaire.nom}` : undefined
+          }));
+        }
+
+        case 'epargnes':
+        case 'cotisations':
+        case 'sanctions_encaissees':
+        case 'aides': {
+          const catMap: Record<string, string> = { epargnes: 'epargne', cotisations: 'cotisation', sanctions_encaissees: 'sanction', aides: 'aide' };
+          const { data, error } = await supabase
+            .from('fond_caisse_operations')
+            .select(`id, date_operation, libelle, montant, notes, beneficiaire:beneficiaire_id(nom, prenom)`)
+            .eq('categorie', catMap[type])
+            .order('date_operation', { ascending: false })
+            .limit(100);
+          if (error) throw error;
+          return (data || []).map((op: any) => ({
+            id: op.id, date: op.date_operation, libelle: op.libelle, montant: op.montant,
+            membre_nom: op.beneficiaire ? `${op.beneficiaire.prenom} ${op.beneficiaire.nom}` : undefined,
+            notes: op.notes
+          }));
+        }
+
+        case 'prets_decaisses': {
+          const { data, error } = await supabase
+            .from('fond_caisse_operations')
+            .select(`id, date_operation, libelle, montant, beneficiaire:beneficiaire_id(nom, prenom)`)
+            .eq('categorie', 'pret_decaissement')
+            .order('date_operation', { ascending: false })
+            .limit(100);
+          if (error) throw error;
+          return (data || []).map((op: any) => ({
+            id: op.id, date: op.date_operation, libelle: op.libelle, montant: op.montant,
+            membre_nom: op.beneficiaire ? `${op.beneficiaire.prenom} ${op.beneficiaire.nom}` : undefined
+          }));
+        }
+
+        case 'prets_en_cours': {
+          const { data, error } = await supabase
+            .from('prets')
+            .select(`id, date_pret, montant, montant_paye, echeance, statut, membre:membre_id(nom, prenom)`)
+            .in('statut', ['en_cours', 'partiel', 'reconduit'])
+            .order('date_pret', { ascending: false });
+          if (error) throw error;
+          return (data || []).map((pret: any) => ({
+            id: pret.id, date: pret.date_pret,
+            libelle: `Prêt - Échéance: ${new Date(pret.echeance).toLocaleDateString('fr-FR')}`,
+            montant: pret.montant - (pret.montant_paye || 0),
+            type: pret.statut,
+            membre_nom: pret.membre ? `${pret.membre.prenom} ${pret.membre.nom}` : undefined
+          }));
+        }
+
+        case 'sanctions_impayees': {
+          const { data, error } = await supabase
+            .from('reunions_sanctions')
+            .select(`id, created_at, motif, montant_amende, statut, membre:membre_id(nom, prenom)`)
+            .neq('statut', 'paye')
+            .order('created_at', { ascending: false });
+          if (error) throw error;
+          return (data || []).map((s: any) => ({
+            id: s.id, date: s.created_at, libelle: s.motif || 'Sanction',
+            montant: s.montant_amende || 0, type: s.statut,
+            membre_nom: s.membre ? `${s.membre.prenom} ${s.membre.nom}` : undefined
+          }));
+        }
+
+        case 'reliquat': {
+          const { data: cotisations, error: errCot } = await supabase.from('fond_caisse_operations').select('montant').eq('categorie', 'cotisation');
+          const { data: distributions, error: errDist } = await supabase.from('fond_caisse_operations').select('montant').eq('categorie', 'distribution_beneficiaire');
+          if (errCot || errDist) throw errCot || errDist;
+          const totalCot = (cotisations || []).reduce((acc, c) => acc + (c.montant || 0), 0);
+          const totalDist = (distributions || []).reduce((acc, d) => acc + (d.montant || 0), 0);
+          return [
+            { id: '1', date: '', libelle: 'Total Cotisations Collectées', montant: totalCot },
+            { id: '2', date: '', libelle: 'Distributions aux Bénéficiaires', montant: -totalDist },
+            { id: '3', date: '', libelle: 'Reliquat', montant: totalCot - totalDist, type: 'total' }
+          ];
+        }
+
+        case 'fond_sport': {
+          const { data, error } = await supabase
+            .from('fond_caisse_operations')
+            .select(`id, date_operation, libelle, montant, type_operation`)
+            .eq('categorie', 'sport')
+            .order('date_operation', { ascending: false })
+            .limit(100);
+          if (error) throw error;
+          return (data || []).map((op: any) => ({
+            id: op.id, date: op.date_operation, libelle: op.libelle,
+            montant: op.type_operation === 'sortie' ? -op.montant : op.montant,
+            type: op.type_operation
+          }));
+        }
+
+        default:
+          return [];
+      }
+    },
+    enabled: enabled && !!type,
+    staleTime: 10000,
+  });
+};
+
+// ─── useCaisseSynthese (merged from useCaisseSynthese.ts) ───────────────────
+
+export const useCaisseSynthese = () => {
+  return useQuery({
+    queryKey: ["caisse-synthese"],
+    queryFn: async (): Promise<CaisseSynthese> => {
+      const operations: Array<any> = [];
+      let from = 0;
+      const PAGE_SIZE = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("fond_caisse_operations")
+          .select("montant, type_operation, categorie, libelle")
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        if (data) operations.push(...data);
+        hasMore = (data?.length || 0) === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
+
+      const totalEpargnes = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'epargne').reduce((sum, o) => sum + Number(o.montant), 0);
+      const totalCotisations = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'cotisation').reduce((sum, o) => sum + Number(o.montant), 0);
+      const sanctionsEncaissees = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'sanction').reduce((sum, o) => sum + Number(o.montant), 0);
+      const aidesDistribuees = operations.filter(o => o.type_operation === 'sortie' && o.categorie === 'aide').reduce((sum, o) => sum + Number(o.montant), 0);
+      const pretsDecaisses = operations.filter(o => o.type_operation === 'sortie' && o.categorie === 'pret_decaissement').reduce((sum, o) => sum + Number(o.montant), 0);
+      const pretsRembourses = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'pret_remboursement').reduce((sum, o) => sum + Number(o.montant), 0);
+      const totalDistributionsBeneficiaires = operations.filter(o => o.type_operation === 'sortie' && (o.categorie === 'beneficiaire' || o.libelle?.toLowerCase().includes('bénéficiaire'))).reduce((sum, o) => sum + Number(o.montant), 0);
+      const fondSport = operations.filter(o => o.categorie === 'sport' || o.libelle?.toLowerCase().includes('sport')).reduce((sum, o) => o.type_operation === 'entree' ? sum + Number(o.montant) : sum - Number(o.montant), 0);
+
+      const { data: sanctionsData } = await supabase.from("reunions_sanctions").select("montant_amende, statut").not("montant_amende", "is", null);
+      const totalSanctions = sanctionsData?.reduce((sum, s) => sum + Number(s.montant_amende || 0), 0) || 0;
+      const sanctionsImpayees = totalSanctions - sanctionsEncaissees;
+      const tauxRecouvrement = totalSanctions > 0 ? Math.round((sanctionsEncaissees / totalSanctions) * 100) : 100;
+
+      const { data: pretsData } = await supabase.from("prets").select("montant, capital_paye, statut").in('statut', ['en_cours', 'partiel', 'reconduit']);
+      const pretsEnCours = pretsData?.reduce((sum, p) => sum + (Number(p.montant) - Number(p.capital_paye || 0)), 0) || 0;
+
+      const reliquatCotisations = totalCotisations - totalDistributionsBeneficiaires;
+      const totalEntrees = operations.filter(o => o.type_operation === 'entree').reduce((sum, o) => sum + Number(o.montant), 0);
+      const totalSorties = operations.filter(o => o.type_operation === 'sortie').reduce((sum, o) => sum + Number(o.montant), 0);
+      const fondTotal = totalEntrees - totalSorties;
+
+      const { data: caisseConfig } = await supabase.from("caisse_config").select("pourcentage_empruntable").limit(1).maybeSingle();
+      const pourcentageEmpruntable = caisseConfig?.pourcentage_empruntable || 80;
+      const soldeEmpruntable = Math.max(0, (fondTotal * pourcentageEmpruntable / 100) - pretsEnCours);
+
+      return {
+        fondTotal, totalEpargnes, totalCotisations, sanctionsEncaissees, sanctionsImpayees,
+        aidesDistribuees, pretsDecaisses, pretsRembourses, pretsEnCours, fondSport,
+        reliquatCotisations, totalDistributionsBeneficiaires, tauxRecouvrement,
+        soldeEmpruntable, pourcentageEmpruntable,
+      };
+    },
+    refetchInterval: 2 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 };

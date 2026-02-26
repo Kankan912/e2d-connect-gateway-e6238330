@@ -16,9 +16,8 @@ import {
   RefreshCw,
   ChevronRight
 } from "lucide-react";
-import { useCaisseSynthese } from "@/hooks/useCaisseSynthese";
+import { useCaisseSynthese, DetailType } from "@/hooks/useCaisse";
 import { CaisseSyntheseDetailModal } from "./CaisseSyntheseDetailModal";
-import { DetailType } from "@/hooks/useCaisseDetails";
 import { formatFCFA } from "@/lib/utils";
 
 interface SynthWidgetProps {
