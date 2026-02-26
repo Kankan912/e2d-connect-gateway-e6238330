@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useMembers, Member } from "@/hooks/useMembers";
-import { useMemberCotisationStats } from "@/hooks/useMemberDetails";
+import { useMemberCotisationStats } from "@/hooks/useMembers";
 import BackButton from "@/components/BackButton";
 import { useToast } from "@/hooks/use-toast";
 import MemberForm from "@/components/forms/MemberForm";

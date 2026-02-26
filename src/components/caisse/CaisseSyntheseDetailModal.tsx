@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useCaisseDetails, DetailType, getDetailTitle } from "@/hooks/useCaisseDetails";
+import { useCaisseDetails, DetailType, getDetailTitle } from "@/hooks/useCaisse";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { formatFCFA } from "@/lib/utils";
