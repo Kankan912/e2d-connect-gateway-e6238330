@@ -276,15 +276,25 @@ export default function EventDetail() {
                 <Card className="bg-gradient-to-r from-primary/10 to-secondary/10">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-center gap-8">
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground mb-1">E2D</p>
+                      <div className="text-center flex flex-col items-center gap-2">
+                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                          <span className="text-lg font-bold text-primary">E2D</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">E2D</p>
                         <p className="text-4xl font-bold text-primary">
                           {matchDetails.score_e2d}
                         </p>
                       </div>
                       <div className="text-2xl font-bold text-muted-foreground">-</div>
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground mb-1">
+                      <div className="text-center flex flex-col items-center gap-2">
+                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                          {matchDetails.logo_equipe_adverse ? (
+                            <img src={matchDetails.logo_equipe_adverse} alt={matchDetails.equipe_adverse} className="w-full h-full object-contain p-1" />
+                          ) : (
+                            <Users className="h-6 w-6 text-muted-foreground" />
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
                           {matchDetails.equipe_adverse}
                         </p>
                         <p className="text-4xl font-bold">
