@@ -214,6 +214,11 @@ export default function MatchDetailsModal({ open, onOpenChange, match, matchType
             <MatchStatsForm matchId={match.id} matchType={matchType} />
           </TabsContent>
 
+          {/* Onglet Effectifs */}
+          <TabsContent value="effectifs" className="mt-4">
+            <MatchEffectifsManager matchId={match.id} />
+          </TabsContent>
+
           {/* Onglet Compte Rendu */}
           <TabsContent value="compte-rendu" className="mt-4">
             <CompteRenduMatchForm matchId={match.id} />
