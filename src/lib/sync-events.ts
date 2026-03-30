@@ -84,6 +84,7 @@ export async function syncE2DMatchToEvent(matchId: string) {
       match_type: 'e2d',
       auto_sync: true,
       ordre: ordre,
+      image_url: match.image_url || null,
     };
 
     if (existingEvent) {

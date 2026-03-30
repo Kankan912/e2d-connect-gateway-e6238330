@@ -16,6 +16,7 @@ export interface E2DMatch {
   notes: string | null;
   logo_equipe_adverse: string | null;
   nom_complet_equipe_adverse: string | null;
+  image_url: string | null;
   created_at: string;
   statut_publication: 'brouillon' | 'publie' | 'archive';
 }
