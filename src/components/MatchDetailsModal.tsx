@@ -79,15 +79,19 @@ export default function MatchDetailsModal({ open, onOpenChange, match, matchType
         </DialogHeader>
         
         <Tabs defaultValue="resume" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="resume">Résumé</TabsTrigger>
             <TabsTrigger value="statistiques" className="flex items-center gap-1">
-              Statistiques
+              Stats
               {stats && stats.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                   {stats.length}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="effectifs" className="flex items-center gap-1">
+              <Shield className="h-3.5 w-3.5" />
+              Effectifs
             </TabsTrigger>
             <TabsTrigger value="compte-rendu" className="flex items-center gap-1">
               <FileText className="h-3.5 w-3.5" />
