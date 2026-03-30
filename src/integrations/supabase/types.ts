@@ -1734,6 +1734,61 @@ export type Database = {
         }
         Relationships: []
       }
+      match_joueurs: {
+        Row: {
+          created_at: string | null
+          equipe: string
+          id: string
+          match_id: string
+          membre_id: string | null
+          nom: string
+          numero: number | null
+          poste: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          equipe: string
+          id?: string
+          match_id: string
+          membre_id?: string | null
+          nom: string
+          numero?: number | null
+          poste?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          equipe?: string
+          id?: string
+          match_id?: string
+          membre_id?: string | null
+          nom?: string
+          numero?: number | null
+          poste?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_joueurs_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "sport_e2d_matchs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_joueurs_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "match_joueurs_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_medias: {
         Row: {
           created_at: string | null
@@ -4586,6 +4641,7 @@ export type Database = {
           equipe_adverse: string
           heure_match: string | null
           id: string
+          image_url: string | null
           lieu: string | null
           logo_equipe_adverse: string | null
           nom_complet_equipe_adverse: string | null
@@ -4602,6 +4658,7 @@ export type Database = {
           equipe_adverse: string
           heure_match?: string | null
           id?: string
+          image_url?: string | null
           lieu?: string | null
           logo_equipe_adverse?: string | null
           nom_complet_equipe_adverse?: string | null
@@ -4618,6 +4675,7 @@ export type Database = {
           equipe_adverse?: string
           heure_match?: string | null
           id?: string
+          image_url?: string | null
           lieu?: string | null
           logo_equipe_adverse?: string | null
           nom_complet_equipe_adverse?: string | null
