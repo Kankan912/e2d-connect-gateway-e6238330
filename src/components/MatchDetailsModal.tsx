@@ -13,6 +13,7 @@ import { MatchMediaManager } from "@/components/MatchMediaManager";
 import MatchStatsForm from "@/components/MatchStatsForm";
 import { useMatchCompteRendu } from "@/hooks/useMatchCompteRendu";
 import { useMatchMedias } from "@/hooks/useMatchMedias";
+import MatchEffectifsManager from "@/components/MatchEffectifsManager";
 
 interface MatchDetailsModalProps {
   open: boolean;
