@@ -180,7 +180,13 @@ export default function EventDetail() {
         <div className="container mx-auto px-4 py-8">
           {/* Bouton retour */}
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/#evenements');
+              }
+            }}
             className="inline-flex items-center text-muted-foreground hover:text-primary mb-6 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
