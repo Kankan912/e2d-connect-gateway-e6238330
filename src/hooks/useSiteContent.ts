@@ -178,7 +178,7 @@ export const useSiteEvents = () => {
         .from("site_events")
         .select("*")
         .eq("actif", true)
-        .order("date", { ascending: true });
+        .order("date", { ascending: false });
 
       if (error) throw error;
       return data;

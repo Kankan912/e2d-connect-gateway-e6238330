@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, Calendar, MapPin, Users, Target, Star, AlertTriangle, FileText, ImageIcon, Edit } from "lucide-react";
+import { Trophy, Calendar, MapPin, Users, Target, Star, AlertTriangle, FileText, ImageIcon, Edit, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,7 @@ import { MatchMediaManager } from "@/components/MatchMediaManager";
 import MatchStatsForm from "@/components/MatchStatsForm";
 import { useMatchCompteRendu } from "@/hooks/useMatchCompteRendu";
 import { useMatchMedias } from "@/hooks/useMatchMedias";
+import MatchEffectifsManager from "@/components/MatchEffectifsManager";
 
 interface MatchDetailsModalProps {
   open: boolean;
@@ -78,15 +79,19 @@ export default function MatchDetailsModal({ open, onOpenChange, match, matchType
         </DialogHeader>
         
         <Tabs defaultValue="resume" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="resume">Résumé</TabsTrigger>
             <TabsTrigger value="statistiques" className="flex items-center gap-1">
-              Statistiques
+              Stats
               {stats && stats.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                   {stats.length}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="effectifs" className="flex items-center gap-1">
+              <Shield className="h-3.5 w-3.5" />
+              Effectifs
             </TabsTrigger>
             <TabsTrigger value="compte-rendu" className="flex items-center gap-1">
               <FileText className="h-3.5 w-3.5" />
@@ -207,6 +212,11 @@ export default function MatchDetailsModal({ open, onOpenChange, match, matchType
           <TabsContent value="statistiques" className="mt-4 space-y-4">
             {/* Formulaire de saisie des statistiques */}
             <MatchStatsForm matchId={match.id} matchType={matchType} />
+          </TabsContent>
+
+          {/* Onglet Effectifs */}
+          <TabsContent value="effectifs" className="mt-4">
+            <MatchEffectifsManager matchId={match.id} />
           </TabsContent>
 
           {/* Onglet Compte Rendu */}
