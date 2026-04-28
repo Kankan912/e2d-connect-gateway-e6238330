@@ -200,7 +200,8 @@ export default function PretsAdmin() {
     return { peut: true, raison: '' };
   };
 
-  // Reconduire: applique taux% sur le CAPITAL RESTANT (pas le solde total)
+  // Reconduire : crée la demande. Le trigger DB force 'en_attente' pour les non-admins.
+  // L'incrément de prets.reconductions n'a lieu QUE si la reconduction est immédiatement validée.
   const reconduire = useMutation({
     mutationFn: async (pret: any) => {
       const verification = peutReconduirePret(pret);
@@ -209,44 +210,114 @@ export default function PretsAdmin() {
       }
 
       const taux = pret.taux_interet || 5;
-      
-      // RÈGLE MÉTIER: Reconduction sur le CAPITAL RESTANT uniquement
       const capitalRestant = pret.montant - (pret.capital_paye || 0);
-      
-      // Nouvel intérêt = Capital restant × Taux%
       const nouvelInteret = capitalRestant * (taux / 100);
-      
-      // Nouveau total dû = Capital restant + Nouvel intérêt
       const nouveauTotalDu = capitalRestant + nouvelInteret;
-
       const nouvelleEcheance = addMonths(new Date(pret.echeance), dureeReconduction);
 
-      const { error } = await supabase.from('prets').update({
-        echeance: format(nouvelleEcheance, 'yyyy-MM-dd'),
-        montant_total_du: nouveauTotalDu,
-        dernier_interet: nouvelInteret,
-        interet_paye: 0, // Reset car nouvel intérêt
-        reconductions: (pret.reconductions || 0) + 1
-      }).eq('id', pret.id);
-      if (error) throw error;
-
-      const { error: reconError } = await supabase.from('prets_reconductions').insert({
-        pret_id: pret.id,
-        date_reconduction: new Date().toISOString().split('T')[0],
-        interet_mois: nouvelInteret,
-        notes: `Reconduction #${(pret.reconductions || 0) + 1} - Intérêt ${taux}% sur capital restant ${formatFCFA(capitalRestant)}`
-      });
+      // 1) Insérer la demande de reconduction (le trigger fixe le statut effectif)
+      const { data: recon, error: reconError } = await supabase
+        .from('prets_reconductions')
+        .insert({
+          pret_id: pret.id,
+          date_reconduction: new Date().toISOString().split('T')[0],
+          interet_mois: nouvelInteret,
+          statut: 'validee', // demandé ; le trigger downgradera si non-admin
+          notes: `Reconduction #${(pret.reconductions || 0) + 1} - Intérêt ${taux}% sur capital restant ${formatFCFA(capitalRestant)}`
+        })
+        .select('statut')
+        .single();
       if (reconError) throw reconError;
+
+      // 2) Si validation immédiate, on applique aussi sur le prêt
+      if (recon?.statut === 'validee') {
+        const { error } = await supabase.from('prets').update({
+          echeance: format(nouvelleEcheance, 'yyyy-MM-dd'),
+          montant_total_du: nouveauTotalDu,
+          dernier_interet: nouvelInteret,
+          interet_paye: 0,
+          reconductions: (pret.reconductions || 0) + 1
+        }).eq('id', pret.id);
+        if (error) throw error;
+      }
+
+      return recon?.statut as 'validee' | 'en_attente' | 'refusee';
     },
-    onSuccess: () => {
-      toast({ title: "Prêt reconduit avec intérêt sur le capital restant" });
+    onSuccess: (statut) => {
+      if (statut === 'en_attente') {
+        toast({
+          title: "Demande envoyée",
+          description: "La reconduction est en attente de validation par un administrateur ou trésorier."
+        });
+      } else {
+        toast({ title: "Prêt reconduit avec intérêt sur le capital restant" });
+      }
       queryClient.invalidateQueries({ queryKey: ['prets'] });
       queryClient.invalidateQueries({ queryKey: ['prets-reconductions'] });
+      queryClient.invalidateQueries({ queryKey: ['prets-reconductions-attente'] });
       setReconduireDialogOpen(false);
       setPretForReconduction(null);
     },
     onError: (error: any) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    }
+  });
+
+  // Validation/refus d'une reconduction en attente (admin/tresorier uniquement)
+  const validerReconduction = useMutation({
+    mutationFn: async ({ reconId, decision }: { reconId: string; decision: 'validee' | 'refusee' }) => {
+      // Charger la reconduction + prêt
+      const { data: recon, error: e1 } = await supabase
+        .from('prets_reconductions')
+        .select('*, prets(*)')
+        .eq('id', reconId)
+        .single();
+      if (e1) throw e1;
+
+      const { error: e2 } = await supabase
+        .from('prets_reconductions')
+        .update({ statut: decision })
+        .eq('id', reconId);
+      if (e2) throw e2;
+
+      if (decision === 'validee' && recon?.prets) {
+        const pret: any = recon.prets;
+        const nouvelleEcheance = addMonths(new Date(pret.echeance), dureeReconduction);
+        const capitalRestant = pret.montant - (pret.capital_paye || 0);
+        const nouveauTotalDu = capitalRestant + Number(recon.interet_mois || 0);
+        const { error: e3 } = await supabase.from('prets').update({
+          echeance: format(nouvelleEcheance, 'yyyy-MM-dd'),
+          montant_total_du: nouveauTotalDu,
+          dernier_interet: Number(recon.interet_mois || 0),
+          interet_paye: 0,
+          reconductions: (pret.reconductions || 0) + 1
+        }).eq('id', pret.id);
+        if (e3) throw e3;
+      }
+    },
+    onSuccess: (_d, vars) => {
+      toast({
+        title: vars.decision === 'validee' ? "Reconduction validée" : "Reconduction refusée"
+      });
+      queryClient.invalidateQueries({ queryKey: ['prets'] });
+      queryClient.invalidateQueries({ queryKey: ['prets-reconductions-attente'] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    }
+  });
+
+  // Liste des reconductions en attente
+  const { data: reconductionsAttente = [] } = useQuery({
+    queryKey: ['prets-reconductions-attente'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('prets_reconductions')
+        .select('*, prets(id, montant, taux_interet, reconductions, membres(nom, prenom))')
+        .eq('statut', 'en_attente')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
     }
   });
 
