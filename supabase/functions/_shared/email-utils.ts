@@ -410,19 +410,89 @@ async function sendViaSMTP(config: FullEmailConfig, params: EmailParams): Promis
 }
 
 /**
- * Fonction principale d'envoi d'email - choisit automatiquement le service configuré
+ * Détecte si une erreur est transitoire (réseau, timeout, 5xx, rate-limit)
+ * et donc éligible à un retry automatique.
+ */
+function isTransientError(err?: string): boolean {
+  if (!err) return false;
+  const lower = err.toLowerCase();
+  return (
+    lower.includes("timeout") ||
+    lower.includes("network") ||
+    lower.includes("econn") ||
+    lower.includes("etimedout") ||
+    lower.includes("temporar") ||
+    /\b(429|500|502|503|504)\b/.test(lower)
+  );
+}
+
+/**
+ * Trace l'envoi (succès ou échec) dans notifications_envois pour audit/dashboard.
+ */
+async function logEmailEnvoi(
+  params: EmailParams,
+  result: EmailResult,
+  meta: { service: string; attempts: number; templateId?: string; campagneId?: string }
+): Promise<void> {
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    await supabase.from("notifications_envois").insert({
+      template_id: meta.templateId ?? null,
+      campagne_id: meta.campagneId ?? null,
+      destinataire_email: params.to,
+      sujet: params.subject,
+      statut: result.success ? "envoye" : "echec",
+      erreur: result.success ? null : (result.error ?? null),
+      metadata: {
+        service: meta.service,
+        attempts: meta.attempts,
+        ...(result.data && typeof result.data === "object" ? { provider: result.data } : {}),
+      },
+    });
+  } catch (e) {
+    console.warn("[Email] Échec logging notifications_envois:", e);
+  }
+}
+
+/**
+ * Fonction principale d'envoi d'email - choisit automatiquement le service configuré.
+ * Inclut retry exponentiel (3 tentatives) sur erreurs transitoires + logging.
  */
 export async function sendEmail(
-  config: FullEmailConfig, 
-  params: EmailParams
+  config: FullEmailConfig,
+  params: EmailParams,
+  meta?: { templateId?: string; campagneId?: string; maxAttempts?: number }
 ): Promise<EmailResult> {
-  console.log(`[Email] Envoi via ${config.service} à ${params.to}...`);
-  
-  if (config.service === "smtp") {
-    return sendViaSMTP(config, params);
-  } else {
-    return sendViaResend(config, params);
+  const maxAttempts = Math.max(1, meta?.maxAttempts ?? 3);
+  let attempt = 0;
+  let lastResult: EmailResult = { success: false, error: "Non envoyé" };
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    console.log(`[Email] Tentative ${attempt}/${maxAttempts} via ${config.service} à ${params.to}...`);
+    lastResult = config.service === "smtp"
+      ? await sendViaSMTP(config, params)
+      : await sendViaResend(config, params);
+
+    if (lastResult.success) break;
+    if (!isTransientError(lastResult.error) || attempt >= maxAttempts) break;
+
+    const backoffMs = 500 * Math.pow(2, attempt - 1); // 500, 1000, 2000ms
+    console.warn(`[Email] Erreur transitoire, retry dans ${backoffMs}ms: ${lastResult.error}`);
+    await new Promise((r) => setTimeout(r, backoffMs));
   }
+
+  await logEmailEnvoi(params, lastResult, {
+    service: config.service,
+    attempts: attempt,
+    templateId: meta?.templateId,
+    campagneId: meta?.campagneId,
+  });
+
+  return lastResult;
 }
 
 /**
