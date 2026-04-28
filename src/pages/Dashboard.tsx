@@ -110,7 +110,7 @@ const Dashboard = () => {
           <Route path="/my-prets" element={<ErrorBoundary fallbackTitle="Erreur - Mes prêts"><MyPrets /></ErrorBoundary>} />
           <Route path="/my-presences" element={<ErrorBoundary fallbackTitle="Erreur - Mes présences"><MyPresences /></ErrorBoundary>} />
           <Route path="/my-aides" element={<ErrorBoundary fallbackTitle="Erreur - Mes aides"><MyAides /></ErrorBoundary>} />
-          
+          <Route path="/mes-demandes-pret" element={<ErrorBoundary fallbackTitle="Erreur - Mes demandes de prêt"><MesDemandesPret /></ErrorBoundary>} />
           {/* ==================== ADMIN ROUTES - FINANCE ==================== */}
           <Route path="/admin/donations" element={<PermissionRoute resource="donations" permission="read"><ErrorBoundary fallbackTitle="Erreur - Donations"><DonationsAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/donations/mobile-money" element={<PermissionRoute resource="donations" permission="read"><ErrorBoundary fallbackTitle="Erreur - Mobile Money"><MobileMoneyAdmin /></ErrorBoundary></PermissionRoute>} />
