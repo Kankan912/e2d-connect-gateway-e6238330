@@ -210,27 +210,20 @@ serve(async (req) => {
           </html>
         `;
 
-        // Envoyer via le service configuré
-        const result = await sendEmail(emailConfig, {
-          to: recipient.email,
-          subject: subject,
-          html: htmlContent,
-        });
+        // Envoyer via le service configuré (retry + logging auto dans notifications_envois)
+        const result = await sendEmail(
+          emailConfig,
+          {
+            to: recipient.email,
+            subject: subject,
+            html: htmlContent,
+          },
+          { campagneId: campaignId }
+        );
 
         if (!result.success) {
           throw new Error(result.error || "Unknown error");
         }
-
-        // Log the send in notifications_envois
-        await supabaseAdmin
-          .from("notifications_envois")
-          .insert({
-            campagne_id: campaignId,
-            membre_id: recipient.id,
-            canal: "email",
-            statut: "envoye",
-            date_envoi: new Date().toISOString(),
-          });
 
         sentCount++;
         console.log(`✅ Email sent to ${recipient.email} via ${emailConfig.service}`);
