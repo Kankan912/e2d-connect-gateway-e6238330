@@ -164,9 +164,15 @@ export function DashboardSidebar() {
   const visibleE2dReunionsItems = e2dReunionsItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
-  const visibleE2dFinancesItems = e2dFinancesItems.filter(item => 
-    !item.resource || hasPermission(item.resource, 'read')
-  );
+  const visibleE2dFinancesItems = e2dFinancesItems.filter(item => {
+    if (!item.resource) return true;
+    if (item.resource === "prets_requests") {
+      // Items "Demandes de prêt" : validate, "Workflow demandes" : configure
+      if (item.title === "Workflow demandes") return hasPermission("prets_requests", "configure");
+      return hasPermission("prets_requests", "validate");
+    }
+    return hasPermission(item.resource, 'read');
+  });
   const visibleE2dTontineItems = e2dTontineItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
