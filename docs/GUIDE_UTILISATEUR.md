@@ -164,3 +164,28 @@ Accessible via le menu **Profil** :
 ## Support
 
 Pour toute question technique, contactez l'administrateur de la plateforme via le formulaire de contact du site ou directement par email.
+
+## Nouveautés post-refonte (avril 2026)
+
+### Réouverture d'une réunion clôturée
+Une réunion au statut « Terminée » peut être ramenée à « En cours » par un administrateur :
+1. Ouvrir la fiche de la réunion concernée.
+2. Cliquer sur **Rouvrir la réunion**.
+3. Confirmer dans la boîte de dialogue.
+
+Effet : la réunion redevient modifiable. Les cotisations associées sont déverrouillées et les sanctions générées peuvent être ajustées.
+
+### Gestion des albums dans la galerie
+Les images publiques peuvent être regroupées en albums :
+1. **Admin → Site → Galerie**.
+2. Onglet **Albums** : créer un album avec titre, description et image de couverture.
+3. À l'upload d'images, sélectionner l'album cible.
+4. Côté public, la page `/gallery` affiche d'abord les albums ; clic → page détail `/albums/:id` avec lightbox.
+
+### Verrouillage de l'exercice actif
+Un seul exercice cotisations peut être actif à la fois (contrainte serveur).
+- Pour modifier un exercice actif, vous devez fournir un **motif** (audit obligatoire).
+- Pour activer un autre exercice, l'actuel doit d'abord être basculé en « clôturé ».
+
+### Fiabilité des emails
+Les envois d'emails sont automatiquement retentés en cas d'erreur réseau temporaire (3 tentatives). Tous les envois (succès ou échec) sont consultables dans **Admin → Notifications → Historique**.

@@ -385,3 +385,17 @@
 **Date d'implémentation** : Novembre 2024 - Janvier 2026  
 **Version** : 3.0  
 **Status global** : ✅ **PRODUCTION (~95%)**
+
+## Refonte avril 2026 — Lots 1 à 11
+
+- [x] **Lot 1** — Prêts & Caisse : `pretCalculsService` unifié, `useCaisse`, RPC `get_solde_caisse()`.
+- [x] **Lot 2** — Sécurité RLS : `is_admin()`, `auth.uid()`, vue `configurations_public`.
+- [x] **Lot 3** — Cotisations & Exercices : index unique partiel, verrouillage exercice actif.
+- [x] **Lot 4** — Aides : sync auto vers `fond_caisse_operations` au statut `alloué`.
+- [x] **Lot 5** — Emails : retry exponentiel + log centralisé `notifications_envois`.
+- [x] **Lot 6** — Sport : trigger DB `trg_sync_e2d_match_to_site_event`.
+- [x] **Lot 7** — Galerie : albums + route `/albums/:id` (vérifié, déjà en place).
+- [x] **Lot 8** — Stabilité : ErrorBoundary 2 niveaux + `lazyWithRetry` + `vercel.json`.
+- [x] **Lot 9** — Tests Vitest : 26 tests couvrant prêts, caisse, cotisations.
+- [x] **Lot 10** — Documentation : ARCHITECTURE, GUIDE_UTILISATEUR, CHECKLIST, CHANGELOG.
+- [x] **Lot 11** — Audit sécurité : 71 warnings analysés, 0 ERROR critique, choix documentés.

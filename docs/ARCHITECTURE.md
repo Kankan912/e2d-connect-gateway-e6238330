@@ -94,3 +94,25 @@ React Query gère le cache, le refetch automatique et l'invalidation. Les hooks 
 - **Vitest** + **Testing Library** pour les tests unitaires
 - Mocks Supabase dans `src/test/mocks/supabase.ts`
 - Configuration dans `vitest.config.ts`
+
+## Stabilité & résilience (post-refonte avril 2026)
+
+### ErrorBoundary à 2 niveaux
+- **App-level** (`src/App.tsx`) : capture toute erreur non gérée du shell de l'app.
+- **Dashboard-level** (`src/pages/Dashboard.tsx`) : isole les erreurs des modules admin.
+- Bouton « Réessayer » qui réinitialise l'état d'erreur sans rechargement complet.
+
+### Chargement des chunks (`lazyWithRetry`)
+- Helper `src/lib/lazyWithRetry.ts` qui retente automatiquement un import dynamique en cas d'échec réseau.
+- Appliqué à TOUTES les routes (App.tsx, Dashboard.tsx).
+- Évite les écrans blancs après déploiement (vieux chunks invalidés).
+
+### Synchronisation serveur du sport
+- Trigger PostgreSQL `trg_sync_e2d_match_to_site_event` sur `sport_e2d_matchs`.
+- Filtre : `statut_publication = 'publie'` uniquement.
+- Le hook frontend `useSportEventSync` reste en redondance temps réel.
+
+### Fiabilisation des emails
+- `supabase/functions/_shared/email-utils.ts` : retry exponentiel 3 tentatives (500/1000/2000 ms).
+- Détection erreurs transitoires : timeout, 429, 5xx.
+- Logging centralisé automatique dans `notifications_envois`.
