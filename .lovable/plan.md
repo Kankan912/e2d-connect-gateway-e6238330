@@ -1,103 +1,66 @@
-# Plan final — Consolidation post-refonte (Lots 9 → 11)
+## Finalisation du module "Demande de prêt"
 
-Trois chantiers parallèles pour finaliser l'application avant publication.
+L'infrastructure backend (tables, RPC, triggers, RLS, edge function de notification) et les composants UI de base (dialog, timeline, hooks) sont déjà en place. Il reste à finaliser l'expérience utilisateur côté membre et admin, puis à brancher le routage et les notifications.
 
----
+### 1. Page membre — "Mes demandes de prêt"
+**Fichier** : `src/pages/MesDemandesPret.tsx` (nouveau)
+- Liste des demandes du membre connecté avec badges de statut (brouillon, en cours, approuvée, rejetée, décaissée).
+- Bouton "Nouvelle demande" → ouvre `LoanRequestDialog`.
+- Pour chaque demande : carte cliquable affichant montant, durée, urgence, statut + `LoanValidationTimeline` détaillée (étape courante surlignée, validateurs, commentaires, dates).
+- Realtime via le hook `useLoanRequests` déjà créé.
 
-## Lot 9 — Tests unitaires critiques
+### 2. Page admin — "Demandes à valider"
+**Fichier** : `src/pages/admin/DemandesPretAdmin.tsx` (nouveau)
+- Tableau filtrable (statut, urgence, membre, période).
+- Onglets : `À valider par moi` / `En cours` / `Approuvées` / `Rejetées` / `Décaissées`.
+- Pour chaque ligne : actions selon rôle :
+  - **Valider l'étape** (si `user_can_validate_loan_role` = true sur l'étape courante)
+  - **Rejeter** (avec `LoanRejectDialog`)
+  - **Décaisser** (Trésorier/Admin, si statut = `approved`) → appelle `disburse_loan` puis redirige vers la fiche prêt créée
+- Détail latéral (Sheet) avec timeline complète + historique.
 
-**Objectif :** sécuriser les calculs financiers et la logique métier sensible avec des tests Vitest exécutables.
+### 3. Configuration du workflow (admin)
+**Fichier** : `src/pages/admin/LoanWorkflowConfig.tsx` (nouveau)
+- Édition de la table `loan_validation_config` : ajout/suppression d'étapes, réordonnancement (drag & drop), activation/désactivation, libellé.
+- RPC dédiées en migration : `upsert_loan_validation_step`, `delete_loan_validation_step`, `reorder_loan_validation_steps` (admin only via `is_admin()`).
+- Avertissement : modifications n'affectent que les nouvelles demandes.
 
-### Couverture cible
-1. **`src/lib/pretCalculsService.test.ts`** (nouveau)
-   - Calcul intérêt direct (montant × taux).
-   - Calcul reconduction (priorité `prets_reconductions.interet_mois`).
-   - Calcul prorata bénéficiaires (12 mois).
-   - Reste à payer selon statut (rembourse / partiel / en_retard / reconduit).
+### 4. Routage & navigation
+**Fichiers modifiés** : `src/App.tsx`, `src/components/Sidebar.tsx` (ou équivalent)
+- Routes `lazyWithRetry` :
+  - `/mes-demandes-pret` → `MesDemandesPret` (membre connecté)
+  - `/admin/demandes-pret` → `DemandesPretAdmin` (permission `prets:validate` ou rôle de validation)
+  - `/admin/configuration/workflow-prets` → `LoanWorkflowConfig` (admin)
+- Entrée sidebar "Mes demandes" pour les membres + "Demandes à valider" pour les rôles concernés (badge avec compteur de demandes en attente sur leur étape).
+- Suppression des entry points temporaires injectés dans `PretsAdmin.tsx` lors du lot précédent.
 
-2. **`src/lib/caisseCalculations.test.ts`** (nouveau)
-   - Solde empruntable = 80 % × fond − prêts en cours.
-   - Cas limites : fond négatif, prêts > 80 %, pourcentage personnalisé.
+### 5. Branchement des notifications email
+**Fichier modifié** : `src/hooks/useLoanRequests.ts`
+- Vérifier que chaque mutation (`createLoanRequest`, `validateLoanRequest`, `rejectLoanRequest`, `disburseLoan`) appelle bien `send-loan-notification` avec le bon `event_type` :
+  - `request_created` → notif aux validateurs de l'étape 1 + accusé au membre
+  - `step_validated` → notif aux validateurs de l'étape suivante (ou au membre si dernière étape)
+  - `step_rejected` → notif au membre avec motif
+  - `loan_disbursed` → notif au membre + résumé
+- L'edge function `send-loan-notification` utilise déjà `get_loan_request_validators_emails` et `get_loan_request_member_email`.
 
-3. **`src/lib/cotisationsLogic.test.ts`** (nouveau)
-   - Priorité `cotisations_mensuelles_exercice` puis fallback `cotisations_types`.
-   - Filtrage des types par `actif = true`.
+### 6. Permissions granulaires
+**Migration SQL** : ajouts dans `role_permissions` via insert tool
+- `prets_requests:create` → tous les membres actifs
+- `prets_requests:validate` → tresorier, commissaire, president, secretaire, administrateur
+- `prets_requests:disburse` → tresorier, administrateur
+- `prets_requests:configure_workflow` → administrateur
+- Helper `usePretRequestPermissions()` dans `src/hooks/` pour conditionner l'affichage UI.
 
-4. **Script de test** : ajout dans `package.json` :
-   - `"test": "vitest run"`
-   - `"test:watch": "vitest"`
+### Points de validation
+- Aucun calcul métier côté frontend : tous les changements de statut passent par RPC `SECURITY DEFINER`.
+- Realtime sur `loan_requests` + `loan_request_validations` pour mise à jour live des deux pages.
+- AlertDialog (jamais `window.confirm`) pour valider/rejeter/décaisser.
+- Padding mobile `p-3 sm:p-6` sur les nouvelles pages.
+- FCFA partout, formatage cohérent avec le reste de l'app.
+- Logger via `src/lib/logger.ts`, gestion d'erreur `catch (error: unknown)` + extraction `data?.error`.
 
-### Hors scope
-- Pas de Playwright / E2E (lourd à mettre en place, peu rentable pour ce type d'app interne).
-- Pas de tests UI (couverture déjà faite manuellement).
-
----
-
-## Lot 10 — Documentation
-
-**Objectif :** synchroniser la doc avec les changements des Lots 1 → 8.
-
-### Fichiers à mettre à jour
-1. **`docs/ARCHITECTURE.md`** — ajouter sections :
-   - Stratégie ErrorBoundary 2 niveaux.
-   - `lazyWithRetry` et stabilité chunks.
-   - Synchro serveur sport (trigger DB).
-   - Fiabilisation emails (retry + log centralisé).
-
-2. **`docs/GUIDE_UTILISATEUR.md`** — ajouter :
-   - Workflow réouverture réunion (`terminée` → `en_cours`).
-   - Gestion albums galerie.
-   - Verrouillage exercice actif.
-
-3. **`docs/IMPLEMENTATION_CHECKLIST.md`** — cocher les lots 1 → 8.
-
-4. **`docs/CHANGELOG.md`** (nouveau) — récapitulatif versionné des 8 lots.
-
----
-
-## Lot 11 — Audit sécurité final
-
-**Objectif :** valider qu'aucune régression sécurité n'a été introduite.
-
-### Étapes
-1. **Linter Supabase** (`supabase--linter`) :
-   - Vérifier RLS activé partout.
-   - Détecter fonctions sans `search_path`.
-   - Vérifier policies non permissives.
-
-2. **Scan sécurité** (`security--run_security_scan`) :
-   - Détecter colonnes sensibles exposées.
-   - Vérifier policies INSERT/UPDATE/DELETE.
-
-3. **Mémoire sécurité** (`security--update_memory`) :
-   - Documenter les choix volontaires (ex : `site_events` lecture publique).
-
-### Corrections
-- Correction immédiate des warnings critiques (ERROR / WARN).
-- Documentation des INFO ignorés volontairement dans la mémoire sécurité.
-
----
-
-## Détails techniques
-
-```text
-Ordre d'exécution recommandé :
-  Lot 11 (audit) → Lot 9 (tests) → Lot 10 (docs) → publication
-```
-
-**Pourquoi cet ordre :** l'audit sécurité peut révéler des migrations correctives à faire ; les tests valideront que ces correctifs n'ont rien cassé ; la doc reflètera l'état final.
-
-**Migrations attendues :** probablement 0 à 2 (dépendant des warnings du linter).
-
-**Edge functions impactées :** aucune (modifs déjà faites au Lot 5).
-
----
-
-## Livrables
-
-- 3 nouveaux fichiers de tests Vitest exécutables (`bun run test`).
-- 4 fichiers docs à jour + CHANGELOG.
-- Rapport sécurité avec 0 warning critique.
-- Application prête à être publiée.
+### Livrables
+**Créés** : `MesDemandesPret.tsx`, `DemandesPretAdmin.tsx`, `LoanWorkflowConfig.tsx`, `usePretRequestPermissions.ts`, migration SQL (RPC config workflow + seed permissions).
+**Modifiés** : `App.tsx`, sidebar, `useLoanRequests.ts`, `PretsAdmin.tsx` (nettoyage), `GUIDE_UTILISATEUR.md` + `CHANGELOG.md`.
 
 Validez ce plan pour que je passe en mode build et exécute l'ensemble.
