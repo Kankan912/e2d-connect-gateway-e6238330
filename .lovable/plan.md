@@ -1,153 +1,103 @@
+# Plan final — Consolidation post-refonte (Lots 9 → 11)
 
-# Plan de correction des 16 anomalies critiques
-
-## Diagnostic des bugs confirmés (lecture du code)
-
-**Caisse — double formule du solde empruntable** :
-- `useCaisseStats` (ligne 240 de `useCaisse.ts`) : `solde_global × 80%` → **220 440**
-- `useCaisseSynthese` (ligne 626) : `(fondTotal × 80%) − pretsEnCours` → **125 388**
-- Aucun n'utilise la RPC `get_solde_caisse()` qui est pourtant la source de vérité.
-- Les deux affichent des décimales (pas d'arrondi).
-
-**Prêts — intérêts composés** :
-- `pretCalculsService.ts` lignes 65-70 : fallback en intérêts composés (`solde += interetRecon` puis `interetRecon = solde × taux`). À remplacer par intérêt simple.
-
-**Galerie — albums non liés aux événements** :
-- Table `site_gallery_albums` existe mais n'a pas de colonne `event_id`.
+Trois chantiers parallèles pour finaliser l'application avant publication.
 
 ---
 
-## Découpage en 8 lots
+## Lot 9 — Tests unitaires critiques
 
-### Lot 1 — Caisse : centralisation et arrondi (Critique, faible/moyen)
+**Objectif :** sécuriser les calculs financiers et la logique métier sensible avec des tests Vitest exécutables.
 
-**SQL (migration)** :
-- Nouvelle RPC `get_caisse_synthese()` (SECURITY DEFINER) qui calcule en SQL pur via `SUM()` sur `fond_caisse_operations` + sous-requêtes sur `prets` et `reunions_sanctions`. Renvoie un JSON avec : `fond_total`, `total_epargnes`, `total_cotisations`, `sanctions_encaissees`, `sanctions_impayees`, `aides_distribuees`, `prets_decaisses`, `prets_rembourses`, `prets_en_cours`, `taux_recouvrement`, `solde_empruntable`, `pourcentage_empruntable`.
-- Nouvelle RPC `get_solde_empruntable()` : `FLOOR(get_solde_caisse() × pourcentage / 100) − prets_en_cours`, retourne un `bigint` (entier).
-- Toutes les valeurs retournées : `FLOOR()` ou cast `::bigint` côté SQL.
+### Couverture cible
+1. **`src/lib/pretCalculsService.test.ts`** (nouveau)
+   - Calcul intérêt direct (montant × taux).
+   - Calcul reconduction (priorité `prets_reconductions.interet_mois`).
+   - Calcul prorata bénéficiaires (12 mois).
+   - Reste à payer selon statut (rembourse / partiel / en_retard / reconduit).
 
-**Front (`src/hooks/useCaisse.ts`)** :
-- `useCaisseStats` et `useCaisseSynthese` réécrits pour appeler **uniquement** `supabase.rpc('get_caisse_synthese')` (suppression complète des boucles de pagination et calculs JS).
-- `useAlertesGlobales` : déjà sur RPC, vérifier qu'il utilise la même.
-- Helper `formatFCFA` : forcer `Math.floor()` en entrée pour garantir aucun décimal affiché.
+2. **`src/lib/caisseCalculations.test.ts`** (nouveau)
+   - Solde empruntable = 80 % × fond − prêts en cours.
+   - Cas limites : fond négatif, prêts > 80 %, pourcentage personnalisé.
 
-**Documentation** : ajouter une ligne dans `docs/ARCHITECTURE.md` interdisant tout calcul financier côté client.
+3. **`src/lib/cotisationsLogic.test.ts`** (nouveau)
+   - Priorité `cotisations_mensuelles_exercice` puis fallback `cotisations_types`.
+   - Filtrage des types par `actif = true`.
 
----
+4. **Script de test** : ajout dans `package.json` :
+   - `"test": "vitest run"`
+   - `"test:watch": "vitest"`
 
-### Lot 2 — Prêts : intérêt simple + workflow reconduction (Critique, élevé)
-
-**`src/lib/pretCalculsService.ts`** :
-- Réécrire le bloc fallback (lignes 63-72) en intérêt **simple** : `interetMensuel = capital × taux` (pas de cumul sur `solde`). `reconductionsInterets[i] = capital × taux` constant.
-- Ajouter test unitaire dans `src/lib/pret-calculs.test.ts` couvrant : 0/1/3 reconductions, présence/absence d'historique réel, vérification que `interetMensuel` reste constant.
-
-**SQL** :
-- Ajouter colonne `prets_reconductions.statut` (`en_attente`, `validee`, `refusee`, défaut `validee` pour les enregistrements existants) et `validee_par uuid REFERENCES profiles(id)`, `validee_le timestamptz`.
-- Trigger : empêcher INSERT direct dans `prets_reconductions` avec `statut='validee'` sauf si `is_admin()` ou rôle `tresorier`.
-
-**Front (`src/components/ReconduireModal.tsx`)** :
-- Au submit : créer la reconduction avec `statut='en_attente'`.
-- Nouvelle UI dans `PretsAdmin.tsx` : onglet "Reconductions à valider" listant les `en_attente`, avec boutons Valider / Refuser (réservés via `usePermissions`).
-- L'incrément de `prets.reconductions` et le recalcul des intérêts ne se déclenchent **que** lors de la validation.
+### Hors scope
+- Pas de Playwright / E2E (lourd à mettre en place, peu rentable pour ce type d'app interne).
+- Pas de tests UI (couverture déjà faite manuellement).
 
 ---
 
-### Lot 3 — Cotisations : projection automatique + activation par exercice (Critique, moyen/élevé)
+## Lot 10 — Documentation
 
-**Projection auto** :
-- Vérifier `useReunionsData.ts` / `CotisationsTab.tsx` : à l'ouverture d'une réunion (statut `ouverte` ou `en_cours`), appeler une RPC `projeter_cotisations_reunion(reunion_id)` qui INSERT en lot dans `cotisations` (statut `en_attente`, montant attendu via `get_cotisation_mensuelle_membre`) pour chaque membre actif × chaque type actif sur l'exercice.
-- Trigger DB sur `INSERT reunions` (statut ouverte) : exécute la projection automatiquement.
-- Front : au montage de `CotisationsTab`, si le tableau est vide pour une réunion ouverte, déclencher manuellement la projection avec bouton "Initialiser".
+**Objectif :** synchroniser la doc avec les changements des Lots 1 → 8.
 
-**Activation par exercice** :
-- `ExercicesCotisationsTypesManager` existe déjà ; vérifier que le bouton `Initialiser types obligatoires` fonctionne et étendre l'UI pour activer/désactiver chaque type avec un toggle. Confirmer que `CotisationsGridView` lit bien `exercices_cotisations_types.actif` (mémoire `exercise-type-filtering` indique que oui).
-- Si un type est désactivé après projection, marquer les lignes correspondantes comme `archive` (pas suppression).
+### Fichiers à mettre à jour
+1. **`docs/ARCHITECTURE.md`** — ajouter sections :
+   - Stratégie ErrorBoundary 2 niveaux.
+   - `lazyWithRetry` et stabilité chunks.
+   - Synchro serveur sport (trigger DB).
+   - Fiabilisation emails (retry + log centralisé).
 
----
+2. **`docs/GUIDE_UTILISATEUR.md`** — ajouter :
+   - Workflow réouverture réunion (`terminée` → `en_cours`).
+   - Gestion albums galerie.
+   - Verrouillage exercice actif.
 
-### Lot 4 — Bénéficiaires : suppression du partage + groupement par mois (Critique, faible/moyen)
+3. **`docs/IMPLEMENTATION_CHECKLIST.md`** — cocher les lots 1 → 8.
 
-**`src/lib/beneficiairesCalculs.ts` + `BeneficiairesTab.tsx`** :
-- Retirer toute logique "partage" (chercher `partage`, `repartition`, `quote_part`).
-- Le montant net = `calculer_montant_beneficiaire()` (RPC existante) — chaque bénéficiaire reçoit son montant individuel.
-- Mettre à jour les libellés UI : remplacer "Partage" par "Distribution individuelle".
-
-**Multi-bénéficiaires / mois** :
-- `CalendrierBeneficiaires.tsx` : refondre la vue pour grouper par mois. Chaque cellule mois = un bloc unique listant tous les bénéficiaires du mois (Card avec liste de membres, montants individuels, total mois).
-- Côté hook (`useCalendrierBeneficiaires`) : grouper le résultat par `mois` (yyyy-mm) avant retour : `{ mois, beneficiaires: [...] }[]`.
+4. **`docs/CHANGELOG.md`** (nouveau) — récapitulatif versionné des 8 lots.
 
 ---
 
-### Lot 5 — Notifications : envoi email Resend (Critique, moyen/élevé)
+## Lot 11 — Audit sécurité final
 
-**Diagnostic** :
-- `RESEND_API_KEY` est déjà dans les secrets — donc le problème est code, pas config.
-- Vérifier `supabase/functions/send-email/index.ts` et `_shared/email-utils.ts` :
-  1. Logs détaillés à chaque étape (sélection service, sanitization `from`, statut Resend).
-  2. Tester avec `supabase--curl_edge_functions` pour reproduire l'erreur.
-  3. Confirmer que `EmailConfigManager` envoie bien `forceService: "resend"` lors du test (mémoire `infrastructure/email/delivery-logic`).
+**Objectif :** valider qu'aucune régression sécurité n'a été introduite.
 
-**Front** :
-- `NotificationCampagneForm` / page d'envoi : afficher le résultat précis renvoyé par l'edge function (extraire `data.error` selon mémoire `edge-functions-logic`). Toast succès = nombre réel d'emails envoyés ; toast erreur = message complet.
-- Bouton "Test email" dans `EmailConfigManager` : doit afficher l'erreur Resend brute si échec.
+### Étapes
+1. **Linter Supabase** (`supabase--linter`) :
+   - Vérifier RLS activé partout.
+   - Détecter fonctions sans `search_path`.
+   - Vérifier policies non permissives.
 
-**Logs** : vérifier que `notifications_logs` reçoit bien une ligne par destinataire (insertion dans l'edge function).
+2. **Scan sécurité** (`security--run_security_scan`) :
+   - Détecter colonnes sensibles exposées.
+   - Vérifier policies INSERT/UPDATE/DELETE.
 
----
+3. **Mémoire sécurité** (`security--update_memory`) :
+   - Documenter les choix volontaires (ex : `site_events` lecture publique).
 
-### Lot 6 — Architecture : crash notifications + ErrorBoundary (Critique, faible)
-
-- ErrorBoundary global déjà en place dans `App.tsx` et par groupe dans `Dashboard.tsx` (mémoire `error-boundary-strategy`).
-- Identifier la cause précise du crash sur la page Notifications : reproduire avec le browser tool sur `/admin/notifications`, lire `read_runtime_errors`, corriger la cause racine (probablement valeur `null` non gérée dans un `select` Radix → utiliser sentinel `'none'` selon mémoire `notifications/admin-ui-robustness`).
-- Vérifier que toutes les routes admin sont enveloppées d'un `ErrorBoundary` dans `Dashboard.tsx`.
+### Corrections
+- Correction immédiate des warnings critiques (ERROR / WARN).
+- Documentation des INFO ignorés volontairement dans la mémoire sécurité.
 
 ---
 
-### Lot 7 — Navigation SPA + sync matchs site (Critique, faible/moyen)
+## Détails techniques
 
-**Navigation** :
-- `rg "target=\"_blank\"" src/` et `rg "<a href=\"/" src/` pour identifier les liens internes ouvrant un nouvel onglet ou faisant un full reload.
-- Remplacer par `<Link to="...">` (`react-router-dom`) ou `useNavigate()`.
-- Vérifier le bouton retour des pages publiques : déjà OK selon la mémoire `architecture-navigation-et-site-public`.
+```text
+Ordre d'exécution recommandé :
+  Lot 11 (audit) → Lot 9 (tests) → Lot 10 (docs) → publication
+```
 
-**Sync matchs** :
-- `src/lib/sync-events.ts` existe et persiste `match_id` (mémoire). Vérifier qu'un trigger DB (ou hook front sur succès de mutation match) appelle automatiquement `syncMatchToSiteEvent` quand `statut_publication = 'publie'`.
-- Ajouter un trigger SQL `AFTER INSERT OR UPDATE OF statut_publication ON sport_e2d_matchs` qui appelle une fonction `sync_match_to_site_event()` côté DB (insert/update dans `site_events` selon le statut). Cela évite de dépendre de l'appel front.
+**Pourquoi cet ordre :** l'audit sécurité peut révéler des migrations correctives à faire ; les tests valideront que ces correctifs n'ont rien cassé ; la doc reflètera l'état final.
 
----
+**Migrations attendues :** probablement 0 à 2 (dépendant des warnings du linter).
 
-### Lot 8 — Galerie : albums liés aux événements (Critique, moyen)
-
-**SQL** :
-- `ALTER TABLE site_gallery_albums ADD COLUMN event_id uuid REFERENCES site_events(id) ON DELETE SET NULL`.
-- Index sur `event_id`.
-
-**Front** :
-- `GalleryAdmin.tsx` : ajouter un select "Événement lié" lors de la création/édition d'un album (chargé via `useSiteEvents`).
-- Page publique `EventDetail.tsx` : si un album est lié à l'événement courant, afficher une section "Galerie photo" listant les images de l'album.
-- Page publique `Gallery.tsx` : grouper les albums par événement quand `event_id` est présent.
+**Edge functions impactées :** aucune (modifs déjà faites au Lot 5).
 
 ---
 
-## Ordre d'exécution
+## Livrables
 
-1. **Lot 1** (Caisse) — fondamental, débloquera la cohérence.
-2. **Lot 2** (Prêts) — formule simple + workflow.
-3. **Lot 4** (Bénéficiaires) — dépend de la logique cotisations clarifiée.
-4. **Lot 3** (Cotisations) — projection auto.
-5. **Lot 5** (Notifications) — diagnostic + correctif Resend.
-6. **Lot 6** (Architecture/Notifications crash) — fix bug runtime.
-7. **Lot 7** (Navigation + sync matchs).
-8. **Lot 8** (Galerie albums liés).
+- 3 nouveaux fichiers de tests Vitest exécutables (`bun run test`).
+- 4 fichiers docs à jour + CHANGELOG.
+- Rapport sécurité avec 0 warning critique.
+- Application prête à être publiée.
 
-## Effort total estimé
-
-~12-15 fichiers modifiés, ~5 migrations SQL, 2 nouvelles RPC, 1 nouvel onglet admin (validation reconductions), refonte de 2 vues UI (calendrier bénéficiaires, gallery admin).
-
-## Périmètre exclu (à confirmer si besoin)
-
-- Pas de refonte visuelle au-delà des points listés.
-- Pas de migration de données existantes (les calculs corrigés s'appliquent automatiquement aux données en base).
-- Tests unitaires uniquement pour `pretCalculsService` (le reste reste couvert par les tests existants).
-
-Veux-tu que je procède dans cet ordre, ou préfères-tu prioriser certains lots (ex. Caisse + Notifications d'abord pour débloquer les usages immédiats) ?
+Validez ce plan pour que je passe en mode build et exécute l'ensemble.
