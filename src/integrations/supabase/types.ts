@@ -1651,6 +1651,159 @@ export type Database = {
         }
         Relationships: []
       }
+      loan_request_validations: {
+        Row: {
+          commentaire: string | null
+          created_at: string
+          id: string
+          label: string
+          loan_request_id: string
+          ordre: number
+          role: string
+          statut: string
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          commentaire?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          loan_request_id: string
+          ordre: number
+          role: string
+          statut?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          commentaire?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          loan_request_id?: string
+          ordre?: number
+          role?: string
+          statut?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_request_validations_loan_request_id_fkey"
+            columns: ["loan_request_id"]
+            isOneToOne: false
+            referencedRelation: "loan_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_requests: {
+        Row: {
+          capacite_remboursement: string
+          conditions_acceptees: boolean
+          created_at: string
+          current_step: number
+          description: string
+          duree_mois: number
+          garantie: string | null
+          id: string
+          membre_id: string
+          montant: number
+          motif_rejet: string | null
+          pret_id: string | null
+          statut: string
+          updated_at: string
+          urgence: string
+        }
+        Insert: {
+          capacite_remboursement: string
+          conditions_acceptees?: boolean
+          created_at?: string
+          current_step?: number
+          description: string
+          duree_mois: number
+          garantie?: string | null
+          id?: string
+          membre_id: string
+          montant: number
+          motif_rejet?: string | null
+          pret_id?: string | null
+          statut?: string
+          updated_at?: string
+          urgence?: string
+        }
+        Update: {
+          capacite_remboursement?: string
+          conditions_acceptees?: boolean
+          created_at?: string
+          current_step?: number
+          description?: string
+          duree_mois?: number
+          garantie?: string | null
+          id?: string
+          membre_id?: string
+          montant?: number
+          motif_rejet?: string | null
+          pret_id?: string | null
+          statut?: string
+          updated_at?: string
+          urgence?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_requests_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "loan_requests_membre_id_fkey"
+            columns: ["membre_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_requests_pret_id_fkey"
+            columns: ["pret_id"]
+            isOneToOne: false
+            referencedRelation: "prets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loan_validation_config: {
+        Row: {
+          actif: boolean
+          created_at: string
+          id: string
+          label: string
+          ordre: number
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          created_at?: string
+          id?: string
+          label: string
+          ordre: number
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          created_at?: string
+          id?: string
+          label?: string
+          ordre?: number
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       match_compte_rendus: {
         Row: {
           ambiance: string | null
@@ -5079,6 +5232,19 @@ export type Database = {
         Args: { p_exercice_id: string; p_membre_id: string }
         Returns: Json
       }
+      create_loan_request: {
+        Args: {
+          _capacite_remboursement: string
+          _conditions_acceptees: boolean
+          _description: string
+          _duree_mois: number
+          _garantie: string
+          _montant: number
+          _urgence: string
+        }
+        Returns: string
+      }
+      disburse_loan: { Args: { _request_id: string }; Returns: Json }
       get_caisse_stats: { Args: never; Returns: Json }
       get_caisse_synthese: { Args: never; Returns: Json }
       get_cotisation_mensuelle_membre: {
@@ -5086,6 +5252,22 @@ export type Database = {
         Returns: number
       }
       get_current_user_role: { Args: never; Returns: string }
+      get_loan_request_member_email: {
+        Args: { _request_id: string }
+        Returns: {
+          email: string
+          nom: string
+          prenom: string
+        }[]
+      }
+      get_loan_request_validators_emails: {
+        Args: { _request_id: string }
+        Returns: {
+          email: string
+          label: string
+          role: string
+        }[]
+      }
       get_montant_cotisation_membre: {
         Args: {
           _exercice_id: string
@@ -5123,6 +5305,18 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       projeter_cotisations_reunion: {
         Args: { _reunion_id: string }
+        Returns: Json
+      }
+      reject_loan_step: {
+        Args: { _motif: string; _request_id: string }
+        Returns: Json
+      }
+      user_can_validate_loan_role: {
+        Args: { _user_id: string; _workflow_role: string }
+        Returns: boolean
+      }
+      validate_loan_step: {
+        Args: { _commentaire?: string; _request_id: string }
         Returns: Json
       }
     }

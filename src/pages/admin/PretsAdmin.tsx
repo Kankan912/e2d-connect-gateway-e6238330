@@ -39,7 +39,10 @@ import { addMonths, format } from "date-fns";
 
 type StatutFilter = 'tous' | 'en_cours' | 'rembourse' | 'partiel' | 'en_retard' | 'reconduit';
 
+import { LoanRequestDialog } from "@/components/loans/LoanRequestDialog";
+
 export default function PretsAdmin() {
+  const [loanRequestOpen, setLoanRequestOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedPret, setSelectedPret] = useState<PretAdminWithJoins | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -510,6 +513,14 @@ export default function PretsAdmin() {
               Nouveau Prêt
             </Button>
           )}
+          <Button variant="secondary" onClick={() => setLoanRequestOpen(true)}>
+            <FileText className="h-4 w-4 mr-2" />
+            Demande de prêt
+          </Button>
+          <Button variant="outline" onClick={() => window.location.href = '/dashboard/admin/finances/prets/demandes'}>
+            <Eye className="h-4 w-4 mr-2" />
+            Voir demandes
+          </Button>
         </div>
       </div>
 

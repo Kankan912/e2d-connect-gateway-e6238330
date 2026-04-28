@@ -47,3 +47,7 @@ verify_jwt = false
 
 [functions.send-calendrier-beneficiaires]
 verify_jwt = false
+
+[functions.send-loan-notification]
+verify_jwt = false
+
