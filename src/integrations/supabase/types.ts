@@ -5070,6 +5070,8 @@ export type Database = {
         Args: { p_exercice_id: string; p_membre_id: string }
         Returns: Json
       }
+      get_caisse_stats: { Args: never; Returns: Json }
+      get_caisse_synthese: { Args: never; Returns: Json }
       get_cotisation_mensuelle_membre: {
         Args: { _exercice_id: string; _membre_id: string }
         Returns: number
