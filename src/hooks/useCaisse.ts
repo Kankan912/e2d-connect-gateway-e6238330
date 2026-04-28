@@ -522,62 +522,36 @@ export const useCaisseDetails = (type: DetailType | null, enabled: boolean) => {
   });
 };
 
-// ─── useCaisseSynthese (merged from useCaisseSynthese.ts) ───────────────────
+// ─── useCaisseSynthese — source de vérité backend (get_caisse_synthese RPC) ──
+// Tous les calculs sont exécutés en SQL pur côté serveur, garantissant cohérence
+// et arrondi systématique (FLOOR) pour bannir les décimales en FCFA.
 
 export const useCaisseSynthese = () => {
   return useQuery({
     queryKey: ["caisse-synthese"],
     queryFn: async (): Promise<CaisseSynthese> => {
-      const operations: Array<any> = [];
-      let from = 0;
-      const PAGE_SIZE = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("fond_caisse_operations")
-          .select("montant, type_operation, categorie, libelle")
-          .range(from, from + PAGE_SIZE - 1);
-        if (error) throw error;
-        if (data) operations.push(...data);
-        hasMore = (data?.length || 0) === PAGE_SIZE;
-        from += PAGE_SIZE;
-      }
-
-      const totalEpargnes = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'epargne').reduce((sum, o) => sum + Number(o.montant), 0);
-      const totalCotisations = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'cotisation').reduce((sum, o) => sum + Number(o.montant), 0);
-      const sanctionsEncaissees = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'sanction').reduce((sum, o) => sum + Number(o.montant), 0);
-      const aidesDistribuees = operations.filter(o => o.type_operation === 'sortie' && o.categorie === 'aide').reduce((sum, o) => sum + Number(o.montant), 0);
-      const pretsDecaisses = operations.filter(o => o.type_operation === 'sortie' && o.categorie === 'pret_decaissement').reduce((sum, o) => sum + Number(o.montant), 0);
-      const pretsRembourses = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'pret_remboursement').reduce((sum, o) => sum + Number(o.montant), 0);
-      const totalDistributionsBeneficiaires = operations.filter(o => o.type_operation === 'sortie' && (o.categorie === 'beneficiaire' || o.libelle?.toLowerCase().includes('bénéficiaire'))).reduce((sum, o) => sum + Number(o.montant), 0);
-      const fondSport = operations.filter(o => o.categorie === 'sport' || o.libelle?.toLowerCase().includes('sport')).reduce((sum, o) => o.type_operation === 'entree' ? sum + Number(o.montant) : sum - Number(o.montant), 0);
-
-      const { data: sanctionsData } = await supabase.from("reunions_sanctions").select("montant_amende, statut").not("montant_amende", "is", null);
-      const totalSanctions = sanctionsData?.reduce((sum, s) => sum + Number(s.montant_amende || 0), 0) || 0;
-      const sanctionsImpayees = totalSanctions - sanctionsEncaissees;
-      const tauxRecouvrement = totalSanctions > 0 ? Math.round((sanctionsEncaissees / totalSanctions) * 100) : 100;
-
-      const { data: pretsData } = await supabase.from("prets").select("montant, capital_paye, statut").in('statut', ['en_cours', 'partiel', 'reconduit']);
-      const pretsEnCours = pretsData?.reduce((sum, p) => sum + (Number(p.montant) - Number(p.capital_paye || 0)), 0) || 0;
-
-      const reliquatCotisations = totalCotisations - totalDistributionsBeneficiaires;
-      const totalEntrees = operations.filter(o => o.type_operation === 'entree').reduce((sum, o) => sum + Number(o.montant), 0);
-      const totalSorties = operations.filter(o => o.type_operation === 'sortie').reduce((sum, o) => sum + Number(o.montant), 0);
-      const fondTotal = totalEntrees - totalSorties;
-
-      const { data: caisseConfig } = await supabase.from("caisse_config").select("pourcentage_empruntable").limit(1).maybeSingle();
-      const pourcentageEmpruntable = caisseConfig?.pourcentage_empruntable || 80;
-      const soldeEmpruntable = Math.max(0, (fondTotal * pourcentageEmpruntable / 100) - pretsEnCours);
-
+      const { data, error } = await supabase.rpc('get_caisse_synthese');
+      if (error) throw error;
+      const d = (data || {}) as Record<string, unknown>;
       return {
-        fondTotal, totalEpargnes, totalCotisations, sanctionsEncaissees, sanctionsImpayees,
-        aidesDistribuees, pretsDecaisses, pretsRembourses, pretsEnCours, fondSport,
-        reliquatCotisations, totalDistributionsBeneficiaires, tauxRecouvrement,
-        soldeEmpruntable, pourcentageEmpruntable,
+        fondTotal: Number(d.fondTotal ?? 0),
+        totalEpargnes: Number(d.totalEpargnes ?? 0),
+        totalCotisations: Number(d.totalCotisations ?? 0),
+        sanctionsEncaissees: Number(d.sanctionsEncaissees ?? 0),
+        sanctionsImpayees: Number(d.sanctionsImpayees ?? 0),
+        aidesDistribuees: Number(d.aidesDistribuees ?? 0),
+        pretsDecaisses: Number(d.pretsDecaisses ?? 0),
+        pretsRembourses: Number(d.pretsRembourses ?? 0),
+        pretsEnCours: Number(d.pretsEnCours ?? 0),
+        fondSport: Number(d.fondSport ?? 0),
+        reliquatCotisations: Number(d.reliquatCotisations ?? 0),
+        totalDistributionsBeneficiaires: Number(d.totalDistributionsBeneficiaires ?? 0),
+        tauxRecouvrement: Number(d.tauxRecouvrement ?? 100),
+        soldeEmpruntable: Number(d.soldeEmpruntable ?? 0),
+        pourcentageEmpruntable: Number(d.pourcentageEmpruntable ?? 80),
       };
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
     staleTime: 60 * 1000,
   });
 };
