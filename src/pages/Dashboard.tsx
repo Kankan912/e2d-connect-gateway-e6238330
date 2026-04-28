@@ -21,6 +21,9 @@ const MySanctions = lazyWithRetry(() => import("./dashboard/MySanctions"));
 const MyPrets = lazyWithRetry(() => import("./dashboard/MyPrets"));
 const MyPresences = lazyWithRetry(() => import("./dashboard/MyPresences"));
 const MyAides = lazyWithRetry(() => import("./dashboard/MyAides"));
+const MesDemandesPret = lazyWithRetry(() => import("./dashboard/MesDemandesPret"));
+const DemandesPretAdmin = lazyWithRetry(() => import("./admin/DemandesPretAdmin"));
+const LoanWorkflowConfig = lazyWithRetry(() => import("./admin/LoanWorkflowConfig"));
 
 // Admin Pages - Core
 const DonationsAdmin = lazyWithRetry(() => import("./admin/DonationsAdmin"));
