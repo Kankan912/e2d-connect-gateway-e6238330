@@ -1,85 +1,153 @@
 
+# Plan de correction des 16 anomalies critiques
 
-# Plan: 6 corrections Événements / Match / Galerie
+## Diagnostic des bugs confirmés (lecture du code)
 
-## Résumé des problèmes et solutions
+**Caisse — double formule du solde empruntable** :
+- `useCaisseStats` (ligne 240 de `useCaisse.ts`) : `solde_global × 80%` → **220 440**
+- `useCaisseSynthese` (ligne 626) : `(fondTotal × 80%) − pretsEnCours` → **125 388**
+- Aucun n'utilise la RPC `get_solde_caisse()` qui est pourtant la source de vérité.
+- Les deux affichent des décimales (pas d'arrondi).
 
-### 1. Upload logo adversaire (E2DMatchForm + E2DMatchEditForm)
-- Le champ `logo_equipe_adverse` existe déjà en DB mais est toujours `null`
-- **Action** : Ajouter un champ upload d'image dans les deux formulaires (création + édition) qui upload vers le bucket `sport-logos` et stocke l'URL dans `logo_equipe_adverse`
-- Utiliser le même pattern que les autres uploads du projet (`storage-utils.ts`)
+**Prêts — intérêts composés** :
+- `pretCalculsService.ts` lignes 65-70 : fallback en intérêts composés (`solde += interetRecon` puis `interetRecon = solde × taux`). À remplacer par intérêt simple.
 
-### 2. Gestion des joueurs par match (E2D + adversaire)
-- La table `phoenix_compositions` existe pour Phoenix mais rien pour E2D
-- **Action DB** : Créer une table `match_joueurs` avec colonnes : `id`, `match_id` (FK → sport_e2d_matchs), `equipe` (enum 'e2d'/'adverse'), `nom`, `numero`, `poste`, `membre_id` (nullable FK → membres, pour joueurs E2D)
-- **Action UI** : Ajouter un onglet "Effectifs" dans `MatchDetailsModal` pour gérer les joueurs des deux équipes (ajout/modification/suppression)
-- Afficher les effectifs dans `EventDetail.tsx` (page publique)
-
-### 3. Tri des événements DESC
-- `useSiteEvents` trie par `date ASC` (ligne 181 de `useSiteContent.ts`)
-- **Action** : Changer `ascending: true` → `ascending: false` pour afficher les plus récents en premier
-
-### 4. Image miniature (thumbnail) du match
-- La table `sport_e2d_matchs` n'a pas de colonne `image_url`
-- **Action DB** : Ajouter colonne `image_url TEXT` à `sport_e2d_matchs`
-- **Action UI** : Ajouter champ upload thumbnail dans E2DMatchForm + E2DMatchEditForm, upload vers bucket `sport-logos`
-- Synchroniser vers `site_events.image_url` dans `sync-events.ts`
-
-### 5. Affichage logos + score dans EventDetail
-- Le bloc score (lignes 268-297) affiche "E2D" en texte sans logo
-- **Action** : Afficher le logo E2D (depuis assets ou config) et le `logo_equipe_adverse` du match à côté des noms d'équipe dans le bloc score
-
-### 6. Bouton retour galerie
-- `AlbumDetail.tsx` a déjà un fallback correct (lignes 52-56) : `navigate(-1)` avec fallback `/#galerie`
-- Le bouton retour dans `EventDetail.tsx` utilise `navigate(-1)` (ligne 183) — fonctionne correctement
-- **Action** : Vérifier si le problème est ailleurs. Ajouter le même pattern fallback que AlbumDetail à EventDetail pour robustesse
+**Galerie — albums non liés aux événements** :
+- Table `site_gallery_albums` existe mais n'a pas de colonne `event_id`.
 
 ---
 
-## Étapes d'implémentation
+## Découpage en 8 lots
 
-### Étape 1 : Migration DB (2 changements)
-```sql
--- Ajouter image_url à sport_e2d_matchs
-ALTER TABLE sport_e2d_matchs ADD COLUMN IF NOT EXISTS image_url TEXT;
+### Lot 1 — Caisse : centralisation et arrondi (Critique, faible/moyen)
 
--- Créer table match_joueurs
-CREATE TABLE match_joueurs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  match_id UUID NOT NULL REFERENCES sport_e2d_matchs(id) ON DELETE CASCADE,
-  equipe TEXT NOT NULL CHECK (equipe IN ('e2d', 'adverse')),
-  nom TEXT NOT NULL,
-  numero INTEGER,
-  poste TEXT,
-  membre_id UUID REFERENCES membres(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-ALTER TABLE match_joueurs ENABLE ROW LEVEL SECURITY;
--- RLS: lecture publique, écriture admin
-CREATE POLICY "Lecture match_joueurs" ON match_joueurs FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Gestion match_joueurs" ON match_joueurs FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
-```
+**SQL (migration)** :
+- Nouvelle RPC `get_caisse_synthese()` (SECURITY DEFINER) qui calcule en SQL pur via `SUM()` sur `fond_caisse_operations` + sous-requêtes sur `prets` et `reunions_sanctions`. Renvoie un JSON avec : `fond_total`, `total_epargnes`, `total_cotisations`, `sanctions_encaissees`, `sanctions_impayees`, `aides_distribuees`, `prets_decaisses`, `prets_rembourses`, `prets_en_cours`, `taux_recouvrement`, `solde_empruntable`, `pourcentage_empruntable`.
+- Nouvelle RPC `get_solde_empruntable()` : `FLOOR(get_solde_caisse() × pourcentage / 100) − prets_en_cours`, retourne un `bigint` (entier).
+- Toutes les valeurs retournées : `FLOOR()` ou cast `::bigint` côté SQL.
 
-### Étape 2 : Formulaires match (E2DMatchForm + E2DMatchEditForm)
-- Ajouter champ upload logo adversaire (vers bucket `sport-logos`)
-- Ajouter champ upload image thumbnail (vers bucket `sport-logos`)
-- Passer les URLs dans le mutation
+**Front (`src/hooks/useCaisse.ts`)** :
+- `useCaisseStats` et `useCaisseSynthese` réécrits pour appeler **uniquement** `supabase.rpc('get_caisse_synthese')` (suppression complète des boucles de pagination et calculs JS).
+- `useAlertesGlobales` : déjà sur RPC, vérifier qu'il utilise la même.
+- Helper `formatFCFA` : forcer `Math.floor()` en entrée pour garantir aucun décimal affiché.
 
-### Étape 3 : Tri événements
-- `useSiteContent.ts` ligne 181 : `ascending: false`
+**Documentation** : ajouter une ligne dans `docs/ARCHITECTURE.md` interdisant tout calcul financier côté client.
 
-### Étape 4 : Affichage logos + score (EventDetail.tsx)
-- Dans le bloc score, remplacer le texte "E2D" par logo E2D + nom
-- Afficher `matchDetails.logo_equipe_adverse` à côté du nom adverse
+---
 
-### Étape 5 : Gestion effectifs (MatchDetailsModal)
-- Ajouter onglet "Effectifs" dans le modal
-- Formulaire inline pour ajouter joueurs E2D (sélection depuis membres) et adverses (saisie libre)
-- CRUD via Supabase sur `match_joueurs`
+### Lot 2 — Prêts : intérêt simple + workflow reconduction (Critique, élevé)
 
-### Étape 6 : Sync thumbnail
-- Mettre à jour `sync-events.ts` pour synchroniser `image_url` du match vers `site_events.image_url`
+**`src/lib/pretCalculsService.ts`** :
+- Réécrire le bloc fallback (lignes 63-72) en intérêt **simple** : `interetMensuel = capital × taux` (pas de cumul sur `solde`). `reconductionsInterets[i] = capital × taux` constant.
+- Ajouter test unitaire dans `src/lib/pret-calculs.test.ts` couvrant : 0/1/3 reconductions, présence/absence d'historique réel, vérification que `interetMensuel` reste constant.
 
-### Étape 7 : Bouton retour EventDetail
-- Ajouter fallback `/#evenements` si `window.history.length <= 1` (même pattern que AlbumDetail)
+**SQL** :
+- Ajouter colonne `prets_reconductions.statut` (`en_attente`, `validee`, `refusee`, défaut `validee` pour les enregistrements existants) et `validee_par uuid REFERENCES profiles(id)`, `validee_le timestamptz`.
+- Trigger : empêcher INSERT direct dans `prets_reconductions` avec `statut='validee'` sauf si `is_admin()` ou rôle `tresorier`.
 
+**Front (`src/components/ReconduireModal.tsx`)** :
+- Au submit : créer la reconduction avec `statut='en_attente'`.
+- Nouvelle UI dans `PretsAdmin.tsx` : onglet "Reconductions à valider" listant les `en_attente`, avec boutons Valider / Refuser (réservés via `usePermissions`).
+- L'incrément de `prets.reconductions` et le recalcul des intérêts ne se déclenchent **que** lors de la validation.
+
+---
+
+### Lot 3 — Cotisations : projection automatique + activation par exercice (Critique, moyen/élevé)
+
+**Projection auto** :
+- Vérifier `useReunionsData.ts` / `CotisationsTab.tsx` : à l'ouverture d'une réunion (statut `ouverte` ou `en_cours`), appeler une RPC `projeter_cotisations_reunion(reunion_id)` qui INSERT en lot dans `cotisations` (statut `en_attente`, montant attendu via `get_cotisation_mensuelle_membre`) pour chaque membre actif × chaque type actif sur l'exercice.
+- Trigger DB sur `INSERT reunions` (statut ouverte) : exécute la projection automatiquement.
+- Front : au montage de `CotisationsTab`, si le tableau est vide pour une réunion ouverte, déclencher manuellement la projection avec bouton "Initialiser".
+
+**Activation par exercice** :
+- `ExercicesCotisationsTypesManager` existe déjà ; vérifier que le bouton `Initialiser types obligatoires` fonctionne et étendre l'UI pour activer/désactiver chaque type avec un toggle. Confirmer que `CotisationsGridView` lit bien `exercices_cotisations_types.actif` (mémoire `exercise-type-filtering` indique que oui).
+- Si un type est désactivé après projection, marquer les lignes correspondantes comme `archive` (pas suppression).
+
+---
+
+### Lot 4 — Bénéficiaires : suppression du partage + groupement par mois (Critique, faible/moyen)
+
+**`src/lib/beneficiairesCalculs.ts` + `BeneficiairesTab.tsx`** :
+- Retirer toute logique "partage" (chercher `partage`, `repartition`, `quote_part`).
+- Le montant net = `calculer_montant_beneficiaire()` (RPC existante) — chaque bénéficiaire reçoit son montant individuel.
+- Mettre à jour les libellés UI : remplacer "Partage" par "Distribution individuelle".
+
+**Multi-bénéficiaires / mois** :
+- `CalendrierBeneficiaires.tsx` : refondre la vue pour grouper par mois. Chaque cellule mois = un bloc unique listant tous les bénéficiaires du mois (Card avec liste de membres, montants individuels, total mois).
+- Côté hook (`useCalendrierBeneficiaires`) : grouper le résultat par `mois` (yyyy-mm) avant retour : `{ mois, beneficiaires: [...] }[]`.
+
+---
+
+### Lot 5 — Notifications : envoi email Resend (Critique, moyen/élevé)
+
+**Diagnostic** :
+- `RESEND_API_KEY` est déjà dans les secrets — donc le problème est code, pas config.
+- Vérifier `supabase/functions/send-email/index.ts` et `_shared/email-utils.ts` :
+  1. Logs détaillés à chaque étape (sélection service, sanitization `from`, statut Resend).
+  2. Tester avec `supabase--curl_edge_functions` pour reproduire l'erreur.
+  3. Confirmer que `EmailConfigManager` envoie bien `forceService: "resend"` lors du test (mémoire `infrastructure/email/delivery-logic`).
+
+**Front** :
+- `NotificationCampagneForm` / page d'envoi : afficher le résultat précis renvoyé par l'edge function (extraire `data.error` selon mémoire `edge-functions-logic`). Toast succès = nombre réel d'emails envoyés ; toast erreur = message complet.
+- Bouton "Test email" dans `EmailConfigManager` : doit afficher l'erreur Resend brute si échec.
+
+**Logs** : vérifier que `notifications_logs` reçoit bien une ligne par destinataire (insertion dans l'edge function).
+
+---
+
+### Lot 6 — Architecture : crash notifications + ErrorBoundary (Critique, faible)
+
+- ErrorBoundary global déjà en place dans `App.tsx` et par groupe dans `Dashboard.tsx` (mémoire `error-boundary-strategy`).
+- Identifier la cause précise du crash sur la page Notifications : reproduire avec le browser tool sur `/admin/notifications`, lire `read_runtime_errors`, corriger la cause racine (probablement valeur `null` non gérée dans un `select` Radix → utiliser sentinel `'none'` selon mémoire `notifications/admin-ui-robustness`).
+- Vérifier que toutes les routes admin sont enveloppées d'un `ErrorBoundary` dans `Dashboard.tsx`.
+
+---
+
+### Lot 7 — Navigation SPA + sync matchs site (Critique, faible/moyen)
+
+**Navigation** :
+- `rg "target=\"_blank\"" src/` et `rg "<a href=\"/" src/` pour identifier les liens internes ouvrant un nouvel onglet ou faisant un full reload.
+- Remplacer par `<Link to="...">` (`react-router-dom`) ou `useNavigate()`.
+- Vérifier le bouton retour des pages publiques : déjà OK selon la mémoire `architecture-navigation-et-site-public`.
+
+**Sync matchs** :
+- `src/lib/sync-events.ts` existe et persiste `match_id` (mémoire). Vérifier qu'un trigger DB (ou hook front sur succès de mutation match) appelle automatiquement `syncMatchToSiteEvent` quand `statut_publication = 'publie'`.
+- Ajouter un trigger SQL `AFTER INSERT OR UPDATE OF statut_publication ON sport_e2d_matchs` qui appelle une fonction `sync_match_to_site_event()` côté DB (insert/update dans `site_events` selon le statut). Cela évite de dépendre de l'appel front.
+
+---
+
+### Lot 8 — Galerie : albums liés aux événements (Critique, moyen)
+
+**SQL** :
+- `ALTER TABLE site_gallery_albums ADD COLUMN event_id uuid REFERENCES site_events(id) ON DELETE SET NULL`.
+- Index sur `event_id`.
+
+**Front** :
+- `GalleryAdmin.tsx` : ajouter un select "Événement lié" lors de la création/édition d'un album (chargé via `useSiteEvents`).
+- Page publique `EventDetail.tsx` : si un album est lié à l'événement courant, afficher une section "Galerie photo" listant les images de l'album.
+- Page publique `Gallery.tsx` : grouper les albums par événement quand `event_id` est présent.
+
+---
+
+## Ordre d'exécution
+
+1. **Lot 1** (Caisse) — fondamental, débloquera la cohérence.
+2. **Lot 2** (Prêts) — formule simple + workflow.
+3. **Lot 4** (Bénéficiaires) — dépend de la logique cotisations clarifiée.
+4. **Lot 3** (Cotisations) — projection auto.
+5. **Lot 5** (Notifications) — diagnostic + correctif Resend.
+6. **Lot 6** (Architecture/Notifications crash) — fix bug runtime.
+7. **Lot 7** (Navigation + sync matchs).
+8. **Lot 8** (Galerie albums liés).
+
+## Effort total estimé
+
+~12-15 fichiers modifiés, ~5 migrations SQL, 2 nouvelles RPC, 1 nouvel onglet admin (validation reconductions), refonte de 2 vues UI (calendrier bénéficiaires, gallery admin).
+
+## Périmètre exclu (à confirmer si besoin)
+
+- Pas de refonte visuelle au-delà des points listés.
+- Pas de migration de données existantes (les calculs corrigés s'appliquent automatiquement aux données en base).
+- Tests unitaires uniquement pour `pretCalculsService` (le reste reste couvert par les tests existants).
+
+Veux-tu que je procède dans cet ordre, ou préfères-tu prioriser certains lots (ex. Caisse + Notifications d'abord pour débloquer les usages immédiats) ?
