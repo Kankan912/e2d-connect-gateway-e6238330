@@ -70,7 +70,9 @@ const e2dReunionsItems = [
 
 const e2dFinancesItems = [
   { title: "Prêts", url: "/dashboard/admin/finances/prets", icon: HandCoins, resource: "prets" },
+  { title: "Demandes de prêt", url: "/dashboard/admin/finances/demandes-pret", icon: FileText, resource: "prets_requests" },
   { title: "Config Prêts", url: "/dashboard/admin/finances/prets/config", icon: Settings, resource: "config" },
+  { title: "Workflow demandes", url: "/dashboard/admin/finances/demandes-pret/workflow", icon: Settings, resource: "prets_requests" },
   { title: "Aides", url: "/dashboard/admin/finances/aides", icon: HandHeart, resource: "aides" },
 ];
 
