@@ -5244,6 +5244,7 @@ export type Database = {
         }
         Returns: string
       }
+      delete_loan_validation_step: { Args: { _id: string }; Returns: boolean }
       disburse_loan: { Args: { _request_id: string }; Returns: Json }
       get_caisse_stats: { Args: never; Returns: Json }
       get_caisse_synthese: { Args: never; Returns: Json }
@@ -5310,6 +5311,20 @@ export type Database = {
       reject_loan_step: {
         Args: { _motif: string; _request_id: string }
         Returns: Json
+      }
+      reorder_loan_validation_steps: {
+        Args: { _ids: string[] }
+        Returns: boolean
+      }
+      upsert_loan_validation_step: {
+        Args: {
+          _actif: boolean
+          _id: string
+          _label: string
+          _ordre: number
+          _role: string
+        }
+        Returns: string
       }
       user_can_validate_loan_role: {
         Args: { _user_id: string; _workflow_role: string }

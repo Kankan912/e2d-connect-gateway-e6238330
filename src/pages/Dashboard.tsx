@@ -21,6 +21,9 @@ const MySanctions = lazyWithRetry(() => import("./dashboard/MySanctions"));
 const MyPrets = lazyWithRetry(() => import("./dashboard/MyPrets"));
 const MyPresences = lazyWithRetry(() => import("./dashboard/MyPresences"));
 const MyAides = lazyWithRetry(() => import("./dashboard/MyAides"));
+const MesDemandesPret = lazyWithRetry(() => import("./dashboard/MesDemandesPret"));
+const DemandesPretAdmin = lazyWithRetry(() => import("./admin/DemandesPretAdmin"));
+const LoanWorkflowConfig = lazyWithRetry(() => import("./admin/LoanWorkflowConfig"));
 
 // Admin Pages - Core
 const DonationsAdmin = lazyWithRetry(() => import("./admin/DonationsAdmin"));
@@ -107,7 +110,7 @@ const Dashboard = () => {
           <Route path="/my-prets" element={<ErrorBoundary fallbackTitle="Erreur - Mes prêts"><MyPrets /></ErrorBoundary>} />
           <Route path="/my-presences" element={<ErrorBoundary fallbackTitle="Erreur - Mes présences"><MyPresences /></ErrorBoundary>} />
           <Route path="/my-aides" element={<ErrorBoundary fallbackTitle="Erreur - Mes aides"><MyAides /></ErrorBoundary>} />
-          
+          <Route path="/mes-demandes-pret" element={<ErrorBoundary fallbackTitle="Erreur - Mes demandes de prêt"><MesDemandesPret /></ErrorBoundary>} />
           {/* ==================== ADMIN ROUTES - FINANCE ==================== */}
           <Route path="/admin/donations" element={<PermissionRoute resource="donations" permission="read"><ErrorBoundary fallbackTitle="Erreur - Donations"><DonationsAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/donations/mobile-money" element={<PermissionRoute resource="donations" permission="read"><ErrorBoundary fallbackTitle="Erreur - Mobile Money"><MobileMoneyAdmin /></ErrorBoundary></PermissionRoute>} />
@@ -141,6 +144,8 @@ const Dashboard = () => {
           {/* ==================== ROUTES FINANCES AVANCÉES ==================== */}
           <Route path="/admin/finances/prets" element={<PermissionRoute resource="prets" permission="read"><ErrorBoundary fallbackTitle="Erreur - Prêts"><PretsAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/finances/prets/config" element={<PermissionRoute resource="config" permission="write"><ErrorBoundary fallbackTitle="Erreur - Config Prêts"><PretsConfigAdmin /></ErrorBoundary></PermissionRoute>} />
+          <Route path="/admin/finances/demandes-pret" element={<PermissionRoute resource="prets_requests" permission="validate"><ErrorBoundary fallbackTitle="Erreur - Demandes de prêt"><DemandesPretAdmin /></ErrorBoundary></PermissionRoute>} />
+          <Route path="/admin/finances/demandes-pret/workflow" element={<PermissionRoute resource="prets_requests" permission="configure"><ErrorBoundary fallbackTitle="Erreur - Workflow"><LoanWorkflowConfig /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/finances/aides" element={<PermissionRoute resource="aides" permission="read"><ErrorBoundary fallbackTitle="Erreur - Aides"><AidesAdmin /></ErrorBoundary></PermissionRoute>} />
           
           {/* ==================== ROUTES COMMUNICATION ==================== */}

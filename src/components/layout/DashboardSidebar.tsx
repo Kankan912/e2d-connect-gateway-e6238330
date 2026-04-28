@@ -54,6 +54,7 @@ const memberItems = [
   { title: "Mon Profil", url: "/dashboard/profile", icon: User },
   { title: "Mes Dons", url: "/dashboard/my-donations", icon: Heart },
   { title: "Mes Cotisations", url: "/dashboard/my-cotisations", icon: Receipt },
+  { title: "Mes Demandes de Prêt", url: "/dashboard/mes-demandes-pret", icon: HandCoins },
 ];
 
 // E2D - Section principale regroupant tous les modules internes
@@ -69,7 +70,9 @@ const e2dReunionsItems = [
 
 const e2dFinancesItems = [
   { title: "Prêts", url: "/dashboard/admin/finances/prets", icon: HandCoins, resource: "prets" },
+  { title: "Demandes de prêt", url: "/dashboard/admin/finances/demandes-pret", icon: FileText, resource: "prets_requests" },
   { title: "Config Prêts", url: "/dashboard/admin/finances/prets/config", icon: Settings, resource: "config" },
+  { title: "Workflow demandes", url: "/dashboard/admin/finances/demandes-pret/workflow", icon: Settings, resource: "prets_requests" },
   { title: "Aides", url: "/dashboard/admin/finances/aides", icon: HandHeart, resource: "aides" },
 ];
 
@@ -161,9 +164,15 @@ export function DashboardSidebar() {
   const visibleE2dReunionsItems = e2dReunionsItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
-  const visibleE2dFinancesItems = e2dFinancesItems.filter(item => 
-    !item.resource || hasPermission(item.resource, 'read')
-  );
+  const visibleE2dFinancesItems = e2dFinancesItems.filter(item => {
+    if (!item.resource) return true;
+    if (item.resource === "prets_requests") {
+      // Items "Demandes de prêt" : validate, "Workflow demandes" : configure
+      if (item.title === "Workflow demandes") return hasPermission("prets_requests", "configure");
+      return hasPermission("prets_requests", "validate");
+    }
+    return hasPermission(item.resource, 'read');
+  });
   const visibleE2dTontineItems = e2dTontineItems.filter(item => 
     !item.resource || hasPermission(item.resource, 'read')
   );
