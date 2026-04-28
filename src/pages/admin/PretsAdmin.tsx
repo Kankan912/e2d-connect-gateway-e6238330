@@ -39,10 +39,7 @@ import { addMonths, format } from "date-fns";
 
 type StatutFilter = 'tous' | 'en_cours' | 'rembourse' | 'partiel' | 'en_retard' | 'reconduit';
 
-import { LoanRequestDialog } from "@/components/loans/LoanRequestDialog";
-
 export default function PretsAdmin() {
-  const [loanRequestOpen, setLoanRequestOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedPret, setSelectedPret] = useState<PretAdminWithJoins | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
