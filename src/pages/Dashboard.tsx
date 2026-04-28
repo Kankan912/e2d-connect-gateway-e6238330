@@ -144,6 +144,8 @@ const Dashboard = () => {
           {/* ==================== ROUTES FINANCES AVANCÉES ==================== */}
           <Route path="/admin/finances/prets" element={<PermissionRoute resource="prets" permission="read"><ErrorBoundary fallbackTitle="Erreur - Prêts"><PretsAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/finances/prets/config" element={<PermissionRoute resource="config" permission="write"><ErrorBoundary fallbackTitle="Erreur - Config Prêts"><PretsConfigAdmin /></ErrorBoundary></PermissionRoute>} />
+          <Route path="/admin/finances/demandes-pret" element={<PermissionRoute resource="prets_requests" permission="validate"><ErrorBoundary fallbackTitle="Erreur - Demandes de prêt"><DemandesPretAdmin /></ErrorBoundary></PermissionRoute>} />
+          <Route path="/admin/finances/demandes-pret/workflow" element={<PermissionRoute resource="prets_requests" permission="configure"><ErrorBoundary fallbackTitle="Erreur - Workflow"><LoanWorkflowConfig /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/finances/aides" element={<PermissionRoute resource="aides" permission="read"><ErrorBoundary fallbackTitle="Erreur - Aides"><AidesAdmin /></ErrorBoundary></PermissionRoute>} />
           
           {/* ==================== ROUTES COMMUNICATION ==================== */}
