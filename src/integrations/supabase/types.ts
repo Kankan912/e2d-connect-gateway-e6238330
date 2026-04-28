@@ -5121,6 +5121,10 @@ export type Database = {
           }
         | { Args: { role_name: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      projeter_cotisations_reunion: {
+        Args: { _reunion_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role:
