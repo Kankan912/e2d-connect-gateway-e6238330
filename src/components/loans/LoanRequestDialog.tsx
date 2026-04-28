@@ -51,8 +51,13 @@ export function LoanRequestDialog({ open, onOpenChange }: Props) {
     setSubmitting(true);
     try {
       await create.mutateAsync({
-        ...values,
+        montant: values.montant,
+        description: values.description,
+        urgence: values.urgence,
+        duree_mois: values.duree_mois,
+        capacite_remboursement: values.capacite_remboursement,
         garantie: values.garantie?.trim() || null,
+        conditions_acceptees: true,
       });
       form.reset();
       onOpenChange(false);
