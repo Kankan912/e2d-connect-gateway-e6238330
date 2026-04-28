@@ -3307,6 +3307,9 @@ export type Database = {
           interet_mois: number
           notes: string | null
           pret_id: string
+          statut: string
+          validee_le: string | null
+          validee_par: string | null
         }
         Insert: {
           created_at?: string | null
@@ -3315,6 +3318,9 @@ export type Database = {
           interet_mois: number
           notes?: string | null
           pret_id: string
+          statut?: string
+          validee_le?: string | null
+          validee_par?: string | null
         }
         Update: {
           created_at?: string | null
@@ -3323,6 +3329,9 @@ export type Database = {
           interet_mois?: number
           notes?: string | null
           pret_id?: string
+          statut?: string
+          validee_le?: string | null
+          validee_par?: string | null
         }
         Relationships: [
           {
@@ -5070,6 +5079,8 @@ export type Database = {
         Args: { p_exercice_id: string; p_membre_id: string }
         Returns: Json
       }
+      get_caisse_stats: { Args: never; Returns: Json }
+      get_caisse_synthese: { Args: never; Returns: Json }
       get_cotisation_mensuelle_membre: {
         Args: { _exercice_id: string; _membre_id: string }
         Returns: number

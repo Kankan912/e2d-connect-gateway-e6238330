@@ -17,7 +17,9 @@ export function formatCurrency(
   locale: string = 'fr-FR'
 ): string {
   if (currency === 'FCFA') {
-    return `${amount.toLocaleString(locale)} FCFA`;
+    // FCFA n'admet aucune décimale : on plancher systématiquement.
+    const safe = Math.floor(Number(amount) || 0);
+    return `${safe.toLocaleString(locale)} FCFA`;
   }
   
   const currencyMap: Record<string, string> = {

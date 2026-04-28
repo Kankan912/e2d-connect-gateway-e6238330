@@ -61,12 +61,11 @@ export function calculerResumePret(
     reconductionsInterets = historiqueReconductions.map(r => Number(r.interet_mois) || 0);
     totalInterets = interetInitial + reconductionsInterets.reduce((sum, r) => sum + r, 0);
   } else if ((pret.reconductions || 0) > 0) {
-    // Fallback: calcul composé quand l'historique n'est pas chargé
-    let solde = capital + interetInitial;
+    // Fallback: INTÉRÊT SIMPLE — chaque mois de reconduction génère le même
+    // intérêt calculé sur le capital initial uniquement (pas de capitalisation).
+    const interetMensuel = capital * taux;
     for (let i = 0; i < (pret.reconductions || 0); i++) {
-      const interetRecon = solde * taux;
-      reconductionsInterets.push(interetRecon);
-      solde += interetRecon;
+      reconductionsInterets.push(interetMensuel);
     }
     totalInterets = interetInitial + reconductionsInterets.reduce((sum, r) => sum + r, 0);
   } else {

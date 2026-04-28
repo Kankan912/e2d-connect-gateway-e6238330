@@ -191,81 +191,26 @@ export const useCaisseOperations = (filters?: CaisseFilters) => {
   });
 };
 
-// Hook pour les statistiques de caisse (dérive de useCaisseSynthese pour éviter la duplication)
+// Hook pour les statistiques de caisse — source de vérité backend (get_caisse_stats RPC)
 export const useCaisseStats = () => {
-  const { data: config } = useCaisseConfig();
-
   return useQuery({
     queryKey: ["caisse-stats"],
     queryFn: async (): Promise<CaisseStats> => {
-      const now = new Date();
-      const debutMois = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-
-      // Pagination: récupérer toutes les opérations par blocs de 1000
-      const allOperations: Array<{ montant: number; type_operation: string; date_operation: string }> = [];
-      let from = 0;
-      const PAGE_SIZE = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("fond_caisse_operations")
-          .select("montant, type_operation, date_operation")
-          .range(from, from + PAGE_SIZE - 1);
-
-        if (error) throw error;
-        if (data) allOperations.push(...data);
-        hasMore = (data?.length || 0) === PAGE_SIZE;
-        from += PAGE_SIZE;
-      }
-
-      const total_entrees = allOperations
-        .filter(o => o.type_operation === 'entree')
-        .reduce((sum, o) => sum + Number(o.montant), 0);
-
-      const total_sorties = allOperations
-        .filter(o => o.type_operation === 'sortie')
-        .reduce((sum, o) => sum + Number(o.montant), 0);
-
-      const total_entrees_mois = allOperations
-        .filter(o => o.type_operation === 'entree' && o.date_operation >= debutMois)
-        .reduce((sum, o) => sum + Number(o.montant), 0);
-
-      const total_sorties_mois = allOperations
-        .filter(o => o.type_operation === 'sortie' && o.date_operation >= debutMois)
-        .reduce((sum, o) => sum + Number(o.montant), 0);
-
-      const solde_global = total_entrees - total_sorties;
-      const pourcentage = config?.pourcentage_empruntable || 80;
-      const solde_empruntable = solde_global * (pourcentage / 100);
-
-      const alertes: Array<{ type: 'warning' | 'error'; message: string }> = [];
-
-      if (config) {
-        if (solde_global < config.seuil_alerte_solde) {
-          alertes.push({
-            type: 'warning',
-            message: `Solde global bas: ${formatFCFA(solde_global)} (seuil: ${formatFCFA(config.seuil_alerte_solde)})`
-          });
-        }
-        if (solde_empruntable < config.seuil_alerte_empruntable) {
-          alertes.push({
-            type: 'error',
-            message: `Solde empruntable critique: ${formatFCFA(solde_empruntable)} (seuil: ${formatFCFA(config.seuil_alerte_empruntable)})`
-          });
-        }
-      }
-
+      const { data, error } = await supabase.rpc('get_caisse_stats');
+      if (error) throw error;
+      const d = (data || {}) as Record<string, unknown>;
       return {
-        solde_global,
-        solde_empruntable,
-        total_entrees,
-        total_sorties,
-        total_entrees_mois,
-        total_sorties_mois,
-        alertes
+        solde_global: Number(d.solde_global ?? 0),
+        solde_empruntable: Number(d.solde_empruntable ?? 0),
+        total_entrees: Number(d.total_entrees ?? 0),
+        total_sorties: Number(d.total_sorties ?? 0),
+        total_entrees_mois: Number(d.total_entrees_mois ?? 0),
+        total_sorties_mois: Number(d.total_sorties_mois ?? 0),
+        alertes: (d.alertes as CaisseStats['alertes']) ?? [],
       };
     },
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 };
 
@@ -577,62 +522,36 @@ export const useCaisseDetails = (type: DetailType | null, enabled: boolean) => {
   });
 };
 
-// ─── useCaisseSynthese (merged from useCaisseSynthese.ts) ───────────────────
+// ─── useCaisseSynthese — source de vérité backend (get_caisse_synthese RPC) ──
+// Tous les calculs sont exécutés en SQL pur côté serveur, garantissant cohérence
+// et arrondi systématique (FLOOR) pour bannir les décimales en FCFA.
 
 export const useCaisseSynthese = () => {
   return useQuery({
     queryKey: ["caisse-synthese"],
     queryFn: async (): Promise<CaisseSynthese> => {
-      const operations: Array<any> = [];
-      let from = 0;
-      const PAGE_SIZE = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("fond_caisse_operations")
-          .select("montant, type_operation, categorie, libelle")
-          .range(from, from + PAGE_SIZE - 1);
-        if (error) throw error;
-        if (data) operations.push(...data);
-        hasMore = (data?.length || 0) === PAGE_SIZE;
-        from += PAGE_SIZE;
-      }
-
-      const totalEpargnes = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'epargne').reduce((sum, o) => sum + Number(o.montant), 0);
-      const totalCotisations = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'cotisation').reduce((sum, o) => sum + Number(o.montant), 0);
-      const sanctionsEncaissees = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'sanction').reduce((sum, o) => sum + Number(o.montant), 0);
-      const aidesDistribuees = operations.filter(o => o.type_operation === 'sortie' && o.categorie === 'aide').reduce((sum, o) => sum + Number(o.montant), 0);
-      const pretsDecaisses = operations.filter(o => o.type_operation === 'sortie' && o.categorie === 'pret_decaissement').reduce((sum, o) => sum + Number(o.montant), 0);
-      const pretsRembourses = operations.filter(o => o.type_operation === 'entree' && o.categorie === 'pret_remboursement').reduce((sum, o) => sum + Number(o.montant), 0);
-      const totalDistributionsBeneficiaires = operations.filter(o => o.type_operation === 'sortie' && (o.categorie === 'beneficiaire' || o.libelle?.toLowerCase().includes('bénéficiaire'))).reduce((sum, o) => sum + Number(o.montant), 0);
-      const fondSport = operations.filter(o => o.categorie === 'sport' || o.libelle?.toLowerCase().includes('sport')).reduce((sum, o) => o.type_operation === 'entree' ? sum + Number(o.montant) : sum - Number(o.montant), 0);
-
-      const { data: sanctionsData } = await supabase.from("reunions_sanctions").select("montant_amende, statut").not("montant_amende", "is", null);
-      const totalSanctions = sanctionsData?.reduce((sum, s) => sum + Number(s.montant_amende || 0), 0) || 0;
-      const sanctionsImpayees = totalSanctions - sanctionsEncaissees;
-      const tauxRecouvrement = totalSanctions > 0 ? Math.round((sanctionsEncaissees / totalSanctions) * 100) : 100;
-
-      const { data: pretsData } = await supabase.from("prets").select("montant, capital_paye, statut").in('statut', ['en_cours', 'partiel', 'reconduit']);
-      const pretsEnCours = pretsData?.reduce((sum, p) => sum + (Number(p.montant) - Number(p.capital_paye || 0)), 0) || 0;
-
-      const reliquatCotisations = totalCotisations - totalDistributionsBeneficiaires;
-      const totalEntrees = operations.filter(o => o.type_operation === 'entree').reduce((sum, o) => sum + Number(o.montant), 0);
-      const totalSorties = operations.filter(o => o.type_operation === 'sortie').reduce((sum, o) => sum + Number(o.montant), 0);
-      const fondTotal = totalEntrees - totalSorties;
-
-      const { data: caisseConfig } = await supabase.from("caisse_config").select("pourcentage_empruntable").limit(1).maybeSingle();
-      const pourcentageEmpruntable = caisseConfig?.pourcentage_empruntable || 80;
-      const soldeEmpruntable = Math.max(0, (fondTotal * pourcentageEmpruntable / 100) - pretsEnCours);
-
+      const { data, error } = await supabase.rpc('get_caisse_synthese');
+      if (error) throw error;
+      const d = (data || {}) as Record<string, unknown>;
       return {
-        fondTotal, totalEpargnes, totalCotisations, sanctionsEncaissees, sanctionsImpayees,
-        aidesDistribuees, pretsDecaisses, pretsRembourses, pretsEnCours, fondSport,
-        reliquatCotisations, totalDistributionsBeneficiaires, tauxRecouvrement,
-        soldeEmpruntable, pourcentageEmpruntable,
+        fondTotal: Number(d.fondTotal ?? 0),
+        totalEpargnes: Number(d.totalEpargnes ?? 0),
+        totalCotisations: Number(d.totalCotisations ?? 0),
+        sanctionsEncaissees: Number(d.sanctionsEncaissees ?? 0),
+        sanctionsImpayees: Number(d.sanctionsImpayees ?? 0),
+        aidesDistribuees: Number(d.aidesDistribuees ?? 0),
+        pretsDecaisses: Number(d.pretsDecaisses ?? 0),
+        pretsRembourses: Number(d.pretsRembourses ?? 0),
+        pretsEnCours: Number(d.pretsEnCours ?? 0),
+        fondSport: Number(d.fondSport ?? 0),
+        reliquatCotisations: Number(d.reliquatCotisations ?? 0),
+        totalDistributionsBeneficiaires: Number(d.totalDistributionsBeneficiaires ?? 0),
+        tauxRecouvrement: Number(d.tauxRecouvrement ?? 100),
+        soldeEmpruntable: Number(d.soldeEmpruntable ?? 0),
+        pourcentageEmpruntable: Number(d.pourcentageEmpruntable ?? 80),
       };
     },
-    refetchInterval: 2 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
     staleTime: 60 * 1000,
   });
 };
