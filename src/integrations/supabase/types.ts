@@ -3307,6 +3307,9 @@ export type Database = {
           interet_mois: number
           notes: string | null
           pret_id: string
+          statut: string
+          validee_le: string | null
+          validee_par: string | null
         }
         Insert: {
           created_at?: string | null
@@ -3315,6 +3318,9 @@ export type Database = {
           interet_mois: number
           notes?: string | null
           pret_id: string
+          statut?: string
+          validee_le?: string | null
+          validee_par?: string | null
         }
         Update: {
           created_at?: string | null
@@ -3323,6 +3329,9 @@ export type Database = {
           interet_mois?: number
           notes?: string | null
           pret_id?: string
+          statut?: string
+          validee_le?: string | null
+          validee_par?: string | null
         }
         Relationships: [
           {
