@@ -513,13 +513,9 @@ export default function PretsAdmin() {
               Nouveau Prêt
             </Button>
           )}
-          <Button variant="secondary" onClick={() => setLoanRequestOpen(true)}>
+          <Button variant="outline" onClick={() => window.location.href = '/dashboard/admin/finances/demandes-pret'}>
             <FileText className="h-4 w-4 mr-2" />
-            Demande de prêt
-          </Button>
-          <Button variant="outline" onClick={() => window.location.href = '/dashboard/admin/finances/prets/demandes'}>
-            <Eye className="h-4 w-4 mr-2" />
-            Voir demandes
+            Demandes de prêt
           </Button>
         </div>
       </div>
