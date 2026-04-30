@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   User, Calendar, Banknote, Percent, RefreshCw, 
-  CheckCircle, Clock, AlertTriangle, FileText, Building, Download, History
+  CheckCircle, Clock, AlertTriangle, FileText, Building, Download, History, XCircle
 } from "lucide-react";
 import { formatFCFA } from "@/lib/utils";
 import { calculerResumePret } from "@/lib/pretCalculsService";
@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import PretHistoriqueComplet from "./PretHistoriqueComplet";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface PretDetailsModalProps {
   pretId: string;
