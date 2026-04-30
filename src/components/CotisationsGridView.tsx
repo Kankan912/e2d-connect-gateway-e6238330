@@ -10,7 +10,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Coins, Plus, Check, Edit2, BarChart2, Loader2, AlertCircle } from 'lucide-react';
+import { Coins, Plus, Check, Edit2, BarChart2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { formatFCFA } from '@/lib/utils';
 import CotisationCellModal from './CotisationCellModal';
 import CotisationsEtatsModal from './CotisationsEtatsModal';
