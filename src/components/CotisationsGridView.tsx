@@ -310,14 +310,35 @@ export default function CotisationsGridView({ reunionId, exerciceId, isEditable 
                 <Badge variant="secondary" className="ml-2">Lecture seule</Badge>
               )}
             </CardTitle>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setEtatsModalOpen(true)}
-            >
-              <BarChart2 className="h-4 w-4 mr-2" />
-              États
-            </Button>
+            <div className="flex items-center gap-2">
+              {isEditable && hasPermission('cotisations', 'create') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const { data, error } = await supabase.rpc('projeter_cotisations_reunion', { _reunion_id: reunionId });
+                    if (error) {
+                      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+                      return;
+                    }
+                    const inserted = (data as { inserted?: number } | null)?.inserted ?? 0;
+                    toast({ title: 'Projection régénérée', description: `${inserted} cotisation(s) ajoutée(s)` });
+                    queryClient.invalidateQueries({ queryKey: ['cotisations-grid', reunionId] });
+                  }}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Régénérer projection
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEtatsModalOpen(true)}
+              >
+                <BarChart2 className="h-4 w-4 mr-2" />
+                États
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
