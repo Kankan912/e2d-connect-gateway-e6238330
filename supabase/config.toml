@@ -51,3 +51,6 @@ verify_jwt = false
 [functions.send-user-credentials]
 verify_jwt = false
 
+[functions.test-email-configuration]
+verify_jwt = false
+
