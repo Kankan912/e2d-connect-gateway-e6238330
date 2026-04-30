@@ -35,6 +35,7 @@ const AdhesionsAdmin = lazyWithRetry(() => import("./admin/AdhesionsAdmin"));
 const PaymentConfigAdmin = lazyWithRetry(() => import("./admin/PaymentConfigAdmin"));
 const StatsAdmin = lazyWithRetry(() => import("./admin/StatsAdmin"));
 const UtilisateursAdmin = lazyWithRetry(() => import("./admin/UtilisateursAdmin"));
+const MonitoringAdmin = lazyWithRetry(() => import("./admin/MonitoringAdmin"));
 
 // Admin Pages - Tontine/Finance
 const Epargnes = lazyWithRetry(() => import("./Epargnes"));
@@ -121,6 +122,7 @@ const Dashboard = () => {
           <Route path="/admin/utilisateurs" element={<PermissionRoute resource="roles" permission="write"><ErrorBoundary fallbackTitle="Erreur - Utilisateurs"><UtilisateursAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/permissions" element={<PermissionRoute resource="configuration" permission="read"><ErrorBoundary fallbackTitle="Erreur - Permissions"><PermissionsAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/stats" element={<PermissionRoute resource="stats" permission="read"><ErrorBoundary fallbackTitle="Erreur - Statistiques"><StatsAdmin /></ErrorBoundary></PermissionRoute>} />
+          <Route path="/admin/monitoring" element={<PermissionRoute resource="roles" permission="write"><ErrorBoundary fallbackTitle="Erreur - Monitoring"><MonitoringAdmin /></ErrorBoundary></PermissionRoute>} />
           
           {/* ==================== ROUTES TONTINE ==================== */}
           <Route path="/admin/tontine/epargnes" element={<PermissionRoute resource="epargnes" permission="read"><ErrorBoundary fallbackTitle="Erreur - Épargnes"><Epargnes /></ErrorBoundary></PermissionRoute>} />

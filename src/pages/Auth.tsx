@@ -5,30 +5,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail, Lock } from "lucide-react";
+import { Loader2, Mail, Lock, Info } from "lucide-react";
 import logoE2D from "@/assets/logo-e2d.png";
+import { logger } from "@/lib/logger";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading, mustChangePassword } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [showSignUp, setShowSignUp] = useState(false);
 
-  // Sign in form
   const [signInEmail, setSignInEmail] = useState("");
   const [signInPassword, setSignInPassword] = useState("");
 
-  // Sign up form
-  const [signUpEmail, setSignUpEmail] = useState("");
-  const [signUpPassword, setSignUpPassword] = useState("");
-  const [signUpNom, setSignUpNom] = useState("");
-  const [signUpPrenom, setSignUpPrenom] = useState("");
-  const [signUpTelephone, setSignUpTelephone] = useState("");
-
   useEffect(() => {
     if (!authLoading && user) {
-      // Redirect to password change if required
       if (mustChangePassword) {
         navigate("/change-password");
       } else {
@@ -47,7 +38,18 @@ const Auth = () => {
         password: signInPassword,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Log échec de connexion (ne bloque pas l'UX si la table refuse)
+        try {
+          await supabase.from("historique_connexion").insert({
+            statut: "echec",
+            user_agent: navigator.userAgent,
+          });
+        } catch (logErr) {
+          logger.error("[Auth] Failed to log failed login:", logErr);
+        }
+        throw error;
+      }
 
       toast({
         title: "Connexion réussie",
@@ -58,50 +60,6 @@ const Auth = () => {
       toast({
         title: "Erreur de connexion",
         description: error instanceof Error ? error.message : "Email ou mot de passe incorrect",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { error } = await supabase.auth.signUp({
-        email: signUpEmail,
-        password: signUpPassword,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            nom: signUpNom,
-            prenom: signUpPrenom,
-            telephone: signUpTelephone,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Inscription réussie",
-        description: "Vérifiez votre email pour confirmer votre compte",
-      });
-      
-      setShowSignUp(false);
-      setSignUpEmail("");
-      setSignUpPassword("");
-      setSignUpNom("");
-      setSignUpPrenom("");
-      setSignUpTelephone("");
-    } catch (error: unknown) {
-      toast({
-        title: "Erreur d'inscription",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'inscription",
         variant: "destructive",
       });
     } finally {
@@ -131,128 +89,52 @@ const Auth = () => {
         </div>
 
         <div className="bg-white shadow-2xl rounded-lg p-8">
-          {!showSignUp ? (
-            <form onSubmit={handleSignIn} className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="votre@email.com"
-                  value={signInEmail}
-                  onChange={(e) => setSignInEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                  className="pl-10"
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={signInPassword}
-                  onChange={(e) => setSignInPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                  className="pl-10"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connexion en cours...
-                  </>
-                ) : (
-                  "Se connecter"
-                )}
-              </Button>
-              <p className="text-center text-sm text-muted-foreground mt-4">
-                Pas encore membre ?{" "}
-                <button
-                  type="button"
-                  onClick={() => setShowSignUp(true)}
-                  className="text-primary hover:underline font-medium"
-                >
-                  Créer un compte
-                </button>
-              </p>
-            </form>
-          ) : (
-            <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  type="text"
-                  placeholder="Nom"
-                  value={signUpNom}
-                  onChange={(e) => setSignUpNom(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-                <Input
-                  type="text"
-                  placeholder="Prénom"
-                  value={signUpPrenom}
-                  onChange={(e) => setSignUpPrenom(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
+          <form onSubmit={handleSignIn} className="space-y-4">
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
-                type="tel"
-                placeholder="Téléphone"
-                value={signUpTelephone}
-                onChange={(e) => setSignUpTelephone(e.target.value)}
+                type="email"
+                placeholder="votre@email.com"
+                value={signInEmail}
+                onChange={(e) => setSignInEmail(e.target.value)}
                 required
                 disabled={loading}
+                className="pl-10"
+                autoComplete="email"
               />
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={signUpEmail}
-                  onChange={(e) => setSignUpEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                  className="pl-10"
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Mot de passe"
-                  value={signUpPassword}
-                  onChange={(e) => setSignUpPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                  minLength={6}
-                  className="pl-10"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Inscription en cours...
-                  </>
-                ) : (
-                  "S'inscrire"
-                )}
-              </Button>
-              <p className="text-center text-sm text-muted-foreground mt-4">
-                Déjà membre ?{" "}
-                <button
-                  type="button"
-                  onClick={() => setShowSignUp(false)}
-                  className="text-primary hover:underline font-medium"
-                >
-                  Se connecter
-                </button>
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={signInPassword}
+                onChange={(e) => setSignInPassword(e.target.value)}
+                required
+                disabled={loading}
+                className="pl-10"
+                autoComplete="current-password"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Connexion en cours...
+                </>
+              ) : (
+                "Se connecter"
+              )}
+            </Button>
+
+            <div className="flex items-start gap-2 mt-4 p-3 rounded-md bg-muted/50 border border-border">
+              <Info className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Les comptes sont créés exclusivement par l'administrateur.
+                Contactez le bureau de l'association pour obtenir vos identifiants.
               </p>
-            </form>
-          )}
+            </div>
+          </form>
         </div>
 
         <div className="text-center">
