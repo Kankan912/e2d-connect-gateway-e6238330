@@ -59,7 +59,7 @@ export default function FileUploadField({
           .createSignedUrl(value, 60 * 10); // 10 minutes
         if (!cancelled) {
           if (error) {
-            logger.error("Erreur génération URL signée", error, { bucket, path: value });
+            logger.error("Erreur génération URL signée", error, { component: "FileUploadField", data: { bucket, path: value } });
             setPreviewUrl(null);
           } else {
             setPreviewUrl(data.signedUrl);
@@ -115,7 +115,7 @@ export default function FileUploadField({
         description: "Le fichier a été téléversé avec succès",
       });
     } catch (error: unknown) {
-      logger.error("Erreur upload fichier", error, { bucket });
+      logger.error("Erreur upload fichier", error, { component: "FileUploadField", data: { bucket } });
       toast({
         title: "Erreur",
         description:
@@ -154,7 +154,7 @@ export default function FileUploadField({
         description: "Le fichier a été supprimé avec succès",
       });
     } catch (error: unknown) {
-      logger.error("Erreur suppression fichier", error, { bucket });
+      logger.error("Erreur suppression fichier", error, { component: "FileUploadField", data: { bucket } });
       onChange(null);
     }
   };

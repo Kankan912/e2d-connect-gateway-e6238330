@@ -70,7 +70,7 @@ const BUCKETS = [
   { id: "site-events", label: "Événements" },
   { id: "site-partners", label: "Partenaires" },
   { id: "site-hero", label: "Hero" },
-  { id: "membre-photos", label: "Photos Membres" },
+  { id: "members-photos", label: "Photos Membres" },
   { id: "sport-logos", label: "Logos Sport" },
   { id: "justificatifs", label: "Justificatifs" },
 ];
