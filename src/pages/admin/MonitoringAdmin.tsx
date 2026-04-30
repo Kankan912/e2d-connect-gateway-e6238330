@@ -507,7 +507,7 @@ const ActionsLogTab = () => {
                           </>
                         ) : <span className="text-muted-foreground italic text-xs">{e.user_id?.slice(0, 8) ?? "système"}</span>}
                       </TableCell>
-                      <TableCell><Badge variant="outline">{e.action}</Badge></TableCell>
+                      <TableCell><Badge variant="outline">{String(e.action)}</Badge></TableCell>
                       <TableCell className="text-xs font-mono">{e.target}</TableCell>
                       <TableCell><Badge variant="secondary" className="text-xs">{e.source.replace("_", " ")}</Badge></TableCell>
                       <TableCell>
