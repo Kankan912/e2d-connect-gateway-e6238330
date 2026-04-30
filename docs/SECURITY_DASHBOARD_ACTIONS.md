@@ -4,6 +4,14 @@ Ces actions ne peuvent **pas** être faites depuis le code. Elles doivent être 
 manuellement par un administrateur dans le dashboard Supabase du projet
 `piyvinbuxpnquwzyugdj`.
 
+## 0. ⚠️ CRITIQUE — Désactiver l'auto-inscription publique
+Les comptes membres doivent être créés **uniquement** par l'administrateur.
+La page `/auth` ne propose plus de bouton "Créer un compte", mais Supabase
+accepte toujours les `signUp()` au niveau API tant que cette option est active.
+- Aller dans **Authentication → Providers → Email**.
+- Désactiver **"Allow new users to sign up"** (ou "Enable signup").
+- Conserver "Confirm email" activé pour les invitations admin.
+
 ## 1. Réduire la durée de vie des OTP
 Le linter signale "Auth OTP long expiry".
 - Aller dans **Authentication → Providers → Email**.
