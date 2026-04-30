@@ -5220,6 +5220,14 @@ export type Database = {
       }
     }
     Functions: {
+      audit_auth_membres_sync: {
+        Args: never
+        Returns: {
+          detail: string
+          id: string
+          type: string
+        }[]
+      }
       calculate_total_pret_amount: {
         Args: {
           montant_initial: number
