@@ -199,13 +199,15 @@ export const useCaisseStats = () => {
       const { data, error } = await supabase.rpc('get_caisse_stats');
       if (error) throw error;
       const d = (data || {}) as Record<string, unknown>;
+      // FCFA n'admet aucune décimale : on plancher systématiquement (audit Caisse)
+      const toInt = (v: unknown) => Math.floor(Number(v ?? 0));
       return {
-        solde_global: Number(d.solde_global ?? 0),
-        solde_empruntable: Number(d.solde_empruntable ?? 0),
-        total_entrees: Number(d.total_entrees ?? 0),
-        total_sorties: Number(d.total_sorties ?? 0),
-        total_entrees_mois: Number(d.total_entrees_mois ?? 0),
-        total_sorties_mois: Number(d.total_sorties_mois ?? 0),
+        solde_global: toInt(d.solde_global),
+        solde_empruntable: toInt(d.solde_empruntable),
+        total_entrees: toInt(d.total_entrees),
+        total_sorties: toInt(d.total_sorties),
+        total_entrees_mois: toInt(d.total_entrees_mois),
+        total_sorties_mois: toInt(d.total_sorties_mois),
         alertes: (d.alertes as CaisseStats['alertes']) ?? [],
       };
     },
