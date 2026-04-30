@@ -34,6 +34,27 @@ const queryClient = new QueryClient({
   },
 });
 
+const TrackedRoutes = () => {
+  usePageviewTracker();
+  useConnectionTracker();
+  return (
+    <Suspense fallback={<FullPageFallback />}>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/dashboard/*" element={<Dashboard />} />
+        <Route path="/don" element={<Don />} />
+        <Route path="/adhesion" element={<Adhesion />} />
+        <Route path="/change-password" element={<FirstPasswordChange />} />
+        <Route path="/evenements/:id" element={<EventDetail />} />
+        <Route path="/albums/:albumId" element={<AlbumDetail />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
+  );
+};
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -42,20 +63,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
-            <Suspense fallback={<FullPageFallback />}>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/dashboard/*" element={<Dashboard />} />
-                <Route path="/don" element={<Don />} />
-                <Route path="/adhesion" element={<Adhesion />} />
-                <Route path="/change-password" element={<FirstPasswordChange />} />
-                <Route path="/evenements/:id" element={<EventDetail />} />
-                <Route path="/albums/:albumId" element={<AlbumDetail />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
+            <TrackedRoutes />
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
