@@ -262,7 +262,11 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                 <Label htmlFor="email">Email *</Label>
                 <Input id="email" type="email" value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="jean.dupont@example.com" required />
+                  placeholder="jean.dupont@example.com" required
+                  aria-invalid={emailExists === true} />
+                {emailExists === true && (
+                  <p className="text-xs text-destructive">Cet email est déjà utilisé</p>
+                )}
               </div>
 
               <div className="space-y-2">
