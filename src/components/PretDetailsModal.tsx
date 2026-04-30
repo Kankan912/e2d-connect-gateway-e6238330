@@ -27,6 +27,8 @@ interface PretDetailsModalProps {
 }
 
 export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsModalProps) {
+  const queryClient = useQueryClient();
+  const { isAdmin } = usePermissions();
   const { data: pret } = useQuery({
     queryKey: ['pret-details', pretId],
     queryFn: async () => {
