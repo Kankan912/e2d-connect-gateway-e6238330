@@ -138,6 +138,10 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
       toast.error("Email invalide");
       return;
     }
+    if (emailExists === true) {
+      toast.error("Cet email est déjà utilisé");
+      return;
+    }
     if (!formData.nom.trim() || !formData.prenom.trim()) {
       toast.error("Nom et prénom obligatoires");
       return;
