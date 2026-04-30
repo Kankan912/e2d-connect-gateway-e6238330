@@ -273,6 +273,34 @@ export function EmailConfigManager() {
 
   return (
     <div className="space-y-6">
+      {/* Bandeau de statut de la configuration */}
+      <Alert className={configStatus.valid ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950" : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950"}>
+        {configStatus.valid ? <CheckCircle className="h-4 w-4 text-green-600" /> : <XCircle className="h-4 w-4 text-red-600" />}
+        <AlertDescription className={configStatus.valid ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200"}>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <span>
+              <strong>{configStatus.valid ? "✔ Configuration valide" : "❌ Configuration invalide"}</strong>
+              {" — "}
+              {configStatus.message}
+              {lastTestResult?.success && lastTestResult.fallback && (
+                <span className="ml-2 inline-block px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-xs">
+                  Dernier envoi : fallback {lastTestResult.provider}
+                </span>
+              )}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => runConfigurationTest("auto", true)}
+              disabled={sendingTestEmail}
+            >
+              {sendingTestEmail ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
+              Tester la configuration
+            </Button>
+          </div>
+        </AlertDescription>
+      </Alert>
+
       {/* Service Selection */}
       <Card>
         <CardHeader>
