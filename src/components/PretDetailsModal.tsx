@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   User, Calendar, Banknote, Percent, RefreshCw, 
-  CheckCircle, Clock, AlertTriangle, FileText, Building, Download, History
+  CheckCircle, Clock, AlertTriangle, FileText, Building, Download, History, XCircle
 } from "lucide-react";
 import { formatFCFA } from "@/lib/utils";
 import { calculerResumePret } from "@/lib/pretCalculsService";
@@ -18,6 +18,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import PretHistoriqueComplet from "./PretHistoriqueComplet";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PretDetailsModalProps {
   pretId: string;
@@ -26,6 +27,17 @@ interface PretDetailsModalProps {
 }
 
 export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsModalProps) {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { data: isAdmin } = useQuery({
+    queryKey: ['is-admin', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.rpc('is_admin');
+      return Boolean(data);
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
   const { data: pret } = useQuery({
     queryKey: ['pret-details', pretId],
     queryFn: async () => {
@@ -129,6 +141,32 @@ export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsM
       exportPretPDF(pret, paiements || [], reconductions || []);
       toast({ title: "PDF exporté avec succès" });
     }
+  };
+
+  // Validation reconductions (admin uniquement) — audit Prêts: workflow validation reconduction
+  const validateReconduction = useMutation({
+    mutationFn: async ({ id, statut }: { id: string; statut: 'validee' | 'refusee' }) => {
+      const { error } = await supabase
+        .from('prets_reconductions')
+        .update({ statut, validee_le: new Date().toISOString(), validee_par: user?.id ?? null })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      toast({ title: vars.statut === 'validee' ? 'Reconduction validée' : 'Reconduction refusée' });
+      queryClient.invalidateQueries({ queryKey: ['pret-reconductions-details', pretId] });
+      queryClient.invalidateQueries({ queryKey: ['pret-details', pretId] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Erreur lors de la validation';
+      toast({ title: 'Erreur', description: msg, variant: 'destructive' });
+    },
+  });
+
+  const reconductionStatutBadge = (s: string) => {
+    if (s === 'validee') return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Validée</Badge>;
+    if (s === 'refusee') return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Refusée</Badge>;
+    return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />En attente</Badge>;
   };
 
   return (
@@ -341,7 +379,9 @@ export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsM
                         <TableHead>#</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Intérêt du mois</TableHead>
+                        <TableHead>Statut</TableHead>
                         <TableHead>Notes</TableHead>
+                        {isAdmin && <TableHead className="text-right">Actions</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -350,7 +390,28 @@ export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsM
                           <TableCell className="font-medium">{reconductions.length - index}</TableCell>
                           <TableCell>{format(new Date(recon.date_reconduction), 'dd/MM/yyyy')}</TableCell>
                           <TableCell className="text-amber-600">+{formatFCFA(recon.interet_mois)}</TableCell>
+                          <TableCell>{reconductionStatutBadge(recon.statut || 'en_attente')}</TableCell>
                           <TableCell className="text-muted-foreground">{recon.notes || '-'}</TableCell>
+                          {isAdmin && (
+                            <TableCell className="text-right">
+                              {(recon.statut ?? 'en_attente') === 'en_attente' ? (
+                                <div className="flex gap-2 justify-end">
+                                  <Button size="sm" variant="outline"
+                                    disabled={validateReconduction.isPending}
+                                    onClick={() => validateReconduction.mutate({ id: recon.id, statut: 'validee' })}>
+                                    <CheckCircle className="h-3 w-3 mr-1" />Valider
+                                  </Button>
+                                  <Button size="sm" variant="ghost"
+                                    disabled={validateReconduction.isPending}
+                                    onClick={() => validateReconduction.mutate({ id: recon.id, statut: 'refusee' })}>
+                                    <XCircle className="h-3 w-3 mr-1" />Refuser
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>

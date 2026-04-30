@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRoles } from "@/hooks/useRoles";
@@ -67,6 +67,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
   const [step, setStep] = useState<"form" | "created">("form");
   const [isCreating, setIsCreating] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [emailExists, setEmailExists] = useState<boolean | null>(null);
   const [created, setCreated] = useState<{ userId: string; email: string; password: string } | null>(null);
 
   const [formData, setFormData] = useState({
@@ -80,6 +81,24 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
   });
 
   const availableMembers = members?.filter((m) => !m.user_id) || [];
+
+  // Pré-check email existant (debounce 400ms) — audit Utilisateurs
+  useEffect(() => {
+    const email = formData.email.trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) {
+      setEmailExists(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+      setEmailExists(!!data);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [formData.email]);
 
   const handleRoleToggle = (roleId: string) => {
     setFormData((prev) => ({
@@ -117,6 +136,10 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
     // Client-side mirror validation
     if (!EMAIL_RE.test(formData.email.trim())) {
       toast.error("Email invalide");
+      return;
+    }
+    if (emailExists === true) {
+      toast.error("Cet email est déjà utilisé");
       return;
     }
     if (!formData.nom.trim() || !formData.prenom.trim()) {
@@ -243,7 +266,11 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                 <Label htmlFor="email">Email *</Label>
                 <Input id="email" type="email" value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="jean.dupont@example.com" required />
+                  placeholder="jean.dupont@example.com" required
+                  aria-invalid={emailExists === true} />
+                {emailExists === true && (
+                  <p className="text-xs text-destructive">Cet email est déjà utilisé</p>
+                )}
               </div>
 
               <div className="space-y-2">
