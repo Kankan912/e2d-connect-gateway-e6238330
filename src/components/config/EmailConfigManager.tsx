@@ -332,8 +332,8 @@ export function EmailConfigManager() {
           <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
             <Info className="h-4 w-4 text-amber-600" />
             <AlertDescription className="text-amber-800 dark:text-amber-200">
-              <strong>Mode Test Resend :</strong> Sans domaine vérifié, les emails ne peuvent être envoyés 
-              qu'à l'adresse du propriétaire du compte Resend (<code className="bg-amber-100 dark:bg-amber-900 px-1 rounded">{resendOwnerEmail}</code>). 
+              <strong>Mode Test Resend :</strong> sans domaine vérifié, les emails ne peuvent être envoyés
+              qu'à l'adresse du propriétaire du compte Resend.
               Pour envoyer à tous les membres, <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="underline font-medium">vérifiez un domaine</a>.
             </AlertDescription>
           </Alert>
