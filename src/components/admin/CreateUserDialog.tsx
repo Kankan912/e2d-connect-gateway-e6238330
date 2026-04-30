@@ -82,6 +82,24 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
 
   const availableMembers = members?.filter((m) => !m.user_id) || [];
 
+  // Pré-check email existant (debounce 400ms) — audit Utilisateurs
+  useEffect(() => {
+    const email = formData.email.trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) {
+      setEmailExists(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+      setEmailExists(!!data);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [formData.email]);
+
   const handleRoleToggle = (roleId: string) => {
     setFormData((prev) => ({
       ...prev,
