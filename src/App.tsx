@@ -8,6 +8,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FullPageFallback } from "@/components/ui/page-loader";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { usePageviewTracker } from "@/hooks/usePageviewTracker";
+import { useConnectionTracker } from "@/hooks/useConnectionTracker";
 
 // Lazy load des pages principales avec retry automatique après déploiement
 const Index = lazyWithRetry(() => import("./pages/Index"));
