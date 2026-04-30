@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, X, FileText, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { logger } from "@/lib/logger";
 
 interface FileUploadFieldProps {
   label: string;
@@ -15,6 +16,15 @@ interface FileUploadFieldProps {
   maxSizeMB?: number;
 }
 
+/**
+ * Champ d'upload de fichier.
+ * - Pour les buckets PRIVÉS (ex: justificatifs), on stocke uniquement le chemin
+ *   du fichier et on génère une URL signée à la demande pour la prévisualisation.
+ * - La valeur retournée à `onChange` est le chemin (path) du fichier dans le bucket
+ *   pour les buckets privés, ou l'URL publique pour les buckets publics.
+ */
+const PRIVATE_BUCKETS = new Set(["justificatifs"]);
+
 export default function FileUploadField({
   label,
   value,
@@ -24,13 +34,52 @@ export default function FileUploadField({
   maxSizeMB = 5,
 }: FileUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const isPrivate = PRIVATE_BUCKETS.has(bucket);
+
+  // Génère une URL signée pour les buckets privés (rétrocompatible avec
+  // les anciennes valeurs qui contenaient déjà l'URL publique complète).
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPreview() {
+      if (!value) {
+        setPreviewUrl(null);
+        return;
+      }
+      // Si c'est déjà une URL complète (legacy ou bucket public), on l'utilise telle quelle
+      if (value.startsWith("http")) {
+        setPreviewUrl(value);
+        return;
+      }
+      if (isPrivate) {
+        const { data, error } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(value, 60 * 10); // 10 minutes
+        if (!cancelled) {
+          if (error) {
+            logger.error("Erreur génération URL signée", error, { component: "FileUploadField", data: { bucket, path: value } });
+            setPreviewUrl(null);
+          } else {
+            setPreviewUrl(data.signedUrl);
+          }
+        }
+      } else {
+        const { data } = supabase.storage.from(bucket).getPublicUrl(value);
+        if (!cancelled) setPreviewUrl(data.publicUrl);
+      }
+    }
+    loadPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [value, bucket, isPrivate]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Vérifier la taille du fichier
     if (file.size > maxSizeMB * 1024 * 1024) {
       toast({
         title: "Fichier trop volumineux",
@@ -43,34 +92,35 @@ export default function FileUploadField({
     setUploading(true);
 
     try {
-      // Générer un nom de fichier unique
       const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const filePath = fileName;
 
-      // Upload vers Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from(bucket)
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Obtenir l'URL publique
-      const { data: urlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath);
-
-      onChange(urlData.publicUrl);
+      // Pour un bucket privé : on stocke le path. Pour un bucket public : URL publique.
+      if (isPrivate) {
+        onChange(filePath);
+      } else {
+        const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+        onChange(urlData.publicUrl);
+      }
 
       toast({
         title: "Fichier téléversé",
         description: "Le fichier a été téléversé avec succès",
       });
     } catch (error: unknown) {
-      console.error("Erreur upload:", error);
+      logger.error("Erreur upload fichier", error, { component: "FileUploadField", data: { bucket } });
       toast({
         title: "Erreur",
-        description: "Impossible de téléverser le fichier: " + (error instanceof Error ? error.message : "Erreur"),
+        description:
+          "Impossible de téléverser le fichier: " +
+          (error instanceof Error ? error.message : "Erreur"),
         variant: "destructive",
       });
     } finally {
@@ -82,14 +132,21 @@ export default function FileUploadField({
     if (!value) return;
 
     try {
-      // Extraire le chemin du fichier de l'URL
-      const url = new URL(value);
-      const pathParts = url.pathname.split("/");
-      const fileName = pathParts[pathParts.length - 1];
+      let filePath = value;
+      // Cas legacy : URL complète stockée
+      if (value.startsWith("http")) {
+        const marker = isPrivate
+          ? `/storage/v1/object/sign/${bucket}/`
+          : `/storage/v1/object/public/${bucket}/`;
+        const parts = value.split(marker);
+        if (parts.length === 2) {
+          filePath = parts[1].split("?")[0];
+        } else {
+          filePath = value.split("/").pop() || value;
+        }
+      }
 
-      // Supprimer de Supabase Storage
-      await supabase.storage.from(bucket).remove([fileName]);
-
+      await supabase.storage.from(bucket).remove([filePath]);
       onChange(null);
 
       toast({
@@ -97,8 +154,7 @@ export default function FileUploadField({
         description: "Le fichier a été supprimé avec succès",
       });
     } catch (error: unknown) {
-      console.error("Erreur suppression:", error);
-      // Même si la suppression échoue, on permet de retirer l'URL
+      logger.error("Erreur suppression fichier", error, { component: "FileUploadField", data: { bucket } });
       onChange(null);
     }
   };
@@ -110,14 +166,20 @@ export default function FileUploadField({
       {value ? (
         <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
           <FileText className="w-5 h-5 text-primary flex-shrink-0" />
-          <a
-            href={value}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-primary hover:underline truncate flex-1"
-          >
-            Voir le fichier
-          </a>
+          {previewUrl ? (
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-primary hover:underline truncate flex-1"
+            >
+              Voir le fichier
+            </a>
+          ) : (
+            <span className="text-sm text-muted-foreground truncate flex-1">
+              Chargement…
+            </span>
+          )}
           <Button
             type="button"
             variant="ghost"
