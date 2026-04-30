@@ -379,7 +379,9 @@ export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsM
                         <TableHead>#</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Intérêt du mois</TableHead>
+                        <TableHead>Statut</TableHead>
                         <TableHead>Notes</TableHead>
+                        {isAdmin && <TableHead className="text-right">Actions</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -388,7 +390,28 @@ export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsM
                           <TableCell className="font-medium">{reconductions.length - index}</TableCell>
                           <TableCell>{format(new Date(recon.date_reconduction), 'dd/MM/yyyy')}</TableCell>
                           <TableCell className="text-amber-600">+{formatFCFA(recon.interet_mois)}</TableCell>
+                          <TableCell>{reconductionStatutBadge(recon.statut || 'en_attente')}</TableCell>
                           <TableCell className="text-muted-foreground">{recon.notes || '-'}</TableCell>
+                          {isAdmin && (
+                            <TableCell className="text-right">
+                              {(recon.statut ?? 'en_attente') === 'en_attente' ? (
+                                <div className="flex gap-2 justify-end">
+                                  <Button size="sm" variant="outline"
+                                    disabled={validateReconduction.isPending}
+                                    onClick={() => validateReconduction.mutate({ id: recon.id, statut: 'validee' })}>
+                                    <CheckCircle className="h-3 w-3 mr-1" />Valider
+                                  </Button>
+                                  <Button size="sm" variant="ghost"
+                                    disabled={validateReconduction.isPending}
+                                    onClick={() => validateReconduction.mutate({ id: recon.id, statut: 'refusee' })}>
+                                    <XCircle className="h-3 w-3 mr-1" />Refuser
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
