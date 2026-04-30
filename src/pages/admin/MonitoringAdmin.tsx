@@ -215,6 +215,8 @@ const ConnectionsTab = () => {
 
       return (data ?? []).map(r => ({
         ...r,
+        // Normalisation défensive : "reussi" (legacy) -> "succes"
+        statut: r.statut === "reussi" ? "succes" : r.statut,
         profile: r.user_id ? profilesMap.get(r.user_id) : null,
       }));
     },
