@@ -66,7 +66,10 @@ import {
   UserPlus,
   AlertCircle,
   RefreshCw,
+  Mail,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface UtilisateursAdminProps {
   embedded?: boolean;
@@ -89,6 +92,40 @@ export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdmi
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [selectedMembreId, setSelectedMembreId] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const handleResendCredentials = async (userId: string) => {
+    if (resendingId) return;
+    setResendingId(userId);
+    try {
+      const { data, error } = await supabase.functions.invoke<{
+        success: boolean; code?: string; message?: string; email?: string;
+      }>("send-user-credentials", {
+        body: { userId, resetPassword: true },
+      });
+      const resp = data || null;
+      if (error && !resp) {
+        toast.error("Erreur réseau lors de l'envoi");
+        return;
+      }
+      if (!resp?.success) {
+        const codes: Record<string, string> = {
+          EMAIL_SEND_FAILED: "L'email n'a pas pu être envoyé",
+          USER_NOT_FOUND: "Utilisateur introuvable",
+          FORBIDDEN: "Accès réservé aux administrateurs",
+          SERVER_ERROR: "Erreur serveur, veuillez réessayer",
+        };
+        toast.error((resp?.code && codes[resp.code]) || resp?.message || "Échec de l'envoi");
+        return;
+      }
+      toast.success(`Nouveaux identifiants envoyés à ${resp.email}`);
+    } catch (err) {
+      console.error("[UtilisateursAdmin] resend error:", err);
+      toast.error("Erreur réseau lors de l'envoi");
+    } finally {
+      setResendingId(null);
+    }
+  };
 
   const { data: userConnections } = useUserConnections(selectedUser?.id || null);
 
@@ -380,6 +417,17 @@ export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdmi
                         >
                           <KeyRound className="h-4 w-4 mr-2" />
                           Forcer changement MDP
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleResendCredentials(user.id)}
+                          disabled={resendingId === user.id}
+                        >
+                          {resendingId === user.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Mail className="h-4 w-4 mr-2" />
+                          )}
+                          Renvoyer les identifiants
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {user.status === "actif" ? (

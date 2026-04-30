@@ -39,9 +39,6 @@ verify_jwt = false
 [functions.sync-user-emails]
 verify_jwt = false
 
-[functions.create-platform-user]
-verify_jwt = false
-
 [functions.update-email-config]
 verify_jwt = false
 
@@ -49,5 +46,8 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.send-loan-notification]
+verify_jwt = false
+
+[functions.send-user-credentials]
 verify_jwt = false
 
