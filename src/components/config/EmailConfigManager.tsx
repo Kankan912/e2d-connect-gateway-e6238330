@@ -83,7 +83,9 @@ export function EmailConfigManager() {
       setSmtpHost(smtpConfig.serveur_smtp || "");
       setSmtpPort(String(smtpConfig.port_smtp || 587));
       setSmtpUser(smtpConfig.utilisateur_smtp || "");
-      setSmtpPassword(smtpConfig.mot_de_passe_smtp || "");
+      // Sécurité : ne JAMAIS pré-remplir le mot de passe SMTP côté client.
+      // Champ laissé vide ; on ne réécrit la valeur en base que si l'admin saisit quelque chose.
+      setSmtpPassword("");
       setSmtpEncryption((smtpConfig.encryption_type as "tls" | "ssl" | "none") || "tls");
     }
   }, [smtpConfig]);
@@ -109,19 +111,22 @@ export function EmailConfigManager() {
 
       // Update or insert SMTP config
       if (emailService === "smtp") {
-        const smtpData = {
+        const baseSmtpData: Record<string, unknown> = {
           serveur_smtp: smtpHost,
           port_smtp: parseInt(smtpPort),
           utilisateur_smtp: smtpUser,
-          mot_de_passe_smtp: smtpPassword,
           encryption_type: smtpEncryption,
           actif: true,
         };
+        // N'écrire le mot de passe QUE si l'admin en a saisi un nouveau
+        if (smtpPassword && smtpPassword.length > 0) {
+          baseSmtpData.mot_de_passe_smtp = smtpPassword;
+        }
 
         if (smtpConfigId) {
           const { data: updatedSmtp, error } = await supabase
             .from("smtp_config")
-            .update(smtpData)
+            .update(baseSmtpData)
             .eq("id", smtpConfigId)
             .select();
           if (error) throw error;
@@ -129,9 +134,12 @@ export function EmailConfigManager() {
             throw new Error("Échec de la mise à jour SMTP : permissions insuffisantes ou session expirée");
           }
         } else {
+          if (!smtpPassword) {
+            throw new Error("Mot de passe SMTP requis pour la première configuration");
+          }
           const { error } = await supabase
             .from("smtp_config")
-            .insert(smtpData);
+            .insert(baseSmtpData as any);
           if (error) throw error;
         }
       }
