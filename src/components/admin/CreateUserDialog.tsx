@@ -67,6 +67,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
   const [step, setStep] = useState<"form" | "created">("form");
   const [isCreating, setIsCreating] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [emailExists, setEmailExists] = useState<boolean | null>(null);
   const [created, setCreated] = useState<{ userId: string; email: string; password: string } | null>(null);
 
   const [formData, setFormData] = useState({
