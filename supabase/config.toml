@@ -51,3 +51,9 @@ verify_jwt = false
 [functions.send-loan-notification]
 verify_jwt = false
 
+[functions.create-user-account]
+verify_jwt = false
+
+[functions.send-user-credentials]
+verify_jwt = false
+

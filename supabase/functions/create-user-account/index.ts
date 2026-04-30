@@ -1,285 +1,199 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface CreateAccountRequest {
-  email: string;
-  memberId: string;
-  memberNom: string;
-  memberPrenom: string;
-  memberTelephone: string;
-  tempPassword?: string;
+type ErrorCode = "EMAIL_EXISTS" | "INVALID_DATA" | "SERVER_ERROR" | "FORBIDDEN" | "UNAUTHENTICATED";
+
+function ok(data: Record<string, unknown> = {}) {
+  return new Response(JSON.stringify({ success: true, ...data }), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function fail(code: ErrorCode, message: string, status: number) {
+  return new Response(JSON.stringify({ success: false, code, message }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+interface CreateAccountBody {
+  email?: string;
+  nom?: string;
+  prenom?: string;
+  telephone?: string | null;
+  password?: string;
+  roleIds?: string[];
+  membreId?: string | null;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_MIN = 8;
+
+function validatePassword(p: string): string | null {
+  if (p.length < PASSWORD_MIN) return `Le mot de passe doit faire au moins ${PASSWORD_MIN} caractères`;
+  if (!/[A-Za-z]/.test(p) || !/[0-9]/.test(p)) return "Le mot de passe doit contenir lettres et chiffres";
+  return null;
+}
+
+function generatePassword(): string {
+  const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let p = "";
+  for (let i = 0; i < 10; i++) p += chars.charAt(Math.floor(Math.random() * chars.length));
+  return p + "A1!";
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    console.log('🔵 [create-user-account] Starting account creation');
-    
-    // Authentication check
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('❌ Missing authorization header');
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Auth caller
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return fail("UNAUTHENTICATED", "Authentification requise", 401);
+
+    const supaCaller = createClient(SUPABASE_URL, ANON, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: caller }, error: authErr } = await supaCaller.auth.getUser();
+    if (authErr || !caller) return fail("UNAUTHENTICATED", "Session invalide", 401);
+
+    // Admin check
+    const { data: isAdmin, error: adminErr } = await supaCaller.rpc("is_admin");
+    if (adminErr || !isAdmin) {
+      console.error("[create-user-account] Forbidden caller", caller.email, adminErr);
+      return fail("FORBIDDEN", "Accès réservé aux administrateurs", 403);
     }
 
-    // Verify the caller is authenticated
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    // Parse + validate
+    let body: CreateAccountBody;
+    try { body = await req.json(); }
+    catch { return fail("INVALID_DATA", "Corps de requête invalide", 400); }
 
-    const { data: { user: caller }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !caller) {
-      console.error('❌ Unauthorized caller:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
-    }
+    const email = (body.email ?? "").trim().toLowerCase();
+    const nom = (body.nom ?? "").trim();
+    const prenom = (body.prenom ?? "").trim();
+    const telephone = body.telephone?.toString().trim() || null;
+    const password = body.password?.toString() || generatePassword();
+    const roleIds = Array.isArray(body.roleIds) ? body.roleIds.filter(Boolean) : [];
+    const membreId = body.membreId || null;
 
-    console.log('✅ Caller authenticated:', caller.email);
+    if (!email || !EMAIL_RE.test(email)) return fail("INVALID_DATA", "Email invalide", 400);
+    if (!nom) return fail("INVALID_DATA", "Le nom est obligatoire", 400);
+    if (!prenom) return fail("INVALID_DATA", "Le prénom est obligatoire", 400);
+    const pErr = validatePassword(password);
+    if (pErr) return fail("INVALID_DATA", pErr, 400);
 
-    // Use service role for admin operations
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
-    const { email, memberId, memberNom, memberPrenom, memberTelephone, tempPassword }: CreateAccountRequest = await req.json();
-
-    if (!email || !memberId) {
-      return new Response(
-        JSON.stringify({ error: 'Email and memberId are required' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    // Check if member already has an account
-    const { data: existingMember, error: checkError } = await supabaseAdmin
-      .from('membres')
-      .select('user_id, statut')
-      .eq('id', memberId)
-      .single();
-
-    if (checkError) {
-      console.error('❌ Error checking member:', checkError);
-      throw new Error('Membre non trouvé');
-    }
-
-    if (existingMember?.user_id) {
-      console.error('❌ Member already has an account');
-      return new Response(
-        JSON.stringify({ error: 'Ce membre possède déjà un compte utilisateur' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      );
-    }
-
-    // Generate password if not provided
-    const password = tempPassword || Math.random().toString(36).slice(-8) + 'A1!';
-
-    console.log('🔵 Creating user account for:', email);
-
-    // Create user with admin API
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true, // Auto-confirm email
-      user_metadata: {
-        nom: memberNom,
-        prenom: memberPrenom,
-        telephone: memberTelephone,
-      }
+    const supaAdmin = createClient(SUPABASE_URL, SERVICE, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    if (createError) {
-      console.error('❌ Error creating user:', createError);
-      const message = (createError as any).code === 'email_exists'
-        ? 'Un compte avec cet email existe déjà. Veuillez utiliser un autre email ou lier le membre au compte existant.'
-        : (createError as Error).message;
-      return new Response(
-        JSON.stringify({ error: message }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+    // Pre-check: email exists?
+    const { data: existing, error: listErr } = await supaAdmin.auth.admin.listUsers({
+      page: 1, perPage: 1,
+    } as any);
+    // Use a more reliable check via filter
+    const { data: byEmail } = await supaAdmin
+      .from("profiles")
+      .select("id")
+      .ilike("email", email)
+      .maybeSingle();
+    if (byEmail?.id) {
+      return fail("EMAIL_EXISTS", "Cet email est déjà utilisé", 400);
+    }
+    if (listErr) console.error("[create-user-account] listUsers warn:", listErr);
+    void existing;
+
+    // Pre-check membre
+    if (membreId) {
+      const { data: m, error: mErr } = await supaAdmin
+        .from("membres").select("id, user_id").eq("id", membreId).maybeSingle();
+      if (mErr || !m) return fail("INVALID_DATA", "Membre introuvable", 400);
+      if (m.user_id) return fail("INVALID_DATA", "Ce membre a déjà un compte", 400);
+    }
+
+    // Step A: create auth user
+    const { data: created, error: createErr } = await supaAdmin.auth.admin.createUser({
+      email, password, email_confirm: true,
+      user_metadata: { nom, prenom, telephone },
+    });
+    if (createErr || !created.user) {
+      const code = (createErr as any)?.code;
+      if (code === "email_exists" || /already/i.test(createErr?.message || "")) {
+        return fail("EMAIL_EXISTS", "Cet email est déjà utilisé", 400);
+      }
+      console.error("[create-user-account] createUser failed:", createErr);
+      return fail("SERVER_ERROR", "Impossible de créer le compte", 500);
+    }
+
+    const userId = created.user.id;
+
+    // Helper: rollback
+    const rollback = async (reason: string, err: unknown) => {
+      console.error(`[create-user-account] ROLLBACK (${reason}):`, err);
+      try { await supaAdmin.from("user_roles").delete().eq("user_id", userId); } catch (e) { console.error("rb user_roles:", e); }
+      if (membreId) {
+        try { await supaAdmin.from("membres_roles").delete().eq("membre_id", membreId); } catch (e) { console.error("rb membres_roles:", e); }
+        try { await supaAdmin.from("membres").update({ user_id: null }).eq("id", membreId); } catch (e) { console.error("rb membres link:", e); }
+      }
+      try { await supaAdmin.auth.admin.deleteUser(userId); } catch (e) { console.error("rb deleteUser:", e); }
+    };
+
+    // Step B: profile
+    const { error: profErr } = await supaAdmin.from("profiles").update({
+      nom, prenom, email, telephone,
+      must_change_password: true, password_changed: false,
+    }).eq("id", userId);
+    if (profErr) {
+      await rollback("profile update", profErr);
+      return fail("SERVER_ERROR", "Erreur lors de la création du profil", 500);
+    }
+
+    // Step C: roles
+    let finalRoleIds = roleIds;
+    if (finalRoleIds.length === 0) {
+      const { data: defRole } = await supaAdmin
+        .from("roles").select("id").ilike("name", "membre").maybeSingle();
+      if (defRole?.id) finalRoleIds = [defRole.id];
+    }
+    if (finalRoleIds.length > 0) {
+      const { error: urErr } = await supaAdmin.from("user_roles").insert(
+        finalRoleIds.map((rid) => ({ user_id: userId, role_id: rid }))
       );
-    }
-
-    console.log('✅ User created:', newUser.user?.id);
-
-    // Link member to user
-    const { error: linkError } = await supabaseAdmin
-      .from('membres')
-      .update({ user_id: newUser.user?.id })
-      .eq('id', memberId);
-
-    if (linkError) {
-      console.error('❌ Error linking member:', linkError);
-      // Don't throw, the account was created successfully
-    } else {
-      console.log('✅ Member linked to user');
-    }
-
-    // Récupérer l'ID du rôle "membre" et l'assigner automatiquement dans BOTH tables
-    const { data: roleMembre } = await supabaseAdmin
-      .from('roles')
-      .select('id')
-      .ilike('name', 'membre')
-      .single();
-
-    if (roleMembre) {
-      // Assigner dans membres_roles
-      const { error: roleError } = await supabaseAdmin
-        .from('membres_roles')
-        .insert({
-          membre_id: memberId,
-          role_id: roleMembre.id
-        });
-      
-      if (roleError) {
-        console.error('⚠️ Error assigning member role to membres_roles:', roleError);
-      } else {
-        console.log('✅ Role "membre" assigned in membres_roles');
+      if (urErr) {
+        await rollback("user_roles insert", urErr);
+        return fail("SERVER_ERROR", "Erreur lors de l'attribution des rôles", 500);
       }
+    }
 
-      // Assigner dans user_roles aussi
-      const { error: userRoleError } = await supabaseAdmin
-        .from('user_roles')
-        .insert({
-          user_id: newUser.user?.id,
-          role_id: roleMembre.id
-        });
-      
-      if (userRoleError) {
-        console.error('⚠️ Error assigning member role to user_roles:', userRoleError);
-      } else {
-        console.log('✅ Role "membre" assigned in user_roles');
+    // Step D: link membre
+    if (membreId) {
+      const { error: linkErr } = await supaAdmin.from("membres")
+        .update({ user_id: userId }).eq("id", membreId);
+      if (linkErr) {
+        await rollback("membre link", linkErr);
+        return fail("SERVER_ERROR", "Erreur lors de la liaison au membre", 500);
       }
-    } else {
-      console.log('⚠️ Role "membre" not found, skipping role assignment');
-    }
-
-    // Mettre à jour le profil pour forcer le changement de mot de passe à la première connexion
-    const { error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .update({ must_change_password: true })
-      .eq('id', newUser.user?.id);
-
-    if (profileError) {
-      console.error('⚠️ Error setting must_change_password:', profileError);
-    } else {
-      console.log('✅ Profile updated: must_change_password = true');
-    }
-
-    // Send welcome email with credentials
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-    if (RESEND_API_KEY) {
-      console.log('🔵 Sending welcome email');
-      
-      // Fetch app_url from configurations table
-      const { data: appUrlConfig } = await supabaseAdmin
-        .from('configurations')
-        .select('valeur')
-        .eq('cle', 'app_url')
-        .single();
-      
-      const APP_URL = appUrlConfig?.valeur || Deno.env.get('APP_URL') || 'https://e2d-connect.lovable.app';
-      
-      const emailHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Bienvenue sur E2D Connect</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #0B6B7C;">Bienvenue sur E2D Connect !</h1>
-          </div>
-          
-          <p>Bonjour <strong>${memberPrenom} ${memberNom}</strong>,</p>
-          
-          <p>Votre compte E2D Connect a été créé avec succès. Voici vos identifiants de connexion :</p>
-          
-          <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p style="margin: 5px 0;"><strong>Email :</strong> ${email}</p>
-            <p style="margin: 5px 0;"><strong>Mot de passe temporaire :</strong> ${password}</p>
-          </div>
-          
-          <div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
-            <p style="margin: 0; color: #856404;">
-              <strong>⚠️ Important :</strong> Pour des raisons de sécurité, vous devrez changer ce mot de passe lors de votre première connexion.
-            </p>
-          </div>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${APP_URL}/change-password" style="background-color: #0B6B7C; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              Changer mon mot de passe
-            </a>
-          </div>
-          
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          
-          <p style="color: #666; font-size: 12px; text-align: center;">
-            Association E2D - Ensemble pour le Développement Durable
-          </p>
-        </body>
-        </html>
-      `;
-
-      try {
-        const emailRes = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${RESEND_API_KEY}`,
-          },
-          body: JSON.stringify({
-            from: 'E2D <onboarding@resend.dev>',
-            to: [email],
-            subject: 'Bienvenue sur E2D Connect - Vos identifiants',
-            html: emailHtml,
-          }),
-        });
-
-        if (emailRes.ok) {
-          console.log('✅ Welcome email sent');
-        } else {
-          const emailError = await emailRes.text();
-          console.error('⚠️ Email sending failed:', emailError);
-        }
-      } catch (emailError) {
-        console.error('⚠️ Email error:', emailError);
-        // Don't fail the request if email fails
+      if (finalRoleIds.length > 0) {
+        const { error: mrErr } = await supaAdmin.from("membres_roles").insert(
+          finalRoleIds.map((rid) => ({ membre_id: membreId, role_id: rid }))
+        );
+        if (mrErr) console.error("[create-user-account] membres_roles warn:", mrErr);
       }
-    } else {
-      console.log('⚠️ RESEND_API_KEY not configured, skipping email');
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        userId: newUser.user?.id,
-        message: 'Account created successfully'
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    );
-
-  } catch (error) {
-    console.error('❌ Error in create-user-account:', error);
-    return new Response(
-      JSON.stringify({ error: (error as Error).message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    );
+    console.log("[create-user-account] ✅ created", { userId, email, membreId });
+    return ok({ userId, email, tempPassword: password });
+  } catch (error: unknown) {
+    console.error("[create-user-account] FATAL:", error);
+    return fail("SERVER_ERROR", "Erreur serveur, veuillez réessayer", 500);
   }
 });
