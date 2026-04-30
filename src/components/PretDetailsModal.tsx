@@ -28,7 +28,16 @@ interface PretDetailsModalProps {
 
 export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsModalProps) {
   const queryClient = useQueryClient();
-  const { isAdmin } = usePermissions();
+  const { user } = useAuth();
+  const { data: isAdmin } = useQuery({
+    queryKey: ['is-admin', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.rpc('is_admin');
+      return Boolean(data);
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
   const { data: pret } = useQuery({
     queryKey: ['pret-details', pretId],
     queryFn: async () => {
