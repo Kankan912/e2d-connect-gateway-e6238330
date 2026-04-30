@@ -86,20 +86,22 @@ export async function getFullEmailConfig(): Promise<FullEmailConfig> {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   // Charger toutes les configurations
-  const { data: configs } = await supabase
-    .from("configurations")
-    .select("cle, valeur")
-    .in("cle", [
-      "email_service",
-      "resend_api_key",
-      "email_expediteur", 
-      "email_expediteur_nom",
-      "app_url"
-    ]);
+    const { data: configs } = await supabase
+      .from("configurations")
+      .select("cle, valeur")
+      .in("cle", [
+        "email_service",
+        "resend_api_key",
+        "email_expediteur", 
+        "email_expediteur_nom",
+        "app_url"
+      ]);
 
   const configMap = new Map(configs?.map(c => [c.cle, c.valeur]) || []);
 
-  const service = (configMap.get("email_service") || "resend") as "resend" | "smtp";
+  // email_service est l'unique source de vérité (resend|smtp)
+  const rawService = (configMap.get("email_service") || "resend").toLowerCase();
+  const service = (rawService === "smtp" ? "smtp" : "resend") as "resend" | "smtp";
   const resendApiKey = configMap.get("resend_api_key") || Deno.env.get("RESEND_API_KEY") || "";
   const fromEmail = configMap.get("email_expediteur") || "onboarding@resend.dev";
   const fromName = configMap.get("email_expediteur_nom") || "E2D";
@@ -114,7 +116,8 @@ export async function getFullEmailConfig(): Promise<FullEmailConfig> {
     smtpEncryption: "tls" as "tls" | "ssl" | "none",
   };
 
-  if (service === "smtp") {
+  // Toujours charger la config SMTP si présente (utile pour le fallback Resend → SMTP)
+  {
     const { data: smtp } = await supabase
       .from("smtp_config")
       .select("*")
