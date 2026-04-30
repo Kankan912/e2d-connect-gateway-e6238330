@@ -373,7 +373,7 @@ export function EmailConfigManager() {
                   setSavingResendKey(true);
                   try {
                     const { error } = await supabase.functions.invoke("update-email-config", {
-                      body: { resend_api_key: resendApiKey, email_mode: "resend" }
+                      body: { resend_api_key: resendApiKey, email_mode: "resend", email_service: "resend" }
                     });
                     if (error) {
                       const errorMessage = (error as any)?.message || "Impossible d'enregistrer la clé";
