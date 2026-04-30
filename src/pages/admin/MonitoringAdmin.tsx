@@ -328,7 +328,7 @@ const ConnectionsTab = () => {
                         </>
                       ) : <span className="text-muted-foreground italic">Anonyme</span>}
                     </TableCell>
-                    <TableCell className="text-xs font-mono">{r.ip_address ?? "—"}</TableCell>
+                    <TableCell className="text-xs font-mono">{(r.ip_address as string | null) ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant={
                         r.statut === "succes" ? "default" :
