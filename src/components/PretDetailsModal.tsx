@@ -143,6 +143,32 @@ export default function PretDetailsModal({ pretId, open, onClose }: PretDetailsM
     }
   };
 
+  // Validation reconductions (admin uniquement) — audit Prêts: workflow validation reconduction
+  const validateReconduction = useMutation({
+    mutationFn: async ({ id, statut }: { id: string; statut: 'validee' | 'refusee' }) => {
+      const { error } = await supabase
+        .from('prets_reconductions')
+        .update({ statut, validee_le: new Date().toISOString(), validee_par: user?.id ?? null })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      toast({ title: vars.statut === 'validee' ? 'Reconduction validée' : 'Reconduction refusée' });
+      queryClient.invalidateQueries({ queryKey: ['pret-reconductions-details', pretId] });
+      queryClient.invalidateQueries({ queryKey: ['pret-details', pretId] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Erreur lors de la validation';
+      toast({ title: 'Erreur', description: msg, variant: 'destructive' });
+    },
+  });
+
+  const reconductionStatutBadge = (s: string) => {
+    if (s === 'validee') return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Validée</Badge>;
+    if (s === 'refusee') return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Refusée</Badge>;
+    return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />En attente</Badge>;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
