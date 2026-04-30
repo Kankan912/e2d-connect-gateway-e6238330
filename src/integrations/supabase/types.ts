@@ -1244,6 +1244,42 @@ export type Database = {
         }
         Relationships: []
       }
+      email_logs: {
+        Row: {
+          attempts: number
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          provider: string | null
+          status: string
+          subject: string
+          to_email: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          provider?: string | null
+          status: string
+          subject: string
+          to_email: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          provider?: string | null
+          status?: string
+          subject?: string
+          to_email?: string
+        }
+        Relationships: []
+      }
       epargnes: {
         Row: {
           created_at: string
