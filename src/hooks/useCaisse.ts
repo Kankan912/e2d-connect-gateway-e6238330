@@ -535,22 +535,24 @@ export const useCaisseSynthese = () => {
       const { data, error } = await supabase.rpc('get_caisse_synthese');
       if (error) throw error;
       const d = (data || {}) as Record<string, unknown>;
+      // FCFA n'admet aucune décimale : on plancher systématiquement (audit Caisse)
+      const toInt = (v: unknown) => Math.floor(Number(v ?? 0));
       return {
-        fondTotal: Number(d.fondTotal ?? 0),
-        totalEpargnes: Number(d.totalEpargnes ?? 0),
-        totalCotisations: Number(d.totalCotisations ?? 0),
-        sanctionsEncaissees: Number(d.sanctionsEncaissees ?? 0),
-        sanctionsImpayees: Number(d.sanctionsImpayees ?? 0),
-        aidesDistribuees: Number(d.aidesDistribuees ?? 0),
-        pretsDecaisses: Number(d.pretsDecaisses ?? 0),
-        pretsRembourses: Number(d.pretsRembourses ?? 0),
-        pretsEnCours: Number(d.pretsEnCours ?? 0),
-        fondSport: Number(d.fondSport ?? 0),
-        reliquatCotisations: Number(d.reliquatCotisations ?? 0),
-        totalDistributionsBeneficiaires: Number(d.totalDistributionsBeneficiaires ?? 0),
-        tauxRecouvrement: Number(d.tauxRecouvrement ?? 100),
-        soldeEmpruntable: Number(d.soldeEmpruntable ?? 0),
-        pourcentageEmpruntable: Number(d.pourcentageEmpruntable ?? 80),
+        fondTotal: toInt(d.fondTotal),
+        totalEpargnes: toInt(d.totalEpargnes),
+        totalCotisations: toInt(d.totalCotisations),
+        sanctionsEncaissees: toInt(d.sanctionsEncaissees),
+        sanctionsImpayees: toInt(d.sanctionsImpayees),
+        aidesDistribuees: toInt(d.aidesDistribuees),
+        pretsDecaisses: toInt(d.pretsDecaisses),
+        pretsRembourses: toInt(d.pretsRembourses),
+        pretsEnCours: toInt(d.pretsEnCours),
+        fondSport: toInt(d.fondSport),
+        reliquatCotisations: toInt(d.reliquatCotisations),
+        totalDistributionsBeneficiaires: toInt(d.totalDistributionsBeneficiaires),
+        tauxRecouvrement: Math.floor(Number(d.tauxRecouvrement ?? 100)),
+        soldeEmpruntable: toInt(d.soldeEmpruntable),
+        pourcentageEmpruntable: Math.floor(Number(d.pourcentageEmpruntable ?? 80)),
       };
     },
     refetchInterval: 5 * 60 * 1000,
