@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendEmailAuto } from "../_shared/email-utils.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,7 +40,6 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const RESEND = Deno.env.get("RESEND_API_KEY");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return fail("UNAUTHENTICATED", "Authentification requise", 401);
@@ -53,10 +53,6 @@ serve(async (req) => {
     const { data: isAdmin } = await supaCaller.rpc("is_admin");
     if (!isAdmin) return fail("FORBIDDEN", "Accès réservé aux administrateurs", 403);
 
-    if (!RESEND) {
-      console.error("[send-user-credentials] RESEND_API_KEY missing");
-      return fail("SERVER_ERROR", "Service email non configuré", 500);
-    }
 
     let body: Body;
     try { body = await req.json(); }
@@ -115,28 +111,19 @@ serve(async (req) => {
 </body></html>`;
 
     try {
-      const r = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${RESEND}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "E2D Connect <onboarding@resend.dev>",
-          to: [profile.email],
-          subject: "Vos identifiants E2D Connect",
-          html,
-        }),
+      const result = await sendEmailAuto({
+        to: profile.email,
+        subject: "Vos identifiants E2D Connect",
+        html,
       });
-      const txt = await r.text();
-      if (!r.ok) {
-        console.error("[send-user-credentials] Resend error", r.status, txt);
-        return fail("EMAIL_SEND_FAILED", "L'email n'a pas pu être envoyé", 502);
+      if (!result.success) {
+        console.error("[send-user-credentials] send failed:", result.error);
+        return fail("EMAIL_SEND_FAILED", result.error || "L'email n'a pas pu être envoyé", 502);
       }
-      console.log("[send-user-credentials] ✅ sent to", profile.email, txt);
+      console.log("[send-user-credentials] ✅ sent to", profile.email);
       return ok({ email: profile.email, passwordReset: shouldReset });
     } catch (e) {
-      console.error("[send-user-credentials] fetch threw:", e);
+      console.error("[send-user-credentials] send threw:", e);
       return fail("EMAIL_SEND_FAILED", "L'email n'a pas pu être envoyé", 502);
     }
   } catch (e) {

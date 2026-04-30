@@ -83,7 +83,9 @@ export function EmailConfigManager() {
       setSmtpHost(smtpConfig.serveur_smtp || "");
       setSmtpPort(String(smtpConfig.port_smtp || 587));
       setSmtpUser(smtpConfig.utilisateur_smtp || "");
-      setSmtpPassword(smtpConfig.mot_de_passe_smtp || "");
+      // Sécurité : ne JAMAIS pré-remplir le mot de passe SMTP côté client.
+      // Champ laissé vide ; on ne réécrit la valeur en base que si l'admin saisit quelque chose.
+      setSmtpPassword("");
       setSmtpEncryption((smtpConfig.encryption_type as "tls" | "ssl" | "none") || "tls");
     }
   }, [smtpConfig]);
@@ -109,19 +111,22 @@ export function EmailConfigManager() {
 
       // Update or insert SMTP config
       if (emailService === "smtp") {
-        const smtpData = {
+        const baseSmtpData: Record<string, unknown> = {
           serveur_smtp: smtpHost,
           port_smtp: parseInt(smtpPort),
           utilisateur_smtp: smtpUser,
-          mot_de_passe_smtp: smtpPassword,
           encryption_type: smtpEncryption,
           actif: true,
         };
+        // N'écrire le mot de passe QUE si l'admin en a saisi un nouveau
+        if (smtpPassword && smtpPassword.length > 0) {
+          baseSmtpData.mot_de_passe_smtp = smtpPassword;
+        }
 
         if (smtpConfigId) {
           const { data: updatedSmtp, error } = await supabase
             .from("smtp_config")
-            .update(smtpData)
+            .update(baseSmtpData)
             .eq("id", smtpConfigId)
             .select();
           if (error) throw error;
@@ -129,9 +134,12 @@ export function EmailConfigManager() {
             throw new Error("Échec de la mise à jour SMTP : permissions insuffisantes ou session expirée");
           }
         } else {
+          if (!smtpPassword) {
+            throw new Error("Mot de passe SMTP requis pour la première configuration");
+          }
           const { error } = await supabase
             .from("smtp_config")
-            .insert(smtpData);
+            .insert(baseSmtpData as any);
           if (error) throw error;
         }
       }
@@ -147,170 +155,113 @@ export function EmailConfigManager() {
     },
   });
 
-  // Email du propriétaire du compte Resend (seul destinataire autorisé en mode test)
-  const resendOwnerEmail = "kankanway912@gmail.com";
+  // ============================================================
+  // Test unifié de configuration email — appelle l'Edge Function
+  // ============================================================
+  const [lastTestResult, setLastTestResult] = useState<{
+    success: boolean;
+    message: string;
+    provider?: string;
+    fallback?: boolean;
+    duration_ms?: number;
+  } | null>(null);
 
-  // Test Resend connection
-  const testResendConnection = async () => {
-    setTestingResend(true);
+  const runConfigurationTest = async (provider: "auto" | "resend" | "smtp", enableFallback = false) => {
+    if (provider === "resend" || provider === "auto") setTestingResend(true);
+    if (provider === "smtp") setTestingSmtp(true);
+
     try {
-      // En mode test Resend (sans domaine vérifié), on ne peut envoyer
-      // qu'à l'adresse du propriétaire du compte Resend
-      const { data, error } = await supabase.functions.invoke("send-email", {
-        body: {
-          to: resendOwnerEmail,
-          subject: "✅ Test Resend E2D - Connexion réussie",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h1 style="color: #22c55e;">✅ Test Resend réussi !</h1>
-              <p>La configuration email de votre application E2D fonctionne correctement.</p>
-              <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
-                Ce message a été envoyé depuis la configuration E2D le ${new Date().toLocaleString('fr-FR')}.
-              </p>
-            </div>
-          `,
-          forceService: "resend",
-        },
+      // Si on teste SMTP et que l'admin a saisi un nouveau mot de passe, sauvegarder d'abord
+      if (provider === "smtp" || (provider === "auto" && emailService === "smtp")) {
+        if (!smtpHost || !smtpUser) {
+          throw new Error("Configuration SMTP incomplète — Renseignez serveur et utilisateur");
+        }
+        if (smtpPassword) {
+          const smtpData: Record<string, unknown> = {
+            serveur_smtp: smtpHost.trim(),
+            port_smtp: parseInt(smtpPort),
+            utilisateur_smtp: smtpUser.trim(),
+            mot_de_passe_smtp: smtpPassword,
+            encryption_type: smtpEncryption,
+            actif: true,
+          };
+          if (smtpConfigId) {
+            await supabase.from("smtp_config").update(smtpData).eq("id", smtpConfigId);
+          } else {
+            await supabase.from("smtp_config").insert(smtpData as any);
+          }
+          queryClient.invalidateQueries({ queryKey: ["smtp-config"] });
+        }
+      }
+
+      // Destinataire de test : email expéditeur configuré, sinon utilisateur SMTP
+      const to = emailExpediteur || smtpUser;
+      if (!to) throw new Error("Aucun destinataire de test : configurez l'email expéditeur");
+
+      const { data, error } = await supabase.functions.invoke("test-email-configuration", {
+        body: { to, provider, enableFallback },
       });
-      
-      if (error) {
-        const errorMessage = data?.error || error.message;
-        throw new Error(errorMessage);
-      }
-      if (data?.error) throw new Error(data.error);
-      toast.success(`Test réussi ! Email envoyé à ${resendOwnerEmail}`, { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
-    } catch (error: unknown) {
-      console.error("Resend test failed:", error);
-      toast.error("Échec du test Resend: " + (error instanceof Error ? error.message : "Vérifiez la clé API"), { icon: <XCircle className="h-4 w-4 text-red-500" /> });
-    } finally {
-      setTestingResend(false);
-    }
-  };
 
-  // Envoyer un email de test réel à l'administrateur
-  const [sendingTestEmail, setSendingTestEmail] = useState(false);
-  const sendTestEmail = async () => {
-    if (!emailExpediteur) {
-      toast.error("Veuillez d'abord configurer l'email expéditeur");
-      return;
-    }
-    
-    setSendingTestEmail(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("send-email", {
-        body: {
-          to: emailExpediteur,
-          subject: "🧪 Test de configuration email - E2D",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h1 style="color: #2563eb;">✅ Test réussi !</h1>
-              <p>Cet email confirme que la configuration email de votre application E2D fonctionne correctement.</p>
-              <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
-              <p><strong>Service:</strong> ${emailService === 'resend' ? 'Resend API' : 'SMTP personnalisé'}</p>
-              <p><strong>Expéditeur:</strong> ${emailExpediteurNom} &lt;${emailExpediteur}&gt;</p>
-              <p><strong>Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
-              <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
-              <p style="color: #6b7280; font-size: 12px;">Ce message a été envoyé automatiquement depuis la configuration E2D.</p>
-            </div>
-          `,
-        },
-      });
-      
-      if (error) {
-        const errorMessage = data?.error || error.message;
-        throw new Error(errorMessage);
-      }
-      if (data?.error) throw new Error(data.error);
-      toast.success(`Email de test envoyé à ${emailExpediteur}`);
-    } catch (error: unknown) {
-      console.error("Test email failed:", error);
-      toast.error("Échec de l'envoi: " + (error instanceof Error ? error.message : "Erreur inconnue"));
-    } finally {
-      setSendingTestEmail(false);
-    }
-  };
-
-  // Test SMTP connection - Real test via Edge Function
-  const testSmtpConnection = async () => {
-    setTestingSmtp(true);
-    try {
-      if (!smtpHost || !smtpUser || !smtpPassword) {
-        throw new Error("Configuration SMTP incomplète - Remplissez tous les champs");
-      }
-      
-      // Sauvegarder d'abord la config SMTP pour que l'Edge Function puisse l'utiliser
-      const smtpData = {
-        serveur_smtp: smtpHost.trim(),
-        port_smtp: parseInt(smtpPort),
-        utilisateur_smtp: smtpUser.trim(),
-        mot_de_passe_smtp: smtpPassword,
-        encryption_type: smtpEncryption,
-        actif: true,
+      const payload = (data ?? {}) as {
+        success?: boolean;
+        message?: string;
+        provider?: string;
+        fallback?: boolean;
+        duration_ms?: number;
       };
 
-      if (smtpConfigId) {
-        const { data: updatedData, error: saveError } = await supabase
-          .from("smtp_config")
-          .update(smtpData)
-          .eq("id", smtpConfigId)
-          .select();
-        if (saveError) {
-          throw new Error("Erreur sauvegarde config: " + saveError.message);
-        }
-        if (!updatedData || updatedData.length === 0) {
-          throw new Error("Échec de la sauvegarde : vérifiez vos permissions administrateur ou rafraîchissez la page");
-        }
-      } else {
-        const { error: insertError } = await supabase
-          .from("smtp_config")
-          .insert(smtpData);
-        if (insertError) throw new Error("Erreur création config: " + insertError.message);
+      if (error || !payload.success) {
+        const msg = payload.message || (error as any)?.message || "Échec du test";
+        setLastTestResult({ success: false, message: msg, provider: payload.provider });
+        toast.error(msg, { icon: <XCircle className="h-4 w-4 text-red-500" /> });
+        return;
       }
-      
-      // Appeler l'Edge Function avec forceService: "smtp" pour un vrai test
-      const { data, error } = await supabase.functions.invoke("send-email", {
-        body: {
-          to: smtpUser.trim(),
-          subject: "✅ Test SMTP E2D - Connexion réussie",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h1 style="color: #22c55e;">✅ Test SMTP réussi !</h1>
-              <p>La connexion à votre serveur SMTP fonctionne correctement.</p>
-              <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
-              <p><strong>Serveur:</strong> ${smtpHost.trim()}</p>
-              <p><strong>Port:</strong> ${smtpPort}</p>
-              <p><strong>Utilisateur:</strong> ${smtpUser.trim()}</p>
-              <p><strong>Encryption:</strong> ${smtpEncryption.toUpperCase()}</p>
-              <p><strong>Date:</strong> ${new Date().toLocaleString('fr-FR')}</p>
-              <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
-              <p style="color: #6b7280; font-size: 12px;">Ce message a été envoyé depuis la configuration E2D.</p>
-            </div>
-          `,
-          forceService: "smtp"
-        },
+
+      setLastTestResult({
+        success: true,
+        message: payload.message || "Test réussi",
+        provider: payload.provider,
+        fallback: payload.fallback,
+        duration_ms: payload.duration_ms,
       });
-      
-      if (error) {
-        const errorMessage = data?.error || error.message;
-        throw new Error(errorMessage);
-      }
-      if (data?.error) throw new Error(data.error);
-      
-      toast.success(`Test SMTP réussi ! Email envoyé à ${smtpUser.trim()}`, { 
-        icon: <CheckCircle className="h-4 w-4 text-green-500" /> 
-      });
-      
-      // Rafraîchir les données
-      queryClient.invalidateQueries({ queryKey: ["smtp-config"] });
-    } catch (error: unknown) {
-      console.error("SMTP test failed:", error);
-      toast.error("Échec du test SMTP: " + (error instanceof Error ? error.message : "Connexion échouée"), { 
-        icon: <XCircle className="h-4 w-4 text-red-500" /> 
-      });
+      const label = payload.fallback
+        ? `Fallback ${payload.provider} utilisé — email envoyé à ${to}`
+        : `Test ${payload.provider} réussi — email envoyé à ${to}${payload.duration_ms ? ` (${payload.duration_ms} ms)` : ""}`;
+      toast.success(label, { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      setLastTestResult({ success: false, message: msg });
+      toast.error("Test échoué : " + msg, { icon: <XCircle className="h-4 w-4 text-red-500" /> });
     } finally {
+      setTestingResend(false);
       setTestingSmtp(false);
     }
   };
+
+  // Wrappers conservés pour compat avec les boutons existants
+  const testResendConnection = () => runConfigurationTest("resend");
+  const testSmtpConnection = () => runConfigurationTest("smtp");
+  const sendTestEmail = () => runConfigurationTest("auto", true);
+  const sendingTestEmail = testingResend || testingSmtp;
+
+  // ============================================================
+  // Statut de la configuration (validité)
+  // ============================================================
+  const configStatus = (() => {
+    if (!emailService) return { valid: false, message: "Chargement..." };
+    if (!emailExpediteur) return { valid: false, message: "Email expéditeur manquant" };
+    if (emailService === "resend") {
+      // On ne peut pas vérifier la clé en base depuis le client (sécurité), mais on peut au moins vérifier la présence locale
+      // ou faire confiance au backend. Statut "à tester".
+      return { valid: true, message: "Resend configuré — testez pour vérifier la clé API" };
+    }
+    if (emailService === "smtp") {
+      if (!smtpHost || !smtpUser) return { valid: false, message: "Serveur ou utilisateur SMTP manquant" };
+      if (!smtpConfigId && !smtpPassword) return { valid: false, message: "Mot de passe SMTP requis" };
+      return { valid: true, message: "SMTP configuré — testez pour vérifier la connexion" };
+    }
+    return { valid: false, message: "Service email non sélectionné" };
+  })();
 
   if (configsLoading || smtpLoading || emailService === null) {
     return (
@@ -322,6 +273,34 @@ export function EmailConfigManager() {
 
   return (
     <div className="space-y-6">
+      {/* Bandeau de statut de la configuration */}
+      <Alert className={configStatus.valid ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950" : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950"}>
+        {configStatus.valid ? <CheckCircle className="h-4 w-4 text-green-600" /> : <XCircle className="h-4 w-4 text-red-600" />}
+        <AlertDescription className={configStatus.valid ? "text-green-800 dark:text-green-200" : "text-red-800 dark:text-red-200"}>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <span>
+              <strong>{configStatus.valid ? "✔ Configuration valide" : "❌ Configuration invalide"}</strong>
+              {" — "}
+              {configStatus.message}
+              {lastTestResult?.success && lastTestResult.fallback && (
+                <span className="ml-2 inline-block px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-xs">
+                  Dernier envoi : fallback {lastTestResult.provider}
+                </span>
+              )}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => runConfigurationTest("auto", true)}
+              disabled={sendingTestEmail}
+            >
+              {sendingTestEmail ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
+              Tester la configuration
+            </Button>
+          </div>
+        </AlertDescription>
+      </Alert>
+
       {/* Service Selection */}
       <Card>
         <CardHeader>
@@ -381,8 +360,8 @@ export function EmailConfigManager() {
           <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
             <Info className="h-4 w-4 text-amber-600" />
             <AlertDescription className="text-amber-800 dark:text-amber-200">
-              <strong>Mode Test Resend :</strong> Sans domaine vérifié, les emails ne peuvent être envoyés 
-              qu'à l'adresse du propriétaire du compte Resend (<code className="bg-amber-100 dark:bg-amber-900 px-1 rounded">{resendOwnerEmail}</code>). 
+              <strong>Mode Test Resend :</strong> sans domaine vérifié, les emails ne peuvent être envoyés
+              qu'à l'adresse du propriétaire du compte Resend.
               Pour envoyer à tous les membres, <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="underline font-medium">vérifiez un domaine</a>.
             </AlertDescription>
           </Alert>
@@ -422,7 +401,7 @@ export function EmailConfigManager() {
                   setSavingResendKey(true);
                   try {
                     const { error } = await supabase.functions.invoke("update-email-config", {
-                      body: { resend_api_key: resendApiKey, email_mode: "resend" }
+                      body: { resend_api_key: resendApiKey, email_mode: "resend", email_service: "resend" }
                     });
                     if (error) {
                       const errorMessage = (error as any)?.message || "Impossible d'enregistrer la clé";

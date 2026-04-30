@@ -86,20 +86,22 @@ export async function getFullEmailConfig(): Promise<FullEmailConfig> {
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   // Charger toutes les configurations
-  const { data: configs } = await supabase
-    .from("configurations")
-    .select("cle, valeur")
-    .in("cle", [
-      "email_service",
-      "resend_api_key",
-      "email_expediteur", 
-      "email_expediteur_nom",
-      "app_url"
-    ]);
+    const { data: configs } = await supabase
+      .from("configurations")
+      .select("cle, valeur")
+      .in("cle", [
+        "email_service",
+        "resend_api_key",
+        "email_expediteur", 
+        "email_expediteur_nom",
+        "app_url"
+      ]);
 
   const configMap = new Map(configs?.map(c => [c.cle, c.valeur]) || []);
 
-  const service = (configMap.get("email_service") || "resend") as "resend" | "smtp";
+  // email_service est l'unique source de vérité (resend|smtp)
+  const rawService = (configMap.get("email_service") || "resend").toLowerCase();
+  const service = (rawService === "smtp" ? "smtp" : "resend") as "resend" | "smtp";
   const resendApiKey = configMap.get("resend_api_key") || Deno.env.get("RESEND_API_KEY") || "";
   const fromEmail = configMap.get("email_expediteur") || "onboarding@resend.dev";
   const fromName = configMap.get("email_expediteur_nom") || "E2D";
@@ -114,7 +116,8 @@ export async function getFullEmailConfig(): Promise<FullEmailConfig> {
     smtpEncryption: "tls" as "tls" | "ssl" | "none",
   };
 
-  if (service === "smtp") {
+  // Toujours charger la config SMTP si présente (utile pour le fallback Resend → SMTP)
+  {
     const { data: smtp } = await supabase
       .from("smtp_config")
       .select("*")
@@ -427,18 +430,19 @@ function isTransientError(err?: string): boolean {
 }
 
 /**
- * Trace l'envoi (succès ou échec) dans notifications_envois pour audit/dashboard.
+ * Trace l'envoi (succès ou échec) dans notifications_envois (rétrocompat) ET email_logs.
  */
 async function logEmailEnvoi(
   params: EmailParams,
   result: EmailResult,
-  meta: { service: string; attempts: number; templateId?: string; campagneId?: string }
+  meta: { service: string; attempts: number; templateId?: string; campagneId?: string; fallback?: boolean }
 ): Promise<void> {
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+    // Rétrocompat : conserver l'écriture dans notifications_envois
     await supabase.from("notifications_envois").insert({
       template_id: meta.templateId ?? null,
       campagne_id: meta.campagneId ?? null,
@@ -449,40 +453,91 @@ async function logEmailEnvoi(
       metadata: {
         service: meta.service,
         attempts: meta.attempts,
+        fallback: meta.fallback ?? false,
         ...(result.data && typeof result.data === "object" ? { provider: result.data } : {}),
       },
     });
+    // Nouveau : table dédiée email_logs
+    await supabase.from("email_logs").insert({
+      to_email: params.to,
+      subject: params.subject,
+      status: result.success ? "success" : "failed",
+      provider: meta.service,
+      attempts: meta.attempts,
+      error_message: result.success ? null : (result.error ?? null),
+      metadata: {
+        fallback: meta.fallback ?? false,
+        templateId: meta.templateId ?? null,
+        campagneId: meta.campagneId ?? null,
+      },
+    });
   } catch (e) {
-    console.warn("[Email] Échec logging notifications_envois:", e);
+    console.warn("[Email] Échec logging:", e);
   }
+}
+
+async function sendOnce(config: FullEmailConfig, params: EmailParams): Promise<EmailResult> {
+  return config.service === "smtp"
+    ? await sendViaSMTP(config, params)
+    : await sendViaResend(config, params);
 }
 
 /**
  * Fonction principale d'envoi d'email - choisit automatiquement le service configuré.
- * Inclut retry exponentiel (3 tentatives) sur erreurs transitoires + logging.
+ * Inclut retry exponentiel (3 tentatives) sur erreurs transitoires + fallback Resend↔SMTP + logging.
  */
 export async function sendEmail(
   config: FullEmailConfig,
   params: EmailParams,
-  meta?: { templateId?: string; campagneId?: string; maxAttempts?: number }
+  meta?: { templateId?: string; campagneId?: string; maxAttempts?: number; enableFallback?: boolean }
 ): Promise<EmailResult> {
   const maxAttempts = Math.max(1, meta?.maxAttempts ?? 3);
+  const enableFallback = meta?.enableFallback ?? true;
   let attempt = 0;
   let lastResult: EmailResult = { success: false, error: "Non envoyé" };
 
   while (attempt < maxAttempts) {
     attempt++;
     console.log(`[Email] Tentative ${attempt}/${maxAttempts} via ${config.service} à ${params.to}...`);
-    lastResult = config.service === "smtp"
-      ? await sendViaSMTP(config, params)
-      : await sendViaResend(config, params);
+    lastResult = await sendOnce(config, params);
 
     if (lastResult.success) break;
     if (!isTransientError(lastResult.error) || attempt >= maxAttempts) break;
 
-    const backoffMs = 500 * Math.pow(2, attempt - 1); // 500, 1000, 2000ms
+    const backoffMs = 500 * Math.pow(2, attempt - 1);
     console.warn(`[Email] Erreur transitoire, retry dans ${backoffMs}ms: ${lastResult.error}`);
     await new Promise((r) => setTimeout(r, backoffMs));
+  }
+
+  let usedFallback = false;
+  // Fallback : si l'envoi principal a échoué et qu'un autre provider est configuré, on tente.
+  if (!lastResult.success && enableFallback) {
+    const otherService: "resend" | "smtp" = config.service === "resend" ? "smtp" : "resend";
+    const fallbackConfig: FullEmailConfig = { ...config, service: otherService };
+    const validation = validateFullEmailConfig(fallbackConfig);
+    if (validation.valid) {
+      console.warn(`[Email] Fallback vers ${otherService} après échec de ${config.service}`);
+      const fallbackResult = await sendOnce(fallbackConfig, params);
+      // Log de la tentative principale échouée
+      await logEmailEnvoi(params, lastResult, {
+        service: config.service,
+        attempts: attempt,
+        templateId: meta?.templateId,
+        campagneId: meta?.campagneId,
+        fallback: false,
+      });
+      // Log de la tentative fallback (succès ou échec)
+      await logEmailEnvoi(params, fallbackResult, {
+        service: otherService,
+        attempts: 1,
+        templateId: meta?.templateId,
+        campagneId: meta?.campagneId,
+        fallback: true,
+      });
+      return fallbackResult.success
+        ? { ...fallbackResult, data: { ...(fallbackResult.data || {}), fallback: true, provider: otherService } }
+        : fallbackResult;
+    }
   }
 
   await logEmailEnvoi(params, lastResult, {
@@ -490,6 +545,7 @@ export async function sendEmail(
     attempts: attempt,
     templateId: meta?.templateId,
     campagneId: meta?.campagneId,
+    fallback: usedFallback,
   });
 
   return lastResult;
