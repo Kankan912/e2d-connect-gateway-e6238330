@@ -11,17 +11,34 @@ export const useSiteHero = () => {
   return useQuery({
     queryKey: ["site-hero"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Timeout 10s pour éviter un état "loading" infini si le réseau bloque
+      // (extension, proxy, panne réseau intermittente).
+      const queryPromise = supabase
         .from("site_hero")
         .select("*")
         .eq("actif", true)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+        setTimeout(
+          () => resolve({ data: null, error: new Error("Hero query timeout (10s)") }),
+          10000
+        )
+      );
+
+      const { data, error } = (await Promise.race([queryPromise, timeoutPromise])) as any;
+
+      if (error) {
+        // Ne bloque pas le rendu : on renvoie null pour basculer sur les valeurs par défaut.
+        console.warn("[useSiteHero]", error.message ?? error);
+        return null;
+      }
       return data;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes - contenu CMS stable
     gcTime: 30 * 60 * 1000,
+    retry: 2,
+    refetchOnWindowFocus: false,
   });
 };
 
