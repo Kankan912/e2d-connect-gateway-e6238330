@@ -10,7 +10,7 @@ import heroImageFallback from "@/assets/hero-sports.jpg";
 const Hero = () => {
   const { data: siteConfig } = useSiteConfig();
   const heroFallback = siteConfig?.find(c => c.cle === 'hero_fallback_image')?.valeur || heroImageFallback;
-  const { data: hero, isLoading } = useSiteHero();
+  const { data: hero, isLoading, error } = useSiteHero();
   const { data: heroImages = [] } = useSiteHeroImages(hero?.id);
   
   const plugin = useRef(
@@ -20,7 +20,9 @@ const Hero = () => {
     })
   );
 
-  if (isLoading) {
+  // Si la requête échoue ou dépasse le timeout, on bascule sur les valeurs par défaut
+  // plutôt que de rester bloqué sur les squelettes (cf. useSiteHero -> retourne null).
+  if (isLoading && !error) {
     return (
       <section id="accueil" className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16 lg:pt-20">
         <div className="absolute inset-0 z-0 bg-primary/90" />
