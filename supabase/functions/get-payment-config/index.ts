@@ -37,7 +37,14 @@ serve(async (req) => {
 
     if (error) throw error;
 
-    // Filtrer les données sensibles du config_data
+    // Liste explicite des champs SECRETS à ne JAMAIS retourner publiquement
+    const SECRET_FIELDS = [
+      'secret_key', 'api_secret', 'private_key', 'password', 'secret',
+      'webhook_secret', 'client_secret', 'access_token', 'refresh_token',
+      'merchant_secret', 'signing_secret', 'api_key', 'token',
+    ];
+
+    // Filtrer les données sensibles du config_data (whitelist par provider + blacklist defense-in-depth)
     const publicConfigs = data?.map(config => {
       const publicData: any = {
         id: config.id,
@@ -64,6 +71,11 @@ serve(async (req) => {
         publicData.config_data.bic = configData.bic;
         publicData.config_data.account_holder = configData.account_holder;
         publicData.config_data.instructions = configData.instructions;
+      }
+
+      // Defense-in-depth: strip any secret-looking field that might have leaked through
+      for (const field of SECRET_FIELDS) {
+        delete publicData.config_data[field];
       }
 
       return publicData;
