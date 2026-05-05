@@ -37,6 +37,9 @@ serve(async (req) => {
   }
 
   try {
+    const authError = await requirePrivilegedUser(req, corsHeaders);
+    if (authError) return authError;
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
