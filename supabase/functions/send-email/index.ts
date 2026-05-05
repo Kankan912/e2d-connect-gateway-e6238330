@@ -53,6 +53,34 @@ serve(async (req) => {
 
     const { to, subject, html, text, forceService }: EmailRequest = await req.json();
 
+    // Input validation: prevent header injection and oversized payloads
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const hasNewline = (s: string) => /[\r\n]/.test(s);
+    if (typeof to !== 'string' || to.length === 0 || to.length > 255 || !emailRegex.test(to)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid recipient email' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    if (typeof subject !== 'string' || subject.length === 0 || subject.length > 200 || hasNewline(subject)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid subject (max 200 chars, no line breaks)' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    if (typeof html !== 'string' || html.length === 0 || html.length > 200000) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid html body (max 200000 chars)' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    if (text !== undefined && (typeof text !== 'string' || text.length > 200000)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid text body (max 200000 chars)' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
     // Charger la configuration email complète
     const emailConfig = await getFullEmailConfig();
     
