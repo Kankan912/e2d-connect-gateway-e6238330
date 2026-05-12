@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import heroImageFallback from "@/assets/hero-sports.jpg";
 
 const Hero = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: siteConfig } = useSiteConfig();
   const heroFallback = siteConfig?.find(c => c.cle === 'hero_fallback_image')?.valeur || heroImageFallback;
   const { data: hero, isLoading, error } = useSiteHero();
@@ -126,6 +128,15 @@ const Hero = () => {
               onClick={() => document.getElementById('apropos')?.scrollIntoView({ behavior: 'smooth' })}
             >
               {hero?.bouton_2_texte || "En Savoir Plus"}
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-2 border-secondary text-secondary hover:bg-secondary hover:text-white backdrop-blur-sm bg-white/10 text-lg px-8 py-6 transition-all duration-300"
+              onClick={() => navigate(user ? "/dashboard" : "/auth")}
+            >
+              <LogIn className="mr-2 w-5 h-5" />
+              Accéder à E2D Connect
             </Button>
           </div>
 
