@@ -74,8 +74,9 @@ def build():
                 ("BOTTOMPADDING", (0,0), (-1,-1), 3),
             ]))
             story.append(t); story.append(Spacer(1, 8)); continue
-        if re.match(r"^\d+\.\s", stripped):
-            story.append(Paragraph(inline(stripped), LI, bulletText=stripped.split(".",1)[0]+".")); i += 1; continue
+        m_num = re.match(r"^(\d+)\.\s+(.*)$", stripped)
+        if m_num:
+            story.append(Paragraph(inline(m_num.group(2)), LI, bulletText=f"{m_num.group(1)}.")); i += 1; continue
         if stripped.startswith("- "):
             story.append(Paragraph(inline(stripped[2:]), LI, bulletText="•")); i += 1; continue
         story.append(Paragraph(inline(stripped), P)); i += 1
