@@ -1,43 +1,74 @@
-## Contexte
+# Plan : Code Review Complet du Projet E2D
 
-Sur `https://e2d-connect.vercel.app`, le Hero reste figé sur les squelettes de chargement bleus (capture utilisateur). Les vérifications confirment que ce n'est PAS un bug de code :
+Le projet est volumineux (40+ pages admin, 30+ hooks, 18 edge functions, ~80 tables). Une revue exhaustive ligne-par-ligne dépasserait largement la limite raisonnable d'une session. Je propose donc une revue **structurée par modules**, avec livrable écrit (rapport Markdown) et corrections appliquées en lot après validation.
 
-- Le HTML servi par Vercel est correct (bundle JS référencé).
-- L'API Supabase répond en 200 (testé en direct, RLS OK, 1 ligne `actif=true`).
-- Dans un navigateur de test, le Hero s'affiche parfaitement (titre, sous-titre, image, boutons, stats).
+## Périmètre
 
-Le problème est donc **local au navigateur de l'utilisateur** : cache obsolète, extension bloquante, ou requête Supabase qui n'aboutit jamais sans timeout.
+### 1. Sécurité & Backend
+- **RLS** : revue des politiques par table (publiques vitrine vs privées admin)
+- **Edge Functions** (18) : auth, validation d'entrée, CORS, gestion d'erreurs, secrets
+- **Fonctions DB / Triggers** : `SECURITY DEFINER`, `search_path`, cohérence
+- **Secrets** : vérifier qu'aucun n'est exposé côté client
+- Lancer `security--run_security_scan` + `supabase--linter`
 
-## Volet A — Tests immédiats côté utilisateur (à faire avant tout)
+### 2. Modules métier (un par un)
+Pour chacun : hooks, composants, pages admin, logique calcul, intégration caisse
+- **Cotisations** (mensuelles, exercices, cumul annuel)
+- **Caisse** (synthèse, opérations, soldes, prêts en cours)
+- **Prêts** (demandes, workflow validation, reconductions, paiements, statuts)
+- **Épargnes & Bénéficiaires** (calendrier, prorata intérêts, distributions)
+- **Aides** (allocation, sync caisse)
+- **Réunions** (présences, sanctions, clôture, réouverture)
+- **Sport** (E2D, Phoenix, matchs, stats, médias)
+- **Adhésions & Donations** (Mobile Money, transferts, réconciliation)
+- **Notifications** (campagnes, templates, multi-provider email)
+- **Utilisateurs / Rôles / Permissions** (granular permissions, lifecycle)
+- **CMS Site vitrine** (Hero, About, Events, Gallery, Partners)
 
-1. **Vider le cache du navigateur problématique** (Ctrl+Shift+Suppr → Images et fichiers en cache + Cookies du site `vercel.app`) puis recharger en `Ctrl+F5`.
-2. **Tester en navigation privée** dans le même navigateur. Si ça marche → c'est une extension ou un cookie corrompu.
-3. **Désactiver les extensions** une par une (notamment bloqueurs de pub, antivirus web, VPN). Vérifier qu'aucune ne filtre `*.supabase.co`.
-4. **Ouvrir la console** (F12) sur la page bloquée et rapporter les éventuelles erreurs réseau (onglet Network → filtrer `supabase`) ou JS (onglet Console).
+### 3. Architecture & Qualité
+- **Dépendances** (`package.json`) : versions, vulnérabilités (`bun audit`), packages inutilisés
+- **Type-safety** : `any` résiduels, jointures Supabase typées (`src/types/supabase-joins.ts`)
+- **Hooks génériques** vs duplications, React Query (staleTime, invalidations)
+- **Routing & lazy loading** (`lazyWithRetry`, ErrorBoundary 2 niveaux)
+- **Logger** (production strip), gestion d'erreurs (`catch unknown`, `data?.error`)
+- **Tests** existants (Vitest) : couverture, tests cassés
+- **Performance** : requêtes N+1, listes non virtualisées, bundle size
+- **Accessibilité & SEO** : alt, H1 unique, semantic HTML
 
-## Volet B — Durcissement du code (préventif)
+### 4. Cohérence UX
+- Mobile responsive (padding `p-3 sm:p-6`)
+- AlertDialog vs `window.confirm`
+- Tokens design (`hsl(var(--…))`) vs couleurs en dur
+- Devise FCFA partout, rôle `administrateur` (pas `admin`)
 
-Pour que ce type de panne silencieuse ne puisse plus arriver, modifier le hook et le composant :
+## Livrables
 
-### 1. `src/hooks/useSiteContent.ts` — `useSiteHero`
-- Remplacer `.single()` par `.maybeSingle()` (consigne projet).
-- Ajouter un **timeout de 10 s** sur la requête (Promise.race) pour ne pas rester pending indéfiniment.
-- Limiter `retry` à 2 et désactiver `refetchOnWindowFocus` pour éviter un blocage permanent en cas d'erreur réseau transitoire.
+1. **Rapport `docs/CODE_REVIEW_2026_05.md`** — pour chaque module :
+   - État (OK / Mineur / Majeur / Critique)
+   - Problèmes détectés (avec fichier:ligne)
+   - Recommandations
+2. **Tableau récap** des bugs / risques sécurité / dette technique, priorisé
+3. **Corrections critiques appliquées immédiatement** (sécurité, bugs bloquants)
+4. **Corrections mineures** : liste à valider avant exécution
 
-### 2. `src/components/Hero.tsx`
-- Récupérer `error` depuis `useSiteHero` en plus de `isLoading`.
-- Si `error` ou si `hero` est `null` après chargement → afficher quand même le Hero avec les **valeurs par défaut** (titre, sous-titre, image fallback déjà présents en `||`) au lieu de rester sur les squelettes.
-- Concrètement : sortir du bloc `if (isLoading)` également quand `error` est défini, pour basculer sur le rendu fallback.
+## Méthode
 
-### 3. (Optionnel) Bouton « Forcer le rechargement »
-- Ajouter dans la console un message d'erreur explicite via `logger.error` quand la requête Hero échoue, pour faciliter le support futur.
+```text
+Phase 1 : Audit automatisé (15 min)
+  - security_scan + supabase linter + dependency scan + tests existants
+Phase 2 : Revue par module (lecture ciblée)
+  - hooks → composants → pages → fonctions DB associées
+Phase 3 : Rédaction rapport + classement priorités
+Phase 4 : Application des fixes critiques
+Phase 5 : Présentation des fixes optionnels pour validation
+```
 
-## Résultat attendu
+## Question avant de démarrer
 
-Même si Supabase est inaccessible (extension, panne réseau, RLS cassée), la page d'accueil affiche le Hero avec son contenu par défaut au lieu de rester bloquée sur des squelettes bleus — l'utilisateur voit toujours quelque chose.
+Vu l'ampleur, dis-moi quelle **profondeur** tu veux :
 
-## Note
+- **A — Express (1 passe)** : audits automatisés + survol rapide tous modules + rapport synthétique + fixes critiques uniquement.
+- **B — Standard (recommandé)** : tout le périmètre ci-dessus, rapport détaillé, fixes critiques + majeurs appliqués.
+- **C — Approfondi** : B + revue ligne-par-ligne des modules sensibles (Caisse, Prêts, Cotisations, Bénéficiaires) + tests unitaires ajoutés sur les calculs financiers.
 
-Aucun changement de DB ni de migration n'est nécessaire. Le code est correct ; on le rend juste plus tolérant aux pannes côté client.
-
-Confirme avec **« go »** pour appliquer le volet B.
+Réponds **A**, **B** ou **C** (ou précise un sous-ensemble de modules à prioriser).

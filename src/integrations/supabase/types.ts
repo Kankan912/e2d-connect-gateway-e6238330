@@ -5321,6 +5321,7 @@ export type Database = {
         }
         Returns: string
       }
+      current_membre_id: { Args: never; Returns: string }
       delete_loan_validation_step: { Args: { _id: string }; Returns: boolean }
       disburse_loan: { Args: { _request_id: string }; Returns: Json }
       get_caisse_stats: { Args: never; Returns: Json }
