@@ -1,74 +1,99 @@
-# Plan : Code Review Complet du Projet E2D
+## Objectif
 
-Le projet est volumineux (40+ pages admin, 30+ hooks, 18 edge functions, ~80 tables). Une revue exhaustive ligne-par-ligne dépasserait largement la limite raisonnable d'une session. Je propose donc une revue **structurée par modules**, avec livrable écrit (rapport Markdown) et corrections appliquées en lot après validation.
+Mettre en place une chaîne complète de vérification sécurité :
+1. Tests automatisés RLS exécutés à chaque déploiement
+2. Re-scan complet de sécurité (déjà déclenché — résultats inclus ci-dessous)
+3. Rapport téléchargeable Markdown + PDF dans `/mnt/documents/`
 
-## Périmètre
+---
 
-### 1. Sécurité & Backend
-- **RLS** : revue des politiques par table (publiques vitrine vs privées admin)
-- **Edge Functions** (18) : auth, validation d'entrée, CORS, gestion d'erreurs, secrets
-- **Fonctions DB / Triggers** : `SECURITY DEFINER`, `search_path`, cohérence
-- **Secrets** : vérifier qu'aucun n'est exposé côté client
-- Lancer `security--run_security_scan` + `supabase--linter`
+## 1. Re-scan de sécurité (déjà exécuté)
 
-### 2. Modules métier (un par un)
-Pour chacun : hooks, composants, pages admin, logique calcul, intégration caisse
-- **Cotisations** (mensuelles, exercices, cumul annuel)
-- **Caisse** (synthèse, opérations, soldes, prêts en cours)
-- **Prêts** (demandes, workflow validation, reconductions, paiements, statuts)
-- **Épargnes & Bénéficiaires** (calendrier, prorata intérêts, distributions)
-- **Aides** (allocation, sync caisse)
-- **Réunions** (présences, sanctions, clôture, réouverture)
-- **Sport** (E2D, Phoenix, matchs, stats, médias)
-- **Adhésions & Donations** (Mobile Money, transferts, réconciliation)
-- **Notifications** (campagnes, templates, multi-provider email)
-- **Utilisateurs / Rôles / Permissions** (granular permissions, lifecycle)
-- **CMS Site vitrine** (Hero, About, Events, Gallery, Partners)
+Résultat du scan complet relancé pendant la planification :
 
-### 3. Architecture & Qualité
-- **Dépendances** (`package.json`) : versions, vulnérabilités (`bun audit`), packages inutilisés
-- **Type-safety** : `any` résiduels, jointures Supabase typées (`src/types/supabase-joins.ts`)
-- **Hooks génériques** vs duplications, React Query (staleTime, invalidations)
-- **Routing & lazy loading** (`lazyWithRetry`, ErrorBoundary 2 niveaux)
-- **Logger** (production strip), gestion d'erreurs (`catch unknown`, `data?.error`)
-- **Tests** existants (Vitest) : couverture, tests cassés
-- **Performance** : requêtes N+1, listes non virtualisées, bundle size
-- **Accessibilité & SEO** : alt, H1 unique, semantic HTML
+- **supabase_lov (scanner Lovable)** : 0 findings actionnables
+- **supabase (linter natif)** : 0 findings critiques
+- **agent_security** : 0 findings
+- **Linter brut** : 103 warnings dont :
+  - 10 × "Public Bucket Allows Listing" → **intentionnel** (vitrine `site-*`, photos membres, logos sport)
+  - ~80 × "Public Can Execute SECURITY DEFINER Function" → **intentionnel** (RPCs métier `get_caisse_*`, `has_role`, `is_admin`, etc. — protégées en interne)
+  - 1 × "RLS Policy Always True" → SELECT public sur tables CMS (vitrine, intentionnel)
 
-### 4. Cohérence UX
-- Mobile responsive (padding `p-3 sm:p-6`)
-- AlertDialog vs `window.confirm`
-- Tokens design (`hsl(var(--…))`) vs couleurs en dur
-- Devise FCFA partout, rôle `administrateur` (pas `admin`)
+Aucune nouvelle vulnérabilité masquée.
 
-## Livrables
+---
 
-1. **Rapport `docs/CODE_REVIEW_2026_05.md`** — pour chaque module :
-   - État (OK / Mineur / Majeur / Critique)
-   - Problèmes détectés (avec fichier:ligne)
-   - Recommandations
-2. **Tableau récap** des bugs / risques sécurité / dette technique, priorisé
-3. **Corrections critiques appliquées immédiatement** (sécurité, bugs bloquants)
-4. **Corrections mineures** : liste à valider avant exécution
+## 2. Tests automatisés RLS
 
-## Méthode
+Créer une suite Vitest dédiée qui simule 3 personae et vérifie l'accès aux tables sensibles via le client `@supabase/supabase-js` avec la clé anon.
 
-```text
-Phase 1 : Audit automatisé (15 min)
-  - security_scan + supabase linter + dependency scan + tests existants
-Phase 2 : Revue par module (lecture ciblée)
-  - hooks → composants → pages → fonctions DB associées
-Phase 3 : Rédaction rapport + classement priorités
-Phase 4 : Application des fixes critiques
-Phase 5 : Présentation des fixes optionnels pour validation
-```
+### Fichier : `src/test/security/rls.test.ts`
 
-## Question avant de démarrer
+Personae testés (créés à la volée puis nettoyés) :
+- **anonyme** : non authentifié
+- **membre** : utilisateur sans rôle privilégié
+- **admin** : utilisateur avec rôle `administrateur`
 
-Vu l'ampleur, dis-moi quelle **profondeur** tu veux :
+### Tables couvertes (et opérations testées)
 
-- **A — Express (1 passe)** : audits automatisés + survol rapide tous modules + rapport synthétique + fixes critiques uniquement.
-- **B — Standard (recommandé)** : tout le périmètre ci-dessus, rapport détaillé, fixes critiques + majeurs appliqués.
-- **C — Approfondi** : B + revue ligne-par-ligne des modules sensibles (Caisse, Prêts, Cotisations, Bénéficiaires) + tests unitaires ajoutés sur les calculs financiers.
+| Table | Anonyme | Membre | Admin |
+|---|---|---|---|
+| `messages_contact` | INSERT ✅ / SELECT ❌ | SELECT ❌ | SELECT ✅ |
+| `demandes_adhesion` | INSERT ✅ / SELECT ❌ | SELECT ❌ | SELECT ✅ |
+| `cms_events`, `cms_pages`, `cms_sections`, `cms_settings`, `cms_hero_slides`, `cms_gallery`, `cms_partners` | SELECT ✅ / INSERT ❌ | INSERT ❌ | INSERT ✅ |
+| `fichiers_joint` | SELECT ❌ | SELECT ✅ | SELECT ✅ |
+| `sport_e2d_depenses`, `sport_e2d_recettes`, `sport_phoenix_depenses`, `sport_phoenix_recettes` | SELECT ❌ | SELECT ✅ | SELECT ✅ |
+| `prets`, `cotisations`, `epargnes` | SELECT ❌ | SELECT (own only) ✅ | SELECT ✅ |
+| `audit_logs`, `payment_configs`, `fond_caisse_clotures`, `adhesions` | SELECT ❌ | SELECT ❌ | SELECT ✅ |
+| `user_roles`, `roles`, `role_permissions` | SELECT ❌ | SELECT (own) ✅ | SELECT ✅ |
 
-Réponds **A**, **B** ou **C** (ou précise un sous-ensemble de modules à prioriser).
+### Fichier : `src/test/security/setup-personae.ts`
+
+Helpers : `signInAsAnon()`, `signInAsMember()`, `signInAsAdmin()` — utilisent des comptes de test (variables d'env `TEST_MEMBER_EMAIL/PASSWORD`, `TEST_ADMIN_EMAIL/PASSWORD`). Si ces variables manquent, les tests sont marqués `skip` avec un message clair (pas de faux positif en CI).
+
+### Intégration CI
+
+- Ajout d'un script `npm run test:rls` dans `package.json` : `vitest run src/test/security`
+- Ajout d'un fichier `.github/workflows/security-rls.yml` (si CI GitHub) qui :
+  - Exécute `npm run test:rls` à chaque push sur `main`
+  - Upload du rapport JUnit en artefact
+- Documentation dans `docs/SECURITY_TESTS.md` : comment configurer les comptes de test, comment exécuter en local
+
+---
+
+## 3. Rapport de sécurité téléchargeable
+
+### Fichier source : `docs/SECURITY_REPORT_2026_05.md`
+
+Structure :
+1. **Résumé exécutif** — état général, nombre d'issues, statut
+2. **Findings résolus** (5 issues) avec pour chacune :
+   - ID, sévérité, table/scope
+   - Description du risque
+   - Correctif appliqué (extrait SQL)
+   - Statut : ✅ Vérifié
+3. **Warnings acceptés** (linter brut) avec justification métier
+4. **Tests automatisés** — liste des assertions, mode d'exécution
+5. **Recommandations futures** — rotation tokens, audit trimestriel, etc.
+6. **Annexes** — log scan complet, migrations exécutées
+
+### Génération PDF : `scripts/generate-security-report.py`
+
+Script Python utilisant `reportlab` qui :
+- Lit le `.md` ci-dessus
+- Génère `/mnt/documents/SECURITY_REPORT_2026_05.pdf` avec mise en page propre (titres, tableaux, code blocks)
+- QA visuelle obligatoire (pdftoppm + inspection) avant livraison
+
+Livrables téléchargeables :
+- `<presentation-artifact path="SECURITY_REPORT_2026_05.md" mime_type="text/markdown">`
+- `<presentation-artifact path="SECURITY_REPORT_2026_05.pdf" mime_type="application/pdf">`
+
+---
+
+## Détails techniques
+
+- **Vitest** est déjà configuré (`vitest.config.ts`, `src/test/setup.ts`) — la suite RLS sera isolée dans un sous-dossier `security/` avec son propre setup pour ne pas mocker Supabase (contrairement aux tests unitaires existants)
+- **Sécurité des comptes test** : ne JAMAIS hardcoder de mots de passe — uniquement via env vars
+- **Idempotence** : les tests utilisent `cleanup()` après chaque cas pour ne laisser aucune donnée de test
+- **Coût** : ~30-40 assertions, exécution < 30s
+- **Pas de modification du code applicatif** ni des migrations existantes
