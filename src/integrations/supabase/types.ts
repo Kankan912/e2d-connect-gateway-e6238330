@@ -4241,6 +4241,42 @@ export type Database = {
         }
         Relationships: []
       }
+      security_scans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          critical_count: number
+          id: string
+          info_count: number
+          report_url: string | null
+          scan_date: string
+          summary: string | null
+          warning_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          critical_count?: number
+          id?: string
+          info_count?: number
+          report_url?: string | null
+          scan_date?: string
+          summary?: string | null
+          warning_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          critical_count?: number
+          id?: string
+          info_count?: number
+          report_url?: string | null
+          scan_date?: string
+          summary?: string | null
+          warning_count?: number
+        }
+        Relationships: []
+      }
       session_config: {
         Row: {
           created_at: string | null
