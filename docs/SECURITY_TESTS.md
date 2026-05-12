@@ -53,3 +53,23 @@ Ajoutez à votre workflow GitHub Actions / GitLab CI :
     VITE_TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
     VITE_TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
 ```
+
+## Intégration CI/CD (GitHub Actions)
+
+Le workflow `.github/workflows/security-rls.yml` exécute automatiquement `bun run test:rls` à chaque push sur `main` et à chaque pull request.
+
+### Secrets GitHub à configurer
+
+Dans **Settings → Secrets and variables → Actions** du repository :
+
+| Secret | Description |
+|--------|-------------|
+| `VITE_SUPABASE_URL` | URL du projet Supabase |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Clé publique anon |
+| `VITE_TEST_ANON_EMAIL` / `VITE_TEST_ANON_PASSWORD` | Compte anonyme de test |
+| `VITE_TEST_MEMBER_EMAIL` / `VITE_TEST_MEMBER_PASSWORD` | Compte membre standard |
+| `VITE_TEST_ADMIN_EMAIL` / `VITE_TEST_ADMIN_PASSWORD` | Compte administrateur |
+
+### Bloquer les déploiements en cas d'échec
+
+Activer **Settings → Branches → Branch protection rules** sur `main` et cocher *Require status checks to pass* avec le job `Security RLS Tests`.

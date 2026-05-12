@@ -22,6 +22,7 @@ import { logger } from "@/lib/logger";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { SecurityStatusWidget } from "@/components/admin/SecurityStatusWidget";
 
 // ----------- Helpers -----------
 function downloadCSV(filename: string, rows: Record<string, unknown>[]) {
@@ -563,6 +564,8 @@ const MonitoringAdmin = () => {
           <p className="text-sm text-muted-foreground">Suivi des connexions, actions et consultations du site</p>
         </div>
       </div>
+
+      <SecurityStatusWidget />
 
       <Tabs defaultValue="consultation" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-2xl">
