@@ -19,6 +19,8 @@ P = ParagraphStyle("P", parent=styles["BodyText"], fontSize=10, leading=14, spac
 LI = ParagraphStyle("LI", parent=P, leftIndent=14, bulletIndent=4)
 
 def inline(s: str) -> str:
+    # Replace emoji not in standard fonts with text equivalents
+    s = s.replace("✅", "[OK]").replace("❌", "[NON]").replace("—", "-")
     s = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     s = re.sub(r"`([^`]+)`", r'<font name="Courier" color="#b91c1c">\1</font>', s)
     s = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", s)
