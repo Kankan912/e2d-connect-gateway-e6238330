@@ -1,10 +1,12 @@
-import { ArrowRight, Heart, Users, Trophy } from "lucide-react";
+import { ArrowRight, Heart, Users, Trophy, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSiteHero, useSiteHeroImages, useSiteConfig } from "@/hooks/useSiteContent";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import { useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import heroImageFallback from "@/assets/hero-sports.jpg";
 
 const Hero = () => {
