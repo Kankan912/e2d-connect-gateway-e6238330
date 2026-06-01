@@ -533,11 +533,11 @@ export default function CalendrierBeneficiairesManager() {
           {selectedMembre && selectedMois && (() => {
             const cotisation = cotisationsMensuelles.find(c => c.membre_id === selectedMembre);
             const montantMensuel = cotisation?.montant || 20000;
-            const montantTotal = montantMensuel * 12;
+            const montantTotal = montantMensuel * nbMoisExercice;
             return (
               <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
                 <p className="text-sm font-medium text-primary">
-                  Montant total prévu : {formatFCFA(montantMensuel)} × 12 = <span className="font-bold">{formatFCFA(montantTotal)}</span>
+                  Montant total prévu : {formatFCFA(montantMensuel)} × {nbMoisExercice} = <span className="font-bold">{formatFCFA(montantTotal)}</span>
                 </p>
               </div>
             );
