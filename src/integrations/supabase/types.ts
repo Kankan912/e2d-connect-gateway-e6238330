@@ -3282,6 +3282,83 @@ export type Database = {
         }
         Relationships: []
       }
+      pret_reconduction_validation_config: {
+        Row: {
+          actif: boolean
+          created_at: string
+          id: string
+          label: string
+          ordre: number
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          created_at?: string
+          id?: string
+          label: string
+          ordre: number
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          created_at?: string
+          id?: string
+          label?: string
+          ordre?: number
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pret_reconduction_validations: {
+        Row: {
+          commentaire: string | null
+          created_at: string
+          id: string
+          label: string
+          ordre: number
+          reconduction_id: string
+          role: string
+          statut: string
+          validated_at: string | null
+          validated_by: string | null
+        }
+        Insert: {
+          commentaire?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          ordre: number
+          reconduction_id: string
+          role: string
+          statut?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Update: {
+          commentaire?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          ordre?: number
+          reconduction_id?: string
+          role?: string
+          statut?: string
+          validated_at?: string | null
+          validated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pret_reconduction_validations_reconduction_id_fkey"
+            columns: ["reconduction_id"]
+            isOneToOne: false
+            referencedRelation: "prets_reconductions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prets: {
         Row: {
           avaliste_id: string | null
@@ -3491,9 +3568,12 @@ export type Database = {
       prets_reconductions: {
         Row: {
           created_at: string | null
+          created_by: string | null
+          current_step: number | null
           date_reconduction: string
           id: string
           interet_mois: number
+          motif_rejet: string | null
           notes: string | null
           pret_id: string
           statut: string
@@ -3502,9 +3582,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
+          current_step?: number | null
           date_reconduction?: string
           id?: string
           interet_mois: number
+          motif_rejet?: string | null
           notes?: string | null
           pret_id: string
           statut?: string
@@ -3513,9 +3596,12 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
+          current_step?: number | null
           date_reconduction?: string
           id?: string
           interet_mois?: number
+          motif_rejet?: string | null
           notes?: string | null
           pret_id?: string
           statut?: string
@@ -5345,6 +5431,7 @@ export type Database = {
         Args: { p_exercice_id: string; p_membre_id: string }
         Returns: Json
       }
+      can_manage_beneficiaires: { Args: never; Returns: boolean }
       create_loan_request: {
         Args: {
           _capacite_remboursement: string
@@ -5359,6 +5446,10 @@ export type Database = {
       }
       current_membre_id: { Args: never; Returns: string }
       delete_loan_validation_step: { Args: { _id: string }; Returns: boolean }
+      delete_pret_reconduction_validation_step: {
+        Args: { _id: string }
+        Returns: boolean
+      }
       disburse_loan: { Args: { _request_id: string }; Returns: Json }
       get_caisse_stats: { Args: never; Returns: Json }
       get_caisse_synthese: { Args: never; Returns: Json }
@@ -5426,11 +5517,29 @@ export type Database = {
         Args: { _motif: string; _request_id: string }
         Returns: Json
       }
+      reject_pret_reconduction_step: {
+        Args: { _motif: string; _recon_id: string }
+        Returns: Json
+      }
       reorder_loan_validation_steps: {
         Args: { _ids: string[] }
         Returns: boolean
       }
+      reorder_pret_reconduction_validation_steps: {
+        Args: { _ids: string[] }
+        Returns: boolean
+      }
       upsert_loan_validation_step: {
+        Args: {
+          _actif: boolean
+          _id: string
+          _label: string
+          _ordre: number
+          _role: string
+        }
+        Returns: string
+      }
+      upsert_pret_reconduction_validation_step: {
         Args: {
           _actif: boolean
           _id: string
@@ -5446,6 +5555,10 @@ export type Database = {
       }
       validate_loan_step: {
         Args: { _commentaire?: string; _request_id: string }
+        Returns: Json
+      }
+      validate_pret_reconduction_step: {
+        Args: { _commentaire?: string; _recon_id: string }
         Returns: Json
       }
     }
