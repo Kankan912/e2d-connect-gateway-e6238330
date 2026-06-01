@@ -201,7 +201,7 @@ export default function CalendrierBeneficiairesManager() {
 
     autoTable(doc, {
       startY: 45,
-      head: [['Mois', 'Bénéficiaires', 'Nb', 'Montant Mensuel', 'Total (×12)']],
+      head: [['Mois', 'Bénéficiaires', 'Nb', 'Montant Mensuel', `Total (×${nbMoisExercice})`]],
       body: tableData,
       theme: 'striped',
       headStyles: { fillColor: [30, 64, 175] },
