@@ -567,6 +567,7 @@ const MonitoringAdmin = () => {
       </div>
 
       <SecurityStatusWidget />
+      <CITestAccountsCard />
 
       <Tabs defaultValue="consultation" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-2xl">
