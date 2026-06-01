@@ -1,60 +1,74 @@
-## Approche retenue
+## Phase 1 — Corrections Bloc Finances
 
-Phase par phase, en commençant par le **Bloc Finances** (Phase 3 - calculs). Pour chaque bloc : un rapport d'audit Markdown listant anomalies (attendu / observé / impact / correctif), puis correctifs code commités. Validation utilisateur entre chaque bloc avant de passer au suivant.
+Application des corrections identifiées dans `docs/AUDIT_FINANCES.md` après clarifications utilisateur.
 
-## Bloc 1 — Finances (livrable de ce plan)
+### 1. Mise à jour audit (`docs/AUDIT_FINANCES.md`)
+- C5 reclassé ✅ Conforme (formule `cotisation_mensuelle × nb_mois_exercice` = épargne individuelle annuelle, pas une redistribution)
+- Ajout C13 : durée d'exercice à lire dynamiquement, jamais en dur
+- Confirmation C6, C7, C8, C11, C12
 
-Audit + corrections sur 4 sous-modules dans cet ordre :
+### 2. C13 — Durée d'exercice dynamique (calculs bénéficiaires)
+**SQL** — `calculer_montant_beneficiaire(membre_id, exercice_id)` :
+- Calculer `v_nb_mois := GREATEST(1, (EXTRACT(YEAR FROM age(date_fin, date_debut))*12 + EXTRACT(MONTH FROM age(date_fin, date_debut)))::int)` depuis `exercices_cotisations`
+- Remplacer `v_montant_mensuel * 12` par `v_montant_mensuel * v_nb_mois`
+- Retourner `nb_mois` dans le JSON pour traçabilité
 
-### 1. Cotisations
-- Vérifier `useCotisations`, `useCotisationsMensuelles`, `cotisationsLogic.test.ts`
-- Cohérence : total membre / total exercice / total réunion / solde
-- Source unique des montants (`cotisations_mensuelles_exercice` prioritaire, fallback `cotisations_types`)
-- Vérifier filtrage des types via `exercices_cotisations_types.actif`
+**Frontend** — `src/lib/beneficiairesCalculs.ts`, `useCalendrierBeneficiaires.ts` :
+- Récupérer `date_debut`/`date_fin` de l'exercice et calculer `nbMois`
+- Utiliser `montantMensuel × nbMois` partout, supprimer toute constante `12`
+- Afficher `nbMois` dans la fiche bénéficiaire (ex. "Épargne sur 12 mois")
 
-### 2. Bénéficiaires
-- Audit `CalendrierBeneficiaires.tsx`, `useCalendrierBeneficiaires.ts`, `beneficiairesCalculs.ts`
-- **Règle de calcul** : `montant = cotisation_mensuelle_du_membre × nb_membres_participants` (PAS de division)
-- **Regroupement visuel** : un mois = une carte, plusieurs bénéficiaires regroupés dessous
-- **Classement manuel** : bouton Ajouter (membre + mois + rang), librement modifiable
-- **Permissions** : édition restreinte à `administrateur` + `tresorier` (via `has_permission` ou `is_admin()`)
-- Identifier les écarts vs spec et corriger (UI + RLS si besoin)
+### 3. C8 — Restriction permissions calendrier bénéficiaires
+**Frontend** — `CalendrierBeneficiaires.tsx`, `Beneficiaires.tsx`, hooks d'écriture :
+- Remplacer les checks basés sur `is_admin()` (qui inclut `secretaire_general`) par un nouveau helper `canManageBeneficiaires()` = `administrateur` OU `tresorier` OU (`secretaire_general` AVEC rôle `administrateur` explicitement attribué)
+- Boutons Ajouter / Modifier / Supprimer / Réorganiser masqués sinon
 
-### 3. Prêts
-- Audit `pretCalculsService.ts`, hooks prêts, `PretsPaiementsManager`, `ReconduireModal`
-- **Remboursement partiel** : `capital_restant = capital_restant - montant_remboursé` UNIQUEMENT. Les intérêts initiaux ne doivent JAMAIS être recalculés sur un paiement partiel
-- Vérifier capital initial / restant / intérêts / paiements / reconductions / historique
-- **Reconduction** :
-  - Échéance dépassée → statut `EN_ATTENTE_RECONDUCTION` (à ajouter si absent)
-  - Validation par Admin / Trésorier / Commissaire aux comptes (via `loan_validation_config` étendue ou table dédiée `prets_reconductions`)
-  - Validation → historique + notification email + log
-  - Refus → motif obligatoire + notification emprunteur
-  - Aucune reconduction automatique (vérifier qu'aucun trigger ne le fait)
+**SQL** — nouvelle fonction `public.can_manage_beneficiaires()` (SECURITY DEFINER) utilisée dans les policies RLS de `beneficiaires_mensuels` (UPDATE/INSERT/DELETE)
 
-### 4. Caisse
-- Audit `useCaisse`, `CaisseDashboard`, `caisseCalculations.test.ts`, RPCs `get_caisse_synthese()` / `get_caisse_stats()` / `get_solde_caisse()`
-- **Source unique** : dashboard, synthèse, détails doivent tous lire la MÊME RPC (`get_caisse_synthese`)
-- Lister chaque écart entre les 3 vues + remplacer par appel RPC unifié
-- Vérifier fonds sport, fonds caisse, prêts décaissés, remboursements, solde empruntable (80% — déjà en mémoire)
+### 4. C6 + C7 — UI calendrier : regroupement mensuel + ajout manuel
+- Vue calendrier groupée par mois (header mois + liste bénéficiaires sous le mois)
+- Plusieurs bénéficiaires/mois affichés côte à côte, chacun garde son montant individuel (aucune division)
+- Bouton "Ajouter un bénéficiaire" par mois → modal de sélection membre
+- Bouton "Modifier" / "Retirer" par ligne
+- Drag-and-drop ou flèches pour réordonner manuellement (champ `ordre` ou `mois_position`)
 
-## Livrables Bloc 1
+### 5. C11 + C12 — Workflow reconduction prêt (séquentiel configurable)
+**Architecture identique aux `loan_requests`** :
 
-1. `docs/AUDIT_FINANCES.md` — tableau anomalies (fonctionnalité / attendu / observé / impact / correctif)
-2. Correctifs code (hooks, composants, RPCs via migration si nécessaire)
-3. Tests Vitest mis à jour pour couvrir les règles critiques (remboursement partiel, calcul bénéficiaire, source unique caisse)
-4. Mise à jour `mem://` si nouvelles règles découvertes
+**SQL** — nouvelles tables :
+- `pret_reconduction_validation_config(id, role, label, ordre, actif)` — éditable par admin, mêmes RPC que `loan_validation_config` (`upsert_*`, `delete_*`, `reorder_*`)
+- `prets_reconductions_validations(id, reconduction_id, role, label, ordre, statut, validated_by, validated_at, commentaire)`
+- Ajout colonnes sur `prets_reconductions` : `statut` enum (`en_attente`, `in_progress`, `approved`, `rejected`), `current_step`, `motif_rejet`
+- RPC `validate_reconduction_step(reconduction_id, commentaire)` et `reject_reconduction_step(reconduction_id, motif)` (calque exact de `validate_loan_step` / `reject_loan_step`)
+- Trigger init des étapes à l'insertion + trigger d'avancement séquentiel
+- Remplacer trigger existant `enforce_reconduction_validation` par le nouveau workflow
 
-## Hors scope (blocs suivants, à valider après)
+**Frontend** :
+- Page admin `PretsReconductionConfig` (calquée sur `LoanWorkflowConfig`)
+- `ReconduireModal` : soumission crée la reconduction en `in_progress`, plus de validation immédiate
+- Nouveau composant `ReconductionValidationTimeline` (calque de `LoanValidationTimeline`)
+- Emails de notification aux validateurs (réutilisation de `send-loan-notification` ou nouvelle fonction `send-reconduction-notification`)
 
-- Bloc 2 : Réunions + Présences
-- Bloc 3 : Email + Notifications + Users + Logs
-- Bloc 4 : Matchs + Site + Galerie (albums Facebook-like) + Navigation
-- Bloc 5 : UX globale + format API uniforme `{success, code, message}` + suppression messages techniques
+### 6. Tests + mémoire
+- Mise à jour `pretCalculsService.test.ts` (workflow reconduction)
+- Nouveau test `beneficiairesCalculs.test.ts` (formule dynamique `× nb_mois`)
+- Mise à jour `mem://modules/beneficiaries/calendar-management-logic-v2`
+- Nouvelle mémoire `mem://modules/loans/reconduction-workflow`
 
-## Méthode pour ce bloc
+### Détails techniques
 
-1. Lecture exhaustive des fichiers finance listés
-2. Requêtes `supabase--read_query` ciblées pour vérifier les données réelles (ex: bénéficiaires multiples sur un mois, prêts en retard sans reconduction)
-3. Rédaction du rapport AVANT correctifs
-4. Correctifs commités par sous-module (cotisations → bénéficiaires → prêts → caisse)
-5. Pause pour validation utilisateur avant Bloc 2
+```text
+Ordre d'exécution :
+1. docs/AUDIT_FINANCES.md (mise à jour)
+2. Migration SQL : calculer_montant_beneficiaire (nb_mois dynamique)
+                 + can_manage_beneficiaires() + RLS beneficiaires_mensuels
+                 + tables/RPC/triggers reconduction workflow
+3. Code frontend bénéficiaires (C13, C8, C6, C7)
+4. Code frontend reconduction (C11, C12) + page config admin
+5. Edge function notification reconduction
+6. Tests + mémoires
+```
+
+**Hors scope** (autres blocs) : Réunions, Email+Notifications+Users+Logs, Matchs+Site+Galerie, UX globale — traités dans les phases suivantes après validation de ce bloc.
+
+**Livraison** : un commit par sous-module (bénéficiaires / reconduction), rapport final mis à jour dans `docs/AUDIT_FINANCES.md`, pause pour validation avant Bloc 2 (Réunions).
