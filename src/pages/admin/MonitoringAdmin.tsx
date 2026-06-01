@@ -23,6 +23,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { SecurityStatusWidget } from "@/components/admin/SecurityStatusWidget";
+import { CITestAccountsCard } from "@/components/admin/CITestAccountsCard";
 
 // ----------- Helpers -----------
 function downloadCSV(filename: string, rows: Record<string, unknown>[]) {
@@ -566,6 +567,7 @@ const MonitoringAdmin = () => {
       </div>
 
       <SecurityStatusWidget />
+      <CITestAccountsCard />
 
       <Tabs defaultValue="consultation" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-2xl">
