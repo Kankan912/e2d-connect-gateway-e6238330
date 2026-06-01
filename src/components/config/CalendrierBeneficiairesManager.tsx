@@ -66,6 +66,15 @@ export default function CalendrierBeneficiairesManager() {
   const selectedExerciceData = exercices.find(e => e.id === selectedExercice);
   const isLocked = selectedExerciceData?.statut === 'cloture';
 
+  // C13: durée dynamique de l'exercice (en mois), basée sur date_debut/date_fin
+  const nbMoisExercice = useMemo(() => {
+    if (!selectedExerciceData?.date_debut || !selectedExerciceData?.date_fin) return 12;
+    const debut = new Date(selectedExerciceData.date_debut);
+    const fin = new Date(selectedExerciceData.date_fin);
+    const months = (fin.getFullYear() - debut.getFullYear()) * 12 + (fin.getMonth() - debut.getMonth());
+    return Math.max(1, months);
+  }, [selectedExerciceData]);
+
   const { 
     calendrier, 
     isLoading, 
