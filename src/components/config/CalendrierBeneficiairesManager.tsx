@@ -39,7 +39,8 @@ export default function CalendrierBeneficiairesManager() {
   const { userRole } = useAuth();
   const { toast } = useToast();
 
-  const isAdmin = userRole && ['admin', 'administrateur', 'tresorier', 'super_admin', 'secretaire_general'].includes(userRole.toLowerCase());
+  // C8 : restreint à administrateur + trésorier uniquement (exclut secrétaire général sauf rôle admin explicite)
+  const isAdmin = userRole && ['admin', 'administrateur', 'tresorier', 'super_admin'].includes(userRole.toLowerCase());
 
   // Charger les exercices
   const { data: exercices = [] } = useQuery({
