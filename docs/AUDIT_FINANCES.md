@@ -22,11 +22,12 @@
 - Policies RLS `calendrier_beneficiaires` (INSERT/UPDATE/DELETE) refondues sur ce helper
 - Frontend `CalendrierBeneficiairesManager.tsx` : `secretaire_general` retiré du check `isAdmin`
 
-### C13 — Durée d'exercice dynamique (partiel)
-- RPC `calculer_montant_beneficiaire` : nb de mois calculé depuis `exercices.date_debut/date_fin`, plus de `× 12` en dur
-- Champ `nb_mois` ajouté au JSON retourné pour traçabilité
-
-**Reste à faire (C13 résiduel)** : la colonne `calendrier_beneficiaires.montant_total` est une colonne PostgreSQL **GENERATED ALWAYS AS (montant_mensuel * 12)** — la rendre dynamique nécessite de la dropper et la recalculer côté application ou via trigger (changement structurel + impact frontend `montant_total` affiché). À traiter dans un commit dédié.
+### C13 — Durée d'exercice dynamique ✅
+- RPC `calculer_montant_beneficiaire` : nb de mois calculé depuis `exercices.date_debut/date_fin`, plus de `× 12` en dur (champ `nb_mois` exposé dans le JSON retourné)
+- Colonne `calendrier_beneficiaires.montant_total` : **n'est plus générée** (`GENERATED ALWAYS AS … * 12` supprimée). Désormais colonne `numeric` standard maintenue par trigger `trg_calendrier_beneficiaires_compute_total` = `montant_mensuel × get_exercice_nb_mois(exercice_id)`
+- Nouvelle fonction utilitaire `public.get_exercice_nb_mois(uuid)` (min 1, défaut 12 si dates absentes)
+- Backfill effectué sur les lignes existantes selon la vraie durée de chaque exercice
+- Frontend `CalendrierBeneficiairesManager.tsx` : variable `nbMoisExercice` calculée depuis `selectedExerciceData.date_debut/date_fin` ; preview dialog d'ajout et entête PDF utilisent désormais la durée réelle (plus de `× 12` en dur)
 
 ### C11/C12 — Workflow reconduction prêt (SQL)
 Tables créées :
