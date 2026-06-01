@@ -1,45 +1,35 @@
-Je vais remplacer les instructions floues par une action guidée dans l’interface admin.
+## Étapes restantes pour activer la CI RLS
 
-## Ce qui sera fait
+### 1. Générer les 3 comptes de test Supabase
+- Aller sur `/dashboard/admin/monitoring` (vous y êtes déjà)
+- Dans la carte **« Comptes de test CI »**, cliquer sur **« Générer les comptes de test CI »**
+- L'Edge Function `seed-test-users` crée/met à jour :
+  - `ci-anon@e2d-test.local` (aucun rôle)
+  - `ci-membre@e2d-test.local` (rôle `membre`)
+  - `ci-administrateur@e2d-test.local` (rôle `administrateur`)
+- Les mots de passe forts sont générés automatiquement et affichés **une seule fois**
 
-1. **Créer une Edge Function sécurisée `seed-test-users`**
-   - Accessible uniquement depuis un compte connecté ayant le rôle `administrateur`.
-   - Utilise `SUPABASE_SERVICE_ROLE_KEY` côté serveur pour créer ou mettre à jour les 3 comptes de test Supabase.
-   - Génère automatiquement des mots de passe forts.
-   - Ne stocke pas les mots de passe en base et ne les écrit pas dans GitHub.
+### 2. Vérifier que les secrets GitHub correspondent
+Les valeurs affichées doivent **exactement** correspondre aux 8 secrets GitHub que vous venez de créer :
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_TEST_ANON_EMAIL` / `VITE_TEST_ANON_PASSWORD`
+- `VITE_TEST_MEMBER_EMAIL` / `VITE_TEST_MEMBER_PASSWORD`
+- `VITE_TEST_ADMIN_EMAIL` / `VITE_TEST_ADMIN_PASSWORD`
 
-2. **Créer les 3 comptes de test CI**
-   - `anon` : compte de test public/non privilégié.
-   - `membre` : compte membre simple.
-   - `administrateur` : compte administrateur, avec le rôle officiel `administrateur`.
-   - Les emails seront du type `ci-anon@e2d-test.local`, `ci-membre@e2d-test.local`, `ci-administrateur@e2d-test.local`.
+Si vous avez mis des emails/mots de passe **différents** dans GitHub, il faut soit :
+- Mettre à jour les secrets GitHub avec les valeurs affichées par le bouton, OU
+- Me dire les emails que vous avez utilisés pour que j'adapte l'Edge Function
 
-3. **Ajouter un bouton clair dans `MonitoringAdmin`**
-   - Bouton : `Générer les comptes de test CI`.
-   - Après clic, l’écran affichera directement les 8 valeurs à copier dans GitHub Secrets :
-     - `VITE_SUPABASE_URL`
-     - `VITE_SUPABASE_PUBLISHABLE_KEY`
-     - `VITE_TEST_ANON_EMAIL`
-     - `VITE_TEST_ANON_PASSWORD`
-     - `VITE_TEST_MEMBER_EMAIL`
-     - `VITE_TEST_MEMBER_PASSWORD`
-     - `VITE_TEST_ADMIN_EMAIL`
-     - `VITE_TEST_ADMIN_PASSWORD`
-   - Ajout d’un bouton de copie pour faciliter l’ajout dans GitHub.
+### 3. Lancer le workflow manuellement pour valider
+- GitHub → onglet **Actions** → workflow **« Security RLS Tests »**
+- Cliquer sur **« Run workflow »** → branche `main` → **Run workflow**
+- Attendre 1-2 min, vérifier que le job passe au vert ✅
 
-4. **Créer une checklist simple**
-   - Fichier : `docs/CI_SETUP_CHECKLIST.md`.
-   - Instructions simplifiées, étape par étape, sans jargon.
-   - Explication claire : je peux créer les comptes Supabase automatiquement, mais les GitHub Secrets doivent être collés dans GitHub par une personne ayant accès au dépôt, sauf si un accès GitHub automatisé est explicitement configuré.
+### 4. Vérification finale
+Une fois le workflow vert :
+- Le job s'exécutera automatiquement à chaque `push` et `pull_request` sur `main`
+- Toute violation RLS fera échouer le workflow et bloquera le merge
 
-## Point important
-
-Je ne mettrai pas les mots de passe dans le code ni dans un fichier GitHub. Ils seront affichés une seule fois dans l’interface admin après génération, afin que tu puisses les copier en sécurité.
-
-## Validation prévue
-
-Après implémentation, je vérifierai que :
-- la fonction est bien déployable ;
-- le bouton admin appelle correctement la fonction ;
-- les valeurs nécessaires au workflow `security-rls.yml` correspondent bien aux noms attendus ;
-- la documentation explique précisément quoi copier et où le coller.
+### Question pour vous
+Voulez-vous que je vous guide étape par étape (en attendant que vous cliquiez sur chaque bouton), ou préférez-vous tout faire d'un coup en suivant `docs/CI_SETUP_CHECKLIST.md` ?
