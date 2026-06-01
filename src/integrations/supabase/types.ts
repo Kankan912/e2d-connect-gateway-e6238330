@@ -494,7 +494,7 @@ export type Database = {
           membre_id: string
           mois_benefice: number | null
           montant_mensuel: number
-          montant_total: number | null
+          montant_total: number
           notes: string | null
           ordre_mois: number | null
           rang: number
@@ -508,7 +508,7 @@ export type Database = {
           membre_id: string
           mois_benefice?: number | null
           montant_mensuel?: number
-          montant_total?: number | null
+          montant_total?: number
           notes?: string | null
           ordre_mois?: number | null
           rang: number
@@ -522,7 +522,7 @@ export type Database = {
           membre_id?: string
           mois_benefice?: number | null
           montant_mensuel?: number
-          montant_total?: number | null
+          montant_total?: number
           notes?: string | null
           ordre_mois?: number | null
           rang?: number
@@ -5458,6 +5458,7 @@ export type Database = {
         Returns: number
       }
       get_current_user_role: { Args: never; Returns: string }
+      get_exercice_nb_mois: { Args: { _exercice_id: string }; Returns: number }
       get_loan_request_member_email: {
         Args: { _request_id: string }
         Returns: {
