@@ -66,6 +66,15 @@ export default function CalendrierBeneficiairesManager() {
   const selectedExerciceData = exercices.find(e => e.id === selectedExercice);
   const isLocked = selectedExerciceData?.statut === 'cloture';
 
+  // C13: durée dynamique de l'exercice (en mois), basée sur date_debut/date_fin
+  const nbMoisExercice = useMemo(() => {
+    if (!selectedExerciceData?.date_debut || !selectedExerciceData?.date_fin) return 12;
+    const debut = new Date(selectedExerciceData.date_debut);
+    const fin = new Date(selectedExerciceData.date_fin);
+    const months = (fin.getFullYear() - debut.getFullYear()) * 12 + (fin.getMonth() - debut.getMonth());
+    return Math.max(1, months);
+  }, [selectedExerciceData]);
+
   const { 
     calendrier, 
     isLoading, 
@@ -192,7 +201,7 @@ export default function CalendrierBeneficiairesManager() {
 
     autoTable(doc, {
       startY: 45,
-      head: [['Mois', 'Bénéficiaires', 'Nb', 'Montant Mensuel', 'Total (×12)']],
+      head: [['Mois', 'Bénéficiaires', 'Nb', 'Montant Mensuel', `Total (×${nbMoisExercice})`]],
       body: tableData,
       theme: 'striped',
       headStyles: { fillColor: [30, 64, 175] },
@@ -524,11 +533,11 @@ export default function CalendrierBeneficiairesManager() {
           {selectedMembre && selectedMois && (() => {
             const cotisation = cotisationsMensuelles.find(c => c.membre_id === selectedMembre);
             const montantMensuel = cotisation?.montant || 20000;
-            const montantTotal = montantMensuel * 12;
+            const montantTotal = montantMensuel * nbMoisExercice;
             return (
               <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
                 <p className="text-sm font-medium text-primary">
-                  Montant total prévu : {formatFCFA(montantMensuel)} × 12 = <span className="font-bold">{formatFCFA(montantTotal)}</span>
+                  Montant total prévu : {formatFCFA(montantMensuel)} × {nbMoisExercice} = <span className="font-bold">{formatFCFA(montantTotal)}</span>
                 </p>
               </div>
             );
