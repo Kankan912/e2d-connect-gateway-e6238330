@@ -12,7 +12,7 @@
 | C9-C10 | Prêts | Remboursement partiel sans recalcul d'intérêts | ✅ Conforme |
 | **C11** | Prêts | Statut `en_attente_reconduction` | ✅ **Corrigé** (workflow tables) |
 | **C12** | Prêts | Workflow multi-valideurs configurable | ✅ **SQL livré** — frontend partiel (voir ci-dessous) |
-| **C13** | Bénéficiaires | Durée d'exercice (12 mois en dur) | ⚠️ **Partiellement corrigé** (RPC OK, colonne générée à refactor) |
+| **C13** | Bénéficiaires | Durée d'exercice (12 mois en dur) | ✅ **Corrigé** (RPC + colonne + frontend dynamiques) |
 | C14-C15 | Caisse | Source unique `get_caisse_synthese` | ✅ Conforme |
 
 ## Corrections livrées (migration `20260601`)
