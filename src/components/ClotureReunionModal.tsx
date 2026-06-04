@@ -275,14 +275,13 @@ export default function ClotureReunionModal({
           prenom: p.membres.prenom
         })) || [];
 
-      if (destinataires.length === 0) {
+      // B1 — Ne pas bloquer la clôture si aucun email valide.
+      const hasDestinataires = destinataires.length > 0;
+      if (!hasDestinataires) {
         toast({
-          title: "Attention",
-          description: "Aucun email valide trouvé pour les membres présents",
-          variant: "destructive",
+          title: "Compte-rendu non envoyé",
+          description: "Aucun email valide pour les membres présents. La clôture se poursuit sans envoi.",
         });
-        setProcessing(false);
-        return;
       }
 
       // === ÉTAPE 5: Préparer et envoyer le compte-rendu par email ===
