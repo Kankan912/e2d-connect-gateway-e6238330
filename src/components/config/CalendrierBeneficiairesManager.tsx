@@ -75,6 +75,25 @@ export default function CalendrierBeneficiairesManager() {
     return Math.max(1, months);
   }, [selectedExerciceData]);
 
+  // C6/C7: liste ordonnée des mois de l'exercice (avec année), basée sur date_debut
+  const moisExerciceList = useMemo(() => {
+    const list: { index: number; mois: number; annee: number; label: string; shortLabel: string }[] = [];
+    const debut = selectedExerciceData?.date_debut ? new Date(selectedExerciceData.date_debut) : new Date(new Date().getFullYear(), 0, 1);
+    for (let i = 0; i < nbMoisExercice; i++) {
+      const d = new Date(debut.getFullYear(), debut.getMonth() + i, 1);
+      const moisIdx = d.getMonth(); // 0..11
+      list.push({
+        index: i + 1,
+        mois: moisIdx + 1, // 1..12 (clé stockée en BDD)
+        annee: d.getFullYear(),
+        label: `${MOIS[moisIdx]} ${d.getFullYear()}`,
+        shortLabel: MOIS[moisIdx],
+      });
+    }
+    return list;
+  }, [selectedExerciceData, nbMoisExercice]);
+
+
   const { 
     calendrier, 
     isLoading, 
