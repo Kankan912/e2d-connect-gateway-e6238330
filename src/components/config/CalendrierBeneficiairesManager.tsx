@@ -158,12 +158,14 @@ export default function CalendrierBeneficiairesManager() {
 
   const handleInitialize = async () => {
     if (!selectedExercice || calendrier.length > 0) return;
-    const membresData = membresE2D.map(m => {
+    const membresData = membresE2D.map((m, index) => {
       const cotisation = cotisationsMensuelles.find(c => c.membre_id === m.id);
       return { id: m.id, montant_mensuel: cotisation?.montant || 20000 };
     });
-    initializeCalendrier.mutate({ exerciceId: selectedExercice, membres: membresData });
+    // Init: assigne un mois (de l'exercice) aux premiers membres, null au-delà
+    initializeCalendrier.mutate({ exerciceId: selectedExercice, membres: membresData, moisDisponibles: moisExerciceList.map(m => m.mois) } as any);
   };
+
 
   const handleAdd = async () => {
     if (!selectedMembre || !selectedExercice || !selectedMois) return;
