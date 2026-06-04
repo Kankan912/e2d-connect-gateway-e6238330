@@ -78,17 +78,20 @@ export default function ReouvrirReunionModal({
         }
       });
 
-      // 4. Supprimer les sanctions auto-générées si demandé
+      // 4. Supprimer les sanctions auto-générées (absence + huile_savon) si demandé
+      // B2 — On filtre par type_sanction (valeurs stables) plutôt que par motif texte
+      // qui pouvait diverger entre cloture ("Absence non excusée à la réunion") et
+      // la suppression (anciens libellés). On préserve les sanctions déjà payées.
       if (supprimerSanctions) {
         const { error: sanctionsError } = await supabase
           .from("reunions_sanctions")
           .delete()
           .eq("reunion_id", reunionId)
-          .in("motif", ["Absence non excusée", "Huile & Savon non validé"]);
+          .in("type_sanction", ["absence", "huile_savon"])
+          .eq("statut", "impaye");
 
         if (sanctionsError) {
           console.error("Erreur suppression sanctions:", sanctionsError);
-          // On continue quand même
         }
       }
 
