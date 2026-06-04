@@ -313,8 +313,9 @@ export default function CalendrierBeneficiairesManager() {
                 Calendrier des Bénéficiaires
               </CardTitle>
               <CardDescription>
-                Calendrier annuel groupé par mois — chaque mois affiche ses bénéficiaires
+                Regroupé par mois de l'exercice. Montant bénéficiaire = cotisation mensuelle individuelle × {nbMoisExercice} mois. Plusieurs bénéficiaires sur le même mois conservent chacun leur montant (aucun partage).
               </CardDescription>
+
             </div>
             <div className="flex items-center gap-2">
               <Select value={selectedExercice} onValueChange={setSelectedExercice}>
