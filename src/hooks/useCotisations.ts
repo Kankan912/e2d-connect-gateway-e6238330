@@ -125,7 +125,7 @@ export const useCreateCotisation = () => {
     },
     onError: (error) => {
       toast({ title: "Erreur", description: "Erreur lors de la création de la cotisation", variant: "destructive" });
-      logger.error(error);
+      logger.error("Cotisation - erreur", error);
     },
   });
 };
@@ -156,7 +156,7 @@ export const useUpdateCotisation = () => {
     },
     onError: (error) => {
       toast({ title: "Erreur", description: "Erreur lors de la mise à jour de la cotisation", variant: "destructive" });
-      logger.error(error);
+      logger.error("Cotisation - erreur", error);
     },
   });
 };
@@ -183,7 +183,7 @@ export const useDeleteCotisation = () => {
     },
     onError: (error) => {
       toast({ title: "Erreur", description: "Erreur lors de la suppression de la cotisation", variant: "destructive" });
-      logger.error(error);
+      logger.error("Cotisation - erreur", error);
     },
   });
 };
