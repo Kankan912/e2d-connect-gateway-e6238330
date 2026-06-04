@@ -453,9 +453,10 @@ export default function CalendrierBeneficiairesManager() {
                                           </SelectTrigger>
                                           <SelectContent>
                                             <SelectItem value="none">Non défini</SelectItem>
-                                            {MOIS.map((m, i) => (
-                                              <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                                            {moisExerciceList.map(m => (
+                                              <SelectItem key={m.mois} value={String(m.mois)}>{m.label}</SelectItem>
                                             ))}
+
                                           </SelectContent>
                                         </Select>
                                       </div>
