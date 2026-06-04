@@ -125,13 +125,10 @@ export default function CalendrierBeneficiairesManager() {
     m => !calendrier.some(c => c.membre_id === m.id)
   );
 
-  // Group beneficiaries by month
+  // Group beneficiaries by month (clé = mois 1..12 ou null)
   const groupedByMonth = useMemo(() => {
     const groups = new Map<number | null, any[]>();
-    // Initialize all 12 months
-    for (let i = 1; i <= 12; i++) {
-      groups.set(i, []);
-    }
+    moisExerciceList.forEach(m => groups.set(m.mois, []));
     groups.set(null, []);
 
     calendrier.forEach(b => {
@@ -140,19 +137,24 @@ export default function CalendrierBeneficiairesManager() {
       groups.get(key)!.push(b);
     });
 
-    // Sort within each month by rang
     groups.forEach((list) => list.sort((a: any, b: any) => a.rang - b.rang));
-
     return groups;
-  }, [calendrier]);
+  }, [calendrier, moisExerciceList]);
 
-  // Build ordered month keys: 1..12, then null if has entries
+  // Ordered month keys (chrono exercice) + bucket null si non vide
   const monthKeys = useMemo(() => {
-    const keys: (number | null)[] = [];
-    for (let i = 1; i <= 12; i++) keys.push(i);
+    const keys: (number | null)[] = moisExerciceList.map(m => m.mois);
     if ((groupedByMonth.get(null) || []).length > 0) keys.push(null);
     return keys;
-  }, [groupedByMonth]);
+  }, [groupedByMonth, moisExerciceList]);
+
+  // Helper: libellé d'un mois selon l'exercice
+  const getMoisLabel = (moisKey: number | null) => {
+    if (moisKey === null) return "Non défini";
+    const found = moisExerciceList.find(m => m.mois === moisKey);
+    return found ? found.label : MOIS[moisKey - 1];
+  };
+
 
   const handleInitialize = async () => {
     if (!selectedExercice || calendrier.length > 0) return;
