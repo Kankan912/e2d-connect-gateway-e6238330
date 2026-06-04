@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { formatFCFA } from "@/lib/utils";
 
+import { logger } from "@/lib/logger";
 // ─── Re-exported from former useCaisseDetails.ts ────────────────────────────
 
 export type DetailType = 
@@ -366,7 +367,7 @@ export const createCaisseOperationFromModule = async (
     }]);
   
   if (error) {
-    console.error("Erreur création opération caisse:", error);
+    logger.error("Erreur création opération caisse:", error);
     throw error;
   }
 };

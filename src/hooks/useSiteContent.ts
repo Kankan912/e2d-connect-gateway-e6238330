@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+import { logger } from "@/lib/logger";
 // Helper functions for toast
 const showSuccess = (message: string) => toast({ title: "Succès", description: message });
 const showError = (message: string) => toast({ title: "Erreur", description: message, variant: "destructive" });
@@ -30,7 +31,7 @@ export const useSiteHero = () => {
 
       if (error) {
         // Ne bloque pas le rendu : on renvoie null pour basculer sur les valeurs par défaut.
-        console.warn("[useSiteHero]", error.message ?? error);
+        logger.warn("[useSiteHero]", error.message ?? error);
         return null;
       }
       return data;

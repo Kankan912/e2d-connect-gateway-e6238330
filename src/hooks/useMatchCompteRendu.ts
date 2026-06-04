@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+import { logger } from "@/lib/logger";
 export interface MatchCompteRendu {
   id: string;
   match_id: string;
@@ -67,7 +68,7 @@ export function useMatchCompteRendu(matchId: string) {
       toast.success('Compte rendu enregistré');
     },
     onError: (error) => {
-      console.error('Erreur sauvegarde CR:', error);
+      logger.error('Erreur sauvegarde CR:', error);
       toast.error('Erreur lors de la sauvegarde');
     },
   });
@@ -86,7 +87,7 @@ export function useMatchCompteRendu(matchId: string) {
       toast.success('Compte rendu supprimé');
     },
     onError: (error) => {
-      console.error('Erreur suppression CR:', error);
+      logger.error('Erreur suppression CR:', error);
       toast.error('Erreur lors de la suppression');
     },
   });

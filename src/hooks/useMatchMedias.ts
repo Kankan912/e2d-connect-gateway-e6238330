@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { processFileForUpload } from '@/lib/heic-converter';
 
+import { logger } from "@/lib/logger";
 export interface MatchMedia {
   id: string;
   match_id: string;
@@ -84,7 +85,7 @@ export function useMatchMedias(matchId: string) {
       toast.success('Média ajouté');
     },
     onError: (error) => {
-      console.error('Erreur upload média:', error);
+      logger.error('Erreur upload média:', error);
       toast.error('Erreur lors de l\'upload');
     },
   });
@@ -131,7 +132,7 @@ export function useMatchMedias(matchId: string) {
       toast.success('Média supprimé');
     },
     onError: (error) => {
-      console.error('Erreur suppression média:', error);
+      logger.error('Erreur suppression média:', error);
       toast.error('Erreur lors de la suppression');
     },
   });
