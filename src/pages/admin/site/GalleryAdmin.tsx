@@ -241,7 +241,8 @@ export default function GalleryAdmin() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="titre">Titre</Label>
-                <Input id="titre" {...register("titre", { required: true })} />
+                <Input id="titre" {...register("titre")} />
+                <FieldError msg={errors.titre?.message} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -249,18 +250,20 @@ export default function GalleryAdmin() {
                   <select
                     id="categorie"
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
-                    {...register("categorie", { required: true })}
+                    {...register("categorie")}
                   >
                     <option value="Photo">Photo</option>
                     <option value="Vidéo">Vidéo</option>
                   </select>
+                  <FieldError msg={errors.categorie?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ordre">Ordre d'affichage</Label>
                   <Input id="ordre" type="number" defaultValue={0} {...register("ordre")} />
+                  <FieldError msg={errors.ordre?.message} />
                 </div>
               </div>
-              
+
               {/* Album Selection */}
               <div className="space-y-2">
                 <Label>Album (optionnel)</Label>
@@ -296,6 +299,7 @@ export default function GalleryAdmin() {
                 label={watchCategorie === "Photo" ? "Image" : "Vidéo"}
                 maxSizeMB={watchCategorie === "Photo" ? 5 : 20}
               />
+              <FieldError msg={errors.image_url?.message || errors.video_url?.message} />
               <div className="flex justify-end gap-4">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Annuler
