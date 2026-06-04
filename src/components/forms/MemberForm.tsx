@@ -46,7 +46,8 @@ interface MemberFormProps {
 // Fonction pour formater le nom du rôle
 const formatRoleName = (name: string): string => {
   const roleLabels: Record<string, string> = {
-    'admin': 'Administrateur',
+    'administrateur': 'Administrateur',
+    'admin': 'Administrateur', // compat anciens libellés (aucun en base — vérifié Lot C)
     'president': 'Président',
     'vice_president': 'Vice-Président',
     'secretaire_general': 'Secrétaire Général',
