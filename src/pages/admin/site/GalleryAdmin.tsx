@@ -444,15 +444,18 @@ export default function GalleryAdmin() {
                     <form onSubmit={handleSubmitAlbum(onSubmitAlbum)} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="album-titre">Titre de l'album</Label>
-                        <Input id="album-titre" {...registerAlbum("titre", { required: true })} />
+                        <Input id="album-titre" {...registerAlbum("titre")} />
+                        <FieldError msg={albumErrors.titre?.message} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="album-description">Description</Label>
                         <Textarea id="album-description" {...registerAlbum("description")} />
+                        <FieldError msg={albumErrors.description?.message} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="album-ordre">Ordre d'affichage</Label>
                         <Input id="album-ordre" type="number" defaultValue={0} {...registerAlbum("ordre")} />
+                        <FieldError msg={albumErrors.ordre?.message} />
                       </div>
                       <MediaUploader
                         bucket="site-gallery"
