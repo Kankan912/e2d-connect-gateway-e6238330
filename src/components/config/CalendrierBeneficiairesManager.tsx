@@ -425,11 +425,13 @@ export default function CalendrierBeneficiairesManager() {
                                       <Badge
                                         variant="secondary"
                                         className="cursor-pointer hover:bg-secondary/60 pr-1 gap-1 text-sm py-1"
+                                        title={`Total individuel : ${formatFCFA(b.montant_mensuel)} × ${nbMoisExercice} = ${formatFCFA(Number(b.montant_total))}`}
                                       >
                                         {b.membres?.prenom} {b.membres?.nom}
                                         <span className="text-muted-foreground text-xs ml-1">
                                           ({formatFCFA(b.montant_mensuel)})
                                         </span>
+
                                         <button
                                           onClick={(e) => { e.stopPropagation(); setDeleteTargetId(b.id); }}
                                           className="ml-1 rounded-full hover:bg-destructive/20 p-0.5"
