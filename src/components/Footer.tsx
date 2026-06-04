@@ -55,20 +55,27 @@ const Footer = () => {
               {getConfigValue('site_description')}
             </p>
             <div className="flex space-x-4">
-              <a 
-                href={getConfigValue('facebook_url')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors duration-200"
-              >
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a 
-                href={`mailto:${getConfigValue('site_email')}`}
-                className="w-10 h-10 rounded-lg bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors duration-200"
-              >
-                <Mail className="w-5 h-5" />
-              </a>
+              {/* D6 — N'affiche les icônes que si la config fournit une valeur, sinon évite un href="" mort. */}
+              {getConfigValue('facebook_url') && (
+                <a
+                  href={getConfigValue('facebook_url')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className="w-10 h-10 rounded-lg bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors duration-200"
+                >
+                  <Facebook className="w-5 h-5" />
+                </a>
+              )}
+              {getConfigValue('site_email') && (
+                <a
+                  href={`mailto:${getConfigValue('site_email')}`}
+                  aria-label="Email"
+                  className="w-10 h-10 rounded-lg bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors duration-200"
+                >
+                  <Mail className="w-5 h-5" />
+                </a>
+              )}
             </div>
           </div>
 

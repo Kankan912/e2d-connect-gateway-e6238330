@@ -129,8 +129,41 @@ Prochain lot : **Lot D — Matchs, Évènements, Site web, Galerie**.
 
 ---
 
-## Lots D – F
+## Lot D — Matchs, Évènements, Site web, Galerie
+
+Audit de la synchronisation matchs E2D ↔ `site_events`, du site public, de la galerie et du footer.
+
+### Anomalies confirmées et corrigées
+
+| ID | Sévérité | Constat | Correctif |
+|---|---|---|---|
+| **D6** | Mineur | `Footer` rendait les icônes Facebook et email même quand la config `facebook_url` / `site_email` était vide, produisant `<a href="">` (rechargement de la page courante) et `mailto:` (client mail vide). | Affichage conditionnel : les icônes n'apparaissent que si la config fournit une valeur. Ajout d'`aria-label` pour l'accessibilité. |
+
+### Constats conformes (aucune correction nécessaire)
+
+- **D1/D2 — Synchronisation matchs ↔ site_events (vérifié en base)** :
+  - 6 matchs au total / 4 publiés / 4 entrées `site_events` correspondantes
+  - 0 match publié sans `site_event`
+  - 0 `site_event` orphelin (`match_id` pointant vers un match supprimé)
+  - 0 `site_event` actif rattaché à un match non publié
+- **`syncE2DMatchToEvent`** : crée/met à jour l'entrée `site_events` uniquement si `statut_publication = 'publie'`, sinon appelle `removeE2DEventFromCMS`. Comportement conforme à la memory `e2d-match-sync-architecture`.
+- **`useUpdateE2DMatch`** : après chaque update, route vers sync ou remove selon `statut_publication`.
+- **`useDeleteE2DMatch`** : appelle `removeE2DEventFromCMS` avant la suppression effective du match → pas d'event orphelin.
+- **`cleanupOrphanedEvents`** : utilitaire de nettoyage déjà disponible si une désynchronisation devait apparaître.
+- **D3 — Notifications email** : déjà best-effort dans l'edge function (cf. règle Lot B sur la non-bloquance).
+- **D4 — Galerie** : 1 album existant, 0 photo référençant un album inexistant. Schéma cohérent (`site_gallery.album_id` / `site_gallery_albums.id`).
+- **D5 — Bucket `sport-logos`** : conformément à la memory `match-assets-and-squad-management`, lecture publique, écriture admin (non re-audité ici car aucun changement applicable).
+- **D7 — Boutons retour** : utilisent l'historique du navigateur (`navigate(-1)`) dans les pages auditées au Lot précédent. Aucun cas en dur détecté dans ce périmètre.
+
+### Anomalies restantes
+
+Aucune anomalie bloquante. Prochain lot : **Lot E — UX globale & gestion des erreurs**.
+
+---
+
+## Lots E – F
 
 Non démarrés. Cf. plan dans `.lovable/plan.md`.
+
 
 
