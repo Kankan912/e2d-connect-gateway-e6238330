@@ -1,56 +1,73 @@
-## Lot D — Matchs, Évènements, Site web, Galerie (Phases 9 & 10)
+## Lot E — UX globale & gestion des erreurs
 
-Audit ciblé sans nouvelles fonctionnalités. Vérification + corrections d'anomalies confirmées uniquement. Les 5 profils orphelins du Lot C (C2) sont laissés tels quels — décision utilisateur.
+Objectif: stabiliser l'expérience utilisateur transverse et l'observabilité des erreurs, sans refonte visuelle ni changement de logique métier.
 
-### Périmètre
+### Périmètre (Phases 11 & 12 de l'audit E2D V3)
 
-**Phase 9 — Matchs E2D & Évènements**
-- Cycle de vie d'un match E2D : création → publication → synchronisation `site_events`
-- Règle : sync vers `site_events` uniquement quand `statut_publication = 'publie'` (memory `e2d-match-sync-architecture`)
-- Filtrage joueurs `est_membre_e2d = true` pour stats E2D (memory `e2d-match-stats-filtering`)
-- Assets match (logos, squad) — bucket `sport-logos`, thumbnail sync (memory `match-assets-and-squad-management`)
-- Notification email à la création/publication d'un évènement
-- Cohérence évènements ↔ site public (visibilité, dates, suppression)
+**Phase 11 — UX globale**
+- Cohérence des états de chargement (skeletons vs spinners) sur les pages principales (Dashboard, Membres, Cotisations, Prêts, Caisse, Réunions, Sport, Galerie).
+- Cohérence des messages toast (succès/erreur/info) — vocabulaire, durée, position.
+- Boutons retour: vérifier `navigate(-1)` partout (rappel Lot D7).
+- Responsivité mobile: padding `p-3 sm:p-6` sur les conteneurs principaux (Core rule).
+- Confirmations destructives: `AlertDialog` partout, jamais `window.confirm` (Core rule).
+- Accessibilité minimale: `aria-label` sur icônes cliquables, contrastes via tokens sémantiques.
 
-**Phase 10 — Site web public & Galerie**
-- Galerie organisée en albums (style Facebook)
-- Conversion HEIC côté client avant upload (memory `comprehensive-viewing-and-heic-support`)
-- Footer fonctionnel (liens, mentions légales, contact)
-- Bouton retour = historique navigateur (pas de routage dur)
-- SPA routing : `vercel.json` rewrites vers `/index.html` (memory `routage-spa-vercel`)
-- Pages publiques accessibles sans auth ; contenus admin protégés
+**Phase 12 — Gestion des erreurs**
+- Vérifier que `src/lib/logger.ts` est utilisé partout (pas de `console.log` résiduel hors logger).
+- `catch (error: unknown)` + extraction `data?.error` des Edge Functions (Core rule).
+- ErrorBoundaries 2 niveaux (App/Dashboard) — vérifier présence et retry.
+- `lazyWithRetry` sur les imports de routes dynamiques (Core rule).
+- Toasts d'erreur explicites (pas de "Une erreur est survenue" générique sans contexte).
+- Validation côté client cohérente (zod / react-hook-form) sur formulaires critiques.
 
 ### Méthode
 
-1. **Audit code** : composants/pages matchs, évènements, galerie, footer, hooks de sync `site_events`, edge functions email associées.
-2. **Audit DB** : `supabase--read_query` pour vérifier :
-   - Matchs `publie` sans entrée `site_events` correspondante (ou inverse : entrées orphelines)
-   - Albums galerie sans photos ; photos sans album
-   - RLS sur `site_events`, `galerie_*`, bucket `sport-logos`
-3. **Tests UI ciblés** : publier un match → vérifier apparition site public ; dépublier → disparition ; uploader photo HEIC → conversion auto.
-4. **Documentation** : nouvelle section "Lot D" dans `docs/AUDIT_E2D_V3.md`.
+1. **Audit code** (lecture seule)
+   - `rg "console\.(log|warn|error)"` hors `src/lib/logger.ts` et tests.
+   - `rg "window\.confirm"` — doit retourner 0.
+   - `rg "catch \(error\)"` (sans `: unknown`) — à corriger.
+   - `rg "lazy\("` vs `lazyWithRetry` dans `App.tsx` / routes.
+   - `rg "ErrorBoundary"` — vérifier wrappers.
+   - Inspection des pages principales pour cohérence skeletons/toasts.
+
+2. **Audit DB** (via `supabase--read_query`)
+   - Pas de requête DB nécessaire pour ce lot (UX uniquement). Sauf si un point révèle un besoin (ex: logs d'erreurs Edge Functions via `supabase--edge_function_logs`).
+
+3. **Corrections ciblées**
+   - Remplacements `console.*` → `logger.*` si trouvés.
+   - Ajout `: unknown` aux catches manquants.
+   - Conversion `window.confirm` → `AlertDialog` si trouvés.
+   - Wrapping `lazyWithRetry` si imports `lazy()` directs trouvés sur routes.
+   - Ajout `aria-label` manquants sur icônes cliquables critiques.
+
+4. **Documentation**
+   - Section Lot E dans `docs/AUDIT_E2D_V3.md` avec findings, corrections, anomalies restantes.
+   - Mise à jour `.lovable/plan.md`.
 
 ### Points de vigilance
 
-- **D1** — Match `publie` ↔ `site_events` : pas de désynchronisation
-- **D2** — Match dépublié ou supprimé → `site_events` correspondant supprimé / dépublié
-- **D3** — Notifications email envoyées best-effort (ne pas bloquer la publication si email échoue, cf. règle Lot B)
-- **D4** — Galerie : albums et photos cohérents, suppression cascade correcte
-- **D5** — Bucket `sport-logos` : policies lecture publique / écriture admin
-- **D6** — Footer : tous les liens fonctionnels (pas de `href="#"` mort)
-- **D7** — Boutons « retour » utilisent `navigate(-1)` ou équivalent, pas de route en dur
+- **E1** — Ne PAS toucher au design system / tokens / palette (hors scope).
+- **E2** — Ne PAS refondre les composants UI existants, uniquement corriger les écarts aux règles.
+- **E3** — Toute correction `console.*` → `logger.*` doit respecter le standard (`logger.debug/info/warn/error`).
+- **E4** — Si `window.confirm` trouvé dans un flow critique (suppression, validation financière), prioriser la correction.
+- **E5** — Ne PAS introduire de nouveau ErrorBoundary sans nécessité avérée (les 2 niveaux App/Dashboard suffisent).
+- **E6** — Reporter sans corriger toute anomalie qui dépasserait le scope UX/erreurs (ex: bug logique métier découvert en passant → noter dans audit, ne pas patcher).
+
+### Hors scope
+
+- Refonte visuelle / nouveau design system.
+- Internationalisation (i18n).
+- Tests E2E nouveaux (vitest existant suffit).
+- Optimisations performance (lazy loading additionnel, memoization).
 
 ### Livrables
 
-- `docs/AUDIT_E2D_V3.md` enrichi (section Lot D)
-- Migrations SQL si anomalies confirmées (ex : trigger sync manquant)
-- Edits frontend ciblés uniquement sur anomalies confirmées
-- Liste tests utilisateur avant Lot E
+- Fichiers corrigés (liste précise selon findings).
+- Section Lot E dans `docs/AUDIT_E2D_V3.md`.
+- Liste d'anomalies restantes nécessitant décision utilisateur (s'il y en a).
 
-### Hors périmètre
+### Suite
 
-- Refonte UI matchs / galerie / site public
-- Nouvelles fonctionnalités sport (classement, stats avancées, etc.)
-- Refonte design system du site public
+Après validation Lot E → **Lot F** (dernier lot): synthèse finale, recommandations long terme, plan de maintenance.
 
-Après validation Lot D → Lot E (UX globale & gestion des erreurs).
+Confirme pour lancer l'audit Lot E.
