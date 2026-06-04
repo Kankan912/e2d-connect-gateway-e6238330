@@ -475,12 +475,13 @@ export default function CalendrierBeneficiairesManager() {
                                     </PopoverContent>
                                   </Popover>
                                 ) : (
-                                  <Badge variant="secondary" className="text-sm py-1">
+                                  <Badge variant="secondary" className="text-sm py-1" title={`Total individuel : ${formatFCFA(b.montant_mensuel)} × ${nbMoisExercice} = ${formatFCFA(Number(b.montant_total))}`}>
                                     {b.membres?.prenom} {b.membres?.nom}
                                     <span className="text-muted-foreground text-xs ml-1">
                                       ({formatFCFA(b.montant_mensuel)})
                                     </span>
                                   </Badge>
+
                                 )}
                               </div>
                             ))}
