@@ -230,7 +230,7 @@ export default function CalendrierBeneficiairesManager() {
 
 
     autoTable(doc, {
-      startY: 45,
+      startY: 49,
       head: [['Mois', 'Bénéficiaires', 'Nb', 'Montant Mensuel', `Total (×${nbMoisExercice})`]],
       body: tableData,
       theme: 'striped',
@@ -239,11 +239,12 @@ export default function CalendrierBeneficiairesManager() {
       columnStyles: { 1: { cellWidth: 60 } }
     });
 
-    const totalAnnuel = calendrier.reduce((sum, b) => sum + Number(b.montant_total), 0);
+    const totalExercice = calendrier.reduce((sum, b) => sum + Number(b.montant_total), 0);
     const finalY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text(`Total Annuel: ${formatFCFA(totalAnnuel)}`, 14, finalY);
+    doc.text(`Total Exercice: ${formatFCFA(totalExercice)}`, 14, finalY);
+
     addE2DFooter(doc);
     doc.save(`calendrier-beneficiaires-${selectedExerciceData.nom}.pdf`);
     toast({ title: "PDF exporté avec succès" });
