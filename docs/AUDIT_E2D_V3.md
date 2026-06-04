@@ -54,6 +54,40 @@ Migration `20260604_lot_a_finances` :
 
 ---
 
-## Lots B – F
+## Lot B — Réunions & dépendances
 
-Non démarrés. Cf. plan dans `.lovable/plan.md`. Chaque lot ajoutera sa section à ce document.
+Audit du cycle de vie des réunions (ouverture, clôture, réouverture) et de leurs interactions avec cotisations, sanctions, bénéficiaires, caisse, notifications.
+
+### Anomalies confirmées et corrigées
+
+| ID | Sévérité | Constat | Correctif |
+|---|---|---|---|
+| **B1** | Majeur | `ClotureReunionModal` : si aucun membre présent n'avait d'email valide, la fonction **annulait la clôture** (`return` après toast). Contraire à la règle métier « la clôture ne doit pas dépendre de l'envoi email ». | La clôture se poursuit même sans destinataires. L'appel à l'edge function `send-reunion-cr` est conditionnel ; un toast informe l'utilisateur (CR envoyé / CR non envoyé / envoi échoué) sans bloquer le verrouillage et la génération de sanctions. |
+| **B2** | Majeur | `ReouvrirReunionModal` : la suppression des sanctions auto-générées filtrait par `motif IN ('Absence non excusée', 'Huile & Savon non validé')` alors que la clôture insère les motifs `'Absence non excusée à la réunion'` et `'Huile & Savon non apporté'`. **Aucune sanction n'était donc jamais supprimée**, même quand l'utilisateur cochait l'option. | Filtrage désormais par `type_sanction IN ('absence', 'huile_savon')` (valeurs stables) et restreint à `statut = 'impaye'` pour préserver les sanctions déjà payées. |
+
+### Constats conformes (aucune correction nécessaire)
+
+- **Ouverture de réunion** : déclenche `projeter_cotisations_reunion` corrigée en Lot A (A1). Les cotisations sont projetées sur tous les membres E2D actifs avec montant individuel `cotisations_mensuelles_exercice`.
+- **Clôture** : marque non-présents en `absent_non_excuse`, génère sanctions `absence` (config `sanction_absence_montant`, défaut 500 FCFA) et `huile_savon` (config `sanction_huile_savon_montant`, défaut 2000 FCFA), calcule `taux_presence` sur la base des membres E2D, met `statut = 'terminee'`.
+- **Réouverture** : repasse `statut = 'en_cours'`, déverrouille les cotisations (`verrouille = false`), purge les opérations caisse auto-générées (`fond_caisse_operations` filtré par `reunion_id` — couvre les flux du trigger A2 du Lot A), enregistre un `audit_logs` dédié.
+- **Synchronisation bénéficiaires ↔ caisse** : trigger `trg_sync_reunion_beneficiaire_to_caisse` (Lot A — A2) opère sur INSERT/UPDATE/DELETE. La purge `fond_caisse_operations` par `reunion_id` lors de la réouverture suffit à éviter la double-comptabilisation.
+- **Présences ↔ sanctions** : les sanctions s'appuient uniquement sur les enregistrements `reunions_presences` (statut `absent_non_excuse`) et `reunions_huile_savon.valide`. Aucune duplication détectée.
+- **Notifications partielles** : `send-reunion-cr` est invoquée best-effort, n'engage pas le statut de la réunion.
+
+### Tests utilisateur à effectuer
+
+1. **B1 — Clôture sans emails** : clôturer une réunion où aucun membre présent n'a d'email renseigné → la réunion doit passer à `terminee`, les sanctions doivent être créées, un toast doit indiquer « CR non envoyé ».
+2. **B2 — Réouverture avec suppression sanctions** : clôturer une réunion (sanctions générées), la rouvrir en cochant « Supprimer les sanctions automatiques » → les sanctions `absence` et `huile_savon` impayées doivent disparaître ; les sanctions payées ou manuelles restent.
+3. **Réouverture sans suppression** : même scénario sans cocher l'option → les sanctions doivent être conservées.
+4. **Synchronisation caisse** : marquer un bénéficiaire comme `paye`, clôturer, vérifier la ligne dans `fond_caisse_operations`. Rouvrir la réunion → la ligne doit disparaître.
+
+### Anomalies restantes / différées
+
+Aucune anomalie résiduelle identifiée sur le périmètre Lot B. Prochain lot : **Lot C — Utilisateurs / Permissions / Email**.
+
+---
+
+## Lots C – F
+
+Non démarrés. Cf. plan dans `.lovable/plan.md`.
+

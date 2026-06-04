@@ -1,76 +1,51 @@
-# Plan d'audit & stabilisation E2D — V3
+## Lot B — Réunions & dépendances (Phases 1 & 8)
 
-## Principe
+Audit ciblé des réunions et de leurs interactions avec les autres modules. Aucune nouvelle fonctionnalité — uniquement vérifications + corrections d'anomalies confirmées.
 
-Aucune nouvelle fonctionnalité. Pour chaque module : **auditer → documenter → corriger uniquement les anomalies réelles**. Livrable central : `docs/AUDIT_E2D_V3.md` mis à jour à chaque phase avec tableau (Fonctionnalité / Attendu / Observé / Anomalie / Impact / Correction).
+### Périmètre
 
-## Découpage en lots livrables
+**Phase 1 — Réunions (cycle de vie)**
+- Création / ouverture (`en_cours`) → projection cotisations (déjà corrigée en Lot A — A1, à re-tester)
+- Clôture (`terminee`) → génération sanctions, notifications, verrouillage
+- Réouverture (`terminee` → `en_cours`) → déverrouillage + recalculs cohérents (cf. memory `meeting-reopening`)
+- Statuts intermédiaires, présences, ordre du jour
 
-Le périmètre couvre 13 phases. Le faire en un seul passage est irréaliste et ingérable côté revue. Je propose **6 lots séquentiels**, chacun = un audit + corrections ciblées + mise à jour du rapport. Vous validez chaque lot avant le suivant.
+**Phase 8 — Dépendances croisées**
+- Réunion ↔ Cotisations (projections, paiements, verrouillage)
+- Réunion ↔ Bénéficiaires (mois actif, assignations)
+- Réunion ↔ Sanctions (génération auto à la clôture)
+- Réunion ↔ Caisse (synchronisation des flux liés)
+- Réunion ↔ Notifications (envois partiels possibles sans bloquer la clôture)
 
-### Lot A — Finances (Phases 4, 5, 6, 7)
-Le cœur métier et le plus à risque. Déjà partiellement traité (C6/C7/C8/C11/C12/C13).
-- Cotisations : montants individuels par membre/exercice, historisation, propagation
-- Bénéficiaires : formule `cotisation_mensuelle × nb_mois_exercice`, regroupement par mois, calendrier configurable, notifications PDF + emails
-- Prêts : intérêt unique, remboursement = capital uniquement, reconduction manuelle multi-validateurs, demande → caisse
-- Caisse : source unique (`get_solde_caisse`), cohérence Dashboard/Synthèse/Détail/Rapports
-- Vérification croisée Cotisations↔Bénéficiaires↔Caisse↔Dashboard
+### Méthode
 
-### Lot B — Réunions & dépendances (Phases 1, 8)
-- Audit dépendances Réunions ↔ Cotisations/Bénéficiaires/Présences/Dashboard
-- Réouverture : déverrouillage complet + recalculs
-- Notifications partielles (1/N/tous membres) sans clôture obligatoire
+1. **Audit code** : `useReunions`, `ReunionDetails`, hooks de clôture/réouverture, edge functions associées, triggers SQL.
+2. **Audit DB** : requêtes `supabase--read_query` pour vérifier cohérence `reunions` ↔ `cotisations` ↔ `sanctions` ↔ `reunion_beneficiaires` ↔ `fond_caisse_operations`.
+3. **Tests UI ciblés** : ouverture, clôture, réouverture, envoi notifications partielles.
+4. **Documentation** : section "Lot B" ajoutée à `docs/AUDIT_E2D_V3.md` avec :
+   - Constats (compliant / anomalie)
+   - Anomalies confirmées + correctifs (migrations SQL + edits frontend)
+   - Tests post-correctif à valider par l'utilisateur
 
-### Lot C — Utilisateurs, Permissions, Email (Phases 2, 3, 13)
-- Liaison membre↔compte, règle "utilisateur ⇒ membre lié obligatoire"
-- Visibilité liste utilisateurs (admin only)
-- Config Resend/SMTP : save/load/test
-- Tests réels d'envoi par type de notification
-- Sécurité clés API (jamais frontend)
-- Compléter logs (emails, réunions, cotisations, bénéficiaires, prêts, caisse, utilisateurs)
+### Points de vigilance (à confirmer)
 
-### Lot D — Matchs, Évènements, Site web, Galerie (Phases 9, 10)
-- Publication match → création évènement auto + email membres
-- Compte rendu + médias visibles site
-- Galerie → albums (titre/description/date/photos, style Facebook)
-- Footer fonctionnel, bouton Retour = historique navigateur
+- B1 — La clôture ne doit **pas** échouer si l'envoi email partiel échoue (cf. memory `meeting-closure-workflow`)
+- B2 — La réouverture doit déverrouiller cotisations + nettoyer sanctions selon le workflow v31 (memory `reunions/reopening-unlock-and-cleanup-v31`)
+- B3 — Vérifier qu'aucune désynchronisation n'existe entre `reunion_beneficiaires.paye` et `fond_caisse_operations` (trigger A2 du Lot A)
+- B4 — Vérifier la cohérence présences ↔ sanctions générées
+- B5 — Notifications partielles : possibilité d'envoyer sans déclencher la clôture définitive
 
-### Lot E — UX globale & Erreurs (Phases 11, 12)
-- Suppression pages blanches, boutons inactifs, onglets parasites
-- Feedback unifié (loading, toasts métier)
-- Normaliser erreurs Edge Functions : `{success, code, message}` + extraction côté client (jamais "non-2xx" brut)
+### Livrables
 
-### Lot F — Rapport final & validation (Phase 0 final)
-- Consolidation `docs/AUDIT_E2D_V3.md`
-- Liste anomalies corrigées
-- Liste tests réalisés
-- Liste anomalies restantes (le cas échéant)
-- Check final des règles métier
+- `docs/AUDIT_E2D_V3.md` enrichi (section Lot B)
+- Migrations SQL si anomalies confirmées
+- Edits frontend ciblés uniquement sur anomalies confirmées
+- Liste des tests utilisateur à effectuer avant Lot C
 
-## Méthode par lot
+### Hors périmètre
 
-1. **Audit** : lecture code + requêtes DB (`supabase--read_query`) + tests UI ciblés. Aucune modification.
-2. **Rapport partiel** : ajout au tableau d'audit.
-3. **Corrections** : uniquement anomalies confirmées, migrations SQL si nécessaire.
-4. **Vérification** : tests post-correction + mise à jour du rapport.
-5. **Stop & validation utilisateur** avant lot suivant.
+- Refonte UI réunions
+- Nouvelles fonctionnalités (workflow approbation, etc.)
+- Modifications schémas réservés Supabase
 
-## Détails techniques
-
-- Rapport : `docs/AUDIT_E2D_V3.md` (nouveau, complète `AUDIT_FINANCES.md` existant)
-- Source unique caisse : `get_solde_caisse()` RPC (déjà en mémoire)
-- Filtre E2D : `est_membre_e2d = true` (déjà en mémoire)
-- Rôle admin : `'administrateur'` (déjà en mémoire)
-- Erreurs Edge : extraction via `data?.error` (déjà en mémoire)
-- Ne pas régénérer `src/integrations/supabase/types.ts`
-- Toute migration : GRANTs explicites + RLS via `is_admin()` / `has_role()`
-
-## Question de cadrage
-
-Confirmez-vous ce découpage en 6 lots, en commençant par le **Lot A (Finances)** ? Ou préférez-vous démarrer par un autre lot (ex. Lot C si l'email/notifications est plus bloquant) ?
-
-## Hors périmètre
-
-- Aucune nouvelle fonctionnalité
-- Aucune refonte UI majeure non liée à une anomalie
-- Pas de modification des schémas Supabase réservés (`auth`, `storage`, etc.)
+Après validation Lot B → passage Lot C (Utilisateurs / Permissions / Email).

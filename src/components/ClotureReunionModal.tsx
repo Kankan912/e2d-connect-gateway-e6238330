@@ -275,14 +275,13 @@ export default function ClotureReunionModal({
           prenom: p.membres.prenom
         })) || [];
 
-      if (destinataires.length === 0) {
+      // B1 — Ne pas bloquer la clôture si aucun email valide.
+      const hasDestinataires = destinataires.length > 0;
+      if (!hasDestinataires) {
         toast({
-          title: "Attention",
-          description: "Aucun email valide trouvé pour les membres présents",
-          variant: "destructive",
+          title: "Compte-rendu non envoyé",
+          description: "Aucun email valide pour les membres présents. La clôture se poursuit sans envoi.",
         });
-        setProcessing(false);
-        return;
       }
 
       // === ÉTAPE 5: Préparer et envoyer le compte-rendu par email ===
@@ -359,27 +358,32 @@ export default function ClotureReunionModal({
         } : undefined
       };
 
-      const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
-        body: {
-          reunionId,
-          destinataires,
-          sujet: reunionData.sujet || 'Réunion',
-          contenu: contenuCR,
-          dateReunion: reunionData.date_reunion,
-          presences: {
-            presents: presentsNoms,
-            excuses: excusesNoms,
-            absentsNonExcuses: absentsNonExcusesNoms,
-            retards: retardsNoms,
-            tauxPresence: tauxPresenceEmail
-          },
-          financials
-        }
-      });
+      let emailSent = false;
+      if (hasDestinataires) {
+        const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
+          body: {
+            reunionId,
+            destinataires,
+            sujet: reunionData.sujet || 'Réunion',
+            contenu: contenuCR,
+            dateReunion: reunionData.date_reunion,
+            presences: {
+              presents: presentsNoms,
+              excuses: excusesNoms,
+              absentsNonExcuses: absentsNonExcusesNoms,
+              retards: retardsNoms,
+              tauxPresence: tauxPresenceEmail
+            },
+            financials
+          }
+        });
 
-      if (emailError) {
-        console.error("Email error details:", emailError);
-        // Don't block cloture if email fails, just warn
+        if (emailError) {
+          console.error("Email error details:", emailError);
+          // B1 — Ne pas bloquer la clôture si l'email échoue
+        } else {
+          emailSent = true;
+        }
       }
 
       // === ÉTAPE 6: Calculer le taux de présence et mettre à jour le statut ===
@@ -409,9 +413,12 @@ export default function ClotureReunionModal({
       const nbSanctionsHuileSavon = membresSansHuileSavon.length;
       const totalSanctions = nbSanctionsAbsence + nbSanctionsHuileSavon;
       
+      const emailMsg = emailSent
+        ? `CR envoyé à ${destinataires.length} membre(s).`
+        : (hasDestinataires ? `Envoi du CR échoué — clôture maintenue.` : `CR non envoyé (aucun email).`);
       toast({
         title: "Réunion clôturée avec succès",
-        description: `CR envoyé à ${destinataires.length} membre(s). ${totalSanctions > 0 ? `${totalSanctions} sanction(s) créée(s) (${nbSanctionsAbsence} absence${nbSanctionsAbsence > 1 ? 's' : ''}, ${nbSanctionsHuileSavon} Huile & Savon).` : ''}`,
+        description: `${emailMsg} ${totalSanctions > 0 ? `${totalSanctions} sanction(s) créée(s) (${nbSanctionsAbsence} absence${nbSanctionsAbsence > 1 ? 's' : ''}, ${nbSanctionsHuileSavon} Huile & Savon).` : ''}`,
       });
 
       onOpenChange(false);
