@@ -18,6 +18,7 @@ import MobileMoneyInfo from "@/components/donations/MobileMoneyInfo";
 import DonationSuccessModal from "@/components/donations/DonationSuccessModal";
 import type { PaymentConfig, DonationCurrency } from "@/types/donations";
 
+import { logger } from "@/lib/logger";
 const Don = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -47,8 +48,8 @@ const Don = () => {
 
       if (error) throw error;
       setActiveConfigs((data as PaymentConfig[]) || []);
-    } catch (error) {
-      console.error('Error fetching payment configs:', error);
+    } catch (error: unknown) {
+      logger.error('Error fetching payment configs:', error);
       toast({
         title: "Erreur",
         description: "Impossible de charger les méthodes de paiement",
@@ -101,8 +102,8 @@ const Don = () => {
         title: "Don enregistré !",
         description: "Merci pour votre générosité",
       });
-    } catch (error) {
-      console.error('Error submitting donation:', error);
+    } catch (error: unknown) {
+      logger.error('Error submitting donation:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'enregistrer le don",

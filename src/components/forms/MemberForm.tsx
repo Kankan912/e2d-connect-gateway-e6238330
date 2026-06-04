@@ -17,6 +17,7 @@ import { getErrorMessage } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
 
+import { logger } from "@/lib/logger";
 const memberSchema = z.object({
   nom: z.string().min(2, "Nom requis"),
   prenom: z.string().min(2, "Prénom requis"),
@@ -209,7 +210,7 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
         description: "La photo a été téléchargée avec succès",
       });
     } catch (error: unknown) {
-      console.error('Erreur upload:', error);
+      logger.error('Erreur upload:', error);
       toast({
         title: "Erreur d'upload",
         description: getErrorMessage(error),

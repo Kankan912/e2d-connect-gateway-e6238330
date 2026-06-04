@@ -10,6 +10,7 @@ import { getErrorMessage } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 
+import { logger } from "@/lib/logger";
 interface ReouvrirReunionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -59,7 +60,7 @@ export default function ReouvrirReunionModal({
         .eq("reunion_id", reunionId);
 
       if (caisseError) {
-        console.warn("Erreur suppression opérations caisse:", caisseError);
+        logger.warn("Erreur suppression opérations caisse:", caisseError);
         // On continue quand même car ce n'est pas bloquant
       }
 
@@ -91,7 +92,7 @@ export default function ReouvrirReunionModal({
           .eq("statut", "impaye");
 
         if (sanctionsError) {
-          console.error("Erreur suppression sanctions:", sanctionsError);
+          logger.error("Erreur suppression sanctions:", sanctionsError);
         }
       }
 
@@ -117,7 +118,7 @@ export default function ReouvrirReunionModal({
       onOpenChange(false);
       onSuccess?.();
     } catch (error: unknown) {
-      console.error("Erreur réouverture:", error);
+      logger.error("Erreur réouverture:", error);
       toast({
         title: "Erreur",
         description: getErrorMessage(error),

@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ADHESION_TARIFS } from "@/lib/payment-utils";
 import logoE2D from "@/assets/logo-e2d.png";
 
+import { logger } from "@/lib/logger";
 const Adhesion = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -78,8 +79,8 @@ const Adhesion = () => {
         message: "",
         accepte_conditions: false,
       });
-    } catch (error) {
-      console.error('Error submitting adhesion:', error);
+    } catch (error: unknown) {
+      logger.error('Error submitting adhesion:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'envoyer la demande d'adhésion",

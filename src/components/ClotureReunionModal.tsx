@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { logger } from "@/lib/logger";
 interface ClotureReunionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -235,7 +236,7 @@ export default function ClotureReunionModal({
           .insert(sanctionsACreer);
 
         if (sanctionError) {
-          console.error('Erreur création sanctions:', sanctionError);
+          logger.error('Erreur création sanctions:', sanctionError);
           // On continue même si les sanctions échouent
         }
       }
@@ -256,7 +257,7 @@ export default function ClotureReunionModal({
           .insert(sanctionsHuileSavon);
 
         if (sanctionHSError) {
-          console.error('Erreur création sanctions Huile & Savon:', sanctionHSError);
+          logger.error('Erreur création sanctions Huile & Savon:', sanctionHSError);
         }
       }
 
@@ -379,7 +380,7 @@ export default function ClotureReunionModal({
         });
 
         if (emailError) {
-          console.error("Email error details:", emailError);
+          logger.error("Email error details:", emailError);
           // B1 — Ne pas bloquer la clôture si l'email échoue
         } else {
           emailSent = true;
@@ -424,7 +425,7 @@ export default function ClotureReunionModal({
       onOpenChange(false);
       onSuccess?.();
     } catch (error: unknown) {
-      console.error('Erreur clôture réunion:', error);
+      logger.error('Erreur clôture réunion:', error);
       toast({
         title: "Erreur",
         description: "Impossible de clôturer la réunion: " + (error instanceof Error ? error.message : "Erreur"),

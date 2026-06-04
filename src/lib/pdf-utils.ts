@@ -24,8 +24,8 @@ export async function loadLogoBase64(): Promise<string> {
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-  } catch (error) {
-    console.error('Erreur chargement logo:', error);
+  } catch (error: unknown) {
+    logger.error('Erreur chargement logo:', error);
     return '';
   }
 }

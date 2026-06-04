@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCreateReunion, useUpdateReunion, type Reunion } from '@/hooks/useReunions';
 import { useMembers } from '@/hooks/useMembers';
 
+import { logger } from "@/lib/logger";
 const reunionSchema = z.object({
   date_reunion: z.string().min(1, 'Date requise'),
   lieu_membre_id: z.string().optional(),
@@ -91,8 +92,8 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
         await createReunion.mutateAsync(reunionData);
       }
       onSuccess();
-    } catch (error) {
-      console.error('Erreur soumission formulaire réunion:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur soumission formulaire réunion:', error);
     }
   };
 

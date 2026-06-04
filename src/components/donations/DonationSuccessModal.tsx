@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 
+import { logger } from "@/lib/logger";
 interface DonationSuccessModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -172,8 +173,8 @@ const DonationSuccessModal = ({
         title: "✅ Reçu téléchargé",
         description: `Le fichier ${fileName} a été téléchargé`
       });
-    } catch (error) {
-      console.error('Error generating receipt:', error);
+    } catch (error: unknown) {
+      logger.error('Error generating receipt:', error);
       toast({
         title: "Erreur",
         description: "Impossible de générer le reçu fiscal",

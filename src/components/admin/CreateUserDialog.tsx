@@ -25,6 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Loader2, X, Copy, Mail, CheckCircle2 } from "lucide-react";
 
+import { logger } from "@/lib/logger";
 interface CreateUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -187,7 +188,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
       });
       setStep("created");
     } catch (err) {
-      console.error("[CreateUserDialog] create error:", err);
+      logger.error("[CreateUserDialog] create error:", err);
       toast.error("Erreur réseau, veuillez réessayer");
     } finally {
       setIsCreating(false);
@@ -212,7 +213,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
       }
       toast.success(`Identifiants envoyés à ${created.email}`);
     } catch (err) {
-      console.error("[CreateUserDialog] send error:", err);
+      logger.error("[CreateUserDialog] send error:", err);
       toast.error("Erreur réseau lors de l'envoi");
     } finally {
       setIsSending(false);

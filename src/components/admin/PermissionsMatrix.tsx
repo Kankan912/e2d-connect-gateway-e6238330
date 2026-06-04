@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 
+import { logger } from "@/lib/logger";
 const RESOURCES = [
   { id: 'membres', label: 'Membres' },
   { id: 'cotisations', label: 'Cotisations' },
@@ -55,8 +56,8 @@ export const PermissionsMatrix = ({ roleId }: PermissionsMatrixProps) => {
       setTimeout(() => {
         setSaveStatus(prev => ({ ...prev, [cellKey]: null }));
       }, 2000);
-    } catch (error) {
-      console.error('Erreur sauvegarde permission:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur sauvegarde permission:', error);
       setSaveStatus(prev => ({ ...prev, [cellKey]: 'error' }));
       // Keep error status visible longer
       setTimeout(() => {

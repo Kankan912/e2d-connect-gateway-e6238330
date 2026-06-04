@@ -24,7 +24,7 @@ export const DashboardHeader = () => {
       await signOut();
       toast({ title: "Succès", description: "Déconnexion réussie" });
       navigate("/");
-    } catch (error) {
+    } catch (error: unknown) {
       toast({ title: "Erreur", description: "Erreur lors de la déconnexion", variant: "destructive" });
     }
   };

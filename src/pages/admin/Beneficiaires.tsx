@@ -17,6 +17,7 @@ import autoTable from "jspdf-autotable";
 import { addE2DHeader, addE2DFooter } from "@/lib/pdf-utils";
 import { useToast } from "@/hooks/use-toast";
 
+import { logger } from "@/lib/logger";
 export default function Beneficiaires() {
   const {
     exercices,
@@ -124,8 +125,8 @@ export default function Beneficiaires() {
         title: "✅ Export réussi",
         description: `Le fichier ${fileName} a été téléchargé`
       });
-    } catch (error) {
-      console.error('Erreur export PDF:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur export PDF:', error);
       toast({
         title: "Erreur d'export",
         description: "Impossible de générer le fichier PDF",

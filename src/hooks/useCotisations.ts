@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 
+import { logger } from "@/lib/logger";
 export interface Cotisation {
   id: string;
   membre_id: string;
@@ -124,7 +125,7 @@ export const useCreateCotisation = () => {
     },
     onError: (error) => {
       toast({ title: "Erreur", description: "Erreur lors de la création de la cotisation", variant: "destructive" });
-      console.error(error);
+      logger.error("Cotisation - erreur", error);
     },
   });
 };
@@ -155,7 +156,7 @@ export const useUpdateCotisation = () => {
     },
     onError: (error) => {
       toast({ title: "Erreur", description: "Erreur lors de la mise à jour de la cotisation", variant: "destructive" });
-      console.error(error);
+      logger.error("Cotisation - erreur", error);
     },
   });
 };
@@ -182,7 +183,7 @@ export const useDeleteCotisation = () => {
     },
     onError: (error) => {
       toast({ title: "Erreur", description: "Erreur lors de la suppression de la cotisation", variant: "destructive" });
-      console.error(error);
+      logger.error("Cotisation - erreur", error);
     },
   });
 };

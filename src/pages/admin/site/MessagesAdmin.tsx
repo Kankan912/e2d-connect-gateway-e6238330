@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
 import * as XLSX from "xlsx";
 
+import { logger } from "@/lib/logger";
 type MessageStatus = "nouveau" | "lu" | "traite";
 
 const MessagesAdmin = () => {
@@ -148,8 +149,8 @@ const MessagesAdmin = () => {
       setReplyContent("");
       setShowReplyForm(false);
       setSelectedMessage(null);
-    } catch (error) {
-      console.error("Erreur envoi réponse:", error);
+    } catch (error: unknown) {
+      logger.error("Erreur envoi réponse:", error);
       toast({ 
         title: "Erreur", 
         description: "Impossible d'envoyer la réponse. Vérifiez la configuration email.",

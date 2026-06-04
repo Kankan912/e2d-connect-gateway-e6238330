@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         resource: rp.resource,
         permission: rp.permission
       }));
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error('[AuthContext] Error fetching permissions:', error);
       return [];
     }
@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       return { allowed: true, status: membre.statut };
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error('[AuthContext] Error in checkMemberStatus:', error);
       return { allowed: true, status: null };
     }
@@ -275,7 +275,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setPermissions(userPerms);
       logger.success('[AuthContext] Permissions loaded: ' + userPerms.length);
 
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error('[AuthContext] Error fetching user data:', error);
     } finally {
       setLoading(false);

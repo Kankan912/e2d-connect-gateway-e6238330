@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
 
+import { logger } from "@/lib/logger";
 interface PaymentConfig {
   id: string;
   provider: string;
@@ -136,8 +137,8 @@ export default function PaymentConfigAdmin() {
           });
         }
       });
-    } catch (error) {
-      console.error('Erreur chargement configs:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur chargement configs:', error);
     }
   };
 
@@ -253,8 +254,8 @@ export default function PaymentConfigAdmin() {
 
       toast({ title: "Configuration Stripe enregistrée" });
       fetchConfigs();
-    } catch (error) {
-      console.error('Erreur sauvegarde Stripe:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur sauvegarde Stripe:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'enregistrer la configuration Stripe",
@@ -294,8 +295,8 @@ export default function PaymentConfigAdmin() {
 
       toast({ title: "Configuration PayPal enregistrée" });
       fetchConfigs();
-    } catch (error) {
-      console.error('Erreur sauvegarde PayPal:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur sauvegarde PayPal:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'enregistrer la configuration PayPal",
@@ -335,8 +336,8 @@ export default function PaymentConfigAdmin() {
 
       toast({ title: "Configuration HelloAsso enregistrée" });
       fetchConfigs();
-    } catch (error) {
-      console.error('Erreur sauvegarde HelloAsso:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur sauvegarde HelloAsso:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'enregistrer la configuration HelloAsso",
@@ -376,8 +377,8 @@ export default function PaymentConfigAdmin() {
 
       toast({ title: "Coordonnées bancaires enregistrées" });
       fetchConfigs();
-    } catch (error) {
-      console.error('Erreur sauvegarde virement:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur sauvegarde virement:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'enregistrer les coordonnées bancaires",
@@ -408,8 +409,8 @@ export default function PaymentConfigAdmin() {
       }
       toast({ title: `Configuration ${label} enregistrée` });
       fetchConfigs();
-    } catch (error) {
-      console.error(`Erreur sauvegarde ${label}:`, error);
+    } catch (error: unknown) {
+      logger.error(`Erreur sauvegarde ${label}:`, error);
       toast({ title: "Erreur", description: `Impossible d'enregistrer la configuration ${label}`, variant: "destructive" });
     } finally {
       setLoading(false);
@@ -426,8 +427,8 @@ export default function PaymentConfigAdmin() {
       if (error) throw error;
       fetchConfigs();
       toast({ title: `Configuration ${!isActive ? 'activée' : 'désactivée'}` });
-    } catch (error) {
-      console.error('Erreur toggle:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur toggle:', error);
     }
   };
 

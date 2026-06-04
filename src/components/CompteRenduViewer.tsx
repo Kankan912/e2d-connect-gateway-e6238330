@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import { addE2DLogo, addE2DFooter } from '@/lib/pdf-utils';
 
+import { logger } from "@/lib/logger";
 interface Reunion {
   id: string;
   sujet?: string;
@@ -434,8 +435,8 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
         title: "PDF téléchargé",
         description: `Le fichier ${fileName} a été téléchargé`,
       });
-    } catch (error) {
-      console.error('Erreur téléchargement PDF:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur téléchargement PDF:', error);
       toast({
         title: "Erreur",
         description: "Impossible de générer le PDF",

@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 
+import { logger } from "@/lib/logger";
 interface Reunion {
   id: string;
   sujet?: string;
@@ -180,7 +181,7 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
       setOpen(false);
       onSuccess?.();
     } catch (error: unknown) {
-      console.error('Erreur envoi CR:', error);
+      logger.error('Erreur envoi CR:', error);
       toast({
         title: "Erreur",
         description: "Impossible d'envoyer le compte-rendu: " + (error instanceof Error ? error.message : "Erreur"),

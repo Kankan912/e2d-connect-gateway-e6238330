@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { processFileForUpload } from "./heic-converter";
 
+import { logger } from "@/lib/logger";
 /**
  * Upload un fichier vers un bucket Supabase Storage
  * Convertit automatiquement les fichiers HEIC en JPEG
@@ -29,7 +30,7 @@ export async function uploadFile(
     });
 
   if (error) {
-    console.error("Upload error:", error);
+    logger.error("Upload error:", error);
     throw new Error(`Erreur d'upload: ${error.message}`);
   }
 
@@ -50,7 +51,7 @@ export async function deleteFile(
     // Extraire le chemin du fichier depuis l'URL
     const urlParts = fileUrl.split(`/storage/v1/object/public/${bucket}/`);
     if (urlParts.length < 2) {
-      console.warn("Format d'URL invalide pour la suppression:", fileUrl);
+      logger.warn("Format d'URL invalide pour la suppression:", fileUrl);
       return false;
     }
 
@@ -59,13 +60,13 @@ export async function deleteFile(
     const { error } = await supabase.storage.from(bucket).remove([filePath]);
 
     if (error) {
-      console.error("Delete error:", error);
+      logger.error("Delete error:", error);
       return false;
     }
 
     return true;
   } catch (err) {
-    console.error("Erreur lors de la suppression:", err);
+    logger.error("Erreur lors de la suppression:", err);
     return false;
   }
 }

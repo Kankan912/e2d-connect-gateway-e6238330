@@ -13,6 +13,7 @@ import { Download, Upload, History, FileJson, FileSpreadsheet, Loader2, Check } 
 import * as XLSX from "xlsx";
 import { format } from "date-fns";
 
+import { getErrorMessage } from "@/lib/errors";
 const TABLES_EXPORTABLES = [
   { id: "membres", label: "Membres", description: "Liste des membres" },
   { id: "cotisations", label: "Cotisations", description: "Toutes les cotisations" },
@@ -103,10 +104,10 @@ export function SauvegardeManager() {
       }
 
       toast({ title: "Export réalisé avec succès", description: `${selectedTables.length} table(s) exportée(s)` });
-    } catch (error) {
+    } catch (error: unknown) {
       toast({ 
         title: "Erreur lors de l'export", 
-        description: error instanceof Error ? error.message : "Erreur inconnue",
+        description: error instanceof Error ? getErrorMessage(error) : "Erreur inconnue",
         variant: "destructive" 
       });
     } finally {

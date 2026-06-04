@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Trash2, Save } from 'lucide-react';
 
+import { logger } from "@/lib/logger";
 const pointSchema = z.object({
   numero_ordre: z.number().min(1),
   sujet: z.string().min(3, 'Sujet requis (min 3 caractères)'),
@@ -67,8 +68,8 @@ export default function CompteRenduForm({
 
       if (error) throw error;
       setPoints(data || []);
-    } catch (error) {
-      console.error('Erreur chargement points:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur chargement points:', error);
     }
   };
 
@@ -103,7 +104,7 @@ export default function CompteRenduForm({
       setEditingPoint(null);
       loadPoints();
     } catch (error: unknown) {
-      console.error('Erreur ajout point:', error);
+      logger.error('Erreur ajout point:', error);
       toast({ title: 'Erreur', description: error instanceof Error ? error.message : "Erreur", variant: 'destructive' });
     } finally {
       setLoading(false);

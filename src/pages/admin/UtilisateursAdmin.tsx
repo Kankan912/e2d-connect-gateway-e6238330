@@ -71,6 +71,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+import { logger } from "@/lib/logger";
 interface UtilisateursAdminProps {
   embedded?: boolean;
 }
@@ -120,7 +121,7 @@ export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdmi
       }
       toast.success(`Nouveaux identifiants envoyés à ${resp.email}`);
     } catch (err) {
-      console.error("[UtilisateursAdmin] resend error:", err);
+      logger.error("[UtilisateursAdmin] resend error:", err);
       toast.error("Erreur réseau lors de l'envoi");
     } finally {
       setResendingId(null);
