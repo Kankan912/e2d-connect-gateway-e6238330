@@ -45,8 +45,13 @@ export default function PartnersAdmin() {
 
   const handleEdit = (partner: any) => {
     setEditingPartner(partner);
-    Object.keys(partner).forEach(key => {
-      setValue(key, partner[key]);
+    reset({
+      nom: partner.nom ?? "",
+      logo_url: partner.logo_url ?? "",
+      site_web: partner.site_web ?? "",
+      description: partner.description ?? "",
+      ordre: partner.ordre ?? 0,
+      media_source: partner.media_source ?? "",
     });
     setOpen(true);
   };
