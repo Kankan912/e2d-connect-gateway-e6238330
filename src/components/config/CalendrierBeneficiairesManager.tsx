@@ -513,7 +513,7 @@ export default function CalendrierBeneficiairesManager() {
           {/* Total */}
           {calendrier.length > 0 && (
             <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-between items-center">
-              <span className="font-semibold">Total Annuel Prévu:</span>
+              <span className="font-semibold">Total Exercice Prévu ({nbMoisExercice} mois) :</span>
               <span className="text-xl font-bold text-primary">
                 {formatFCFA(calendrier.reduce((sum, b) => sum + Number(b.montant_total), 0))}
               </span>
