@@ -396,7 +396,7 @@ export default function CalendrierBeneficiairesManager() {
                   // Skip empty months except in admin mode
                   if (beneficiaires.length === 0 && !isAdmin) return null;
 
-                  const moisLabel = moisKey !== null ? MOIS[moisKey - 1] : "Non défini";
+                  const moisLabel = getMoisLabel(moisKey);
                   const totalMensuel = beneficiaires.reduce((s: number, b: any) => s + Number(b.montant_mensuel), 0);
                   const totalAnnuel = beneficiaires.reduce((s: number, b: any) => s + Number(b.montant_total), 0);
 
