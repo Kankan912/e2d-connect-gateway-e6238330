@@ -1,62 +1,56 @@
-## Lot C — Utilisateurs, Permissions, Email (Phases 2, 3, 13)
+## Lot D — Matchs, Évènements, Site web, Galerie (Phases 9 & 10)
 
-Audit ciblé sans nouvelles fonctionnalités. Vérification + corrections d'anomalies confirmées uniquement.
+Audit ciblé sans nouvelles fonctionnalités. Vérification + corrections d'anomalies confirmées uniquement. Les 5 profils orphelins du Lot C (C2) sont laissés tels quels — décision utilisateur.
 
 ### Périmètre
 
-**Phase 2 — Membres & comptes utilisateurs**
-- Liaison `membres` ↔ `auth.users` / `profiles`
-- Règle : un compte utilisateur doit toujours être rattaché à un membre
-- Cycle de vie : création, premier login (changement mdp obligatoire), `actif` / `inactif` / `suspendu` / `supprime`
-- Déconnexion forcée des comptes inactifs/suspendus (memory `auth-block-logic`)
-- Soft-delete `status="supprime"` (memory `user-deletion-and-logging-workflow`)
+**Phase 9 — Matchs E2D & Évènements**
+- Cycle de vie d'un match E2D : création → publication → synchronisation `site_events`
+- Règle : sync vers `site_events` uniquement quand `statut_publication = 'publie'` (memory `e2d-match-sync-architecture`)
+- Filtrage joueurs `est_membre_e2d = true` pour stats E2D (memory `e2d-match-stats-filtering`)
+- Assets match (logos, squad) — bucket `sport-logos`, thumbnail sync (memory `match-assets-and-squad-management`)
+- Notification email à la création/publication d'un évènement
+- Cohérence évènements ↔ site public (visibilité, dates, suppression)
 
-**Phase 3 — Rôles & permissions**
-- Rôle officiel `administrateur` (jamais `admin`) — vérifier toutes occurrences
-- `has_role()` et `has_permission(_resource, _permission)` security definer
-- `is_admin()` utilisé dans les RLS
-- Permissions granulaires (memory `granular-permissions`)
-- Accès admin dashboard via `hasAnyPermission` (memory `admin-access-logic-v35`)
-
-**Phase 13 — Configuration Email (Resend / SMTP natif)**
-- Architecture multi-provider (memory `multi-provider-native-smtp-architecture-v2`)
-- Sauvegarde config avec `.select()` pour détecter échec RLS silencieux (memory `email-config-save-validation`)
-- Extraction email pur + forçage Resend pour tests connexion (memory `delivery-logic`)
-- Clés API jamais exposées frontend
-- Logs envois complets
+**Phase 10 — Site web public & Galerie**
+- Galerie organisée en albums (style Facebook)
+- Conversion HEIC côté client avant upload (memory `comprehensive-viewing-and-heic-support`)
+- Footer fonctionnel (liens, mentions légales, contact)
+- Bouton retour = historique navigateur (pas de routage dur)
+- SPA routing : `vercel.json` rewrites vers `/index.html` (memory `routage-spa-vercel`)
+- Pages publiques accessibles sans auth ; contenus admin protégés
 
 ### Méthode
 
-1. **Audit code** : hooks/composants liés à `useAuth`, `useMembers`, `usePermissions`, `EmailConfig*`, edge functions email.
+1. **Audit code** : composants/pages matchs, évènements, galerie, footer, hooks de sync `site_events`, edge functions email associées.
 2. **Audit DB** : `supabase--read_query` pour vérifier :
-   - Cohérence `membres` ↔ `profiles` ↔ `auth.users` (orphelins ?)
-   - Présence d'enregistrements `role = 'admin'` au lieu de `administrateur`
-   - RLS sur `configurations` / `configurations_email` (clés API en clair ?)
-3. **Audit RLS** via `security--get_table_schema` sur tables sensibles (`user_roles`, `configurations`, `audit_logs`).
-4. **Tests UI ciblés** : login membre inactif/suspendu/supprimé doit être bloqué ; sauvegarde config email doit remonter une erreur explicite si RLS bloque.
-5. **Documentation** : nouvelle section "Lot C" dans `docs/AUDIT_E2D_V3.md` avec constats + correctifs + tests à valider.
+   - Matchs `publie` sans entrée `site_events` correspondante (ou inverse : entrées orphelines)
+   - Albums galerie sans photos ; photos sans album
+   - RLS sur `site_events`, `galerie_*`, bucket `sport-logos`
+3. **Tests UI ciblés** : publier un match → vérifier apparition site public ; dépublier → disparition ; uploader photo HEIC → conversion auto.
+4. **Documentation** : nouvelle section "Lot D" dans `docs/AUDIT_E2D_V3.md`.
 
 ### Points de vigilance
 
-- **C1** — Aucun rôle `admin` orphelin (doit être `administrateur`)
-- **C2** — Aucun compte `auth.users` sans `membres` correspondant (orphelin)
-- **C3** — Comptes `inactif`/`suspendu`/`supprime` réellement bloqués au login
-- **C4** — Sauvegarde config email : `.select()` chaîné pour détecter RLS silencieux
-- **C5** — Clés API email **jamais** lisibles via `configurations` côté client (vue `configurations_public` utilisée)
-- **C6** — `has_permission` correctement appelée dans les routes admin
-- **C7** — Logs `audit_logs` enregistrent bien `auth.uid()` (pas null)
+- **D1** — Match `publie` ↔ `site_events` : pas de désynchronisation
+- **D2** — Match dépublié ou supprimé → `site_events` correspondant supprimé / dépublié
+- **D3** — Notifications email envoyées best-effort (ne pas bloquer la publication si email échoue, cf. règle Lot B)
+- **D4** — Galerie : albums et photos cohérents, suppression cascade correcte
+- **D5** — Bucket `sport-logos` : policies lecture publique / écriture admin
+- **D6** — Footer : tous les liens fonctionnels (pas de `href="#"` mort)
+- **D7** — Boutons « retour » utilisent `navigate(-1)` ou équivalent, pas de route en dur
 
 ### Livrables
 
-- `docs/AUDIT_E2D_V3.md` enrichi (section Lot C)
-- Migrations SQL si anomalies confirmées (ex : alignement rôle, durcissement RLS)
+- `docs/AUDIT_E2D_V3.md` enrichi (section Lot D)
+- Migrations SQL si anomalies confirmées (ex : trigger sync manquant)
 - Edits frontend ciblés uniquement sur anomalies confirmées
-- Liste tests utilisateur avant Lot D
+- Liste tests utilisateur avant Lot E
 
 ### Hors périmètre
 
-- Refonte UI gestion utilisateurs / permissions
-- Nouveau provider email
-- Modifications schémas réservés Supabase (`auth`, `storage`, etc.)
+- Refonte UI matchs / galerie / site public
+- Nouvelles fonctionnalités sport (classement, stats avancées, etc.)
+- Refonte design system du site public
 
-Après validation Lot C → Lot D (Matchs, Évènements, Site web, Galerie).
+Après validation Lot D → Lot E (UX globale & gestion des erreurs).
