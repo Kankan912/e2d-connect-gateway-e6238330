@@ -413,9 +413,12 @@ export default function ClotureReunionModal({
       const nbSanctionsHuileSavon = membresSansHuileSavon.length;
       const totalSanctions = nbSanctionsAbsence + nbSanctionsHuileSavon;
       
+      const emailMsg = emailSent
+        ? `CR envoyé à ${destinataires.length} membre(s).`
+        : (hasDestinataires ? `Envoi du CR échoué — clôture maintenue.` : `CR non envoyé (aucun email).`);
       toast({
         title: "Réunion clôturée avec succès",
-        description: `CR envoyé à ${destinataires.length} membre(s). ${totalSanctions > 0 ? `${totalSanctions} sanction(s) créée(s) (${nbSanctionsAbsence} absence${nbSanctionsAbsence > 1 ? 's' : ''}, ${nbSanctionsHuileSavon} Huile & Savon).` : ''}`,
+        description: `${emailMsg} ${totalSanctions > 0 ? `${totalSanctions} sanction(s) créée(s) (${nbSanctionsAbsence} absence${nbSanctionsAbsence > 1 ? 's' : ''}, ${nbSanctionsHuileSavon} Huile & Savon).` : ''}`,
       });
 
       onOpenChange(false);
