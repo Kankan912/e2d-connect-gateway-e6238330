@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,10 @@ import { Loader2, Trash2, ChevronUp, ChevronDown, ImagePlus } from "lucide-react
 import { useSiteHero, useUpdateHero, useSiteHeroImages, useCreateHeroImage, useDeleteHeroImage, useUpdateHeroImage } from "@/hooks/useSiteContent";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { toast } from "sonner";
+import { heroSchema, type HeroFormValues } from "@/lib/validation/site-schemas";
+
+const FieldError = ({ msg }: { msg?: string }) =>
+  msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
 
 export default function HeroAdmin() {
   const { data: hero, isLoading } = useSiteHero();
@@ -19,7 +24,13 @@ export default function HeroAdmin() {
   const deleteHeroImage = useDeleteHeroImage();
   const updateHeroImage = useUpdateHeroImage();
   
-  const { register, handleSubmit, reset, setValue, watch } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<HeroFormValues>({ resolver: zodResolver(heroSchema) });
   const [carouselAutoPlay, setCarouselAutoPlay] = useState(true);
   const [carouselInterval, setCarouselInterval] = useState(5000);
 
@@ -30,13 +41,13 @@ export default function HeroAdmin() {
     }
   }, [hero]);
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: HeroFormValues) => {
     if (hero) {
-      updateHero.mutate({ 
-        ...data, 
+      updateHero.mutate({
+        ...data,
         id: hero.id,
         carousel_auto_play: carouselAutoPlay,
-        carousel_interval: carouselInterval
+        carousel_interval: carouselInterval,
       });
     }
   };
@@ -236,8 +247,9 @@ export default function HeroAdmin() {
               <Input
                 id="titre"
                 defaultValue={hero?.titre}
-                {...register("titre", { required: true })}
+                {...register("titre")}
               />
+              <FieldError msg={errors.titre?.message} />
             </div>
 
             <div className="space-y-2">
@@ -245,9 +257,10 @@ export default function HeroAdmin() {
               <Textarea
                 id="sous_titre"
                 defaultValue={hero?.sous_titre}
-                {...register("sous_titre", { required: true })}
+                {...register("sous_titre")}
                 rows={3}
               />
+              <FieldError msg={errors.sous_titre?.message} />
             </div>
 
             <MediaUploader
