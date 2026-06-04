@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, Link2, X, Loader2, Image, Video } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { logger } from "@/lib/logger";
+import { getErrorMessage } from "@/lib/errors";
 import {
   uploadFile,
   deleteFile,
@@ -86,13 +88,13 @@ export default function MediaUploader({
         title: "✅ Upload réussi",
         description: "Le fichier a été uploadé avec succès.",
       });
-    } catch (error) {
-      console.error("Upload error:", error);
+    } catch (error: unknown) {
+      logger.error("Upload error:", error);
       toast({
         variant: "destructive",
         title: "Erreur d'upload",
         description:
-          error instanceof Error ? error.message : "Une erreur est survenue.",
+          error instanceof Error ? getErrorMessage(error) : "Une erreur est survenue.",
       });
     } finally {
       setIsUploading(false);

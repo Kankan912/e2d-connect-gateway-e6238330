@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 
+import { logger } from "@/lib/logger";
 export type SessionType = 'super_admin' | 'editor' | 'readonly';
 
 export interface SessionConfig {
@@ -50,7 +51,7 @@ export const fetchSessionConfig = async (roleType: SessionType): Promise<Session
     .single();
 
   if (error) {
-    console.error('❌ [SessionUtils] Error fetching session config:', error);
+    logger.error('❌ [SessionUtils] Error fetching session config:', error);
     return null;
   }
 

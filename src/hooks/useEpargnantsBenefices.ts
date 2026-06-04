@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+import { logger } from "@/lib/logger";
 interface Epargnant {
   id: string;
   membre_id: string;
@@ -57,8 +58,8 @@ export const useEpargnantsBenefices = () => {
 
         if (error) throw error;
         setExercices(data || []);
-      } catch (error) {
-        console.error('Erreur chargement exercices:', error);
+      } catch (error: unknown) {
+        logger.error('Erreur chargement exercices:', error);
       }
     };
 
@@ -86,8 +87,8 @@ export const useEpargnantsBenefices = () => {
         const { data, error } = await query.limit(100);
         if (error) throw error;
         setReunions(data || []);
-      } catch (error) {
-        console.error('Erreur chargement réunions:', error);
+      } catch (error: unknown) {
+        logger.error('Erreur chargement réunions:', error);
       }
     };
 
@@ -143,7 +144,7 @@ export const useEpargnantsBenefices = () => {
           .select('pret_id, interet_mois');
         
         if (reconductionsError) {
-          console.warn('Erreur récupération reconductions:', reconductionsError);
+          logger.warn('Erreur récupération reconductions:', reconductionsError);
         }
 
         // Créer un map des intérêts de reconduction par prêt
@@ -208,8 +209,8 @@ export const useEpargnantsBenefices = () => {
           nombreEpargnants: epargnantsList.length
         });
 
-      } catch (error) {
-        console.error('Erreur chargement données:', error);
+      } catch (error: unknown) {
+        logger.error('Erreur chargement données:', error);
         toast({
           title: "Erreur",
           description: "Impossible de charger les données des épargnants",

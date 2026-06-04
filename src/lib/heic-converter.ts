@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 
+import { logger } from "@/lib/logger";
 /**
  * Check if a file is a HEIC/HEIF image
  */
@@ -45,9 +46,9 @@ export async function convertHeicToJpeg(file: File): Promise<File> {
 
     toast.success("Image HEIC convertie avec succès", { id: toastId });
     return convertedFile;
-  } catch (error) {
+  } catch (error: unknown) {
     toast.error("Erreur lors de la conversion HEIC", { id: toastId });
-    console.error("HEIC conversion error:", error);
+    logger.error("HEIC conversion error:", error);
     throw new Error("Impossible de convertir l'image HEIC. Veuillez réessayer ou utiliser un autre format.");
   }
 }

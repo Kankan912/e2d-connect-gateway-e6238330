@@ -104,7 +104,7 @@ export default function ExportsAdmin({ embedded = false }: ExportsAdminProps) {
 
       queryClient.invalidateQueries({ queryKey: ['exports-programmes'] });
       toast({ title: "Export réussi", description: "Le fichier a été téléchargé" });
-    } catch (error) {
+    } catch (error: unknown) {
       toast({ 
         title: "Erreur lors de l'export", 
         description: "Impossible de générer le fichier",

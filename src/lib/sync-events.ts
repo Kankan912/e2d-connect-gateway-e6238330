@@ -17,7 +17,7 @@ export async function removeE2DEventFromCMS(matchId: string) {
 
     logger.info('Événement E2D retiré du site, match_id: ' + matchId);
     return { success: true };
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error('Erreur lors de la suppression événement E2D:', error);
     return { success: false, error };
   }
@@ -104,7 +104,7 @@ export async function syncE2DMatchToEvent(matchId: string) {
 
     logger.info('Match E2D synchronisé vers site_events: ' + eventTitre);
     return { success: true, action: 'synced' };
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error('Erreur lors de la synchronisation E2D:', error);
     return { success: false, error };
   }
@@ -142,7 +142,7 @@ export async function syncAllSportEventsToWebsite(includeAll: boolean = true) {
         e2d: e2dMatches?.length || 0,
       }
     };
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error('Erreur lors de la synchronisation globale:', error);
     return { success: false, error };
   }
@@ -177,7 +177,7 @@ export async function cleanupOrphanedEvents() {
 
     logger.info(`Nettoyage: ${cleaned} événements orphelins supprimés`);
     return { success: true, cleaned };
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error('Erreur lors du nettoyage:', error);
     return { success: false, error };
   }

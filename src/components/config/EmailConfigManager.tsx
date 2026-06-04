@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Mail, Server, Key, Globe, Send, Eye, EyeOff, Loader2, CheckCircle, XCircle, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
+import { logger } from "@/lib/logger";
 export function EmailConfigManager() {
   const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
@@ -159,7 +160,7 @@ export function EmailConfigManager() {
       toast.success("Configuration email sauvegardée");
     },
     onError: (error) => {
-      console.error("Error saving config:", error);
+      logger.error("Error saving config:", error);
       toast.error("Erreur lors de la sauvegarde");
     },
   });

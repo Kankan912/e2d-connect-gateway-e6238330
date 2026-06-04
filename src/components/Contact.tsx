@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 import {
   Form,
   FormControl,
@@ -91,9 +92,9 @@ const Contact = () => {
           }
         }
       });
-    } catch (error) {
+    } catch (error: unknown) {
       // Log mais ne pas bloquer - le message est déjà enregistré
-      console.warn("Erreur envoi email notification:", error);
+      logger.warn("Erreur envoi email notification:", error);
     }
   };
 
@@ -123,8 +124,8 @@ const Contact = () => {
       });
 
       form.reset();
-    } catch (error) {
-      console.error("Erreur envoi message:", error);
+    } catch (error: unknown) {
+      logger.error("Erreur envoi message:", error);
       toast({
         title: "Erreur",
         description: "Une erreur est survenue. Veuillez réessayer.",

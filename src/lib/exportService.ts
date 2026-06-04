@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadLogoBase64, addE2DFooter } from './pdf-utils';
 import { logger } from './logger';
 
+import { logger } from "@/lib/logger";
 export class ExportService {
   static async export(options: {
     type: string;
@@ -254,8 +255,8 @@ export class ExportService {
       }
 
       return { success: true };
-    } catch (error) {
-      console.error('Erreur lors de l\'export:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur lors de l\'export:', error);
       throw error;
     }
   }

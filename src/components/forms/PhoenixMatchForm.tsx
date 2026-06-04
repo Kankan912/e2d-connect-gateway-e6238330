@@ -54,7 +54,7 @@ export default function PhoenixMatchForm({ open, onOpenChange, onSuccess }: Phoe
       toast({ title: "Match enregistré", description: "Le match Phoenix a été créé avec succès." });
       form.reset();
       onSuccess();
-    } catch (error) {
+    } catch (error: unknown) {
       logger.error('Erreur création match Phoenix', error);
       toast({ title: "Erreur", description: "Impossible de créer le match.", variant: "destructive" });
     } finally {

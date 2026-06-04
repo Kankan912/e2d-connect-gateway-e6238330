@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { PaymentConfig } from "@/types/donations";
 
+import { logger } from "@/lib/logger";
 interface MobileMoneyInfoProps {
   config: PaymentConfig;
   donorName: string;
@@ -91,8 +92,8 @@ const MobileMoneyInfo = ({
       }
 
       onConfirm(reference);
-    } catch (error) {
-      console.error('Error confirming mobile money donation:', error);
+    } catch (error: unknown) {
+      logger.error('Error confirming mobile money donation:', error);
       // Still confirm even if email fails
       onConfirm(reference);
     } finally {

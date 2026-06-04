@@ -14,6 +14,7 @@ import { useBeneficiairesReunion, useCalendrierBeneficiaires } from "@/hooks/use
 import { useAuth } from "@/contexts/AuthContext";
 import { formatFCFA } from "@/lib/utils";
 
+import { logger } from "@/lib/logger";
 interface BeneficiairesReunionWidgetProps {
   reunionId: string;
   reunionDate: string;
@@ -93,8 +94,8 @@ export default function BeneficiairesReunionWidget({
         membreId: calendrierItem.membre_id,
         membreNom: `${calendrierItem.membres?.prenom} ${calendrierItem.membres?.nom}`
       });
-    } catch (error) {
-      console.error('Erreur calcul:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur calcul:', error);
     } finally {
       setIsCalculating(false);
     }

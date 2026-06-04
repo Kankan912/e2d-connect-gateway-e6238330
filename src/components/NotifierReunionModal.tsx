@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 
+import { logger } from "@/lib/logger";
 interface NotifierReunionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -175,7 +176,7 @@ export default function NotifierReunionModal({
 
       onOpenChange(false);
     } catch (error: unknown) {
-      console.error("Erreur envoi notification:", error);
+      logger.error("Erreur envoi notification:", error);
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Impossible d'envoyer la notification",

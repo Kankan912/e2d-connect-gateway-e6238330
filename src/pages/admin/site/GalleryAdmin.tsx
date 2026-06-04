@@ -14,6 +14,7 @@ import MediaUploader from "@/components/admin/MediaUploader";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/storage-utils";
 
+import { logger } from "@/lib/logger";
 export default function GalleryAdmin() {
   const { data: gallery, isLoading } = useSiteGallery();
   const { data: albums, isLoading: albumsLoading } = useSiteGalleryAlbums();
@@ -141,8 +142,8 @@ export default function GalleryAdmin() {
         });
         
         successCount++;
-      } catch (error) {
-        console.error("Error uploading file:", error);
+      } catch (error: unknown) {
+        logger.error("Error uploading file:", error);
         errorCount++;
       }
     }

@@ -19,6 +19,7 @@ import BackButton from "@/components/BackButton";
 import { ExportService } from '@/lib/exportService';
 import { useAllEpargnes, useCreateEpargne, useUpdateEpargne, useDeleteEpargne } from "@/hooks/useEpargnes";
 
+import { logger } from "@/lib/logger";
 interface Epargne {
   id: string;
   membre_id: string;
@@ -129,8 +130,8 @@ export default function Epargnes() {
 
       if (error) throw error;
       setMembres(data || []);
-    } catch (error) {
-      console.error('Erreur lors du chargement des membres:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur lors du chargement des membres:', error);
     }
   };
 
@@ -144,8 +145,8 @@ export default function Epargnes() {
 
       if (error) throw error;
       setReunions(data || []);
-    } catch (error) {
-      console.error('Erreur lors du chargement des réunions:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur lors du chargement des réunions:', error);
     }
   };
 
@@ -158,8 +159,8 @@ export default function Epargnes() {
 
       if (error) throw error;
       setExercices(data || []);
-    } catch (error) {
-      console.error('Erreur lors du chargement des exercices:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur lors du chargement des exercices:', error);
     }
   };
 

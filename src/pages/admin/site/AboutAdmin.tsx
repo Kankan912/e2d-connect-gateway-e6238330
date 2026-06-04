@@ -52,7 +52,7 @@ const AboutAdmin = () => {
         ...formData,
       });
       toast({ title: "Succès", description: "Section À Propos mise à jour" });
-    } catch (error) {
+    } catch (error: unknown) {
       toast({ title: "Erreur", description: "Échec de la mise à jour", variant: "destructive" });
     }
   };

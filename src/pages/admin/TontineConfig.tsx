@@ -16,6 +16,7 @@ import { formatFCFA } from "@/lib/utils";
 import { ExercicesCotisationsTypesManager } from "@/components/config/ExercicesCotisationsTypesManager";
 import CalendrierBeneficiairesManager from "@/components/config/CalendrierBeneficiairesManager";
 
+import { logger } from "@/lib/logger";
 interface TontineConfig {
   id: string;
   cle: string;
@@ -65,8 +66,8 @@ export default function TontineConfig() {
 
       if (error) throw error;
       setConfigs(data || []);
-    } catch (error) {
-      console.error('Erreur chargement configs:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur chargement configs:', error);
     }
   };
 
@@ -79,8 +80,8 @@ export default function TontineConfig() {
 
       if (error) throw error;
       setBeneficiaireConfigs(data || []);
-    } catch (error) {
-      console.error('Erreur chargement configs bénéficiaires:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur chargement configs bénéficiaires:', error);
     }
   };
 
@@ -124,8 +125,8 @@ export default function TontineConfig() {
         actif: true
       });
       fetchBeneficiaireConfigs();
-    } catch (error) {
-      console.error('Erreur sauvegarde:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur sauvegarde:', error);
       toast({
         title: "Erreur",
         description: "Impossible de sauvegarder la configuration",
@@ -161,8 +162,8 @@ export default function TontineConfig() {
       if (error) throw error;
       toast({ title: "Configuration supprimée" });
       fetchBeneficiaireConfigs();
-    } catch (error) {
-      console.error('Erreur suppression:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur suppression:', error);
       toast({
         title: "Erreur",
         description: "Impossible de supprimer la configuration",
@@ -180,8 +181,8 @@ export default function TontineConfig() {
 
       if (error) throw error;
       fetchBeneficiaireConfigs();
-    } catch (error) {
-      console.error('Erreur toggle actif:', error);
+    } catch (error: unknown) {
+      logger.error('Erreur toggle actif:', error);
     }
   };
 

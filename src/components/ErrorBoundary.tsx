@@ -2,6 +2,7 @@ import React from "react";
 import { AlertTriangle, RefreshCw, Home, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+import { logger } from "@/lib/logger";
 interface ErrorBoundaryProps {
   children: React.ReactNode;
   fallbackTitle?: string;
@@ -27,7 +28,7 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("ErrorBoundary caught:", error, errorInfo);
+    logger.error("ErrorBoundary caught:", error, errorInfo);
   }
 
   handleReset = () => {

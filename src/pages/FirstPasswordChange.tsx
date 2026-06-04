@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import logoE2D from "@/assets/logo-e2d.png";
 
+import { logger } from "@/lib/logger";
 const FirstPasswordChange = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -83,7 +84,7 @@ const FirstPasswordChange = () => {
 
       navigate("/dashboard");
     } catch (error: unknown) {
-      console.error("Error changing password:", error);
+      logger.error("Error changing password:", error);
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Impossible de modifier le mot de passe",
