@@ -10,11 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, Pencil, Trash2, Image as ImageIcon, Video, FolderPlus, Folder, Upload } from "lucide-react";
 import { useSiteGallery, useCreateGalleryItem, useUpdateGalleryItem, useDeleteGalleryItem, useSiteGalleryAlbums, useCreateGalleryAlbum, useUpdateGalleryAlbum, useDeleteGalleryAlbum } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/storage-utils";
+import { gallerySchema, galleryAlbumSchema, type GalleryFormValues, type GalleryAlbumFormValues } from "@/lib/validation/site-schemas";
 
 import { logger } from "@/lib/logger";
+
+const FieldError = ({ msg }: { msg?: string }) =>
+  msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
 export default function GalleryAdmin() {
   const { data: gallery, isLoading } = useSiteGallery();
   const { data: albums, isLoading: albumsLoading } = useSiteGalleryAlbums();
