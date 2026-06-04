@@ -75,6 +75,25 @@ export default function CalendrierBeneficiairesManager() {
     return Math.max(1, months);
   }, [selectedExerciceData]);
 
+  // C6/C7: liste ordonnée des mois de l'exercice (avec année), basée sur date_debut
+  const moisExerciceList = useMemo(() => {
+    const list: { index: number; mois: number; annee: number; label: string; shortLabel: string }[] = [];
+    const debut = selectedExerciceData?.date_debut ? new Date(selectedExerciceData.date_debut) : new Date(new Date().getFullYear(), 0, 1);
+    for (let i = 0; i < nbMoisExercice; i++) {
+      const d = new Date(debut.getFullYear(), debut.getMonth() + i, 1);
+      const moisIdx = d.getMonth(); // 0..11
+      list.push({
+        index: i + 1,
+        mois: moisIdx + 1, // 1..12 (clé stockée en BDD)
+        annee: d.getFullYear(),
+        label: `${MOIS[moisIdx]} ${d.getFullYear()}`,
+        shortLabel: MOIS[moisIdx],
+      });
+    }
+    return list;
+  }, [selectedExerciceData, nbMoisExercice]);
+
+
   const { 
     calendrier, 
     isLoading, 
@@ -106,13 +125,10 @@ export default function CalendrierBeneficiairesManager() {
     m => !calendrier.some(c => c.membre_id === m.id)
   );
 
-  // Group beneficiaries by month
+  // Group beneficiaries by month (clé = mois 1..12 ou null)
   const groupedByMonth = useMemo(() => {
     const groups = new Map<number | null, any[]>();
-    // Initialize all 12 months
-    for (let i = 1; i <= 12; i++) {
-      groups.set(i, []);
-    }
+    moisExerciceList.forEach(m => groups.set(m.mois, []));
     groups.set(null, []);
 
     calendrier.forEach(b => {
@@ -121,28 +137,36 @@ export default function CalendrierBeneficiairesManager() {
       groups.get(key)!.push(b);
     });
 
-    // Sort within each month by rang
     groups.forEach((list) => list.sort((a: any, b: any) => a.rang - b.rang));
-
     return groups;
-  }, [calendrier]);
+  }, [calendrier, moisExerciceList]);
 
-  // Build ordered month keys: 1..12, then null if has entries
+  // Ordered month keys (chrono exercice) + bucket null si non vide
   const monthKeys = useMemo(() => {
-    const keys: (number | null)[] = [];
-    for (let i = 1; i <= 12; i++) keys.push(i);
+    const keys: (number | null)[] = moisExerciceList.map(m => m.mois);
     if ((groupedByMonth.get(null) || []).length > 0) keys.push(null);
     return keys;
-  }, [groupedByMonth]);
+  }, [groupedByMonth, moisExerciceList]);
+
+  // Helper: libellé d'un mois selon l'exercice
+  const getMoisLabel = (moisKey: number | null) => {
+    if (moisKey === null) return "Non défini";
+    const found = moisExerciceList.find(m => m.mois === moisKey);
+    return found ? found.label : MOIS[moisKey - 1];
+  };
+
 
   const handleInitialize = async () => {
     if (!selectedExercice || calendrier.length > 0) return;
+    const moisList = moisExerciceList.map(m => m.mois);
     const membresData = membresE2D.map(m => {
       const cotisation = cotisationsMensuelles.find(c => c.membre_id === m.id);
       return { id: m.id, montant_mensuel: cotisation?.montant || 20000 };
     });
-    initializeCalendrier.mutate({ exerciceId: selectedExercice, membres: membresData });
+    initializeCalendrier.mutate({ exerciceId: selectedExercice, membres: membresData, moisDisponibles: moisList });
   };
+
+
 
   const handleAdd = async () => {
     if (!selectedMembre || !selectedExercice || !selectedMois) return;
@@ -176,17 +200,22 @@ export default function CalendrierBeneficiairesManager() {
     doc.setFontSize(12);
     doc.setTextColor(100, 100, 100);
     doc.text(`Exercice: ${selectedExerciceData.nom}`, 14, 28);
+    doc.setFontSize(9);
+    if (selectedExerciceData.date_debut && selectedExerciceData.date_fin) {
+      const periode = `Période: ${new Date(selectedExerciceData.date_debut).toLocaleDateString('fr-FR')} → ${new Date(selectedExerciceData.date_fin).toLocaleDateString('fr-FR')} (${nbMoisExercice} mois)`;
+      doc.text(periode, 14, 34);
+    }
     doc.setFontSize(10);
-    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 14, 35);
+    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 14, 40);
     doc.setDrawColor(30, 64, 175);
     doc.setLineWidth(0.5);
-    doc.line(14, 40, doc.internal.pageSize.getWidth() - 14, 40);
+    doc.line(14, 44, doc.internal.pageSize.getWidth() - 14, 44);
 
     const tableData: string[][] = [];
     monthKeys.forEach(moisKey => {
       const beneficiaires = groupedByMonth.get(moisKey) || [];
       if (beneficiaires.length === 0) return;
-      const moisLabel = moisKey !== null ? MOIS[moisKey - 1] : "Non défini";
+      const moisLabel = getMoisLabel(moisKey);
       const noms = beneficiaires.map((b: any) => `${b.membres?.prenom || ''} ${b.membres?.nom || ''}`).join("\n");
       const totalMensuel = beneficiaires.reduce((s: number, b: any) => s + Number(b.montant_mensuel), 0);
       const totalAnnuel = beneficiaires.reduce((s: number, b: any) => s + Number(b.montant_total), 0);
@@ -199,8 +228,9 @@ export default function CalendrierBeneficiairesManager() {
       ]);
     });
 
+
     autoTable(doc, {
-      startY: 45,
+      startY: 49,
       head: [['Mois', 'Bénéficiaires', 'Nb', 'Montant Mensuel', `Total (×${nbMoisExercice})`]],
       body: tableData,
       theme: 'striped',
@@ -209,11 +239,12 @@ export default function CalendrierBeneficiairesManager() {
       columnStyles: { 1: { cellWidth: 60 } }
     });
 
-    const totalAnnuel = calendrier.reduce((sum, b) => sum + Number(b.montant_total), 0);
+    const totalExercice = calendrier.reduce((sum, b) => sum + Number(b.montant_total), 0);
     const finalY = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text(`Total Annuel: ${formatFCFA(totalAnnuel)}`, 14, finalY);
+    doc.text(`Total Exercice: ${formatFCFA(totalExercice)}`, 14, finalY);
+
     addE2DFooter(doc);
     doc.save(`calendrier-beneficiaires-${selectedExerciceData.nom}.pdf`);
     toast({ title: "PDF exporté avec succès" });
@@ -230,7 +261,7 @@ export default function CalendrierBeneficiairesManager() {
           calendrier: calendrier.map(b => ({
             rang: b.rang,
             nom: `${b.membres?.prenom} ${b.membres?.nom}`,
-            mois: b.mois_benefice ? MOIS[b.mois_benefice - 1] : '-',
+            mois: b.mois_benefice ? getMoisLabel(b.mois_benefice) : '-',
             montantMensuel: b.montant_mensuel,
             montantTotal: b.montant_total
           }))
@@ -282,8 +313,9 @@ export default function CalendrierBeneficiairesManager() {
                 Calendrier des Bénéficiaires
               </CardTitle>
               <CardDescription>
-                Calendrier annuel groupé par mois — chaque mois affiche ses bénéficiaires
+                Regroupé par mois de l'exercice. Montant bénéficiaire = cotisation mensuelle individuelle × {nbMoisExercice} mois. Plusieurs bénéficiaires sur le même mois conservent chacun leur montant (aucun partage).
               </CardDescription>
+
             </div>
             <div className="flex items-center gap-2">
               <Select value={selectedExercice} onValueChange={setSelectedExercice}>
@@ -354,7 +386,7 @@ export default function CalendrierBeneficiairesManager() {
                   <TableHead className="w-32">Mois</TableHead>
                   <TableHead>Bénéficiaires</TableHead>
                   <TableHead className="w-36">Montant Mensuel</TableHead>
-                  <TableHead className="w-36">Total (×12)</TableHead>
+                  <TableHead className="w-36">Total (×{nbMoisExercice})</TableHead>
                   {!isLocked && isAdmin && <TableHead className="w-16"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -364,7 +396,7 @@ export default function CalendrierBeneficiairesManager() {
                   // Skip empty months except in admin mode
                   if (beneficiaires.length === 0 && !isAdmin) return null;
 
-                  const moisLabel = moisKey !== null ? MOIS[moisKey - 1] : "Non défini";
+                  const moisLabel = getMoisLabel(moisKey);
                   const totalMensuel = beneficiaires.reduce((s: number, b: any) => s + Number(b.montant_mensuel), 0);
                   const totalAnnuel = beneficiaires.reduce((s: number, b: any) => s + Number(b.montant_total), 0);
 
@@ -393,11 +425,13 @@ export default function CalendrierBeneficiairesManager() {
                                       <Badge
                                         variant="secondary"
                                         className="cursor-pointer hover:bg-secondary/60 pr-1 gap-1 text-sm py-1"
+                                        title={`Total individuel : ${formatFCFA(b.montant_mensuel)} × ${nbMoisExercice} = ${formatFCFA(Number(b.montant_total))}`}
                                       >
                                         {b.membres?.prenom} {b.membres?.nom}
                                         <span className="text-muted-foreground text-xs ml-1">
                                           ({formatFCFA(b.montant_mensuel)})
                                         </span>
+
                                         <button
                                           onClick={(e) => { e.stopPropagation(); setDeleteTargetId(b.id); }}
                                           className="ml-1 rounded-full hover:bg-destructive/20 p-0.5"
@@ -419,9 +453,10 @@ export default function CalendrierBeneficiairesManager() {
                                           </SelectTrigger>
                                           <SelectContent>
                                             <SelectItem value="none">Non défini</SelectItem>
-                                            {MOIS.map((m, i) => (
-                                              <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>
+                                            {moisExerciceList.map(m => (
+                                              <SelectItem key={m.mois} value={String(m.mois)}>{m.label}</SelectItem>
                                             ))}
+
                                           </SelectContent>
                                         </Select>
                                       </div>
@@ -440,12 +475,13 @@ export default function CalendrierBeneficiairesManager() {
                                     </PopoverContent>
                                   </Popover>
                                 ) : (
-                                  <Badge variant="secondary" className="text-sm py-1">
+                                  <Badge variant="secondary" className="text-sm py-1" title={`Total individuel : ${formatFCFA(b.montant_mensuel)} × ${nbMoisExercice} = ${formatFCFA(Number(b.montant_total))}`}>
                                     {b.membres?.prenom} {b.membres?.nom}
                                     <span className="text-muted-foreground text-xs ml-1">
                                       ({formatFCFA(b.montant_mensuel)})
                                     </span>
                                   </Badge>
+
                                 )}
                               </div>
                             ))}
@@ -477,7 +513,7 @@ export default function CalendrierBeneficiairesManager() {
           {/* Total */}
           {calendrier.length > 0 && (
             <div className="mt-4 p-4 bg-muted/50 rounded-lg flex justify-between items-center">
-              <span className="font-semibold">Total Annuel Prévu:</span>
+              <span className="font-semibold">Total Exercice Prévu ({nbMoisExercice} mois) :</span>
               <span className="text-xl font-bold text-primary">
                 {formatFCFA(calendrier.reduce((sum, b) => sum + Number(b.montant_total), 0))}
               </span>
@@ -509,14 +545,15 @@ export default function CalendrierBeneficiairesManager() {
               <Select value={selectedMois} onValueChange={setSelectedMois}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner un mois" /></SelectTrigger>
                 <SelectContent>
-                  {MOIS.map((mois, index) => {
-                    const count = calendrier.filter(c => c.mois_benefice === index + 1).length;
+                  {moisExerciceList.map(m => {
+                    const count = calendrier.filter(c => c.mois_benefice === m.mois).length;
                     return (
-                      <SelectItem key={index + 1} value={String(index + 1)}>
-                        {mois} {count > 0 && `(${count} bénéf.)`}
+                      <SelectItem key={m.mois} value={String(m.mois)}>
+                        {m.label} {count > 0 && `(${count} bénéf.)`}
                       </SelectItem>
                     );
                   })}
+
                 </SelectContent>
               </Select>
               {selectedMois && calendrier.filter(c => c.mois_benefice === parseInt(selectedMois)).length > 0 ? (

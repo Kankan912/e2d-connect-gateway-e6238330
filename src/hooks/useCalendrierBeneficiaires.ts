@@ -166,12 +166,15 @@ export function useCalendrierBeneficiaires(exerciceId?: string) {
 
   // Initialiser le calendrier avec tous les membres E2D
   const initializeCalendrier = useMutation({
-    mutationFn: async ({ exerciceId, membres }: { exerciceId: string; membres: { id: string; montant_mensuel: number }[] }) => {
+    mutationFn: async ({ exerciceId, membres, moisDisponibles }: { exerciceId: string; membres: { id: string; montant_mensuel: number }[]; moisDisponibles?: number[] }) => {
+      const mois = moisDisponibles && moisDisponibles.length > 0
+        ? moisDisponibles
+        : Array.from({ length: 12 }, (_, i) => i + 1);
       const items = membres.map((m, index) => ({
         exercice_id: exerciceId,
         membre_id: m.id,
         rang: index + 1,
-        mois_benefice: index + 1 <= 12 ? index + 1 : null,
+        mois_benefice: index < mois.length ? mois[index] : null,
         montant_mensuel: m.montant_mensuel
       }));
 
@@ -183,6 +186,7 @@ export function useCalendrierBeneficiaires(exerciceId?: string) {
       if (error) throw error;
       return data;
     },
+
     onSuccess: () => {
       toast({ title: "Calendrier initialisé" });
       queryClient.invalidateQueries({ queryKey: ['calendrier-beneficiaires', exerciceId] });
