@@ -261,7 +261,7 @@ export default function CalendrierBeneficiairesManager() {
           calendrier: calendrier.map(b => ({
             rang: b.rang,
             nom: `${b.membres?.prenom} ${b.membres?.nom}`,
-            mois: b.mois_benefice ? MOIS[b.mois_benefice - 1] : '-',
+            mois: b.mois_benefice ? getMoisLabel(b.mois_benefice) : '-',
             montantMensuel: b.montant_mensuel,
             montantTotal: b.montant_total
           }))
