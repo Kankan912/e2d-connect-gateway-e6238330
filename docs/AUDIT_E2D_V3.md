@@ -161,9 +161,41 @@ Aucune anomalie bloquante. Prochain lot : **Lot E — UX globale & gestion des e
 
 ---
 
-## Lots E – F
+## Lot E — UX globale & gestion des erreurs (Phases 11 & 12)
 
-Non démarrés. Cf. plan dans `.lovable/plan.md`.
+### Audit
+
+| Réf | Domaine | Attendu | Observé | Statut |
+|-----|---------|---------|---------|--------|
+| E1 | Confirmations destructives | Aucun `window.confirm`, uniquement `AlertDialog` (Core rule) | `rg "window\.confirm" src/` → **0 occurrence** | ✅ Conforme |
+| E2 | Chunk loading | Routes dynamiques wrapées via `lazyWithRetry` | `src/App.tsx` : 100 % des routes utilisent `lazyWithRetry` (Index, Auth, Dashboard, Don, Adhesion, FirstPasswordChange, EventDetail, AlbumDetail, NotFound) | ✅ Conforme |
+| E3 | ErrorBoundary | 2 niveaux (App + Dashboard) avec retry | `App.tsx` : ErrorBoundary racine. `Dashboard.tsx` : ErrorBoundary par route admin (~50 routes), avec `fallbackTitle` spécifique | ✅ Conforme |
+| E4 | Responsivité | Conteneurs mobiles `p-3 sm:p-6` | Respecté dans les pages principales (vérification par échantillonnage) | ✅ Conforme |
+| E5 | Footer accessibilité | `aria-label` sur icônes cliquables | Corrigé en Lot D6 (Facebook, Email) | ✅ Conforme |
+| E6 | Logger standardisé | `logger.*` au lieu de `console.*` (sauf `logger.ts`) | **71 occurrences `console.*`** réparties dans **40 fichiers** (majoritairement `console.error` dans hooks et composants) | 🟡 Dette résiduelle |
+| E7 | Typage des catch | `catch (error: unknown)` (Core rule) | **49 occurrences `catch (error)`** sans annotation `unknown` (AuthContext, hooks, lib, composants) | 🟡 Dette résiduelle |
+| E8 | Extraction erreurs Edge Functions | `data?.error` pour les `supabase.functions.invoke` | Respecté dans les flux récents (Lot B email, Lot C config, Lot D footer). Anciens hooks non re-audités. | 🔵 Conforme sur périmètre récent |
+
+### Corrections livrées (Lot E)
+
+Aucune correction de code. L'audit confirme que les **règles UX et stabilité critiques** sont déjà respectées (E1–E5). Les écarts E6/E7 sont stylistiques, non bloquants ; leur migration mécanique présente un risque de régression (le narrowing de `unknown` impose de retoucher chaque utilisation de `error.message`).
+
+### Reste à faire / Dette résiduelle (Lot E)
+
+- **E6** — Migration progressive `console.* → logger.*` dans les 40 fichiers identifiés. À traiter par lots fonctionnels lors des futures évolutions (touche-en-passant), pas en big-bang.
+- **E7** — Annotation `: unknown` sur les 49 `catch (error)` restants, en adaptant l'extraction (`error instanceof Error ? error.message : String(error)`).
+- **E8** — Re-audit ciblé des anciens hooks (`useCotisations`, `useCaisse`, `useMatchMedias`, etc.) pour standardiser l'extraction `data?.error` lors de leur prochaine évolution.
+
+### Conclusion
+
+Aucune anomalie bloquante. Les fondations UX (ErrorBoundary, AlertDialog, lazyWithRetry, responsive) sont solides. La dette logger/typage est documentée pour traitement progressif. Prochain lot : **Lot F — Synthèse finale & plan de maintenance**.
+
+---
+
+## Lot F
+
+Non démarré. Cf. plan dans `.lovable/plan.md`.
+
 
 
 
