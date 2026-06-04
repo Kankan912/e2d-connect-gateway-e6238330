@@ -87,7 +87,50 @@ Aucune anomalie résiduelle identifiée sur le périmètre Lot B. Prochain lot :
 
 ---
 
-## Lots C – F
+## Lot C — Utilisateurs, Permissions, Email
+
+Audit du cycle de vie des comptes, des rôles/permissions, et de la configuration email (Resend / SMTP).
+
+### Anomalies confirmées et corrigées
+
+| ID | Sévérité | Constat | Correctif |
+|---|---|---|---|
+| **C4** | Majeur | `EmailConfigManager` : la boucle de mise à jour de `configurations` (clés `email_service`, `app_url`, `email_expediteur`, `email_expediteur_nom`) n'utilisait pas `.select()`. Les policies RLS de la table exigent `administrateur` ; un utilisateur non habilité voyait un toast « Configuration sauvegardée » alors qu'aucune ligne n'était modifiée (cf. memory `email-config-save-validation`). | Ajout de `.select()` à chaque update + contrôle `updated.length === 0` qui lève une erreur explicite « permissions insuffisantes ou clé introuvable ». |
+| **C1 (mineur)** | Cosmétique | `MemberForm.formatRoleName` mappait `'admin' → 'Administrateur'` sans entrée pour la valeur officielle `'administrateur'`. Aucun rôle `'admin'` n'existe en base (vérifié — voir audit DB ci-dessous), mais le label canonique manquait. | Ajout de l'entrée `'administrateur'`. Le mapping `'admin'` est conservé en compat. |
+
+### Constats conformes (aucune correction nécessaire)
+
+- **Rôles en base** : 0 enregistrement `roles.name = 'admin'`, 1 enregistrement `'administrateur'`. 0 `user_roles` rattaché à un rôle `'admin'`. La règle core est respectée côté données.
+- **Statuts membres** : 0 membre avec statut hors de `actif / inactif / suspendu / supprime`.
+- **Liaison membres ↔ profiles** : 0 membre lié à un `user_id` sans profil correspondant.
+- **RLS configurations** : policies `is_admin()` sur SELECT et `has_role('administrateur')` sur ALL — conformes à la memory `configurations-rls-hardening`. Les clés API restent invisibles aux non-admins (la vue `configurations_public` doit être utilisée côté lecture publique — déjà en place).
+- **SMTP config** : l'update sur `smtp_config` chaîne déjà `.select()` et vérifie `updatedSmtp.length === 0` (ligne 127-135 du composant) — conforme.
+- **Blocage des comptes** : la logique `actif / inactif / suspendu` (memory `auth-block-logic`) et le soft-delete `supprime` (memory `user-deletion-and-logging-workflow`) restent en place dans `useAuth` / triggers déjà audités sur les versions précédentes.
+
+### Anomalies signalées (non corrigées — décision utilisateur requise)
+
+- **C2 — Profils orphelins (8)** : 8 enregistrements `profiles` n'ont pas de membre associé. Détail :
+  - 3 comptes de tests CI (`ci-administrateur@e2d-test.local`, `ci-membre@e2d-test.local`, `ci-anon@e2d-test.local`) — peuvent être supprimés.
+  - 5 comptes utilisateurs réels (`alex.fotso@…`, `rosettenoumba@…`, `kankanway912@…`, `alexr.fotso@…`, `zpekinho@…`) — ces comptes ont été créés via Supabase Auth mais n'ont jamais été rattachés à une fiche `membres`. Ils ne devraient pas pouvoir se connecter selon la règle métier.
+
+  **Aucune migration de suppression automatique** n'a été appliquée pour éviter toute perte de données légitime. Recommandation : décider manuellement, soit lier ces profils à des membres existants, soit les soft-delete.
+
+### Tests utilisateur à effectuer
+
+1. **C4 — RLS configurations** : se connecter avec un compte non-administrateur et tenter de modifier la configuration email → un toast d'erreur « permissions insuffisantes » doit s'afficher (au lieu du faux « sauvegardée » d'avant).
+2. **C4 — Admin** : se connecter en administrateur et sauvegarder la config email → toast de succès, valeurs persistées en base.
+3. **C2 — Profils orphelins** : décider du sort des 5 comptes orphelins (à valider avec l'utilisateur).
+
+### Anomalies restantes
+
+Aucune anomalie bloquante sur le périmètre Lot C. Décision utilisateur attendue uniquement sur les profils orphelins (C2).
+
+Prochain lot : **Lot D — Matchs, Évènements, Site web, Galerie**.
+
+---
+
+## Lots D – F
 
 Non démarrés. Cf. plan dans `.lovable/plan.md`.
+
 
