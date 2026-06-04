@@ -1,48 +1,76 @@
-## Objectif
+# Plan d'audit & stabilisation E2D — V3
 
-Aligner l'UI `CalendrierBeneficiairesManager.tsx` sur les règles métiers corrigées (C13 = durée dynamique, C5 = épargne individuelle, C6/C7 = regroupement par mois sans partage).
+## Principe
 
-## Constat
+Aucune nouvelle fonctionnalité. Pour chaque module : **auditer → documenter → corriger uniquement les anomalies réelles**. Livrable central : `docs/AUDIT_E2D_V3.md` mis à jour à chaque phase avec tableau (Fonctionnalité / Attendu / Observé / Anomalie / Impact / Correction).
 
-Le composant groupe déjà par mois, mais conserve des restes en dur (`12`) et n'utilise pas la chronologie réelle de l'exercice. Le tableau, le PDF et l'initialisation supposent un exercice janvier→décembre.
+## Découpage en lots livrables
 
-## Changements (frontend uniquement, `src/components/config/CalendrierBeneficiairesManager.tsx`)
+Le périmètre couvre 13 phases. Le faire en un seul passage est irréaliste et ingérable côté revue. Je propose **6 lots séquentiels**, chacun = un audit + corrections ciblées + mise à jour du rapport. Vous validez chaque lot avant le suivant.
 
-1. **Mois dynamiques basés sur l'exercice**
-   - Ajouter un `useMemo moisExerciceList` qui retourne la liste ordonnée `[{ index: 1..nbMoisExercice, mois: 0..11, annee, label: "Mois AAAA" }]` calculée à partir de `date_debut` et `nbMoisExercice`.
-   - Remplacer le tableau statique `MOIS[]` (utilisé pour l'affichage) par ce dérivé. Garder `MOIS` uniquement pour le formatage du libellé court.
+### Lot A — Finances (Phases 4, 5, 6, 7)
+Le cœur métier et le plus à risque. Déjà partiellement traité (C6/C7/C8/C11/C12/C13).
+- Cotisations : montants individuels par membre/exercice, historisation, propagation
+- Bénéficiaires : formule `cotisation_mensuelle × nb_mois_exercice`, regroupement par mois, calendrier configurable, notifications PDF + emails
+- Prêts : intérêt unique, remboursement = capital uniquement, reconduction manuelle multi-validateurs, demande → caisse
+- Caisse : source unique (`get_solde_caisse`), cohérence Dashboard/Synthèse/Détail/Rapports
+- Vérification croisée Cotisations↔Bénéficiaires↔Caisse↔Dashboard
 
-2. **Regroupement**
-   - Réécrire `groupedByMonth` et `monthKeys` pour itérer sur `moisExerciceList` (1..nbMoisExercice) au lieu de 1..12.
-   - Conserver le bucket `null` ("Non défini") en fin de liste si non vide.
+### Lot B — Réunions & dépendances (Phases 1, 8)
+- Audit dépendances Réunions ↔ Cotisations/Bénéficiaires/Présences/Dashboard
+- Réouverture : déverrouillage complet + recalculs
+- Notifications partielles (1/N/tous membres) sans clôture obligatoire
 
-3. **En-têtes et libellés**
-   - Header tableau : `Total (×${nbMoisExercice})` au lieu de `Total (×12)` (ligne 357).
-   - Libellé total final : "Total Exercice Prévu" (au lieu de "Total Annuel Prévu").
-   - PDF : afficher la période exercice (`date_debut → date_fin`) sous le titre.
+### Lot C — Utilisateurs, Permissions, Email (Phases 2, 3, 13)
+- Liaison membre↔compte, règle "utilisateur ⇒ membre lié obligatoire"
+- Visibilité liste utilisateurs (admin only)
+- Config Resend/SMTP : save/load/test
+- Tests réels d'envoi par type de notification
+- Sécurité clés API (jamais frontend)
+- Compléter logs (emails, réunions, cotisations, bénéficiaires, prêts, caisse, utilisateurs)
 
-4. **Dialog d'ajout**
-   - Liste déroulante "Mois de bénéfice" alimentée par `moisExerciceList` (avec année), pas par `MOIS[]` figé.
-   - Conserver les compteurs `(n bénéf.)` et l'avertissement "Ce mois compte déjà …".
+### Lot D — Matchs, Évènements, Site web, Galerie (Phases 9, 10)
+- Publication match → création évènement auto + email membres
+- Compte rendu + médias visibles site
+- Galerie → albums (titre/description/date/photos, style Facebook)
+- Footer fonctionnel, bouton Retour = historique navigateur
 
-5. **Initialisation**
-   - `handleInitialize` : `mois_benefice = (index + 1) <= nbMoisExercice ? index + 1 : null` (au lieu de `<= 12`).
+### Lot E — UX globale & Erreurs (Phases 11, 12)
+- Suppression pages blanches, boutons inactifs, onglets parasites
+- Feedback unifié (loading, toasts métier)
+- Normaliser erreurs Edge Functions : `{success, code, message}` + extraction côté client (jamais "non-2xx" brut)
 
-6. **Présentation regroupée (C6/C7)**
-   - Garder le principe : 1 ligne par mois, badges individuels par bénéficiaire avec leur montant propre — aucun partage/division.
-   - Ajouter sous chaque badge le total individuel (`mensuel × nbMoisExercice`) en tooltip via `title`, pour rendre la règle visible.
-   - Afficher un sous-titre dans le `CardDescription` qui explicite la règle : « Montant bénéficiaire = cotisation mensuelle individuelle × nombre de mois de l'exercice ({nbMoisExercice} mois). Plusieurs bénéficiaires sur le même mois conservent chacun leur montant. »
+### Lot F — Rapport final & validation (Phase 0 final)
+- Consolidation `docs/AUDIT_E2D_V3.md`
+- Liste anomalies corrigées
+- Liste tests réalisés
+- Liste anomalies restantes (le cas échéant)
+- Check final des règles métier
 
-7. **Garde-fou doublons**
-   - Petit badge `bénéf.` reste affiché dès qu'il y a ≥ 1 bénéficiaire (pas seulement > 1) si plusieurs sont sur le même mois, pour bien signaler le regroupement.
+## Méthode par lot
+
+1. **Audit** : lecture code + requêtes DB (`supabase--read_query`) + tests UI ciblés. Aucune modification.
+2. **Rapport partiel** : ajout au tableau d'audit.
+3. **Corrections** : uniquement anomalies confirmées, migrations SQL si nécessaire.
+4. **Vérification** : tests post-correction + mise à jour du rapport.
+5. **Stop & validation utilisateur** avant lot suivant.
+
+## Détails techniques
+
+- Rapport : `docs/AUDIT_E2D_V3.md` (nouveau, complète `AUDIT_FINANCES.md` existant)
+- Source unique caisse : `get_solde_caisse()` RPC (déjà en mémoire)
+- Filtre E2D : `est_membre_e2d = true` (déjà en mémoire)
+- Rôle admin : `'administrateur'` (déjà en mémoire)
+- Erreurs Edge : extraction via `data?.error` (déjà en mémoire)
+- Ne pas régénérer `src/integrations/supabase/types.ts`
+- Toute migration : GRANTs explicites + RLS via `is_admin()` / `has_role()`
+
+## Question de cadrage
+
+Confirmez-vous ce découpage en 6 lots, en commençant par le **Lot A (Finances)** ? Ou préférez-vous démarrer par un autre lot (ex. Lot C si l'email/notifications est plus bloquant) ?
 
 ## Hors périmètre
 
-- Aucune modification SQL/RPC (déjà fait sur C13/C8).
-- Aucune modification du hook `useCalendrierBeneficiaires`.
-- Aucune action sur C11/C12 (workflow reconduction) — sera traitée séparément.
-
-## Vérification
-
-- Vérifier preview avec un exercice 12 mois (rendu inchangé) et, si possible, modifier la `date_fin` d'un exercice test pour confirmer que header `(×N)`, liste de mois et initialisation suivent `nbMoisExercice`.
-- Vérifier export PDF (header colonne et période).
+- Aucune nouvelle fonctionnalité
+- Aucune refonte UI majeure non liée à une anomalie
+- Pas de modification des schémas Supabase réservés (`auth`, `storage`, etc.)
