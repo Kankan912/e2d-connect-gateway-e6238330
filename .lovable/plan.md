@@ -41,3 +41,12 @@ Sécuriser les 7 formulaires d'administration du site public avec validation `zo
 
 ## Estimation
 ~1 h. Aucun risque régression DB. Risque UX faible (layouts conservés).
+
+---
+
+## Statut Lot G1 — ✅ Livré
+
+- `src/lib/validation/site-schemas.ts` créé (7 schémas + validateur dynamique config)
+- HeroAdmin / PartnersAdmin / ActivitiesAdmin / EventsAdmin / GalleryAdmin (item + album) / ConfigAdmin / AboutAdmin migrés vers `zodResolver` (ou `safeParse` pour AboutAdmin/ConfigAdmin)
+- Messages d'erreur FR inline sous chaque champ
+- Aucun changement DB / RLS / layout

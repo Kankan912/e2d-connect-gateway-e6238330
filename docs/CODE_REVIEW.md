@@ -120,7 +120,7 @@ Le Lot E est confirmé 100 % stable.
 
 | Lot | Périmètre | Effort | Priorité |
 |-----|-----------|--------|----------|
-| **G1** | Validation zod sur 7 formulaires `pages/admin/site/*` | 1 h | 🔴 Haute |
+| **G1** ✅ | Validation zod sur 7 formulaires `pages/admin/site/*` — **livré** (schémas centralisés dans `src/lib/validation/site-schemas.ts`) | 1 h | 🔴 Haute |
 | **G2** | Découpage des 5 plus gros fichiers (>700 lignes) en sous-composants | 4 h | 🟠 Haute |
 | **G3** | Typage strict de `CompteRenduViewer`, `PretsAdmin`, `useSiteContent` (suppression `any`) | 3 h | 🟠 Moyenne |
 | **G4** | Audit cleanup realtime + remplacement `.map(async)` par `Promise.all(map(...))` | 1 h | 🟠 Moyenne |
