@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,23 +7,47 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { useSiteConfig, useUpdateConfig } from "@/hooks/useSiteContent";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { validateConfigValue } from "@/lib/validation/site-schemas";
+
+type ConfigRow = { cle: string; valeur: string; categorie: string; type?: string | null; description?: string | null };
 
 export default function ConfigAdmin() {
   const { data: configs, isLoading } = useSiteConfig();
   const updateConfig = useUpdateConfig();
   const { register, handleSubmit } = useForm();
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const configsByCategory = configs?.reduce((acc: any, config: any) => {
-    if (!acc[config.categorie]) {
-      acc[config.categorie] = [];
+  const configsByCategory = (configs as ConfigRow[] | undefined)?.reduce(
+    (acc: Record<string, ConfigRow[]>, config) => {
+      if (!acc[config.categorie]) acc[config.categorie] = [];
+      acc[config.categorie].push(config);
+      return acc;
+    },
+    {},
+  );
+
+  const onSubmit = (data: Record<string, string>) => {
+    const errors: Record<string, string> = {};
+    const typeByKey: Record<string, string | null | undefined> = {};
+    (configs as ConfigRow[] | undefined)?.forEach((c) => {
+      typeByKey[c.cle] = c.type;
+    });
+
+    Object.entries(data).forEach(([cle, valeur]) => {
+      const err = validateConfigValue(typeByKey[cle], valeur ?? "");
+      if (err) errors[cle] = err;
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      toast.error("Certaines valeurs sont invalides");
+      return;
     }
-    acc[config.categorie].push(config);
-    return acc;
-  }, {});
 
-  const onSubmit = (data: any) => {
-    Object.keys(data).forEach((cle) => {
-      updateConfig.mutate({ cle, valeur: data[cle] });
+    setFieldErrors({});
+    Object.entries(data).forEach(([cle, valeur]) => {
+      updateConfig.mutate({ cle, valeur });
     });
   };
 
@@ -51,17 +76,15 @@ export default function ConfigAdmin() {
         </TabsList>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
-          {Object.entries(configsByCategory || {}).map(([categorie, configList]: [string, any]) => (
+          {Object.entries(configsByCategory || {}).map(([categorie, configList]) => (
             <TabsContent key={categorie} value={categorie}>
               <Card>
                 <CardHeader>
                   <CardTitle className="capitalize">{categorie}</CardTitle>
-                  <CardDescription>
-                    Paramètres de {categorie}
-                  </CardDescription>
+                  <CardDescription>Paramètres de {categorie}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {configList.map((config: any) => (
+                  {configList.map((config) => (
                     <div key={config.cle} className="space-y-2">
                       <Label htmlFor={config.cle}>
                         {config.description || config.cle}
@@ -70,8 +93,12 @@ export default function ConfigAdmin() {
                         id={config.cle}
                         type={config.type === "email" ? "email" : config.type === "url" ? "url" : "text"}
                         defaultValue={config.valeur}
+                        maxLength={2048}
                         {...register(config.cle)}
                       />
+                      {fieldErrors[config.cle] && (
+                        <p className="text-xs text-destructive mt-1">{fieldErrors[config.cle]}</p>
+                      )}
                     </div>
                   ))}
                 </CardContent>
