@@ -10,11 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, Pencil, Trash2, Image as ImageIcon, Video, FolderPlus, Folder, Upload } from "lucide-react";
 import { useSiteGallery, useCreateGalleryItem, useUpdateGalleryItem, useDeleteGalleryItem, useSiteGalleryAlbums, useCreateGalleryAlbum, useUpdateGalleryAlbum, useDeleteGalleryAlbum } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/storage-utils";
+import { gallerySchema, galleryAlbumSchema, type GalleryFormValues, type GalleryAlbumFormValues } from "@/lib/validation/site-schemas";
 
 import { logger } from "@/lib/logger";
+
+const FieldError = ({ msg }: { msg?: string }) =>
+  msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
 export default function GalleryAdmin() {
   const { data: gallery, isLoading } = useSiteGallery();
   const { data: albums, isLoading: albumsLoading } = useSiteGalleryAlbums();
@@ -34,8 +39,24 @@ export default function GalleryAdmin() {
   const [editingAlbum, setEditingAlbum] = useState<any>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("none");
   const multiUploadRef = useRef<HTMLInputElement>(null);
-  const { register, handleSubmit, reset, setValue, watch } = useForm();
-  const { register: registerAlbum, handleSubmit: handleSubmitAlbum, reset: resetAlbum, setValue: setValueAlbum } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<GalleryFormValues>({
+    resolver: zodResolver(gallerySchema),
+    defaultValues: { categorie: "Photo", ordre: 0 },
+  });
+  const {
+    register: registerAlbum,
+    handleSubmit: handleSubmitAlbum,
+    reset: resetAlbum,
+    setValue: setValueAlbum,
+    formState: { errors: albumErrors },
+  } = useForm<GalleryAlbumFormValues>({ resolver: zodResolver(galleryAlbumSchema) });
   const watchCategorie = watch("categorie", "Photo");
 
   const photos = gallery?.filter(item => item.categorie === "Photo") || [];
@@ -49,12 +70,12 @@ export default function GalleryAdmin() {
     return acc;
   }, {} as Record<string, typeof photos>);
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: GalleryFormValues) => {
     const payload = {
       ...data,
-      album_id: selectedAlbumId === "none" ? null : selectedAlbumId
+      album_id: selectedAlbumId === "none" ? null : selectedAlbumId,
     };
-    
+
     if (editingItem) {
       updateItem.mutate({ ...payload, id: editingItem.id });
     } else {
@@ -66,14 +87,14 @@ export default function GalleryAdmin() {
     setSelectedAlbumId("none");
   };
 
-  const onSubmitAlbum = (data: any) => {
+  const onSubmitAlbum = (data: GalleryAlbumFormValues) => {
     if (editingAlbum) {
       updateAlbum.mutate({ ...data, id: editingAlbum.id }, {
-        onSuccess: () => toast.success("Album mis à jour")
+        onSuccess: () => toast.success("Album mis à jour"),
       });
     } else {
       createAlbum.mutate(data, {
-        onSuccess: () => toast.success("Album créé")
+        onSuccess: () => toast.success("Album créé"),
       });
     }
     setAlbumOpen(false);
@@ -84,16 +105,24 @@ export default function GalleryAdmin() {
   const handleEdit = (item: any) => {
     setEditingItem(item);
     setSelectedAlbumId(item.album_id || "none");
-    Object.keys(item).forEach(key => {
-      setValue(key, item[key]);
+    reset({
+      titre: item.titre ?? "",
+      categorie: item.categorie === "Vidéo" ? "Vidéo" : "Photo",
+      ordre: item.ordre ?? 0,
+      image_url: item.image_url ?? "",
+      video_url: item.video_url ?? "",
+      media_source: item.media_source ?? "",
     });
     setOpen(true);
   };
 
   const handleEditAlbum = (album: any) => {
     setEditingAlbum(album);
-    Object.keys(album).forEach(key => {
-      setValueAlbum(key, album[key]);
+    resetAlbum({
+      titre: album.titre ?? "",
+      description: album.description ?? "",
+      ordre: album.ordre ?? 0,
+      cover_image_url: album.cover_image_url ?? "",
     });
     setAlbumOpen(true);
   };
@@ -212,7 +241,8 @@ export default function GalleryAdmin() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="titre">Titre</Label>
-                <Input id="titre" {...register("titre", { required: true })} />
+                <Input id="titre" {...register("titre")} />
+                <FieldError msg={errors.titre?.message} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -220,18 +250,20 @@ export default function GalleryAdmin() {
                   <select
                     id="categorie"
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2"
-                    {...register("categorie", { required: true })}
+                    {...register("categorie")}
                   >
                     <option value="Photo">Photo</option>
                     <option value="Vidéo">Vidéo</option>
                   </select>
+                  <FieldError msg={errors.categorie?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ordre">Ordre d'affichage</Label>
                   <Input id="ordre" type="number" defaultValue={0} {...register("ordre")} />
+                  <FieldError msg={errors.ordre?.message} />
                 </div>
               </div>
-              
+
               {/* Album Selection */}
               <div className="space-y-2">
                 <Label>Album (optionnel)</Label>
@@ -267,6 +299,7 @@ export default function GalleryAdmin() {
                 label={watchCategorie === "Photo" ? "Image" : "Vidéo"}
                 maxSizeMB={watchCategorie === "Photo" ? 5 : 20}
               />
+              <FieldError msg={errors.image_url?.message || errors.video_url?.message} />
               <div className="flex justify-end gap-4">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                   Annuler
@@ -411,15 +444,18 @@ export default function GalleryAdmin() {
                     <form onSubmit={handleSubmitAlbum(onSubmitAlbum)} className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="album-titre">Titre de l'album</Label>
-                        <Input id="album-titre" {...registerAlbum("titre", { required: true })} />
+                        <Input id="album-titre" {...registerAlbum("titre")} />
+                        <FieldError msg={albumErrors.titre?.message} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="album-description">Description</Label>
                         <Textarea id="album-description" {...registerAlbum("description")} />
+                        <FieldError msg={albumErrors.description?.message} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="album-ordre">Ordre d'affichage</Label>
                         <Input id="album-ordre" type="number" defaultValue={0} {...registerAlbum("ordre")} />
+                        <FieldError msg={albumErrors.ordre?.message} />
                       </div>
                       <MediaUploader
                         bucket="site-gallery"

@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Save, Eye, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import BackButton from "@/components/BackButton";
+import { aboutSchema } from "@/lib/validation/site-schemas";
 
 interface Valeur {
   icone: string;
@@ -46,10 +47,17 @@ const AboutAdmin = () => {
       return;
     }
 
+    const parsed = aboutSchema.safeParse(formData);
+    if (!parsed.success) {
+      const firstError = parsed.error.issues[0]?.message ?? "Données invalides";
+      toast({ title: "Validation", description: firstError, variant: "destructive" });
+      return;
+    }
+
     try {
       await updateAbout.mutateAsync({
         id: about.id,
-        ...formData,
+        ...parsed.data,
       });
       toast({ title: "Succès", description: "Section À Propos mise à jour" });
     } catch (error: unknown) {

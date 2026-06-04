@@ -12,10 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Pencil, Trash2, Calendar, Clock, MapPin, Settings, Image } from "lucide-react";
 import { useSiteEvents, useCreateEvent, useUpdateEvent, useDeleteEvent, useSiteEventsCarouselConfig, useUpdateEventsCarouselConfig, useSiteGalleryAlbums } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { toast } from "sonner";
+import { eventSchema, type EventFormValues } from "@/lib/validation/site-schemas";
+
+const FieldError = ({ msg }: { msg?: string }) =>
+  msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
 
 export default function EventsAdmin() {
   const { data: events, isLoading } = useSiteEvents();
@@ -28,7 +33,13 @@ export default function EventsAdmin() {
   
   const [open, setOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<EventFormValues>({ resolver: zodResolver(eventSchema) });
 
   // Carousel config state
   const [autoPlay, setAutoPlay] = useState(true);
@@ -45,8 +56,7 @@ export default function EventsAdmin() {
     }
   }, [carouselConfig]);
 
-  const onSubmit = (data: any) => {
-    // Normaliser album_id : chaîne vide → null
+  const onSubmit = (data: EventFormValues) => {
     const payload = { ...data, album_id: data.album_id || null };
     if (editingEvent) {
       updateEvent.mutate({ ...payload, id: editingEvent.id });
@@ -60,8 +70,17 @@ export default function EventsAdmin() {
 
   const handleEdit = (event: any) => {
     setEditingEvent(event);
-    Object.keys(event).forEach(key => {
-      setValue(key, event[key]);
+    reset({
+      titre: event.titre ?? "",
+      type: event.type ?? "",
+      date: event.date ?? "",
+      heure: event.heure ?? "",
+      lieu: event.lieu ?? "",
+      image_url: event.image_url ?? "",
+      media_source: event.media_source ?? "",
+      description: event.description ?? "",
+      ordre: event.ordre ?? 0,
+      album_id: event.album_id ?? "",
     });
     setOpen(true);
   };
@@ -119,31 +138,37 @@ export default function EventsAdmin() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="titre">Titre</Label>
-                <Input id="titre" {...register("titre", { required: true })} />
+                <Input id="titre" {...register("titre")} />
+                <FieldError msg={errors.titre?.message} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="type">Type</Label>
-                  <Input id="type" placeholder="Match, Tournoi, Entraînement" {...register("type", { required: true })} />
+                  <Input id="type" placeholder="Match, Tournoi, Entraînement" {...register("type")} />
+                  <FieldError msg={errors.type?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ordre">Ordre d'affichage</Label>
                   <Input id="ordre" type="number" defaultValue={0} {...register("ordre")} />
+                  <FieldError msg={errors.ordre?.message} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">Date</Label>
-                  <Input id="date" type="date" {...register("date", { required: true })} />
+                  <Input id="date" type="date" {...register("date")} />
+                  <FieldError msg={errors.date?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="heure">Heure</Label>
                   <Input id="heure" type="time" {...register("heure")} />
+                  <FieldError msg={errors.heure?.message} />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lieu">Lieu</Label>
-                <Input id="lieu" {...register("lieu", { required: true })} />
+                <Input id="lieu" {...register("lieu")} />
+                <FieldError msg={errors.lieu?.message} />
               </div>
               <MediaUploader
                 bucket="site-events"
@@ -156,9 +181,11 @@ export default function EventsAdmin() {
                 label="Image de l'événement"
                 maxSizeMB={5}
               />
+              <FieldError msg={errors.image_url?.message} />
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" {...register("description")} />
+                <FieldError msg={errors.description?.message} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="album_id" className="flex items-center gap-2">

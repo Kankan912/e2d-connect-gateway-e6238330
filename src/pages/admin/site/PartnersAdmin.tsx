@@ -10,7 +10,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, Plus, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { useSitePartners, useCreatePartner, useUpdatePartner, useDeletePartner } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import MediaUploader from "@/components/admin/MediaUploader";
+import { partnerSchema, type PartnerFormValues } from "@/lib/validation/site-schemas";
+
+const FieldError = ({ msg }: { msg?: string }) =>
+  msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
 
 export default function PartnersAdmin() {
   const { data: partners, isLoading } = useSitePartners();
@@ -19,9 +24,15 @@ export default function PartnersAdmin() {
   const deletePartner = useDeletePartner();
   const [open, setOpen] = useState(false);
   const [editingPartner, setEditingPartner] = useState<any>(null);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<PartnerFormValues>({ resolver: zodResolver(partnerSchema) });
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: PartnerFormValues) => {
     if (editingPartner) {
       updatePartner.mutate({ ...data, id: editingPartner.id });
     } else {
@@ -34,8 +45,13 @@ export default function PartnersAdmin() {
 
   const handleEdit = (partner: any) => {
     setEditingPartner(partner);
-    Object.keys(partner).forEach(key => {
-      setValue(key, partner[key]);
+    reset({
+      nom: partner.nom ?? "",
+      logo_url: partner.logo_url ?? "",
+      site_web: partner.site_web ?? "",
+      description: partner.description ?? "",
+      ordre: partner.ordre ?? 0,
+      media_source: partner.media_source ?? "",
     });
     setOpen(true);
   };
@@ -79,7 +95,8 @@ export default function PartnersAdmin() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="nom">Nom du partenaire</Label>
-                <Input id="nom" {...register("nom", { required: true })} />
+                <Input id="nom" {...register("nom")} />
+                <FieldError msg={errors.nom?.message} />
               </div>
               <MediaUploader
                 bucket="site-partners"
@@ -92,17 +109,21 @@ export default function PartnersAdmin() {
                 label="Logo du partenaire"
                 maxSizeMB={5}
               />
+              <FieldError msg={errors.logo_url?.message} />
               <div className="space-y-2">
                 <Label htmlFor="site_web">Site web</Label>
                 <Input id="site_web" type="url" {...register("site_web")} />
+                <FieldError msg={errors.site_web?.message} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" {...register("description")} />
+                <FieldError msg={errors.description?.message} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ordre">Ordre d'affichage</Label>
                 <Input id="ordre" type="number" defaultValue={0} {...register("ordre")} />
+                <FieldError msg={errors.ordre?.message} />
               </div>
               <div className="flex justify-end gap-4">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
