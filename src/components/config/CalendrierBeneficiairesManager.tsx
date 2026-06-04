@@ -200,17 +200,22 @@ export default function CalendrierBeneficiairesManager() {
     doc.setFontSize(12);
     doc.setTextColor(100, 100, 100);
     doc.text(`Exercice: ${selectedExerciceData.nom}`, 14, 28);
+    doc.setFontSize(9);
+    if (selectedExerciceData.date_debut && selectedExerciceData.date_fin) {
+      const periode = `Période: ${new Date(selectedExerciceData.date_debut).toLocaleDateString('fr-FR')} → ${new Date(selectedExerciceData.date_fin).toLocaleDateString('fr-FR')} (${nbMoisExercice} mois)`;
+      doc.text(periode, 14, 34);
+    }
     doc.setFontSize(10);
-    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 14, 35);
+    doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 14, 40);
     doc.setDrawColor(30, 64, 175);
     doc.setLineWidth(0.5);
-    doc.line(14, 40, doc.internal.pageSize.getWidth() - 14, 40);
+    doc.line(14, 44, doc.internal.pageSize.getWidth() - 14, 44);
 
     const tableData: string[][] = [];
     monthKeys.forEach(moisKey => {
       const beneficiaires = groupedByMonth.get(moisKey) || [];
       if (beneficiaires.length === 0) return;
-      const moisLabel = moisKey !== null ? MOIS[moisKey - 1] : "Non défini";
+      const moisLabel = getMoisLabel(moisKey);
       const noms = beneficiaires.map((b: any) => `${b.membres?.prenom || ''} ${b.membres?.nom || ''}`).join("\n");
       const totalMensuel = beneficiaires.reduce((s: number, b: any) => s + Number(b.montant_mensuel), 0);
       const totalAnnuel = beneficiaires.reduce((s: number, b: any) => s + Number(b.montant_total), 0);
@@ -222,6 +227,7 @@ export default function CalendrierBeneficiairesManager() {
         formatFCFA(totalAnnuel)
       ]);
     });
+
 
     autoTable(doc, {
       startY: 45,
