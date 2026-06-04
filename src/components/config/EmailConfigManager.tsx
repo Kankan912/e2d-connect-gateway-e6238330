@@ -102,11 +102,20 @@ export function EmailConfigManager() {
       ];
 
       for (const config of updates) {
-        const { error } = await supabase
+        // C4 — Chaîner .select() pour détecter un échec RLS silencieux
+        // (les policies de `configurations` exigent administrateur ; sans .select()
+        // un non-admin verrait un "succès" sans aucune ligne mise à jour).
+        const { data: updated, error } = await supabase
           .from("configurations")
           .update({ valeur: config.valeur, updated_at: new Date().toISOString() })
-          .eq("cle", config.cle);
+          .eq("cle", config.cle)
+          .select();
         if (error) throw error;
+        if (!updated || updated.length === 0) {
+          throw new Error(
+            `Échec de la mise à jour de "${config.cle}" : permissions insuffisantes ou clé introuvable`
+          );
+        }
       }
 
       // Update or insert SMTP config
