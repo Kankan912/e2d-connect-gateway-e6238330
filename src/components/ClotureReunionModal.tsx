@@ -358,27 +358,32 @@ export default function ClotureReunionModal({
         } : undefined
       };
 
-      const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
-        body: {
-          reunionId,
-          destinataires,
-          sujet: reunionData.sujet || 'Réunion',
-          contenu: contenuCR,
-          dateReunion: reunionData.date_reunion,
-          presences: {
-            presents: presentsNoms,
-            excuses: excusesNoms,
-            absentsNonExcuses: absentsNonExcusesNoms,
-            retards: retardsNoms,
-            tauxPresence: tauxPresenceEmail
-          },
-          financials
-        }
-      });
+      let emailSent = false;
+      if (hasDestinataires) {
+        const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
+          body: {
+            reunionId,
+            destinataires,
+            sujet: reunionData.sujet || 'Réunion',
+            contenu: contenuCR,
+            dateReunion: reunionData.date_reunion,
+            presences: {
+              presents: presentsNoms,
+              excuses: excusesNoms,
+              absentsNonExcuses: absentsNonExcusesNoms,
+              retards: retardsNoms,
+              tauxPresence: tauxPresenceEmail
+            },
+            financials
+          }
+        });
 
-      if (emailError) {
-        console.error("Email error details:", emailError);
-        // Don't block cloture if email fails, just warn
+        if (emailError) {
+          console.error("Email error details:", emailError);
+          // B1 — Ne pas bloquer la clôture si l'email échoue
+        } else {
+          emailSent = true;
+        }
       }
 
       // === ÉTAPE 6: Calculer le taux de présence et mettre à jour le statut ===
