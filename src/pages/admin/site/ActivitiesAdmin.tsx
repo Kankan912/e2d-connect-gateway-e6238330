@@ -10,6 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
 import { useSiteActivities, useCreateActivity, useUpdateActivity, useDeleteActivity } from "@/hooks/useSiteContent";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { activitySchema, type ActivityFormValues } from "@/lib/validation/site-schemas";
+
+const FieldError = ({ msg }: { msg?: string }) =>
+  msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
 
 export default function ActivitiesAdmin() {
   const { data: activities, isLoading } = useSiteActivities();
@@ -18,10 +23,15 @@ export default function ActivitiesAdmin() {
   const deleteActivity = useDeleteActivity();
   const [open, setOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<any>(null);
-  const { register, handleSubmit, reset, setValue } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ActivityFormValues>({ resolver: zodResolver(activitySchema) });
 
-  const onSubmit = (data: any) => {
-    const features = data.features.split(",").map((f: string) => f.trim());
+  const onSubmit = (data: ActivityFormValues) => {
+    const features = data.features.split(",").map((f) => f.trim()).filter(Boolean);
     const activityData = { ...data, features };
 
     if (editingActivity) {
@@ -36,11 +46,13 @@ export default function ActivitiesAdmin() {
 
   const handleEdit = (activity: any) => {
     setEditingActivity(activity);
-    setValue("titre", activity.titre);
-    setValue("description", activity.description);
-    setValue("icon", activity.icon);
-    setValue("features", activity.features.join(", "));
-    setValue("ordre", activity.ordre);
+    reset({
+      titre: activity.titre ?? "",
+      description: activity.description ?? "",
+      icon: activity.icon ?? "",
+      ordre: activity.ordre ?? 0,
+      features: Array.isArray(activity.features) ? activity.features.join(", ") : "",
+    });
     setOpen(true);
   };
 
@@ -83,20 +95,24 @@ export default function ActivitiesAdmin() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="titre">Titre</Label>
-                <Input id="titre" {...register("titre", { required: true })} />
+                <Input id="titre" {...register("titre")} />
+                <FieldError msg={errors.titre?.message} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea id="description" {...register("description", { required: true })} />
+                <Textarea id="description" {...register("description")} />
+                <FieldError msg={errors.description?.message} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="icon">Icône (lucide-react)</Label>
-                  <Input id="icon" placeholder="Trophy" {...register("icon", { required: true })} />
+                  <Input id="icon" placeholder="Trophy" {...register("icon")} />
+                  <FieldError msg={errors.icon?.message} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="ordre">Ordre d'affichage</Label>
                   <Input id="ordre" type="number" defaultValue={0} {...register("ordre")} />
+                  <FieldError msg={errors.ordre?.message} />
                 </div>
               </div>
               <div className="space-y-2">
@@ -104,8 +120,9 @@ export default function ActivitiesAdmin() {
                 <Textarea
                   id="features"
                   placeholder="Feature 1, Feature 2, Feature 3"
-                  {...register("features", { required: true })}
+                  {...register("features")}
                 />
+                <FieldError msg={errors.features?.message} />
               </div>
               <div className="flex justify-end gap-4">
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>
