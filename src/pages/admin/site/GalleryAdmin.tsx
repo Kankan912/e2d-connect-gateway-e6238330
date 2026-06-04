@@ -39,8 +39,24 @@ export default function GalleryAdmin() {
   const [editingAlbum, setEditingAlbum] = useState<any>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("none");
   const multiUploadRef = useRef<HTMLInputElement>(null);
-  const { register, handleSubmit, reset, setValue, watch } = useForm();
-  const { register: registerAlbum, handleSubmit: handleSubmitAlbum, reset: resetAlbum, setValue: setValueAlbum } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<GalleryFormValues>({
+    resolver: zodResolver(gallerySchema),
+    defaultValues: { categorie: "Photo", ordre: 0 },
+  });
+  const {
+    register: registerAlbum,
+    handleSubmit: handleSubmitAlbum,
+    reset: resetAlbum,
+    setValue: setValueAlbum,
+    formState: { errors: albumErrors },
+  } = useForm<GalleryAlbumFormValues>({ resolver: zodResolver(galleryAlbumSchema) });
   const watchCategorie = watch("categorie", "Photo");
 
   const photos = gallery?.filter(item => item.categorie === "Photo") || [];
@@ -54,12 +70,12 @@ export default function GalleryAdmin() {
     return acc;
   }, {} as Record<string, typeof photos>);
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: GalleryFormValues) => {
     const payload = {
       ...data,
-      album_id: selectedAlbumId === "none" ? null : selectedAlbumId
+      album_id: selectedAlbumId === "none" ? null : selectedAlbumId,
     };
-    
+
     if (editingItem) {
       updateItem.mutate({ ...payload, id: editingItem.id });
     } else {
@@ -71,14 +87,14 @@ export default function GalleryAdmin() {
     setSelectedAlbumId("none");
   };
 
-  const onSubmitAlbum = (data: any) => {
+  const onSubmitAlbum = (data: GalleryAlbumFormValues) => {
     if (editingAlbum) {
       updateAlbum.mutate({ ...data, id: editingAlbum.id }, {
-        onSuccess: () => toast.success("Album mis à jour")
+        onSuccess: () => toast.success("Album mis à jour"),
       });
     } else {
       createAlbum.mutate(data, {
-        onSuccess: () => toast.success("Album créé")
+        onSuccess: () => toast.success("Album créé"),
       });
     }
     setAlbumOpen(false);
@@ -89,16 +105,24 @@ export default function GalleryAdmin() {
   const handleEdit = (item: any) => {
     setEditingItem(item);
     setSelectedAlbumId(item.album_id || "none");
-    Object.keys(item).forEach(key => {
-      setValue(key, item[key]);
+    reset({
+      titre: item.titre ?? "",
+      categorie: item.categorie === "Vidéo" ? "Vidéo" : "Photo",
+      ordre: item.ordre ?? 0,
+      image_url: item.image_url ?? "",
+      video_url: item.video_url ?? "",
+      media_source: item.media_source ?? "",
     });
     setOpen(true);
   };
 
   const handleEditAlbum = (album: any) => {
     setEditingAlbum(album);
-    Object.keys(album).forEach(key => {
-      setValueAlbum(key, album[key]);
+    resetAlbum({
+      titre: album.titre ?? "",
+      description: album.description ?? "",
+      ordre: album.ordre ?? 0,
+      cover_image_url: album.cover_image_url ?? "",
     });
     setAlbumOpen(true);
   };
