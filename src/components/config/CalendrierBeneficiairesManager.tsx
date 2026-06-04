@@ -386,7 +386,7 @@ export default function CalendrierBeneficiairesManager() {
                   <TableHead className="w-32">Mois</TableHead>
                   <TableHead>Bénéficiaires</TableHead>
                   <TableHead className="w-36">Montant Mensuel</TableHead>
-                  <TableHead className="w-36">Total (×12)</TableHead>
+                  <TableHead className="w-36">Total (×{nbMoisExercice})</TableHead>
                   {!isLocked && isAdmin && <TableHead className="w-16"></TableHead>}
                 </TableRow>
               </TableHeader>
