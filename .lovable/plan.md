@@ -1,4 +1,4 @@
-## Lot F — Synthèse finale & plan de maintenance
+## Lot F — Synthèse finale & plan de maintenance ✅ TERMINÉ — Audit V3 clôturé
 
 Objectif : clôturer l'audit V3 par un document de synthèse exécutif et un plan de maintenance opérationnel, sans modification de code applicatif.
 
