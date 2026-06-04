@@ -3,9 +3,9 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { supabase } from "@/integrations/supabase/client";
 import { loadLogoBase64, addE2DFooter } from './pdf-utils';
-import { logger } from './logger';
-
 import { logger } from "@/lib/logger";
+
+
 export class ExportService {
   static async export(options: {
     type: string;
