@@ -545,14 +545,15 @@ export default function CalendrierBeneficiairesManager() {
               <Select value={selectedMois} onValueChange={setSelectedMois}>
                 <SelectTrigger><SelectValue placeholder="Sélectionner un mois" /></SelectTrigger>
                 <SelectContent>
-                  {MOIS.map((mois, index) => {
-                    const count = calendrier.filter(c => c.mois_benefice === index + 1).length;
+                  {moisExerciceList.map(m => {
+                    const count = calendrier.filter(c => c.mois_benefice === m.mois).length;
                     return (
-                      <SelectItem key={index + 1} value={String(index + 1)}>
-                        {mois} {count > 0 && `(${count} bénéf.)`}
+                      <SelectItem key={m.mois} value={String(m.mois)}>
+                        {m.label} {count > 0 && `(${count} bénéf.)`}
                       </SelectItem>
                     );
                   })}
+
                 </SelectContent>
               </Select>
               {selectedMois && calendrier.filter(c => c.mois_benefice === parseInt(selectedMois)).length > 0 ? (
