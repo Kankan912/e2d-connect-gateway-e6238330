@@ -1,52 +1,60 @@
-# Lot G1 — Validation zod (admin/site)
+# Vérification Lot G1 ✅
 
-## Objectif
-Sécuriser les 7 formulaires d'administration du site public avec validation `zod` + `react-hook-form` (déjà présents dans les dépendances), messages d'erreur en français, limites de longueur et contrôles de format (URL, email, hex, dates).
+Contrôles effectués sur `src/pages/admin/site/*.tsx` :
+- **7/7 pages migrées** : Hero, Partners, Activities, Events, Gallery (item + album), Config, About utilisent `zodResolver` ou `aboutSchema.safeParse`.
+- **Schémas centralisés** dans `src/lib/validation/site-schemas.ts` (7 schémas + `validateConfigValue`).
+- **Aucun `console.*`** introduit dans les pages migrées.
+- **Layouts conservés**, messages d'erreur FR inline via `<FieldError>`.
 
-## Périmètre (7 fichiers)
-| Fichier | Schéma à créer | Champs validés |
-|---|---|---|
-| `HeroAdmin.tsx` | `heroSchema` | `titre` (1–120), `sous_titre` (≤200), `description` (≤500), `cta_label` (≤40), `cta_url` (url), `image_url` (url) |
-| `PartnersAdmin.tsx` | `partnerSchema` | `nom` (1–100), `logo_url` (url), `site_url` (url optionnel), `ordre` (int ≥0) |
-| `ActivitiesAdmin.tsx` | `activitySchema` | `titre` (1–120), `description` (≤1000), `icone` (≤40), `ordre` (int ≥0), `actif` (bool) |
-| `EventsAdmin.tsx` | `eventSchema` | `titre` (1–150), `description` (≤2000), `date_debut`/`date_fin` (ISO, fin≥début), `lieu` (≤150), `image_url` (url) |
-| `GalleryAdmin.tsx` | `gallerySchema` | `titre` (≤150), `description` (≤500), `image_url` (url requis), `categorie` (enum), `ordre` (int ≥0) |
-| `ConfigAdmin.tsx` | `configSchema` | `email_contact` (email), `telephone` (regex), `adresse` (≤300), `facebook/instagram/youtube` (url), `couleur_primaire` (hex) |
-| `AboutAdmin.tsx` | `aboutSchema` | `titre` (1–150), `contenu` (1–5000), `mission` (≤2000), `vision` (≤2000), `valeurs` (≤2000) |
-
-## Approche standardisée
-1. Centraliser les schémas dans **`src/lib/validation/site-schemas.ts`** (réutilisables, testables, import unique).
-2. Dans chaque page : remplacer le `useState`-form actuel par `useForm<z.infer<typeof X>>({ resolver: zodResolver(X) })` + composants Shadcn `Form/FormField/FormItem/FormLabel/FormControl/FormMessage`.
-3. Messages d'erreur en **français** via `.min(n, { message: "..." })`.
-4. `handleSubmit` typé, soumission désactivée pendant `isSubmitting`, `toast` succès/erreur conservés.
-5. Conserver la logique métier Supabase existante inchangée (insert/update RPC, realtime, RLS).
-
-## Hors périmètre
-- Pas de modification de schéma DB ni de RLS.
-- Pas de refactor visuel (formulaires gardent leur layout actuel).
-- `ImagesAdmin.tsx` (uploader) et `MessagesAdmin.tsx` (boîte de réception lecture) exclus — pas de formulaire de saisie utilisateur structuré.
-- Edge Functions non touchées.
-
-## Détails techniques
-- **Dépendances :** `zod`, `react-hook-form`, `@hookform/resolvers/zod`, `@/components/ui/form` — tous déjà présents.
-- **Tests rapides :** vérification manuelle preview sur chaque page (submit vide → messages FR, submit invalide URL → erreur, submit valide → toast succès).
-- **Logger :** `console.*` interdit (Core rule), utiliser `@/lib/logger` si log nécessaire.
-- **Devise/rôles :** non concernés par ce lot.
-
-## Livrables
-- `src/lib/validation/site-schemas.ts` (nouveau)
-- 7 fichiers `src/pages/admin/site/*.tsx` migrés vers `react-hook-form + zod`
-- Mise à jour `.lovable/plan.md` (statut Lot G1 = done)
-- Note dans `docs/CODE_REVIEW.md` (section G1 marquée complétée)
-
-## Estimation
-~1 h. Aucun risque régression DB. Risque UX faible (layouts conservés).
+→ Lot G1 considéré terminé.
 
 ---
 
-## Statut Lot G1 — ✅ Livré
+# Lot G4 — Audit Realtime & nettoyage async (~1 h)
 
-- `src/lib/validation/site-schemas.ts` créé (7 schémas + validateur dynamique config)
-- HeroAdmin / PartnersAdmin / ActivitiesAdmin / EventsAdmin / GalleryAdmin (item + album) / ConfigAdmin / AboutAdmin migrés vers `zodResolver` (ou `safeParse` pour AboutAdmin/ConfigAdmin)
-- Messages d'erreur FR inline sous chaque champ
-- Aucun changement DB / RLS / layout
+## Objectif
+Sécuriser la stabilité runtime en :
+1. Garantissant le **désabonnement** systématique des canaux Supabase Realtime (évite fuites mémoire + doubles événements lors des navigations).
+2. Corrigeant 2 patterns `array.map(async ...)` orphelins → `Promise.all(...)` (évite promesses non-attendues, erreurs silencieuses).
+
+## Périmètre
+
+### A. Audit Realtime
+Recenser tous les `supabase.channel(...)` du frontend et vérifier :
+- Chaque `channel(...).subscribe()` a un `removeChannel(channel)` dans le cleanup d'`useEffect`.
+- Pas de canal créé hors d'un `useEffect` (donc jamais cleané).
+- Noms de canaux uniques (suffixe avec id/uuid si dépendant d'une route, pour éviter collisions).
+
+Fichiers candidats prioritaires (à confirmer par `rg`) :
+- `src/hooks/useRealtimeUpdates.ts`
+- `src/hooks/generic/useSupabaseRealtime.ts`
+- `src/hooks/useNotificationsTemplates.ts`, `useReunions.ts`, `useCotisations.ts`, `useCaisse.ts`, `useDonations.ts`, `useLoanRequests.ts`, `useSiteContent.ts`
+- `src/components/notifications/NotificationCenter.tsx`
+- `src/pages/reunions/hooks/useReunionsData.ts`
+
+### B. Patterns async incorrects
+Rechercher `\.map\(\s*async` dans `src/` et remplacer par `await Promise.all(items.map(async ...))` lorsque le résultat doit être attendu (ex. enchaînement de mutations, agrégation de données).
+
+## Méthode
+1. **Recensement** via `rg -n "supabase\.channel\(|\.map\(\s*async" src` → liste exhaustive.
+2. **Classement** des occurrences :
+   - Realtime OK (cleanup présent) — aucun changement.
+   - Realtime KO — ajouter cleanup `() => supabase.removeChannel(channel)`.
+   - `.map(async)` orphelin — wrapper dans `Promise.all`.
+3. **Application** des correctifs minimaux, fichier par fichier.
+4. **Tests** :
+   - `bunx vitest run` pour vérifier non-régression unitaire.
+   - Vérification preview sur une page Realtime sensible (NotificationCenter, Réunions) : pas d'avertissement console, pas de double toast.
+
+## Hors périmètre
+- Pas de refonte de `useSupabaseRealtime` (hook générique conservé).
+- Pas de changement de logique métier (just lifecycle + await).
+- Pas de modification DB/RLS/Edge Functions.
+
+## Livrables
+- Fichiers `src/hooks/*` et `src/components/*` corrigés (liste finale après recensement).
+- Mise à jour `.lovable/plan.md` et `docs/CODE_REVIEW.md` (Lot G4 = ✅).
+
+## Risques
+- **Faible** : changements localisés au cycle de vie React + wrapping `Promise.all`.
+- Risque résiduel : si un canal était volontairement persistant (rare), à valider au cas par cas avant cleanup.
