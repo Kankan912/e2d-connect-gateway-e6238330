@@ -12,9 +12,9 @@ export function useSportEventSync() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Canal uniquement pour les matchs E2D
+    // Canal uniquement pour les matchs E2D (nom unique pour éviter collisions StrictMode/multi-mount)
     const e2dChannel = supabase
-      .channel('sport-e2d-changes')
+      .channel(`sport-e2d-changes-${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         {

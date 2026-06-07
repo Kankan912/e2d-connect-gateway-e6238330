@@ -17,7 +17,7 @@ export const NotificationToaster = () => {
     initializedRef.current = true;
 
     const channel = supabase
-      .channel('alertes-temps-reel')
+      .channel(`alertes-temps-reel-${crypto.randomUUID()}`)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'prets' },
