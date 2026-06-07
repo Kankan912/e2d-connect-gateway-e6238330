@@ -58,3 +58,26 @@ Rechercher `\.map\(\s*async` dans `src/` et remplacer par `await Promise.all(ite
 ## Risques
 - **Faible** : changements localisés au cycle de vie React + wrapping `Promise.all`.
 - Risque résiduel : si un canal était volontairement persistant (rare), à valider au cas par cas avant cleanup.
+
+---
+
+## Statut Lot G4 — ✅ Livré
+
+### Audit Realtime (5 canaux)
+| Fichier | Canal | Cleanup | Action |
+|---|---|---|---|
+| `useSportEventSync.ts` | `sport-e2d-changes` | ✅ | Nom suffixé `crypto.randomUUID()` |
+| `useLoanRequests.ts` | `loan_requests_admin` | ✅ | Nom suffixé `crypto.randomUUID()` |
+| `useLoanRequests.ts` | `loan_requests_self` | ✅ | Nom suffixé `crypto.randomUUID()` |
+| `useRealtimeUpdates.ts` | `realtime-{table}-{Date.now()}` | ✅ | Déjà unique |
+| `NotificationToaster.tsx` | `alertes-temps-reel` | ✅ | Nom suffixé `crypto.randomUUID()` |
+
+→ Tous les canaux ont un nom unique (évite collisions StrictMode / double-mount) et un `removeChannel` dans le cleanup `useEffect`.
+
+### Patterns async
+- `MediaLibrary.tsx:106` : déjà encadré `await Promise.all(...map(async))` ✅
+- `TableauBordJauneRouge.tsx:24` : déjà encadré `await Promise.all(...)` ✅
+- Aucun `forEach(async)` ni `for...of/await` bloquant détecté.
+
+### Tests
+- `bunx vitest run` : 57 tests passent, 41 skipped (RLS), 1 suite préexistante en échec (`badge.test.tsx` — dépendance manquante `@testing-library/dom`, non lié à G4).
