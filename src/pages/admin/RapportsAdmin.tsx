@@ -1,29 +1,18 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line, Legend 
-} from "recharts";
-import { 
-  FileSpreadsheet, FileText, Download, TrendingUp, TrendingDown, 
-  DollarSign, HandCoins, AlertTriangle, PiggyBank, Wallet, Calendar
-} from "lucide-react";
-import { format, parseISO, isWithinInterval } from "date-fns";
+import { Calendar } from "lucide-react";
+import { parseISO, isWithinInterval } from "date-fns";
 import { exportRapportPDF, exportRapportExcel } from "@/lib/rapports-export";
+import RapportsTabsContent from "./_components/RapportsTabsContent";
 import type { CotisationWithJoins, PretWithJoins, SanctionWithJoins, EpargneWithJoins } from "@/types/supabase-joins";
 
 
-const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 const RapportsAdmin = () => {
   const [selectedExercice, setSelectedExercice] = useState<string>("all");
