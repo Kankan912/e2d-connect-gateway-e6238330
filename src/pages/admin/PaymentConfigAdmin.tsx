@@ -201,19 +201,8 @@ export default function PaymentConfigAdmin() {
     });
   };
 
-  const getConnectionBadge = (provider: string) => {
-    const status = connectionStatus[provider];
-    switch (status.status) {
-      case 'testing':
-        return <Badge variant="outline"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Test...</Badge>;
-      case 'success':
-        return <Badge className="bg-green-600"><CheckCircle className="w-3 h-3 mr-1" /> Connecté</Badge>;
-      case 'error':
-        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Erreur</Badge>;
-      default:
-        return null;
-    }
-  };
+
+
 
   const handleSaveStripe = async () => {
     setLoading(true);
