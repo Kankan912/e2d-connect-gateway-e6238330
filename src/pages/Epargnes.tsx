@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { Plus, Edit, TrendingUp, PiggyBank, DollarSign, Calculator, Download, Filter, X, Search, Trash2 } from "lucide-react";
+import { Plus, TrendingUp, PiggyBank, DollarSign, Calculator, Download } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,14 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import LogoHeader from "@/components/LogoHeader";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import BackButton from "@/components/BackButton";
 import { ExportService } from '@/lib/exportService';
 import { useAllEpargnes, useCreateEpargne, useUpdateEpargne, useDeleteEpargne } from "@/hooks/useEpargnes";
+import EpargnesFilters from "./_components/EpargnesFilters";
+import EpargnesList from "./_components/EpargnesList";
 
 import { logger } from "@/lib/logger";
+
 interface Epargne {
   id: string;
   membre_id: string;
