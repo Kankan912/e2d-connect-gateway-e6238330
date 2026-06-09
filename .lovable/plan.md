@@ -62,3 +62,28 @@ if (edgeErr) throw new Error(edgeErr);
 ### Prochains lots
 - **G2** — Refactor des `any` résiduels (typage strict)
 - **G5** — Extraction des composants > 300 lignes
+
+---
+
+## ✅ Lot G3 (catch typing) — TERMINÉ
+
+**Périmètre exécuté :** Ajout de `: unknown` sur tous les `catch (e|err|error)` non typés du frontend — 15 occurrences dans 12 fichiers. Tous les blocs loggent via `logger.*` sans accès `error.message` direct → aucune utilisation de `getErrorMessage` requise.
+
+**Fichiers modifiés :**
+- `src/hooks/useLoanRequests.ts`
+- `src/hooks/useConnectionTracker.ts`
+- `src/hooks/usePageviewTracker.ts`
+- `src/lib/logger.ts`
+- `src/lib/storage-utils.ts`
+- `src/lib/exportService.ts`
+- `src/lib/pdf-utils.ts` (×3)
+- `src/components/forms/E2DMatchForm.tsx`
+- `src/components/forms/E2DMatchEditForm.tsx`
+- `src/components/donations/BankTransferInfo.tsx`
+- `src/components/admin/CreateUserDialog.tsx` (×2)
+- `src/pages/admin/UtilisateursAdmin.tsx`
+- `docs/CODE_REVIEW.md`
+
+**Vérification :** `rg --pcre2 'catch \((e|err|error)\)(?!:)' src` → 0 résultat. `bunx vitest run` → 57 passed, échec préexistant `badge.test.tsx` (module manquant, indépendant).
+
+**Note :** Le G3 d'origine (suppression `any`) reste ouvert et fait partie du lot G2 plus large.
