@@ -1,65 +1,58 @@
 # Plan d'amélioration — Statut final
 
-Dernière vérification : tous les lots scannés via `rg` / `wc -l` sur l'arborescence `src/`.
+Dernière mise à jour après exécution G5 + amorce G2.
 
-## Synthèse
+## Synthèse globale
 
 | Lot | Objet | Statut |
 |-----|-------|--------|
-| **G1** | Validation Zod sur les formulaires admin | ✅ TERMINÉ |
-| **G2** | Découpe des composants > 700 lignes | ⏳ EN ATTENTE |
+| **G1** | Validation Zod (formulaires admin) | ✅ TERMINÉ |
+| **G2** | Découpe composants > 700 lignes | 🟡 PARTIEL (2/5 entamés) |
 | **G3** | Suppression des `any` ciblés | ✅ TERMINÉ |
 | **G4** | Audit Realtime + `.map(async)` | ✅ TERMINÉ |
-| **G5** | `.select('*')` → colonnes explicites | ⏳ EN ATTENTE |
-| **G6** | `aria-label` sur boutons icônes | ✅ TERMINÉ |
+| **G5** | `.select('*')` → colonnes explicites (top 10) | ✅ TERMINÉ |
+| **G6** | `aria-label` icônes | ✅ TERMINÉ |
 | **G7** | `catch (error: unknown)` standardisé | ✅ TERMINÉ |
 
-## Détails lots terminés
+## G5 — Détail des fichiers traités
 
-- **G1** — 7 formulaires admin (Hero, About, Activities, Events, Gallery, Partners, Messages) passent par un schéma Zod avec `react-hook-form`.
-- **G3** — 66 `any` retirés sur `src/hooks/useSiteContent.ts` (17), `src/pages/admin/PretsAdmin.tsx` (13), `src/components/CompteRenduViewer.tsx` (36). Types nommés (`PresenceRow`, `CotisationRow`, …) + casts via `unknown` aux frontières Supabase. `tsc --noEmit` : 0 erreur.
-- **G4** — Doublons d'abonnements Realtime supprimés ; `Array.prototype.map(async …)` remplacé par `Promise.all(map(async …))` là où c'était requis.
-- **G6** — `aria-label` ajouté sur tous les boutons `size="icon"` / `size="sm"` sans texte.
-- **G7** — Tous les `catch (e|err|error)` typés `unknown`, accès message via `getErrorMessage()`, erreurs Edge Functions extraites via `data?.error`.
+10 fichiers prioritaires migrés vers des colonnes explicites. Typecheck OK après chaque batch.
 
-## Lots restants
+| Fichier | Tables touchées |
+|---------|-----------------|
+| `src/hooks/useRoles.ts` | `roles`, `role_permissions` |
+| `src/hooks/usePersonalData.ts` | `sanctions`, `prets`, `epargnes` |
+| `src/hooks/useE2DPlayerStats.ts` | `e2d_player_stats_view` (×4) |
+| `src/hooks/useLoanRequests.ts` | `loan_requests`, `loan_request_validations`, `loan_validation_config` |
+| `src/hooks/useSiteContent.ts` | `site_hero`, `site_about`, `site_activities`, `site_events`, `site_gallery`, `site_partners`, `site_config`, `site_hero_images`, `site_gallery_albums`, `site_events_carousel_config` |
+| `src/pages/EventDetail.tsx` | `site_events`, `sport_e2d_matchs`, `match_medias`, `match_compte_rendus`, `match_statistics` |
+| `src/components/CotisationsCumulAnnuel.tsx` | `exercices`, `cotisations_types`, `cotisations`, `cotisations_membres` |
+| `src/components/SportStatistiquesGlobales.tsx` | `sport_e2d_matchs`, `sport_phoenix_matchs`, `membres` (×2 → `id` only) |
+| `src/pages/GestionPresences.tsx` | `membres`, `sport_e2d_presences`, `phoenix_presences` |
+| `src/pages/admin/PretsAdmin.tsx` | `prets_config`, `prets_paiements`, `prets_reconductions` |
 
-### G2 — Découpe des composants > 700 lignes
+**Reste hors top 10 :** 81 fichiers contiennent encore `.select('*')`, principalement des hooks/pages secondaires. À traiter dans une itération ultérieure.
 
-5 fichiers cibles (relevé `find src -name '*.tsx' | xargs wc -l | sort -rn`) :
+## G2 — Détail partiel
 
-| Fichier | Lignes |
-|---------|--------|
-| `src/pages/admin/PaymentConfigAdmin.tsx` | 1037 |
-| `src/pages/admin/PretsAdmin.tsx` | 977 |
-| `src/components/CompteRenduViewer.tsx` | 880 |
-| `src/pages/admin/RapportsAdmin.tsx` | 877 |
-| `src/pages/Epargnes.tsx` | 762 |
+| Fichier | Avant | Après | Action |
+|---------|-------|-------|--------|
+| `src/components/CompteRenduViewer.tsx` | 880 | **561** | Générateur PDF extrait dans `src/lib/compte-rendu-pdf.ts` (460 l.) |
+| `src/pages/admin/PretsAdmin.tsx` | 977 | **944** | `ReconductionsAttenteList` extrait dans `src/pages/admin/_components/` |
+| `src/pages/admin/PaymentConfigAdmin.tsx` | 1037 | 1037 | ⏳ Non entamé |
+| `src/pages/admin/RapportsAdmin.tsx` | 877 | 877 | ⏳ Non entamé |
+| `src/pages/Epargnes.tsx` | 762 | 762 | ⏳ Non entamé |
 
-Méthode prévue : extraire les sous-blocs dans `./_components/` colocalisés, sortir les handlers volumineux en hooks, conserver l'API publique (export default, props). Cible : < 400 lignes par fichier racine.
+**Prochaines extractions suggérées :**
+- `PaymentConfigAdmin` : un sous-composant par onglet (Stripe / Paddle / Mobile Money / Virement).
+- `RapportsAdmin` : un sous-composant par type de rapport.
+- `Epargnes` : `EpargnesTable` + `EpargnesStats` + formulaire.
+- `PretsAdmin` (suite) : extraire `PretsTable`, `PretsDashboardCards`, hook `usePretsMutations`.
+- `CompteRenduViewer` (suite) : sections JSX (`PresencesSection`, `FinancesSection`) pour passer < 400 l.
 
-### G5 — `.select('*')` → colonnes explicites
-
-91 fichiers concernés au total. Top 10 prioritaires (relevé `rg -n "\.select\('\*'\)" src --count-matches`) :
-
-| Fichier | Occurrences |
-|---------|-------------|
-| `src/hooks/useSiteContent.ts` | 11 |
-| `src/pages/EventDetail.tsx` | 5 |
-| `src/components/CotisationsCumulAnnuel.tsx` | 5 |
-| `src/pages/GestionPresences.tsx` | 4 |
-| `src/hooks/useE2DPlayerStats.ts` | 4 |
-| `src/components/SportStatistiquesGlobales.tsx` | 4 |
-| `src/pages/admin/PretsAdmin.tsx` | 3 |
-| `src/hooks/useRoles.ts` | 3 |
-| `src/hooks/usePersonalData.ts` | 3 |
-| `src/hooks/useLoanRequests.ts` | 3 |
-
-Méthode prévue : pour chaque requête, expliciter les colonnes réellement consommées par le composant/hook ; conserver `relation(*)` si toutes les colonnes de la jointure sont utilisées. Aucune modification de filtre / RLS / logique métier.
-
-## Hors périmètre
+## Hors périmètre (rappel)
 
 - Aucune migration SQL, RLS, Edge Function.
-- Aucun changement UI/UX.
+- Aucun changement UI/UX visible.
 - Aucune nouvelle dépendance.
-- Aucun ajout de tests (couverture inchangée).
+- Aucun ajout de tests.

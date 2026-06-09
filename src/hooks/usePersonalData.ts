@@ -106,7 +106,7 @@ export const useUserSanctions = () => {
 
       const { data, error } = await supabase
         .from('sanctions')
-        .select('*')
+        .select('id, membre_id, type_sanction_id, contexte_sanction, date_sanction, montant, montant_paye, motif, statut, created_at')
         .eq('membre_id', membre.id)
         .order('created_at', { ascending: false });
 
@@ -128,7 +128,7 @@ export const useUserPrets = () => {
 
       const { data, error } = await supabase
         .from('prets')
-        .select('*')
+        .select('id, membre_id, montant, montant_paye, capital_paye, interet_paye, statut, date_pret, echeance, notes, created_at')
         .eq('membre_id', membre.id)
         .order('created_at', { ascending: false });
 
@@ -150,7 +150,7 @@ export const useUserEpargnes = () => {
 
       const { data, error } = await supabase
         .from('epargnes')
-        .select('*')
+        .select('id, membre_id, montant, date_depot, statut, notes, reunion_id, created_at')
         .eq('membre_id', membre.id)
         .order('date_depot', { ascending: false });
 

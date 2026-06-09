@@ -18,7 +18,7 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
       if (exerciceId) {
         const { data, error } = await supabase
           .from('exercices')
-          .select('*')
+          .select('id, nom, date_debut, date_fin, statut')
           .eq('id', exerciceId)
           .single();
         if (error) throw error;
@@ -27,7 +27,7 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
       // Utiliser order + limit + maybeSingle pour gérer les cas de multiples exercices actifs
       const { data, error } = await supabase
         .from('exercices')
-        .select('*')
+        .select('id, nom, date_debut, date_fin, statut')
         .eq('statut', 'actif')
         .order('date_debut', { ascending: false })
         .limit(1)
@@ -67,7 +67,7 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
       }
       const { data, error } = await supabase
         .from('cotisations_types')
-        .select('*')
+        .select('id, nom, montant_defaut, obligatoire')
         .eq('obligatoire', true);
       if (error) throw error;
       return data;
@@ -81,7 +81,7 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
       if (!exercice?.id) return [];
       const { data, error } = await supabase
         .from('cotisations')
-        .select('*')
+        .select('id, membre_id, montant, statut')
         .eq('exercice_id', exercice.id)
         .eq('statut', 'paye');
       if (error) throw error;
@@ -97,7 +97,7 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
       if (!exercice?.id) return [];
       const { data, error } = await supabase
         .from('cotisations_membres')
-        .select('*')
+        .select('id, membre_id, type_cotisation_id, montant_personnalise, actif')
         .eq('exercice_id', exercice.id)
         .eq('actif', true);
       if (error) throw error;

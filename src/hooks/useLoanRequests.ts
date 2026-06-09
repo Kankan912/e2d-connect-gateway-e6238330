@@ -74,7 +74,7 @@ export function useLoanRequests() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("loan_requests" as never)
-        .select("*, membres:membre_id(nom, prenom)")
+        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at, membres:membre_id(nom, prenom)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as LoanRequest[];
@@ -105,7 +105,7 @@ export function useMyLoanRequests() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("loan_requests" as never)
-        .select("*")
+        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as LoanRequest[];
@@ -120,7 +120,7 @@ export function useLoanRequestValidations(requestId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("loan_request_validations" as never)
-        .select("*")
+        .select("id, loan_request_id, role, label, ordre, statut, commentaire, validated_by, validated_at")
         .eq("loan_request_id", requestId!)
         .order("ordre", { ascending: true });
       if (error) throw error;
@@ -135,7 +135,7 @@ export function useLoanValidationConfig() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("loan_validation_config" as never)
-        .select("*")
+        .select("id, role, label, ordre, actif")
         .order("ordre", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as LoanValidationConfigItem[];

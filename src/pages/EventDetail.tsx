@@ -32,7 +32,7 @@ export default function EventDetail() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("site_events")
-        .select("*")
+        .select("actif, album_id, auto_sync, created_at, date, description, heure, id, image_url, lieu, match_id, match_type, media_source, ordre, titre, type, updated_at")
         .eq("id", id)
         .single();
 
@@ -49,7 +49,7 @@ export default function EventDetail() {
       if (!event?.match_id) return null;
       const { data, error } = await supabase
         .from("sport_e2d_matchs")
-        .select("*")
+        .select("created_at, date_match, equipe_adverse, heure_match, id, image_url, lieu, logo_equipe_adverse, nom_complet_equipe_adverse, notes, score_adverse, score_e2d, statut, statut_publication, type_match")
         .eq("id", event.match_id)
         .single();
 
@@ -66,7 +66,7 @@ export default function EventDetail() {
       if (!event?.match_id) return [];
       const { data, error } = await supabase
         .from("match_medias")
-        .select("*")
+        .select("created_at, created_by, id, legende, match_id, ordre, type, url")
         .eq("match_id", event.match_id)
         .order("ordre", { ascending: true });
       if (error) return [];
@@ -82,7 +82,7 @@ export default function EventDetail() {
       if (!event?.match_id) return null;
       const { data, error } = await supabase
         .from("match_compte_rendus")
-        .select("*")
+        .select("ambiance, arbitrage_commentaire, conditions_jeu, created_at, created_by, faits_marquants, id, match_id, resume, score_mi_temps, updated_at")
         .eq("match_id", event.match_id)
         .maybeSingle();
       if (error) return null;
@@ -98,7 +98,7 @@ export default function EventDetail() {
       if (!event?.match_id) return [];
       const { data, error } = await supabase
         .from("match_statistics")
-        .select("*")
+        .select("assists, created_at, goals, id, man_of_match, match_id, match_type, membre_id, player_name, red_cards, updated_at, yellow_cards")
         .eq("match_id", event.match_id)
         .eq("match_type", "e2d");
       if (error) return [];

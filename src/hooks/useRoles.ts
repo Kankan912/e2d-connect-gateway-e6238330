@@ -19,7 +19,7 @@ export const useRoles = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('roles')
-        .select('*')
+        .select('id, name, description')
         .order('name');
       if (error) throw error;
       return data;
@@ -34,7 +34,7 @@ export const useRoles = () => {
         if (!roleId) return [];
         const { data, error } = await supabase
           .from('role_permissions')
-          .select('*')
+          .select('id, role_id, resource, permission, granted')
           .eq('role_id', roleId);
         if (error) throw error;
         return data;
@@ -50,7 +50,7 @@ export const useRoles = () => {
       queryFn: async () => {
         const { data, error } = await supabase
           .from('role_permissions')
-          .select('*');
+          .select('id, role_id, resource, permission, granted');
         if (error) throw error;
         return data;
       },

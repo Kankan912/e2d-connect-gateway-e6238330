@@ -40,7 +40,7 @@ export default function GestionPresences() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('membres')
-        .select('*')
+        .select('id, nom, prenom, est_membre_e2d, est_adherent_phoenix')
         .eq('statut', 'actif')
         .eq('est_membre_e2d', true)
         .order('nom');
@@ -67,7 +67,7 @@ export default function GestionPresences() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('membres')
-        .select('*')
+        .select('id, nom, prenom, est_membre_e2d, est_adherent_phoenix')
         .eq('statut', 'actif')
         .eq('est_adherent_phoenix', true)
         .order('nom');
@@ -82,7 +82,7 @@ export default function GestionPresences() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sport_e2d_presences')
-        .select('*')
+        .select('id, membre_id, present, date_seance, type_seance')
         .eq('date_seance', selectedDate)
         .eq('type_seance', selectedTypeSeance);
       if (error) throw error;
@@ -96,7 +96,7 @@ export default function GestionPresences() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('phoenix_presences')
-        .select('*')
+        .select('id, adherent_id, present, date_entrainement')
         .eq('date_entrainement', selectedDate);
       if (error) throw error;
       return data;
