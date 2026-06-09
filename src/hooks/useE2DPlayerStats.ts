@@ -36,7 +36,7 @@ export function useE2DPlayerStats() {
       // Récupérer les stats agrégées via la vue
       const { data, error } = await supabase
         .from("e2d_player_stats_view")
-        .select("*")
+        .select("membre_id, nom, prenom, photo_url, equipe_e2d, matchs_joues, total_buts, total_passes, total_cartons_jaunes, total_cartons_rouges, total_motm, moyenne_buts, moyenne_passes, score_general")
         .order("score_general", { ascending: false });
 
       if (error) throw error;
@@ -51,7 +51,7 @@ export function useE2DButeursClassement() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("e2d_player_stats_view")
-        .select("*")
+        .select("membre_id, nom, prenom, photo_url, equipe_e2d, matchs_joues, total_buts, total_passes, total_cartons_jaunes, total_cartons_rouges, total_motm, moyenne_buts, moyenne_passes, score_general")
         .gt("total_buts", 0)
         .order("total_buts", { ascending: false })
         .order("moyenne_buts", { ascending: false });
@@ -68,7 +68,7 @@ export function useE2DPasseursClassement() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("e2d_player_stats_view")
-        .select("*")
+        .select("membre_id, nom, prenom, photo_url, equipe_e2d, matchs_joues, total_buts, total_passes, total_cartons_jaunes, total_cartons_rouges, total_motm, moyenne_buts, moyenne_passes, score_general")
         .gt("total_passes", 0)
         .order("total_passes", { ascending: false })
         .order("moyenne_passes", { ascending: false });
@@ -85,7 +85,7 @@ export function useE2DDiscipline() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("e2d_player_stats_view")
-        .select("*")
+        .select("membre_id, nom, prenom, photo_url, equipe_e2d, matchs_joues, total_buts, total_passes, total_cartons_jaunes, total_cartons_rouges, total_motm, moyenne_buts, moyenne_passes, score_general")
         .or("total_cartons_jaunes.gt.0,total_cartons_rouges.gt.0")
         .order("total_cartons_rouges", { ascending: false })
         .order("total_cartons_jaunes", { ascending: false });
