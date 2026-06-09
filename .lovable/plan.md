@@ -1,89 +1,59 @@
-## Lot G3 — Standardisation de la gestion d'erreurs (`catch (error: unknown)`)
+# Plan : Finaliser les lots restants (G2, G3, G5)
 
-### Objectif
-Uniformiser tous les blocs `catch` du frontend pour respecter la règle Core mémoire :
-> Use `catch (error: unknown)`. Extract Edge Function errors via `data?.error`.
+Trois lots restent ouverts dans `.lovable/plan.md`. Objectif : les terminer en séquence sans toucher au métier.
 
-Éliminer les `catch (e)`, `catch (err)`, `catch (error)` sans typage, et remplacer les accès `error.message` non sûrs par un utilitaire `getErrorMessage(error)` centralisé.
+## Lot G3 — Supprimer les `any` résiduels (le plus rapide, on commence)
 
-### Périmètre
-**Création** : `src/lib/errors.ts` contient déjà des helpers — vérifier et ajouter si besoin :
-- `getErrorMessage(error: unknown): string` — gère `Error`, `{ message }`, `string`, fallback "Erreur inconnue"
-- `getEdgeFunctionError(data: unknown, fallback?: string): string | null` — extrait `data?.error`
+**Cible :** 3 fichiers identifiés dans la revue.
+- `src/components/admin/CompteRenduViewer.tsx`
+- `src/pages/admin/PretsAdmin.tsx`
+- `src/hooks/useSiteContent.ts`
 
-**Refactor** : recenser via `rg -n "catch \((e|err|error)\)" src` (sans `: unknown`) et corriger fichier par fichier.
+**Méthode :**
+- Lire chaque fichier, recenser les `any` (params, états, retours).
+- Remplacer par des types issus de `src/types/supabase-joins.ts` ou des interfaces locales `interface XxxRow { ... }`.
+- Pour les payloads Realtime, utiliser le cast documenté (mémoire `architecture/type-safety/residual-technical-debt`).
 
-Cibles principales attendues (à confirmer après recensement) :
-- `src/hooks/use*.ts` (Caisse, Cotisations, Donations, Loans, Reunions, Sport, etc.)
-- `src/components/**/*.tsx` (formulaires, modales)
-- `src/pages/**/*.tsx` (Adhesion, Don, Auth, Dashboard)
+**Vérif :** `rg -n ": any|<any>|as any" <fichiers>` → 0 hors commentaires.
 
-Pour chaque bloc :
-```ts
-// Avant
-} catch (error) {
-  toast.error(error.message);
-}
-// Après
-} catch (error: unknown) {
-  toast.error(getErrorMessage(error));
-}
-```
+## Lot G5 — `.select('*')` → colonnes explicites (top 10)
 
-Pour les appels Edge Functions :
-```ts
-const { data, error } = await supabase.functions.invoke(...);
-if (error) throw error;
-const edgeErr = getEdgeFunctionError(data);
-if (edgeErr) throw new Error(edgeErr);
-```
+**Cible :** repérer via `rg -n "\.select\('\*'\)" src` puis prioriser les 10 fichiers les plus chauds (hooks Caisse, Cotisations, Loans, Reunions, Sport, Donations, Adhesions, Members, Notifications, Site).
 
-### Hors périmètre
-- Pas de changement de logique métier
-- Pas de refonte des toasts ou UI
-- Pas d'ajout de logging supplémentaire (déjà standardisé via `src/lib/logger.ts`)
-- Pas de migration SQL / RLS / Edge Functions
-- Pas de tests nouveaux (les tests existants doivent continuer à passer)
+**Méthode :**
+- Pour chaque requête, lister les colonnes réellement consommées par le composant/hook.
+- Remplacer `select('*')` par `select('col1, col2, ...')` en conservant les jointures `relation(*)` quand toutes les colonnes de la relation sont utilisées (sinon les expliciter aussi).
+- Aucune modif de filtre / RLS / logique.
 
-### Méthode
-1. `rg -n "catch \((e|err|error)\)" src --type ts --type tsx -c` → comptage par fichier, prioriser les 10-15 fichiers les plus impactés.
-2. Vérifier l'export de `getErrorMessage` dans `src/lib/errors.ts`, compléter si manquant.
-3. Édition par lots de 5-6 fichiers, vérification visuelle (preview) après chaque batch sensible (Auth, Adhesion, Don).
-4. `bunx vitest run` final.
+**Vérif :** build OK, `bunx vitest run`, et navigation manuelle rapide via preview sur 2-3 écrans (Caisse, Prêts, Cotisations).
 
-### Vérification
-- `rg -n "catch \((e|err|error)\)(?!: unknown)" src` doit retourner 0 (hors fichiers `*.test.*`).
-- `rg -n "error\.message" src` audité : tous remplacés par `getErrorMessage(error)`.
-- Aucune régression sur les flux critiques (login, adhésion, don, prêt, cotisation).
+## Lot G2 — Découper les 5 composants > 700 lignes
 
-### Documentation
-- Mise à jour `.lovable/plan.md` et `docs/CODE_REVIEW.md` : G3 ✅ TERMINÉ avec liste des fichiers modifiés.
+**Cible :** identifier via `find src -name '*.tsx' | xargs wc -l | sort -rn | head -10` puis retenir les 5 dépassant 700 lignes (probablement parmi `PretsAdmin`, `CotisationsAdmin`, `MembersAdmin`, `ReunionDetail`, `MatchDetail`).
 
-### Prochains lots
-- **G2** — Refactor des `any` résiduels (typage strict)
-- **G5** — Extraction des composants > 300 lignes
+**Méthode (par fichier) :**
+- Extraire les sous-blocs en composants dans un sous-dossier `components/` colocalisé (ex. `src/pages/admin/prets/_components/PretRow.tsx`).
+- Extraire les handlers volumineux en hooks `useXxx.ts` quand pertinent.
+- Conserver la même API publique (props, exports default).
+- Aucun changement de comportement visible.
 
----
+**Vérif :** preview de chaque page refactorée, `bunx vitest run`, recompte des lignes (< 400 idéalement).
 
-## ✅ Lot G3 (catch typing) — TERMINÉ
+## Ordre & livrables
 
-**Périmètre exécuté :** Ajout de `: unknown` sur tous les `catch (e|err|error)` non typés du frontend — 15 occurrences dans 12 fichiers. Tous les blocs loggent via `logger.*` sans accès `error.message` direct → aucune utilisation de `getErrorMessage` requise.
+1. G3 (≈ 30 min) → commit logique
+2. G5 (≈ 1 h)   → commit logique
+3. G2 (≈ 2 h)   → commit logique
 
-**Fichiers modifiés :**
-- `src/hooks/useLoanRequests.ts`
-- `src/hooks/useConnectionTracker.ts`
-- `src/hooks/usePageviewTracker.ts`
-- `src/lib/logger.ts`
-- `src/lib/storage-utils.ts`
-- `src/lib/exportService.ts`
-- `src/lib/pdf-utils.ts` (×3)
-- `src/components/forms/E2DMatchForm.tsx`
-- `src/components/forms/E2DMatchEditForm.tsx`
-- `src/components/donations/BankTransferInfo.tsx`
-- `src/components/admin/CreateUserDialog.tsx` (×2)
-- `src/pages/admin/UtilisateursAdmin.tsx`
-- `docs/CODE_REVIEW.md`
+Mettre à jour `.lovable/plan.md` et `docs/CODE_REVIEW.md` au fil de l'eau (marquer ✅ TERMINÉ pour chaque lot).
 
-**Vérification :** `rg --pcre2 'catch \((e|err|error)\)(?!:)' src` → 0 résultat. `bunx vitest run` → 57 passed, échec préexistant `badge.test.tsx` (module manquant, indépendant).
+## Hors périmètre
 
-**Note :** Le G3 d'origine (suppression `any`) reste ouvert et fait partie du lot G2 plus large.
+- Aucune migration SQL, RLS, Edge Function.
+- Aucun changement UI/UX.
+- Aucune nouvelle dépendance.
+- Aucun ajout de tests (couverture inchangée).
+
+## Question
+
+Confirmes-tu cet ordre (G3 → G5 → G2) et le périmètre, ou veux-tu prioriser autrement (ex. G2 d'abord car plus visible) ?

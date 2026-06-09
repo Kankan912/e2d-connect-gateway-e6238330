@@ -170,3 +170,13 @@ Le Lot E est confirmé 100 % stable.
 ## 5. Prochaine étape
 
 Validez les lots G à lancer (et leur ordre). Recommandation : **G1 → G4 → G6 → G3 → G2 → G5** (impact UX/stabilité d'abord, refactoring lourd en dernier).
+
+## Lot G3 — Suppression des `any` ciblés ✅ TERMINÉ
+
+| Fichier | `any` retirés |
+|---------|---------------|
+| `src/hooks/useSiteContent.ts` | 17 |
+| `src/pages/admin/PretsAdmin.tsx` | 13 |
+| `src/components/CompteRenduViewer.tsx` | 36 |
+
+Méthode : types nommés (`PresenceRow`, `CotisationRow`, …) avec index signature `[key: string]: unknown`, casts via `unknown` aux frontières Supabase. Typecheck `tsc --noEmit` : 0 erreur.
