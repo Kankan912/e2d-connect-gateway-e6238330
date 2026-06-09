@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { Plus, Edit, TrendingUp, PiggyBank, DollarSign, Calculator, Download, Filter, X, Search, Trash2 } from "lucide-react";
+import { Plus, TrendingUp, PiggyBank, DollarSign, Calculator, Download } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,14 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import LogoHeader from "@/components/LogoHeader";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import BackButton from "@/components/BackButton";
 import { ExportService } from '@/lib/exportService';
 import { useAllEpargnes, useCreateEpargne, useUpdateEpargne, useDeleteEpargne } from "@/hooks/useEpargnes";
+import EpargnesFilters from "./_components/EpargnesFilters";
+import EpargnesList from "./_components/EpargnesList";
 
 import { logger } from "@/lib/logger";
+
 interface Epargne {
   id: string;
   membre_id: string;
@@ -320,192 +320,19 @@ export default function Epargnes() {
       </div>
 
       {/* Panneau de filtres avancés */}
-      <Card className="bg-muted/50">
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Filter className="h-4 w-4" />
-                Filtres Avancés
-              </CardTitle>
-              
-              {/* Indicateurs de niveau de filtre actif */}
-              {filtresAppliques.exerciceId && filtresAppliques.exerciceId !== "all" && (
-                <Badge variant="secondary" className="text-xs">
-                  📊 Niveau 1: Exercice
-                </Badge>
-              )}
-              {(filtresAppliques.dateDebut || filtresAppliques.dateFin) && (
-                <Badge variant="outline" className="text-xs">
-                  📅 Niveau 2: Dates
-                </Badge>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Filtre par période */}
-            <div className="space-y-2">
-              <Label htmlFor="dateDebut">Date début</Label>
-              <Input
-                id="dateDebut"
-                type="date"
-                value={filtresTemporaires.dateDebut}
-                onChange={(e) => setFiltresTemporaires(prev => ({ ...prev, dateDebut: e.target.value }))}
-                min={filtresTemporaires.exerciceId !== "all" 
-                  ? exercices.find(ex => ex.id === filtresTemporaires.exerciceId)?.date_debut 
-                  : undefined}
-                max={filtresTemporaires.exerciceId !== "all" 
-                  ? exercices.find(ex => ex.id === filtresTemporaires.exerciceId)?.date_fin 
-                  : undefined}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="dateFin">Date fin</Label>
-              <Input
-                id="dateFin"
-                type="date"
-                value={filtresTemporaires.dateFin}
-                onChange={(e) => setFiltresTemporaires(prev => ({ ...prev, dateFin: e.target.value }))}
-                min={filtresTemporaires.exerciceId !== "all" 
-                  ? exercices.find(ex => ex.id === filtresTemporaires.exerciceId)?.date_debut 
-                  : undefined}
-                max={filtresTemporaires.exerciceId !== "all" 
-                  ? exercices.find(ex => ex.id === filtresTemporaires.exerciceId)?.date_fin 
-                  : undefined}
-              />
-            </div>
-
-            {/* Filtre par membre */}
-            <div className="space-y-2">
-              <Label htmlFor="membreFiltre">Membre</Label>
-              <Select 
-                value={filtresTemporaires.membreId} 
-                onValueChange={(value) => setFiltresTemporaires(prev => ({ ...prev, membreId: value }))}
-              >
-                <SelectTrigger id="membreFiltre">
-                  <SelectValue placeholder="Tous les membres" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les membres</SelectItem>
-                  {membres.map((membre) => (
-                    <SelectItem key={membre.id} value={membre.id}>
-                      {membre.prenom} {membre.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Filtre par exercice - CORRECTION 8: Ajout spinner */}
-            <div className="space-y-2">
-              <Label htmlFor="exerciceFiltre">Exercice</Label>
-              <Select 
-                value={filtresTemporaires.exerciceId} 
-                disabled={loadingFiltre}
-                onValueChange={async (value) => {
-                  setLoadingFiltre(true);
-                  setFiltresTemporaires(prev => ({ ...prev, exerciceId: value }));
-                  // Debounce pour éviter trop de re-renders
-                  await new Promise(resolve => setTimeout(resolve, 300));
-                  setLoadingFiltre(false);
-                }}
-              >
-                <SelectTrigger id="exerciceFiltre" className={loadingFiltre ? 'opacity-50' : ''}>
-                  {loadingFiltre ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                      <span>Chargement...</span>
-                    </div>
-                  ) : (
-                    <SelectValue placeholder="Tous les exercices" />
-                  )}
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les exercices</SelectItem>
-                  {exercices.map((exercice) => (
-                    <SelectItem key={exercice.id} value={exercice.id}>
-                      {exercice.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Filtre par montant */}
-            <div className="space-y-2">
-              <Label htmlFor="montantMin">Montant minimum</Label>
-              <Input
-                id="montantMin"
-                type="number"
-                placeholder="0"
-                value={filtresTemporaires.montantMin}
-                onChange={(e) => setFiltresTemporaires(prev => ({ ...prev, montantMin: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="montantMax">Montant maximum</Label>
-              <Input
-                id="montantMax"
-                type="number"
-                placeholder="Illimité"
-                value={filtresTemporaires.montantMax}
-                onChange={(e) => setFiltresTemporaires(prev => ({ ...prev, montantMax: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          {/* Message d'information sur le filtrage hiérarchique */}
-          <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-md text-sm">
-            <p className="font-semibold mb-1 text-primary">🔍 Filtrage hiérarchique :</p>
-            <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-              <li><strong>Niveau 1 (Exercice) :</strong> Sélectionnez un exercice pour limiter aux épargnes de sa période</li>
-              <li><strong>Niveau 2 (Dates) :</strong> Affinez avec des dates personnalisées à l'intérieur de l'exercice</li>
-            </ul>
-          </div>
-
-          {/* Boutons d'action */}
-          <div className="flex gap-2 mt-6">
-            <Button 
-              onClick={() => setFiltresAppliques(filtresTemporaires)}
-              className="flex-1"
-            >
-              <Search className="h-4 w-4 mr-2" />
-              Rechercher
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                const resetFiltres = {
-                  dateDebut: "",
-                  dateFin: "",
-                  membreId: "all",
-                  exerciceId: "all",
-                  montantMin: "",
-                  montantMax: ""
-                };
-                setFiltresTemporaires(resetFiltres);
-                setFiltresAppliques(resetFiltres);
-              }}
-            >
-              <X className="h-4 w-4 mr-2" />
-              Réinitialiser
-            </Button>
-          </div>
-
-          {/* Indicateur de résultats filtrés */}
-          <div className="mt-4 pt-4 border-t">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                {epargneFiltrees.length} épargne(s) trouvée(s) • {epargnantsUniques} épargnant(s) • Total: {totalFiltre.toLocaleString()} FCFA
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <EpargnesFilters
+        filtresTemporaires={filtresTemporaires}
+        setFiltresTemporaires={setFiltresTemporaires}
+        filtresAppliques={filtresAppliques}
+        setFiltresAppliques={setFiltresAppliques}
+        membres={membres}
+        exercices={exercices}
+        loadingFiltre={loadingFiltre}
+        setLoadingFiltre={setLoadingFiltre}
+        epargneFiltreesCount={epargneFiltrees.length}
+        epargnantsUniques={epargnantsUniques}
+        totalFiltre={totalFiltre}
+      />
 
       {hasPermission('epargnes', 'create') && (
         <div className="flex justify-end">
@@ -691,72 +518,14 @@ export default function Epargnes() {
 
       {/* Liste des épargnes */}
       <div className="grid gap-4">
-        {epargneFiltrees.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-8">
-              <PiggyBank className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-lg font-medium text-muted-foreground">
-                {epargnes.length === 0 ? "Aucune épargne enregistrée" : "Aucune épargne ne correspond aux filtres"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {epargnes.length === 0 ? "Ajoutez la première épargne pour commencer" : "Essayez de modifier les critères de filtrage"}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          epargneFiltrees.map((epargne) => (
-            <Card key={epargne.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg">
-                      {epargne.membre?.prenom} {epargne.membre?.nom}
-                    </CardTitle>
-                    <CardDescription>
-                      Dépôt du {format(new Date(epargne.date_depot), "dd MMMM yyyy", { locale: fr })}
-                    </CardDescription>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-green-600">
-                      {epargne.montant.toLocaleString()} FCFA
-                    </p>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {epargne.statut}
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {epargne.notes && (
-                  <div className="mb-4">
-                    <p className="text-sm text-muted-foreground">Notes</p>
-                    <p className="text-sm">{epargne.notes}</p>
-                  </div>
-                )}
-                
-                <div className="flex justify-end space-x-2">
-                  {hasPermission('epargnes', 'update') && (
-                    <Button variant="outline" size="sm" onClick={() => openEditDialog(epargne)}>
-                      <Edit className="w-4 h-4 mr-1" />
-                      Modifier
-                    </Button>
-                  )}
-                  {hasPermission('epargnes', 'delete') && (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleDelete(epargne.id)}
-                      className="text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Supprimer
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+        <EpargnesList
+          epargnes={epargnes}
+          epargneFiltrees={epargneFiltrees}
+          canUpdate={hasPermission('epargnes', 'update')}
+          canDelete={hasPermission('epargnes', 'delete')}
+          onEdit={openEditDialog}
+          onDelete={handleDelete}
+        />
       </div>
     </div>
   );
