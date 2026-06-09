@@ -94,7 +94,7 @@ export default function PretsAdmin() {
   const dureeReconduction = pretsConfig?.duree_reconduction || 2;
 
   // Calculer via le service centralisé avec données jointes
-  const getCalculsPret = (pret: any) => {
+  const getCalculsPret = (pret: PretAdminWithJoins) => {
     return calculerResumePret(
       { montant: pret.montant, taux_interet: pret.taux_interet, interet_initial: pret.interet_initial, reconductions: pret.reconductions, montant_paye: pret.montant_paye },
       pret.prets_paiements || [],
@@ -102,12 +102,12 @@ export default function PretsAdmin() {
     );
   };
 
-  const calculerTotalDu = (pret: any): number => getCalculsPret(pret).totalDu;
-  const calculerSoldeRestant = (pret: any): number => getCalculsPret(pret).resteAPayer;
+  const calculerTotalDu = (pret: PretAdminWithJoins): number => getCalculsPret(pret).totalDu;
+  const calculerSoldeRestant = (pret: PretAdminWithJoins): number => getCalculsPret(pret).resteAPayer;
 
   const createPret = useMutation({
-    mutationFn: async (data: any) => {
-      const { error } = await supabase.from('prets').insert(data);
+    mutationFn: async (data: Record<string, unknown>) => {
+      const { error } = await supabase.from('prets').insert(data as never);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -115,14 +115,14 @@ export default function PretsAdmin() {
       queryClient.invalidateQueries({ queryKey: ['prets'] });
       setFormOpen(false);
     },
-    onError: (error: any) => {
-      toast({ title: "Erreur lors de la création", description: error.message, variant: "destructive" });
+    onError: (error: unknown) => {
+      toast({ title: "Erreur lors de la création", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   });
 
   const updatePret = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const { error } = await supabase.from('prets').update(data).eq('id', id);
+    mutationFn: async ({ id, data }: { id: string; data: Record<string, unknown> }) => {
+      const { error } = await supabase.from('prets').update(data as never).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -148,7 +148,7 @@ export default function PretsAdmin() {
 
   // Payer Total
   const payerTotal = useMutation({
-    mutationFn: async (pret: any) => {
+    mutationFn: async (pret: PretAdminWithJoins) => {
       const soldeRestant = calculerSoldeRestant(pret);
       const totalDu = calculerTotalDu(pret);
       const interetTotal = pret.interet_initial || (pret.montant * (pret.taux_interet || 5) / 100);
@@ -177,13 +177,13 @@ export default function PretsAdmin() {
       toast({ title: "Prêt remboursé intégralement" });
       queryClient.invalidateQueries({ queryKey: ['prets'] });
     },
-    onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    onError: (error: unknown) => {
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   });
 
   // Vérifier si on peut reconduire (intérêt actuel doit être payé)
-  const peutReconduirePret = (pret: any): { peut: boolean; raison: string } => {
+  const peutReconduirePret = (pret: PretAdminWithJoins): { peut: boolean; raison: string } => {
     if ((pret.reconductions || 0) >= maxReconductions) {
       return { peut: false, raison: `Limite de reconductions atteinte (${maxReconductions} max)` };
     }
@@ -203,7 +203,7 @@ export default function PretsAdmin() {
   // Reconduire : crée la demande. Le trigger DB force 'en_attente' pour les non-admins.
   // L'incrément de prets.reconductions n'a lieu QUE si la reconduction est immédiatement validée.
   const reconduire = useMutation({
-    mutationFn: async (pret: any) => {
+    mutationFn: async (pret: PretAdminWithJoins) => {
       const verification = peutReconduirePret(pret);
       if (!verification.peut) {
         throw new Error(verification.raison);
@@ -258,8 +258,8 @@ export default function PretsAdmin() {
       setReconduireDialogOpen(false);
       setPretForReconduction(null);
     },
-    onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    onError: (error: unknown) => {
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   });
 
@@ -281,7 +281,7 @@ export default function PretsAdmin() {
       if (e2) throw e2;
 
       if (decision === 'validee' && recon?.prets) {
-        const pret: any = recon.prets;
+        const pret = recon.prets as PretAdminWithJoins;
         const nouvelleEcheance = addMonths(new Date(pret.echeance), dureeReconduction);
         const capitalRestant = pret.montant - (pret.capital_paye || 0);
         const nouveauTotalDu = capitalRestant + Number(recon.interet_mois || 0);
@@ -302,8 +302,8 @@ export default function PretsAdmin() {
       queryClient.invalidateQueries({ queryKey: ['prets'] });
       queryClient.invalidateQueries({ queryKey: ['prets-reconductions-attente'] });
     },
-    onError: (error: any) => {
-      toast({ title: "Erreur", description: error.message, variant: "destructive" });
+    onError: (error: unknown) => {
+      toast({ title: "Erreur", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   });
 
@@ -321,7 +321,7 @@ export default function PretsAdmin() {
     }
   });
 
-  const handleSubmit = (data: any) => {
+  const handleSubmit = (data: Record<string, unknown>) => {
     if (selectedPret) {
       updatePret.mutate({ id: selectedPret.id, data });
     } else {
@@ -330,7 +330,7 @@ export default function PretsAdmin() {
   };
 
   // Statut effectif — priorité: remboursé > en_retard > reconduit > partiel > en_cours
-  const getEffectiveStatus = (pret: any) => {
+  const getEffectiveStatus = (pret: PretAdminWithJoins) => {
     const calculs = getCalculsPret(pret);
     const echeance = new Date(pret.echeance);
     const now = new Date();
@@ -342,7 +342,7 @@ export default function PretsAdmin() {
     return 'en_cours';
   };
 
-  const getRowClass = (pret: any) => {
+  const getRowClass = (pret: PretAdminWithJoins) => {
     const status = getEffectiveStatus(pret);
     switch (status) {
       case 'rembourse':
@@ -358,7 +358,7 @@ export default function PretsAdmin() {
     }
   };
 
-  const getStatutBadge = (pret: any) => {
+  const getStatutBadge = (pret: PretAdminWithJoins) => {
     const status = getEffectiveStatus(pret);
     switch (status) {
       case 'en_cours':
@@ -423,12 +423,12 @@ export default function PretsAdmin() {
   }, 0) || 0;
 
 
-  const handleOpenReconduire = (pret: any) => {
+  const handleOpenReconduire = (pret: PretAdminWithJoins) => {
     setPretForReconduction(pret);
     setReconduireDialogOpen(true);
   };
 
-  const handleExportPDF = async (pret: any) => {
+  const handleExportPDF = async (pret: PretAdminWithJoins) => {
     // Récupérer les paiements et reconductions pour ce prêt
     const [paiementsRes, recondRes] = await Promise.all([
       supabase.from('prets_paiements').select('*').eq('pret_id', pret.id).order('date_paiement', { ascending: false }),
@@ -453,7 +453,7 @@ export default function PretsAdmin() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {reconductionsAttente.map((r: any) => (
+            {reconductionsAttente.map((r: { id: string; created_at: string; notes?: string | null; interet_mois?: number | null; prets?: { membres?: { nom?: string; prenom?: string } | null } | null }) => (
               <div key={r.id} className="flex items-center justify-between gap-3 p-2 rounded border bg-background">
                 <div className="text-sm">
                   <div className="font-medium">

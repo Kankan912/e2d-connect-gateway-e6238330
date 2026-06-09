@@ -205,10 +205,10 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       yPosition += 12;
 
       // Liste des présents, excusés, absents non excusés
-      const presents = presences?.filter((p: any) => p.statut_presence === 'present') || [];
-      const excuses = presences?.filter((p: any) => p.statut_presence === 'absent_excuse') || [];
-      const absentsNonExcuses = presences?.filter((p: any) => p.statut_presence === 'absent_non_excuse') || [];
-      const retards = presences?.filter((p: any) => p.heure_arrivee) || [];
+      const presents = presences?.filter((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => p.statut_presence === 'present') || [];
+      const excuses = presences?.filter((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => p.statut_presence === 'absent_excuse') || [];
+      const absentsNonExcuses = presences?.filter((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => p.statut_presence === 'absent_non_excuse') || [];
+      const retards = presences?.filter((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => p.heure_arrivee) || [];
       const totalMembres = presents.length + excuses.length + absentsNonExcuses.length;
       const tauxPresence = totalMembres > 0 ? Math.round((presents.length / totalMembres) * 100) : 0;
 
@@ -227,7 +227,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       
       if (presents.length > 0) {
         const presentsText = presents
-          .map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`)
+          .map((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => `${p.membres?.prenom} ${p.membres?.nom}`)
           .join(', ');
         
         const presentsLines = doc.splitTextToSize(presentsText, pageWidth - 2 * margin);
@@ -240,7 +240,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
       if (excuses.length > 0) {
         doc.setFont('helvetica', 'italic');
-        const excusesText = `Excusés: ${excuses.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).join(', ')}`;
+        const excusesText = `Excusés: ${excuses.map((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => `${p.membres?.prenom} ${p.membres?.nom}`).join(', ')}`;
         const excusesLines = doc.splitTextToSize(excusesText, pageWidth - 2 * margin);
         doc.text(excusesLines, margin, yPosition);
         yPosition += excusesLines.length * 5 + 5;
@@ -248,7 +248,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
       if (retards.length > 0) {
         doc.setFont('helvetica', 'italic');
-        const retardsText = `Retards: ${retards.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).join(', ')}`;
+        const retardsText = `Retards: ${retards.map((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => `${p.membres?.prenom} ${p.membres?.nom}`).join(', ')}`;
         const retardsLines = doc.splitTextToSize(retardsText, pageWidth - 2 * margin);
         doc.text(retardsLines, margin, yPosition);
         yPosition += retardsLines.length * 5 + 5;
@@ -258,7 +258,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       if (absentsNonExcuses.length > 0) {
         doc.setFont('helvetica', 'italic');
         doc.setTextColor(200, 0, 0); // Rouge
-        const absentsText = `Absents non excusés: ${absentsNonExcuses.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).join(', ')}`;
+        const absentsText = `Absents non excusés: ${absentsNonExcuses.map((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => `${p.membres?.prenom} ${p.membres?.nom}`).join(', ')}`;
         const absentsLines = doc.splitTextToSize(absentsText, pageWidth - 2 * margin);
         doc.text(absentsLines, margin, yPosition);
         yPosition += absentsLines.length * 5 + 5;
@@ -275,7 +275,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       yPosition += 10;
 
       if (comptesRendus && comptesRendus.length > 0) {
-        comptesRendus.forEach((cr: any, index: number) => {
+        comptesRendus.forEach((cr: { id?: string; titre?: string | null; description?: string | null; numero_ordre?: number | null; decisions?: string | null }, index: number) => {
           checkNewPage();
 
           doc.setFont('helvetica', 'bold');
@@ -327,7 +327,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       // === SECTION COTISATIONS ===
       if (cotisationsReunion && cotisationsReunion.length > 0) {
         checkNewPage();
-        const totalCotisations = cotisationsReunion.reduce((sum: number, c: any) => sum + (c.montant || 0), 0);
+        const totalCotisations = cotisationsReunion.reduce((sum: number, c: { montant?: number | null; membre?: { nom?: string; prenom?: string } | null; type?: { nom?: string } | null }) => sum + (c.montant || 0), 0);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.text(`COTISATIONS COLLECTÉES (${cotisationsReunion.length}) - Total: ${totalCotisations.toLocaleString()} FCFA`, margin, yPosition);
@@ -335,7 +335,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        cotisationsReunion.forEach((c: any) => {
+        cotisationsReunion.forEach((c: { montant?: number | null; membre?: { nom?: string; prenom?: string } | null; type?: { nom?: string } | null }) => {
           checkNewPage(10);
           doc.text(`• ${c.membre?.prenom} ${c.membre?.nom} - ${c.type?.nom || 'Type inconnu'}: ${c.montant?.toLocaleString()} FCFA`, margin + 5, yPosition);
           yPosition += 5;
@@ -346,7 +346,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       // === SECTION ÉPARGNES ===
       if (epargnesReunion && epargnesReunion.length > 0) {
         checkNewPage();
-        const totalEpargnes = epargnesReunion.reduce((sum: number, e: any) => sum + (e.montant || 0), 0);
+        const totalEpargnes = epargnesReunion.reduce((sum: number, e: { montant?: number | null; membre?: { nom?: string; prenom?: string } | null }) => sum + (e.montant || 0), 0);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.text(`ÉPARGNES DÉPOSÉES (${epargnesReunion.length}) - Total: ${totalEpargnes.toLocaleString()} FCFA`, margin, yPosition);
@@ -354,7 +354,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        epargnesReunion.forEach((e: any) => {
+        epargnesReunion.forEach((e: { montant?: number | null; membre?: { nom?: string; prenom?: string } | null }) => {
           checkNewPage(10);
           doc.text(`• ${e.membre?.prenom} ${e.membre?.nom}: ${e.montant?.toLocaleString()} FCFA`, margin + 5, yPosition);
           yPosition += 5;
@@ -365,7 +365,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       // === SECTION SANCTIONS ===
       if (sanctionsReunion && sanctionsReunion.length > 0) {
         checkNewPage();
-        const totalSanctions = sanctionsReunion.reduce((sum: number, s: any) => sum + (s.montant_amende || 0), 0);
+        const totalSanctions = sanctionsReunion.reduce((sum: number, s: { montant_amende?: number | null; type_sanction?: string | null; membre?: { nom?: string; prenom?: string } | null }) => sum + (s.montant_amende || 0), 0);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.text(`SANCTIONS (${sanctionsReunion.length}) - Total: ${totalSanctions.toLocaleString()} FCFA`, margin, yPosition);
@@ -373,7 +373,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        sanctionsReunion.forEach((s: any) => {
+        sanctionsReunion.forEach((s: { montant_amende?: number | null; type_sanction?: string | null; membre?: { nom?: string; prenom?: string } | null }) => {
           checkNewPage(10);
           const statut = s.statut === 'paye' ? '✓' : '○';
           doc.text(`${statut} ${s.membre?.prenom} ${s.membre?.nom} - ${s.motif || 'Sanction'}: ${s.montant_amende?.toLocaleString()} FCFA`, margin + 5, yPosition);
@@ -385,7 +385,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       // === SECTION AIDES ===
       if (aidesReunion && aidesReunion.length > 0) {
         checkNewPage();
-        const totalAides = aidesReunion.reduce((sum: number, a: any) => sum + (a.montant || 0), 0);
+        const totalAides = aidesReunion.reduce((sum: number, a: { montant?: number | null; type_aide?: string | null; membre?: { nom?: string; prenom?: string } | null }) => sum + (a.montant || 0), 0);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.text(`AIDES DISTRIBUÉES (${aidesReunion.length}) - Total: ${totalAides.toLocaleString()} FCFA`, margin, yPosition);
@@ -393,7 +393,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        aidesReunion.forEach((a: any) => {
+        aidesReunion.forEach((a: { montant?: number | null; type_aide?: string | null; membre?: { nom?: string; prenom?: string } | null }) => {
           checkNewPage(10);
           doc.text(`• ${a.beneficiaire?.prenom} ${a.beneficiaire?.nom} - ${a.type?.nom || 'Aide'}: ${a.montant?.toLocaleString()} FCFA`, margin + 5, yPosition);
           yPosition += 5;
@@ -404,7 +404,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       // === SECTION BÉNÉFICIAIRES ===
       if (beneficiairesReunion && beneficiairesReunion.length > 0) {
         checkNewPage();
-        const totalBeneficiaires = beneficiairesReunion.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0);
+        const totalBeneficiaires = beneficiairesReunion.reduce((sum: number, b: { montant_final?: number | null; membre?: { nom?: string; prenom?: string } | null }) => sum + (b.montant_final || 0), 0);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.text(`BÉNÉFICIAIRES DU MOIS (${beneficiairesReunion.length}) - Total: ${totalBeneficiaires.toLocaleString()} FCFA`, margin, yPosition);
@@ -412,7 +412,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        beneficiairesReunion.forEach((b: any) => {
+        beneficiairesReunion.forEach((b: { montant_final?: number | null; membre?: { nom?: string; prenom?: string } | null }) => {
           checkNewPage(10);
           const statut = b.statut === 'paye' ? '✓' : '○';
           const details = b.deductions && Object.keys(b.deductions).length > 0
@@ -448,9 +448,9 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
   };
 
   const pointsCRCount = comptesRendus?.length || 0;
-  const presentsCount = presences?.filter((p: any) => p.statut_presence === 'present').length || 0;
-  const excusesCount = presences?.filter((p: any) => p.statut_presence === 'absent_excuse').length || 0;
-  const absentsNonExcusesCount = presences?.filter((p: any) => p.statut_presence === 'absent_non_excuse').length || 0;
+  const presentsCount = presences?.filter((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => p.statut_presence === 'present').length || 0;
+  const excusesCount = presences?.filter((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => p.statut_presence === 'absent_excuse').length || 0;
+  const absentsNonExcusesCount = presences?.filter((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => p.statut_presence === 'absent_non_excuse').length || 0;
   const sanctionsCount = sanctionsReunion?.length || 0;
   const cotisationsCount = cotisationsReunion?.length || 0;
   const epargnesCount = epargnesReunion?.length || 0;
@@ -460,11 +460,11 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
   const totalMembresPresence = presentsCount + excusesCount + absentsNonExcusesCount;
   const tauxPresenceCalcule = totalMembresPresence > 0 ? Math.round((presentsCount / totalMembresPresence) * 100) : 0;
 
-  const totalCotisations = cotisationsReunion?.reduce((sum: number, c: any) => sum + (c.montant || 0), 0) || 0;
-  const totalEpargnes = epargnesReunion?.reduce((sum: number, e: any) => sum + (e.montant || 0), 0) || 0;
-  const totalSanctions = sanctionsReunion?.reduce((sum: number, s: any) => sum + (s.montant_amende || 0), 0) || 0;
-  const totalAides = aidesReunion?.reduce((sum: number, a: any) => sum + (a.montant || 0), 0) || 0;
-  const totalBeneficiaires = beneficiairesReunion?.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0) || 0;
+  const totalCotisations = cotisationsReunion?.reduce((sum: number, c: { montant?: number | null; membre?: { nom?: string; prenom?: string } | null; type?: { nom?: string } | null }) => sum + (c.montant || 0), 0) || 0;
+  const totalEpargnes = epargnesReunion?.reduce((sum: number, e: { montant?: number | null; membre?: { nom?: string; prenom?: string } | null }) => sum + (e.montant || 0), 0) || 0;
+  const totalSanctions = sanctionsReunion?.reduce((sum: number, s: { montant_amende?: number | null; type_sanction?: string | null; membre?: { nom?: string; prenom?: string } | null }) => sum + (s.montant_amende || 0), 0) || 0;
+  const totalAides = aidesReunion?.reduce((sum: number, a: { montant?: number | null; type_aide?: string | null; membre?: { nom?: string; prenom?: string } | null }) => sum + (a.montant || 0), 0) || 0;
+  const totalBeneficiaires = beneficiairesReunion?.reduce((sum: number, b: { montant_final?: number | null; membre?: { nom?: string; prenom?: string } | null }) => sum + (b.montant_final || 0), 0) || 0;
 
   if (!reunion) {
     return null;
@@ -550,7 +550,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2">
-                    {presences?.filter((p: any) => p.statut_presence === 'present').map((presence: any, index: number) => (
+                    {presences?.filter((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => p.statut_presence === 'present').map((presence: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }, index: number) => (
                       <div
                         key={index}
                         className="flex items-center gap-2 p-2 rounded-lg bg-muted text-sm"
@@ -579,7 +579,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-2">
-                    {presences?.filter((p: any) => p.statut_presence === 'absent_non_excuse').map((presence: any, index: number) => (
+                    {presences?.filter((p: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }) => p.statut_presence === 'absent_non_excuse').map((presence: { statut_presence?: string | null; heure_arrivee?: string | null; observations?: string | null; membres?: { nom?: string; prenom?: string } | null }, index: number) => (
                       <div
                         key={index}
                         className="flex items-center gap-2 p-2 rounded-lg bg-destructive/10 text-sm"
@@ -612,7 +612,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                   </p>
                 ) : (
                   <div className="space-y-4">
-                    {comptesRendus?.map((cr: any) => (
+                    {comptesRendus?.map((cr: { id?: string; titre?: string | null; description?: string | null; numero_ordre?: number | null; decisions?: string | null }) => (
                       <div
                         key={cr.id}
                         className="border-l-4 border-primary pl-4 py-2 space-y-2"
@@ -660,7 +660,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {cotisationsReunion?.map((c: any) => (
+                    {cotisationsReunion?.map((c: { montant?: number | null; membre?: { nom?: string; prenom?: string } | null; type?: { nom?: string } | null }) => (
                       <div key={c.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
                         <span>{c.membre?.prenom} {c.membre?.nom}</span>
                         <div className="flex items-center gap-2">
@@ -686,7 +686,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {epargnesReunion?.map((e: any) => (
+                    {epargnesReunion?.map((e: { montant?: number | null; membre?: { nom?: string; prenom?: string } | null }) => (
                       <div key={e.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
                         <span>{e.membre?.prenom} {e.membre?.nom}</span>
                         <span className="font-medium">{e.montant?.toLocaleString()} FCFA</span>
@@ -709,7 +709,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {sanctionsReunion?.map((s: any) => (
+                    {sanctionsReunion?.map((s: { montant_amende?: number | null; type_sanction?: string | null; membre?: { nom?: string; prenom?: string } | null }) => (
                       <div key={s.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
                         <div className="flex items-center gap-2">
                           <span>{s.membre?.prenom} {s.membre?.nom}</span>
@@ -740,7 +740,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {aidesReunion?.map((a: any) => (
+                    {aidesReunion?.map((a: { montant?: number | null; type_aide?: string | null; membre?: { nom?: string; prenom?: string } | null }) => (
                       <div key={a.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
                         <div className="flex items-center gap-2">
                           <span>{a.beneficiaire?.prenom} {a.beneficiaire?.nom}</span>
@@ -768,7 +768,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {beneficiairesReunion?.map((b: any) => (
+                    {beneficiairesReunion?.map((b: { montant_final?: number | null; membre?: { nom?: string; prenom?: string } | null }) => (
                       <div key={b.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
                         <div className="flex items-center gap-2">
                           <span>{b.membres?.prenom} {b.membres?.nom}</span>

@@ -27,7 +27,7 @@ export const useSiteHero = () => {
         )
       );
 
-      const { data, error } = (await Promise.race([queryPromise, timeoutPromise])) as any;
+      const { data, error } = (await Promise.race([queryPromise, timeoutPromise])) as { data: unknown; error: { message?: string } | null };
 
       if (error) {
         // Ne bloque pas le rendu : on renvoie null pour basculer sur les valeurs par défaut.
@@ -47,11 +47,11 @@ export const useUpdateHero = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_hero")
-        .update(data)
-        .eq("id", data.id);
+        .update(data as never)
+        .eq("id", data.id as string);
 
       if (error) throw error;
     },
@@ -88,11 +88,11 @@ export const useUpdateAbout = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_about")
-        .update(data)
-        .eq("id", data.id);
+        .update(data as never)
+        .eq("id", data.id as string);
 
       if (error) throw error;
     },
@@ -129,8 +129,8 @@ export const useCreateActivity = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
-      const { error } = await supabase.from("site_activities").insert(data);
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
+      const { error } = await supabase.from("site_activities").insert(data as never);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -147,11 +147,11 @@ export const useUpdateActivity = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_activities")
-        .update(data)
-        .eq("id", data.id);
+        .update(data as never)
+        .eq("id", data.id as string);
 
       if (error) throw error;
     },
@@ -210,8 +210,8 @@ export const useCreateEvent = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
-      const { error } = await supabase.from("site_events").insert(data);
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
+      const { error } = await supabase.from("site_events").insert(data as never);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -228,11 +228,11 @@ export const useUpdateEvent = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_events")
-        .update(data)
-        .eq("id", data.id);
+        .update(data as never)
+        .eq("id", data.id as string);
 
       if (error) throw error;
     },
@@ -291,8 +291,8 @@ export const useCreateGalleryItem = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
-      const { error } = await supabase.from("site_gallery").insert(data);
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
+      const { error } = await supabase.from("site_gallery").insert(data as never);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -309,11 +309,11 @@ export const useUpdateGalleryItem = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_gallery")
-        .update(data)
-        .eq("id", data.id);
+        .update(data as never)
+        .eq("id", data.id as string);
 
       if (error) throw error;
     },
@@ -372,8 +372,8 @@ export const useCreatePartner = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
-      const { error } = await supabase.from("site_partners").insert(data);
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
+      const { error } = await supabase.from("site_partners").insert(data as never);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -390,11 +390,11 @@ export const useUpdatePartner = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_partners")
-        .update(data)
-        .eq("id", data.id);
+        .update(data as never)
+        .eq("id", data.id as string);
 
       if (error) throw error;
     },
@@ -450,11 +450,11 @@ export const useUpdateConfig = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_config")
-        .update({ valeur: data.valeur })
-        .eq("cle", data.cle);
+        .update({ valeur: data.valeur as never })
+        .eq("cle", data.cle as string);
 
       if (error) throw error;
     },
@@ -492,10 +492,10 @@ export const useCreateHeroImage = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_hero_images")
-        .insert(data);
+        .insert(data as never);
 
       if (error) throw error;
     },
@@ -513,11 +513,11 @@ export const useUpdateHeroImage = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_hero_images")
-        .update(data)
-        .eq("id", data.id);
+        .update(data as never)
+        .eq("id", data.id as string);
 
       if (error) throw error;
     },
@@ -574,10 +574,10 @@ export const useCreateGalleryAlbum = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_gallery_albums")
-        .insert(data);
+        .insert(data as never);
 
       if (error) throw error;
     },
@@ -595,11 +595,11 @@ export const useUpdateGalleryAlbum = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_gallery_albums")
-        .update(data)
-        .eq("id", data.id);
+        .update(data as never)
+        .eq("id", data.id as string);
 
       if (error) throw error;
     },
@@ -678,11 +678,11 @@ export const useUpdateEventsCarouselConfig = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: Record<string, unknown> & { id?: string; cle?: string }) => {
       const { error } = await supabase
         .from("site_events_carousel_config")
-        .update(data)
-        .eq("id", data.id);
+        .update(data as never)
+        .eq("id", data.id as string);
 
       if (error) throw error;
     },
