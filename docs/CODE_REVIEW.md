@@ -121,7 +121,7 @@ Le Lot E est confirmé 100 % stable.
 | Lot | Périmètre | Effort | Priorité |
 |-----|-----------|--------|----------|
 | **G1** ✅ | Validation zod sur 7 formulaires `pages/admin/site/*` — **livré** (schémas centralisés dans `src/lib/validation/site-schemas.ts`) | 1 h | 🔴 Haute |
-| **G2** | Découpage des 5 plus gros fichiers (>700 lignes) en sous-composants | 4 h | 🟠 Haute |
+| **G2** ✅ | Découpage des 5 plus gros fichiers (>700 lignes) en sous-composants — **livré** | 4 h | 🟠 Haute |
 | **G3** | Typage strict de `CompteRenduViewer`, `PretsAdmin`, `useSiteContent` (suppression `any`) | 3 h | 🟠 Moyenne |
 | **G4** ✅ | Audit cleanup realtime (5 canaux ok, noms suffixés `crypto.randomUUID()`) + `.map(async)` déjà encadrés `Promise.all` — **livré** | 1 h | 🟠 Moyenne |
 | **G5** | Remplacer `.select('*')` par colonnes explicites sur top 10 fichiers | 2 h | 🟡 Basse |
@@ -185,8 +185,14 @@ Méthode : types nommés (`PresenceRow`, `CotisationRow`, …) avec index signat
 
 10 fichiers prioritaires : `useRoles`, `usePersonalData`, `useE2DPlayerStats`, `useLoanRequests`, `useSiteContent`, `EventDetail`, `CotisationsCumulAnnuel`, `SportStatistiquesGlobales`, `GestionPresences`, `PretsAdmin`. Aucune modification de filtre / RLS / logique. Typecheck OK. 81 fichiers secondaires conservent `*` (itération ultérieure).
 
-## Lot G2 — Découpe composants > 700 lignes 🟡 PARTIEL
+## Lot G2 — Découpe composants > 700 lignes ✅ TERMINÉ
 
-- `CompteRenduViewer.tsx` : 880 → **561** lignes. Générateur PDF (~300 l.) extrait dans `src/lib/compte-rendu-pdf.ts`.
-- `PretsAdmin.tsx` : 977 → **944** lignes. Bloc « reconductions en attente » extrait dans `src/pages/admin/_components/ReconductionsAttenteList.tsx`.
-- 3 fichiers restants > 700 l. (`PaymentConfigAdmin`, `RapportsAdmin`, `Epargnes`) à traiter dans une itération dédiée.
+| Fichier | Avant | Après | Extractions |
+|---------|-------|-------|-------------|
+| `src/components/CompteRenduViewer.tsx` | 880 | **561** | `src/lib/compte-rendu-pdf.ts` |
+| `src/pages/admin/PretsAdmin.tsx` | 977 | **685** | `_components/ReconductionsAttenteList.tsx`, `_components/PretsStatsCards.tsx`, `_components/PretRow.tsx` |
+| `src/pages/admin/PaymentConfigAdmin.tsx` | 1037 | **473** | `_components/PaymentConfigTabs.tsx` (6 onglets) |
+| `src/pages/admin/RapportsAdmin.tsx` | 877 | **429** | `src/lib/rapports-export.ts`, `_components/RapportsTabsContent.tsx` |
+| `src/pages/Epargnes.tsx` | 762 | **531** | `pages/_components/EpargnesFilters.tsx`, `pages/_components/EpargnesList.tsx` |
+
+Tous les fichiers > 700 lignes du périmètre initial sont passés sous la barre. Typecheck OK.
