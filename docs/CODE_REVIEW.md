@@ -180,3 +180,13 @@ Validez les lots G à lancer (et leur ordre). Recommandation : **G1 → G4 → G
 | `src/components/CompteRenduViewer.tsx` | 36 |
 
 Méthode : types nommés (`PresenceRow`, `CotisationRow`, …) avec index signature `[key: string]: unknown`, casts via `unknown` aux frontières Supabase. Typecheck `tsc --noEmit` : 0 erreur.
+
+## Lot G5 — `.select('*')` → colonnes explicites ✅ TERMINÉ (top 10)
+
+10 fichiers prioritaires : `useRoles`, `usePersonalData`, `useE2DPlayerStats`, `useLoanRequests`, `useSiteContent`, `EventDetail`, `CotisationsCumulAnnuel`, `SportStatistiquesGlobales`, `GestionPresences`, `PretsAdmin`. Aucune modification de filtre / RLS / logique. Typecheck OK. 81 fichiers secondaires conservent `*` (itération ultérieure).
+
+## Lot G2 — Découpe composants > 700 lignes 🟡 PARTIEL
+
+- `CompteRenduViewer.tsx` : 880 → **561** lignes. Générateur PDF (~300 l.) extrait dans `src/lib/compte-rendu-pdf.ts`.
+- `PretsAdmin.tsx` : 977 → **944** lignes. Bloc « reconductions en attente » extrait dans `src/pages/admin/_components/ReconductionsAttenteList.tsx`.
+- 3 fichiers restants > 700 l. (`PaymentConfigAdmin`, `RapportsAdmin`, `Epargnes`) à traiter dans une itération dédiée.
