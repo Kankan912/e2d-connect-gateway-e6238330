@@ -187,6 +187,7 @@ export default function ActivitiesAdmin() {
                       <Button
                         size="sm"
                         variant="ghost"
+                        aria-label={`Modifier l'activité ${activity.titre}`}
                         onClick={() => handleEdit(activity)}
                       >
                         <Pencil className="w-4 h-4" />
@@ -194,6 +195,7 @@ export default function ActivitiesAdmin() {
                       <Button
                         size="sm"
                         variant="ghost"
+                        aria-label={`Supprimer l'activité ${activity.titre}`}
                         onClick={() => handleDelete(activity.id)}
                       >
                         <Trash2 className="w-4 h-4" />

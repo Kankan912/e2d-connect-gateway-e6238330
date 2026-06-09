@@ -171,6 +171,7 @@ export default function HeroAdmin() {
                       <Button 
                         size="icon" 
                         variant="secondary" 
+                        aria-label={`Déplacer l'image ${index + 1} vers le haut`}
                         className="h-8 w-8"
                         disabled={index === 0}
                         onClick={() => handleMoveImage(img.id, 'up')}
@@ -180,6 +181,7 @@ export default function HeroAdmin() {
                       <Button 
                         size="icon" 
                         variant="secondary"
+                        aria-label={`Déplacer l'image ${index + 1} vers le bas`}
                         className="h-8 w-8"
                         disabled={index === (heroImages?.length || 0) - 1}
                         onClick={() => handleMoveImage(img.id, 'down')}
@@ -189,6 +191,7 @@ export default function HeroAdmin() {
                       <Button 
                         size="icon" 
                         variant="destructive"
+                        aria-label={`Supprimer l'image ${index + 1}`}
                         className="h-8 w-8"
                         onClick={() => handleDeleteImage(img.id)}
                       >

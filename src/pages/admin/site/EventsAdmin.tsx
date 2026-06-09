@@ -290,6 +290,7 @@ export default function EventsAdmin() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            aria-label={`Modifier l'événement ${event.titre}`}
                             onClick={() => handleEdit(event)}
                           >
                             <Pencil className="w-4 h-4" />
@@ -297,6 +298,7 @@ export default function EventsAdmin() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            aria-label={`Supprimer l'événement ${event.titre}`}
                             onClick={() => handleDelete(event.id)}
                           >
                             <Trash2 className="w-4 h-4" />

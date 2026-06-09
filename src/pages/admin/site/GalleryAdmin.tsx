@@ -361,10 +361,10 @@ export default function GalleryAdmin() {
                           )}
                         </div>
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                          <Button size="sm" variant="secondary" onClick={() => handleEdit(item)}>
+                          <Button size="sm" variant="secondary" aria-label="Modifier cet élément" onClick={() => handleEdit(item)}>
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button size="sm" variant="secondary" onClick={() => handleDelete(item.id)}>
+                          <Button size="sm" variant="secondary" aria-label="Supprimer cet élément" onClick={() => handleDelete(item.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -397,10 +397,10 @@ export default function GalleryAdmin() {
                       <Video className="w-12 h-12 text-muted-foreground" />
                     </div>
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => handleEdit(item)}>
+                      <Button size="sm" variant="secondary" aria-label="Modifier cet élément" onClick={() => handleEdit(item)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => handleDelete(item.id)}>
+                      <Button size="sm" variant="secondary" aria-label="Supprimer cet élément" onClick={() => handleDelete(item.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
