@@ -16,7 +16,7 @@ export const useSiteHero = () => {
       // (extension, proxy, panne réseau intermittente).
       const queryPromise = supabase
         .from("site_hero")
-        .select("*")
+        .select("actif, badge_text, bouton_1_lien, bouton_1_texte, bouton_2_lien, bouton_2_texte, carousel_auto_play, carousel_interval, created_at, id, image_url, media_source, sous_titre, stat_1_label, stat_1_nombre, stat_2_label, stat_2_nombre, stat_3_label, stat_3_nombre, titre, updated_at")
         .eq("actif", true)
         .maybeSingle();
 
@@ -72,7 +72,7 @@ export const useSiteAbout = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("site_about")
-        .select("*")
+        .select("actif, created_at, histoire_contenu, histoire_titre, id, sous_titre, titre, updated_at, valeurs")
         .eq("actif", true)
         .single();
 
@@ -113,7 +113,7 @@ export const useSiteActivities = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("site_activities")
-        .select("*")
+        .select("actif, created_at, description, features, icon, id, ordre, titre, updated_at")
         .eq("actif", true)
         .order("ordre", { ascending: true });
 
@@ -194,7 +194,7 @@ export const useSiteEvents = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("site_events")
-        .select("*")
+        .select("actif, album_id, auto_sync, created_at, date, description, heure, id, image_url, lieu, match_id, match_type, media_source, ordre, titre, type, updated_at")
         .eq("actif", true)
         .order("date", { ascending: false });
 
@@ -275,7 +275,7 @@ export const useSiteGallery = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("site_gallery")
-        .select("*")
+        .select("actif, album_id, categorie, created_at, id, image_url, media_source, ordre, titre, updated_at, video_url")
         .eq("actif", true)
         .order("ordre", { ascending: true });
 
@@ -356,7 +356,7 @@ export const useSitePartners = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("site_partners")
-        .select("*")
+        .select("actif, created_at, description, id, logo_url, media_source, nom, ordre, site_web, updated_at")
         .eq("actif", true)
         .order("ordre", { ascending: true });
 
@@ -437,7 +437,7 @@ export const useSiteConfig = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("site_config")
-        .select("*")
+        .select("categorie, cle, created_at, description, id, type, updated_at, valeur")
         .order("categorie", { ascending: true });
 
       if (error) throw error;
@@ -476,7 +476,7 @@ export const useSiteHeroImages = (heroId?: string) => {
       if (!heroId) return [];
       const { data, error } = await supabase
         .from("site_hero_images")
-        .select("*")
+        .select("actif, created_at, hero_id, id, image_url, ordre, updated_at")
         .eq("hero_id", heroId)
         .eq("actif", true)
         .order("ordre", { ascending: true });
@@ -560,7 +560,7 @@ export const useSiteGalleryAlbums = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("site_gallery_albums")
-        .select("*")
+        .select("actif, cover_image_url, created_at, description, id, ordre, titre, updated_at")
         .eq("actif", true)
         .order("ordre", { ascending: true });
 
@@ -645,7 +645,7 @@ export const useSiteGalleryByAlbum = (albumId?: string) => {
       if (!albumId) return [];
       const { data, error } = await supabase
         .from("site_gallery")
-        .select("*")
+        .select("actif, album_id, categorie, created_at, id, image_url, media_source, ordre, titre, updated_at, video_url")
         .eq("album_id", albumId)
         .eq("actif", true)
         .order("ordre", { ascending: true });
@@ -664,7 +664,7 @@ export const useSiteEventsCarouselConfig = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("site_events_carousel_config")
-        .select("*")
+        .select("actif, auto_play, created_at, id, interval, show_arrows, show_indicators, updated_at")
         .eq("actif", true)
         .single();
 
