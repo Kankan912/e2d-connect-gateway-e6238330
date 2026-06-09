@@ -190,6 +190,7 @@ export default function PartnersAdmin() {
                       <Button
                         size="sm"
                         variant="ghost"
+                        aria-label={`Modifier le partenaire ${partner.nom}`}
                         onClick={() => handleEdit(partner)}
                       >
                         <Pencil className="w-4 h-4" />
@@ -197,6 +198,7 @@ export default function PartnersAdmin() {
                       <Button
                         size="sm"
                         variant="ghost"
+                        aria-label={`Supprimer le partenaire ${partner.nom}`}
                         onClick={() => handleDelete(partner.id)}
                       >
                         <Trash2 className="w-4 h-4" />

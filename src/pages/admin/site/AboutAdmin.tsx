@@ -195,6 +195,7 @@ const AboutAdmin = () => {
                 <Button
                   variant="ghost"
                   size="icon"
+                  aria-label="Supprimer cette valeur"
                   className="absolute top-2 right-2 h-8 w-8 text-destructive"
                   onClick={() => removeValeur(index)}
                 >

@@ -282,6 +282,7 @@ const MessagesAdmin = () => {
                           <Button
                             variant="ghost"
                             size="icon"
+                            aria-label={`Voir le message de ${message.nom}`}
                             onClick={() => handleViewMessage(message)}
                           >
                             <Eye className="h-4 w-4" />
@@ -290,6 +291,7 @@ const MessagesAdmin = () => {
                             <Button
                               variant="ghost"
                               size="icon"
+                              aria-label={`Marquer comme traité le message de ${message.nom}`}
                               onClick={() => updateMessage.mutate({ id: message.id, statut: "traite" })}
                             >
                               <CheckCircle className="h-4 w-4 text-green-500" />
@@ -297,7 +299,7 @@ const MessagesAdmin = () => {
                           )}
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="icon" aria-label={`Supprimer le message de ${message.nom}`}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </AlertDialogTrigger>
