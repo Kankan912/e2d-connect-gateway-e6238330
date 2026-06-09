@@ -1,4 +1,4 @@
-import { DollarSign, Plus, Edit, Trash2, CreditCard, FileText, RefreshCw, Search, LayoutDashboard, CheckCircle, AlertTriangle, Clock, Banknote, Eye, Settings, Download } from "lucide-react";
+import { DollarSign, Plus, FileText, Search, LayoutDashboard, CheckCircle, AlertTriangle, Clock } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/hooks/usePermissions";
