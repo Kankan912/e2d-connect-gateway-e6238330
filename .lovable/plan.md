@@ -1,51 +1,61 @@
-# Plan : Finaliser les lots restants (G2, G3, G5)
+# Plan d'amélioration — Statut final
 
-Trois lots restent ouverts dans `.lovable/plan.md`. Objectif : les terminer en séquence sans toucher au métier.
+Dernière vérification : tous les lots scannés via `rg` / `wc -l` sur l'arborescence `src/`.
 
-## Lot G3 — Supprimer les `any` résiduels (le plus rapide, on commence)
+## Synthèse
 
-**Cible :** 3 fichiers identifiés dans la revue.
-- `src/components/admin/CompteRenduViewer.tsx`
-- `src/pages/admin/PretsAdmin.tsx`
-- `src/hooks/useSiteContent.ts`
+| Lot | Objet | Statut |
+|-----|-------|--------|
+| **G1** | Validation Zod sur les formulaires admin | ✅ TERMINÉ |
+| **G2** | Découpe des composants > 700 lignes | ⏳ EN ATTENTE |
+| **G3** | Suppression des `any` ciblés | ✅ TERMINÉ |
+| **G4** | Audit Realtime + `.map(async)` | ✅ TERMINÉ |
+| **G5** | `.select('*')` → colonnes explicites | ⏳ EN ATTENTE |
+| **G6** | `aria-label` sur boutons icônes | ✅ TERMINÉ |
+| **G7** | `catch (error: unknown)` standardisé | ✅ TERMINÉ |
 
-**Méthode :**
-- Lire chaque fichier, recenser les `any` (params, états, retours).
-- Remplacer par des types issus de `src/types/supabase-joins.ts` ou des interfaces locales `interface XxxRow { ... }`.
-- Pour les payloads Realtime, utiliser le cast documenté (mémoire `architecture/type-safety/residual-technical-debt`).
+## Détails lots terminés
 
-**Vérif :** `rg -n ": any|<any>|as any" <fichiers>` → 0 hors commentaires.
+- **G1** — 7 formulaires admin (Hero, About, Activities, Events, Gallery, Partners, Messages) passent par un schéma Zod avec `react-hook-form`.
+- **G3** — 66 `any` retirés sur `src/hooks/useSiteContent.ts` (17), `src/pages/admin/PretsAdmin.tsx` (13), `src/components/CompteRenduViewer.tsx` (36). Types nommés (`PresenceRow`, `CotisationRow`, …) + casts via `unknown` aux frontières Supabase. `tsc --noEmit` : 0 erreur.
+- **G4** — Doublons d'abonnements Realtime supprimés ; `Array.prototype.map(async …)` remplacé par `Promise.all(map(async …))` là où c'était requis.
+- **G6** — `aria-label` ajouté sur tous les boutons `size="icon"` / `size="sm"` sans texte.
+- **G7** — Tous les `catch (e|err|error)` typés `unknown`, accès message via `getErrorMessage()`, erreurs Edge Functions extraites via `data?.error`.
 
-## Lot G5 — `.select('*')` → colonnes explicites (top 10)
+## Lots restants
 
-**Cible :** repérer via `rg -n "\.select\('\*'\)" src` puis prioriser les 10 fichiers les plus chauds (hooks Caisse, Cotisations, Loans, Reunions, Sport, Donations, Adhesions, Members, Notifications, Site).
+### G2 — Découpe des composants > 700 lignes
 
-**Méthode :**
-- Pour chaque requête, lister les colonnes réellement consommées par le composant/hook.
-- Remplacer `select('*')` par `select('col1, col2, ...')` en conservant les jointures `relation(*)` quand toutes les colonnes de la relation sont utilisées (sinon les expliciter aussi).
-- Aucune modif de filtre / RLS / logique.
+5 fichiers cibles (relevé `find src -name '*.tsx' | xargs wc -l | sort -rn`) :
 
-**Vérif :** build OK, `bunx vitest run`, et navigation manuelle rapide via preview sur 2-3 écrans (Caisse, Prêts, Cotisations).
+| Fichier | Lignes |
+|---------|--------|
+| `src/pages/admin/PaymentConfigAdmin.tsx` | 1037 |
+| `src/pages/admin/PretsAdmin.tsx` | 977 |
+| `src/components/CompteRenduViewer.tsx` | 880 |
+| `src/pages/admin/RapportsAdmin.tsx` | 877 |
+| `src/pages/Epargnes.tsx` | 762 |
 
-## Lot G2 — Découper les 5 composants > 700 lignes
+Méthode prévue : extraire les sous-blocs dans `./_components/` colocalisés, sortir les handlers volumineux en hooks, conserver l'API publique (export default, props). Cible : < 400 lignes par fichier racine.
 
-**Cible :** identifier via `find src -name '*.tsx' | xargs wc -l | sort -rn | head -10` puis retenir les 5 dépassant 700 lignes (probablement parmi `PretsAdmin`, `CotisationsAdmin`, `MembersAdmin`, `ReunionDetail`, `MatchDetail`).
+### G5 — `.select('*')` → colonnes explicites
 
-**Méthode (par fichier) :**
-- Extraire les sous-blocs en composants dans un sous-dossier `components/` colocalisé (ex. `src/pages/admin/prets/_components/PretRow.tsx`).
-- Extraire les handlers volumineux en hooks `useXxx.ts` quand pertinent.
-- Conserver la même API publique (props, exports default).
-- Aucun changement de comportement visible.
+91 fichiers concernés au total. Top 10 prioritaires (relevé `rg -n "\.select\('\*'\)" src --count-matches`) :
 
-**Vérif :** preview de chaque page refactorée, `bunx vitest run`, recompte des lignes (< 400 idéalement).
+| Fichier | Occurrences |
+|---------|-------------|
+| `src/hooks/useSiteContent.ts` | 11 |
+| `src/pages/EventDetail.tsx` | 5 |
+| `src/components/CotisationsCumulAnnuel.tsx` | 5 |
+| `src/pages/GestionPresences.tsx` | 4 |
+| `src/hooks/useE2DPlayerStats.ts` | 4 |
+| `src/components/SportStatistiquesGlobales.tsx` | 4 |
+| `src/pages/admin/PretsAdmin.tsx` | 3 |
+| `src/hooks/useRoles.ts` | 3 |
+| `src/hooks/usePersonalData.ts` | 3 |
+| `src/hooks/useLoanRequests.ts` | 3 |
 
-## Ordre & livrables
-
-1. G3 (≈ 30 min) → commit logique
-2. G5 (≈ 1 h)   → commit logique
-3. G2 (≈ 2 h)   → commit logique
-
-Mettre à jour `.lovable/plan.md` et `docs/CODE_REVIEW.md` au fil de l'eau (marquer ✅ TERMINÉ pour chaque lot).
+Méthode prévue : pour chaque requête, expliciter les colonnes réellement consommées par le composant/hook ; conserver `relation(*)` si toutes les colonnes de la jointure sont utilisées. Aucune modification de filtre / RLS / logique métier.
 
 ## Hors périmètre
 
@@ -53,7 +63,3 @@ Mettre à jour `.lovable/plan.md` et `docs/CODE_REVIEW.md` au fil de l'eau (marq
 - Aucun changement UI/UX.
 - Aucune nouvelle dépendance.
 - Aucun ajout de tests (couverture inchangée).
-
-## Question
-
-Confirmes-tu cet ordre (G3 → G5 → G2) et le périmètre, ou veux-tu prioriser autrement (ex. G2 d'abord car plus visible) ?
