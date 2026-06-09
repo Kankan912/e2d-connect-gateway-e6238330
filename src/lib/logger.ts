@@ -123,7 +123,7 @@ class Logger {
         user_id: (auditLog.userId as string) || null,
         new_data: JSON.parse(JSON.stringify(auditLog)),
       }]);
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('[AUDIT] Failed to persist audit log:', e);
     }
   }

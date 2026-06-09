@@ -65,7 +65,7 @@ export async function deleteFile(
     }
 
     return true;
-  } catch (err) {
+  } catch (err: unknown) {
     logger.error("Erreur lors de la suppression:", err);
     return false;
   }

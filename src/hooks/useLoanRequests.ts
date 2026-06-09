@@ -164,7 +164,7 @@ async function notifyEvent(payload: {
 }) {
   try {
     await supabase.functions.invoke("send-loan-notification", { body: payload });
-  } catch (e) {
+  } catch (e: unknown) {
     logger.warn("Notification email échouée (non bloquant):", e);
   }
 }

@@ -109,7 +109,7 @@ export default function E2DMatchForm({ open, onOpenChange, onSuccess }: E2DMatch
       setThumbnailPreview(null);
       onOpenChange(false);
       onSuccess();
-    } catch (err) {
+    } catch (err: unknown) {
       toast({ title: "Erreur", description: "Erreur lors de la création du match", variant: "destructive" });
     } finally {
       setUploading(false);

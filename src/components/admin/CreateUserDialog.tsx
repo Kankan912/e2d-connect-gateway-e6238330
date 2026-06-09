@@ -187,7 +187,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         password: resp.tempPassword || formData.password,
       });
       setStep("created");
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error("[CreateUserDialog] create error:", err);
       toast.error("Erreur réseau, veuillez réessayer");
     } finally {
@@ -212,7 +212,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         return;
       }
       toast.success(`Identifiants envoyés à ${created.email}`);
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error("[CreateUserDialog] send error:", err);
       toast.error("Erreur réseau lors de l'envoi");
     } finally {
