@@ -19,6 +19,8 @@ import { formatFCFA } from "@/lib/utils";
 import { calculerResumePret } from "@/lib/pretCalculsService";
 import { exportPretPDF } from "@/lib/pret-pdf-export";
 import type { PretAdminWithJoins } from "@/types/supabase-joins";
+import { ReconductionsAttenteList, type ReconductionAttente } from "./_components/ReconductionsAttenteList";
+
 import {
   AlertDialog,
   AlertDialogAction,
