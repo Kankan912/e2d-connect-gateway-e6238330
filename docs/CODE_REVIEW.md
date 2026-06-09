@@ -125,7 +125,7 @@ Le Lot E est confirmé 100 % stable.
 | **G3** | Typage strict de `CompteRenduViewer`, `PretsAdmin`, `useSiteContent` (suppression `any`) | 3 h | 🟠 Moyenne |
 | **G4** ✅ | Audit cleanup realtime (5 canaux ok, noms suffixés `crypto.randomUUID()`) + `.map(async)` déjà encadrés `Promise.all` — **livré** | 1 h | 🟠 Moyenne |
 | **G5** | Remplacer `.select('*')` par colonnes explicites sur top 10 fichiers | 2 h | 🟡 Basse |
-| **G6** | Passe accessibilité : `aria-label` sur boutons icônes admin | 1 h | 🟡 Basse |
+| **G6** ✅ | Passe accessibilité : `aria-label` ajoutés sur les boutons icon-only des 7 pages `admin/site/*` (Activities, Partners, Events, About, Hero, Messages, Gallery) — **livré** | 1 h | 🟡 Basse |
 
 **Total estimé** : ~12 h de corrections.
 

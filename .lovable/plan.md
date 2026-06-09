@@ -41,3 +41,19 @@ Extension possible (si temps) : `src/pages/admin/UtilisateursAdmin.tsx`, `Membre
 - **G2** — Refactor des `any` résiduels dans les hooks
 - **G3** — Standardisation des messages d'erreur (`catch (error: unknown)` + `getErrorMessage`)
 - **G5** — Extraction composants > 300 lignes
+
+---
+
+## ✅ Lot G6 — TERMINÉ
+
+**Fichiers modifiés :**
+- `src/pages/admin/site/ActivitiesAdmin.tsx` — aria-label Modifier/Supprimer (titre)
+- `src/pages/admin/site/PartnersAdmin.tsx` — aria-label Modifier/Supprimer (nom)
+- `src/pages/admin/site/EventsAdmin.tsx` — aria-label Modifier/Supprimer (titre)
+- `src/pages/admin/site/AboutAdmin.tsx` — aria-label Supprimer valeur
+- `src/pages/admin/site/HeroAdmin.tsx` — aria-label Haut/Bas/Supprimer (index)
+- `src/pages/admin/site/MessagesAdmin.tsx` — aria-label Voir/Traité/Supprimer (nom)
+- `src/pages/admin/site/GalleryAdmin.tsx` — aria-label Modifier/Supprimer (2 emplacements)
+- `docs/CODE_REVIEW.md` — G6 ✅ TERMINÉ
+
+**Notes :** `ConfigAdmin.tsx` n'a pas de bouton icon-only (formulaire pur). `ImagesAdmin.tsx` utilise des boutons avec texte visible. Aucune régression attendue.
