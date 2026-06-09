@@ -10,8 +10,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import jsPDF from 'jspdf';
-import { addE2DLogo, addE2DFooter } from '@/lib/pdf-utils';
+import {
+  generateCompteRenduPDF,
+  type PresenceRow,
+  type CotisationRow,
+  type EpargneRow,
+  type SanctionRow,
+  type AideRow,
+  type BeneficiaireRow,
+  type CRRow,
+} from '@/lib/compte-rendu-pdf';
 
 import { logger } from "@/lib/logger";
 interface Reunion {
@@ -22,73 +30,13 @@ interface Reunion {
   lieu_description?: string;
 }
 
-
-type PresenceRow = {
-  id?: string;
-  statut_presence?: string | null;
-  heure_arrivee?: string | null;
-  observations?: string | null;
-  membres?: { nom?: string; prenom?: string } | null;
-  [key: string]: unknown;
-};
-type CotisationRow = {
-  id?: string;
-  montant?: number | null;
-  membre?: { nom?: string; prenom?: string } | null;
-  type?: { nom?: string } | null;
-  [key: string]: unknown;
-};
-type EpargneRow = {
-  id?: string;
-  montant?: number | null;
-  membre?: { nom?: string; prenom?: string } | null;
-  [key: string]: unknown;
-};
-type SanctionRow = {
-  id?: string;
-  montant_amende?: number | null;
-  type_sanction?: string | null;
-  motif?: string | null;
-  statut?: string | null;
-  membre?: { nom?: string; prenom?: string } | null;
-  [key: string]: unknown;
-};
-type AideRow = {
-  id?: string;
-  montant?: number | null;
-  type_aide?: string | null;
-  type?: { nom?: string } | null;
-  beneficiaire?: { nom?: string; prenom?: string } | null;
-  membre?: { nom?: string; prenom?: string } | null;
-  [key: string]: unknown;
-};
-type BeneficiaireRow = {
-  id?: string;
-  montant_final?: number | null;
-  montant_brut?: number | null;
-  deductions?: unknown;
-  statut?: string | null;
-  membres?: { nom?: string; prenom?: string } | null;
-  membre?: { nom?: string; prenom?: string } | null;
-  [key: string]: unknown;
-};
-type CRRow = {
-  id?: string;
-  sujet?: string | null;
-  titre?: string | null;
-  description?: string | null;
-  resolution?: string | null;
-  numero_ordre?: number | null;
-  decisions?: string | null;
-  [key: string]: unknown;
-};
-
 interface CompteRenduViewerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   reunion: Reunion | null;
   onEdit?: () => void;
 }
+
 
 export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit }: CompteRenduViewerProps) {
   const [downloading, setDownloading] = useState(false);
