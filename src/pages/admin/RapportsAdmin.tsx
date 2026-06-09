@@ -18,13 +18,10 @@ import {
   FileSpreadsheet, FileText, Download, TrendingUp, TrendingDown, 
   DollarSign, HandCoins, AlertTriangle, PiggyBank, Wallet, Calendar
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval } from "date-fns";
-import { fr } from "date-fns/locale";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
-import { addE2DHeader, addE2DFooter } from "@/lib/pdf-utils";
+import { format, parseISO, isWithinInterval } from "date-fns";
+import { exportRapportPDF, exportRapportExcel } from "@/lib/rapports-export";
 import type { CotisationWithJoins, PretWithJoins, SanctionWithJoins, EpargneWithJoins } from "@/types/supabase-joins";
+
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
