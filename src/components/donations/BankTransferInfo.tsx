@@ -29,7 +29,7 @@ const BankTransferInfo = ({ config, donorEmail, onNotificationSent }: BankTransf
         description: "L'IBAN a été copié dans le presse-papier",
       });
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
+    } catch (err: unknown) {
       toast({
         title: "Erreur",
         description: "Impossible de copier l'IBAN",

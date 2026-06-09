@@ -1,59 +1,89 @@
-## Lot G6 — Accessibilité : `aria-label` sur boutons icon-only (admin)
+## Lot G3 — Standardisation de la gestion d'erreurs (`catch (error: unknown)`)
 
 ### Objectif
-Ajouter `aria-label` descriptifs sur tous les boutons "icon-only" (Pencil, Trash2, Eye, Plus seul, ExternalLink, X) des pages admin afin de respecter WCAG 2.5.2 / 4.1.2 et améliorer la lecture par lecteurs d'écran.
+Uniformiser tous les blocs `catch` du frontend pour respecter la règle Core mémoire :
+> Use `catch (error: unknown)`. Extract Edge Function errors via `data?.error`.
 
-### Périmètre — fichiers ciblés
-Pages `src/pages/admin/site/*` :
-- `AboutAdmin.tsx`
-- `ActivitiesAdmin.tsx` (Pencil/Trash2 lignes ~178-194)
-- `ConfigAdmin.tsx`
-- `EventsAdmin.tsx`
-- `GalleryAdmin.tsx`
-- `HeroAdmin.tsx`
-- `PartnersAdmin.tsx` (Pencil/Trash2 lignes ~196-212)
-- `ImagesAdmin.tsx`
-- `MessagesAdmin.tsx`
+Éliminer les `catch (e)`, `catch (err)`, `catch (error)` sans typage, et remplacer les accès `error.message` non sûrs par un utilitaire `getErrorMessage(error)` centralisé.
 
-Extension possible (si temps) : `src/pages/admin/UtilisateursAdmin.tsx`, `MembresAdmin.tsx`, `PretsAdmin.tsx` — à confirmer.
+### Périmètre
+**Création** : `src/lib/errors.ts` contient déjà des helpers — vérifier et ajouter si besoin :
+- `getErrorMessage(error: unknown): string` — gère `Error`, `{ message }`, `string`, fallback "Erreur inconnue"
+- `getEdgeFunctionError(data: unknown, fallback?: string): string | null` — extrait `data?.error`
 
-### Méthode
-1. `rg -n "<Button[^>]*size=\"(sm|icon)\"" src/pages/admin` pour recenser les boutons icon-only sans texte.
-2. Pour chaque match : ajouter `aria-label="Modifier <entité>"`, `aria-label="Supprimer <entité>"`, etc. en français cohérent avec l'UI.
-3. Vérifier qu'aucun bouton avec texte visible ne reçoit `aria-label` redondant.
-4. Vérifier les `DialogTrigger` et `Dialog` (titre déjà présent → pas de doublon).
+**Refactor** : recenser via `rg -n "catch \((e|err|error)\)" src` (sans `: unknown`) et corriger fichier par fichier.
+
+Cibles principales attendues (à confirmer après recensement) :
+- `src/hooks/use*.ts` (Caisse, Cotisations, Donations, Loans, Reunions, Sport, etc.)
+- `src/components/**/*.tsx` (formulaires, modales)
+- `src/pages/**/*.tsx` (Adhesion, Don, Auth, Dashboard)
+
+Pour chaque bloc :
+```ts
+// Avant
+} catch (error) {
+  toast.error(error.message);
+}
+// Après
+} catch (error: unknown) {
+  toast.error(getErrorMessage(error));
+}
+```
+
+Pour les appels Edge Functions :
+```ts
+const { data, error } = await supabase.functions.invoke(...);
+if (error) throw error;
+const edgeErr = getEdgeFunctionError(data);
+if (edgeErr) throw new Error(edgeErr);
+```
 
 ### Hors périmètre
-- Pas de refonte UI/CSS
-- Pas de modification de logique métier, hooks, RLS ou edge functions
-- Pas d'ajout de tests a11y automatisés (axe-core) — proposable en lot séparé
-- Pas de validation Zod, ni nettoyage `console.*`
+- Pas de changement de logique métier
+- Pas de refonte des toasts ou UI
+- Pas d'ajout de logging supplémentaire (déjà standardisé via `src/lib/logger.ts`)
+- Pas de migration SQL / RLS / Edge Functions
+- Pas de tests nouveaux (les tests existants doivent continuer à passer)
+
+### Méthode
+1. `rg -n "catch \((e|err|error)\)" src --type ts --type tsx -c` → comptage par fichier, prioriser les 10-15 fichiers les plus impactés.
+2. Vérifier l'export de `getErrorMessage` dans `src/lib/errors.ts`, compléter si manquant.
+3. Édition par lots de 5-6 fichiers, vérification visuelle (preview) après chaque batch sensible (Auth, Adhesion, Don).
+4. `bunx vitest run` final.
 
 ### Vérification
-- `rg "size=\"(sm|icon)\".*>\s*<[A-Z]\w+ " src/pages/admin/site` doit retourner 0 résultat sans `aria-label` à proximité.
-- `bunx vitest run` : pas de régression.
-- Preview manuel sur 1-2 pages admin.
+- `rg -n "catch \((e|err|error)\)(?!: unknown)" src` doit retourner 0 (hors fichiers `*.test.*`).
+- `rg -n "error\.message" src` audité : tous remplacés par `getErrorMessage(error)`.
+- Aucune régression sur les flux critiques (login, adhésion, don, prêt, cotisation).
 
 ### Documentation
-- Mise à jour `.lovable/plan.md` et `docs/CODE_REVIEW.md` : G6 ✅ TERMINÉ.
+- Mise à jour `.lovable/plan.md` et `docs/CODE_REVIEW.md` : G3 ✅ TERMINÉ avec liste des fichiers modifiés.
 
-### Prochain lot suggéré
-- **G2** — Refactor des `any` résiduels dans les hooks
-- **G3** — Standardisation des messages d'erreur (`catch (error: unknown)` + `getErrorMessage`)
-- **G5** — Extraction composants > 300 lignes
+### Prochains lots
+- **G2** — Refactor des `any` résiduels (typage strict)
+- **G5** — Extraction des composants > 300 lignes
 
 ---
 
-## ✅ Lot G6 — TERMINÉ
+## ✅ Lot G3 (catch typing) — TERMINÉ
+
+**Périmètre exécuté :** Ajout de `: unknown` sur tous les `catch (e|err|error)` non typés du frontend — 15 occurrences dans 12 fichiers. Tous les blocs loggent via `logger.*` sans accès `error.message` direct → aucune utilisation de `getErrorMessage` requise.
 
 **Fichiers modifiés :**
-- `src/pages/admin/site/ActivitiesAdmin.tsx` — aria-label Modifier/Supprimer (titre)
-- `src/pages/admin/site/PartnersAdmin.tsx` — aria-label Modifier/Supprimer (nom)
-- `src/pages/admin/site/EventsAdmin.tsx` — aria-label Modifier/Supprimer (titre)
-- `src/pages/admin/site/AboutAdmin.tsx` — aria-label Supprimer valeur
-- `src/pages/admin/site/HeroAdmin.tsx` — aria-label Haut/Bas/Supprimer (index)
-- `src/pages/admin/site/MessagesAdmin.tsx` — aria-label Voir/Traité/Supprimer (nom)
-- `src/pages/admin/site/GalleryAdmin.tsx` — aria-label Modifier/Supprimer (2 emplacements)
-- `docs/CODE_REVIEW.md` — G6 ✅ TERMINÉ
+- `src/hooks/useLoanRequests.ts`
+- `src/hooks/useConnectionTracker.ts`
+- `src/hooks/usePageviewTracker.ts`
+- `src/lib/logger.ts`
+- `src/lib/storage-utils.ts`
+- `src/lib/exportService.ts`
+- `src/lib/pdf-utils.ts` (×3)
+- `src/components/forms/E2DMatchForm.tsx`
+- `src/components/forms/E2DMatchEditForm.tsx`
+- `src/components/donations/BankTransferInfo.tsx`
+- `src/components/admin/CreateUserDialog.tsx` (×2)
+- `src/pages/admin/UtilisateursAdmin.tsx`
+- `docs/CODE_REVIEW.md`
 
-**Notes :** `ConfigAdmin.tsx` n'a pas de bouton icon-only (formulaire pur). `ImagesAdmin.tsx` utilise des boutons avec texte visible. Aucune régression attendue.
+**Vérification :** `rg --pcre2 'catch \((e|err|error)\)(?!:)' src` → 0 résultat. `bunx vitest run` → 57 passed, échec préexistant `badge.test.tsx` (module manquant, indépendant).
+
+**Note :** Le G3 d'origine (suppression `any`) reste ouvert et fait partie du lot G2 plus large.

@@ -320,7 +320,7 @@ export class ExportService {
       if (logo) {
         doc.addImage(logo, 'PNG', 155, 8, 40, 20);
       }
-    } catch (e) {
+    } catch (e: unknown) {
       logger.debug('Logo non chargé, continuation sans logo');
     }
 

@@ -126,6 +126,7 @@ Le Lot E est confirmé 100 % stable.
 | **G4** ✅ | Audit cleanup realtime (5 canaux ok, noms suffixés `crypto.randomUUID()`) + `.map(async)` déjà encadrés `Promise.all` — **livré** | 1 h | 🟠 Moyenne |
 | **G5** | Remplacer `.select('*')` par colonnes explicites sur top 10 fichiers | 2 h | 🟡 Basse |
 | **G6** ✅ | Passe accessibilité : `aria-label` ajoutés sur les boutons icon-only des 7 pages `admin/site/*` (Activities, Partners, Events, About, Hero, Messages, Gallery) — **livré** | 1 h | 🟡 Basse |
+| **G7** ✅ | Standardisation `catch (error: unknown)` sur 15 occurrences dans 12 fichiers (hooks, lib, components, pages admin) — **livré** | 0,5 h | 🟠 Moyenne |
 
 **Total estimé** : ~12 h de corrections.
 

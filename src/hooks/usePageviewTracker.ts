@@ -47,7 +47,7 @@ export const usePageviewTracker = () => {
           referrer: document.referrer || null,
           user_agent: navigator.userAgent,
         });
-      } catch (err) {
+      } catch (err: unknown) {
         logger.error("[usePageviewTracker] insert failed:", err);
       }
     };

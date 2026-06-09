@@ -120,7 +120,7 @@ export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdmi
         return;
       }
       toast.success(`Nouveaux identifiants envoyés à ${resp.email}`);
-    } catch (err) {
+    } catch (err: unknown) {
       logger.error("[UtilisateursAdmin] resend error:", err);
       toast.error("Erreur réseau lors de l'envoi");
     } finally {

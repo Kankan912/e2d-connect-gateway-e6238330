@@ -45,7 +45,7 @@ export async function addE2DHeader(doc: jsPDF, title: string, subtitle?: string)
     if (logo) {
       doc.addImage(logo, 'PNG', pageWidth - 55, 8, 40, 20);
     }
-  } catch (e) {
+  } catch (e: unknown) {
     logger.debug('Logo non chargé, continuation sans logo');
   }
   
@@ -95,7 +95,7 @@ export async function addE2DLogo(doc: jsPDF, x: number = -1, y: number = 8, widt
       const posX = x === -1 ? pageWidth - width - 15 : x;
       doc.addImage(logo, 'PNG', posX, y, width, height);
     }
-  } catch (e) {
+  } catch (e: unknown) {
     logger.debug('Logo non chargé');
   }
 }
@@ -130,7 +130,7 @@ export function addE2DLogoSync(doc: jsPDF, x: number = -1, y: number = 8, width:
       const pageWidth = doc.internal.pageSize.getWidth();
       const posX = x === -1 ? pageWidth - width - 15 : x;
       doc.addImage(logoBase64Cache, 'PNG', posX, y, width, height);
-    } catch (e) {
+    } catch (e: unknown) {
       logger.debug('Logo non chargé');
     }
   }

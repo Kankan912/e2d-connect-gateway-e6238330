@@ -128,7 +128,7 @@ export default function E2DMatchEditForm({ open, onOpenChange, match, onSuccess 
       });
       onOpenChange(false);
       onSuccess?.();
-    } catch (err) {
+    } catch (err: unknown) {
       toast({ title: "Erreur", description: "Erreur lors de la mise à jour", variant: "destructive" });
     } finally {
       setUploading(false);

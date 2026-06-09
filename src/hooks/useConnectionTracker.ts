@@ -17,7 +17,7 @@ export const useConnectionTracker = () => {
               statut: "succes",
               user_agent: navigator.userAgent,
             });
-          } catch (err) {
+          } catch (err: unknown) {
             logger.error("[useConnectionTracker] insert failed:", err);
           }
         }
