@@ -20,14 +20,14 @@ export const useSiteHero = () => {
         .eq("actif", true)
         .maybeSingle();
 
-      const timeoutPromise = new Promise<{ data: null; error: Error }>((resolve) =>
+      const timeoutPromise = new Promise<Awaited<typeof queryPromise>>((resolve) =>
         setTimeout(
-          () => resolve({ data: null, error: new Error("Hero query timeout (10s)") }),
+          () => resolve({ data: null, error: new Error("Hero query timeout (10s)") } as Awaited<typeof queryPromise>),
           10000
         )
       );
 
-      const { data, error } = (await Promise.race([queryPromise, timeoutPromise])) as { data: unknown; error: { message?: string } | null };
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       if (error) {
         // Ne bloque pas le rendu : on renvoie null pour basculer sur les valeurs par défaut.
