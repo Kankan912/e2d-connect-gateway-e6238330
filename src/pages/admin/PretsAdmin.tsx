@@ -97,8 +97,8 @@ export default function PretsAdmin() {
   const getCalculsPret = (pret: PretAdminWithJoins) => {
     return calculerResumePret(
       { montant: pret.montant, taux_interet: pret.taux_interet, interet_initial: pret.interet_initial, reconductions: pret.reconductions, montant_paye: pret.montant_paye },
-      pret.prets_paiements || [],
-      pret.prets_reconductions || []
+      (pret.prets_paiements as unknown as never[]) || [],
+      (pret.prets_reconductions as unknown as never[]) || []
     );
   };
 
@@ -281,7 +281,7 @@ export default function PretsAdmin() {
       if (e2) throw e2;
 
       if (decision === 'validee' && recon?.prets) {
-        const pret = recon.prets as PretAdminWithJoins;
+        const pret = recon.prets as unknown as PretAdminWithJoins;
         const nouvelleEcheance = addMonths(new Date(pret.echeance), dureeReconduction);
         const capitalRestant = pret.montant - (pret.capital_paye || 0);
         const nouveauTotalDu = capitalRestant + Number(recon.interet_mois || 0);
@@ -453,7 +453,7 @@ export default function PretsAdmin() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {reconductionsAttente.map((r: { id: string; created_at: string; notes?: string | null; interet_mois?: number | null; prets?: { membres?: { nom?: string; prenom?: string } | null } | null }) => (
+            {(reconductionsAttente as unknown as Array<{ id: string; created_at: string; notes?: string | null; interet_mois?: number | null; prets?: { membres?: { nom?: string; prenom?: string } | null } | null }>).map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-3 p-2 rounded border bg-background">
                 <div className="text-sm">
                   <div className="font-medium">

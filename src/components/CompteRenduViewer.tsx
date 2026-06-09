@@ -66,7 +66,7 @@ type BeneficiaireRow = {
   id?: string;
   montant_final?: number | null;
   montant_brut?: number | null;
-  deductions?: number | null;
+  deductions?: unknown;
   statut?: string | null;
   membres?: { nom?: string; prenom?: string } | null;
   membre?: { nom?: string; prenom?: string } | null;
@@ -465,7 +465,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
       // === SECTION BÉNÉFICIAIRES ===
       if (beneficiairesReunion && beneficiairesReunion.length > 0) {
         checkNewPage();
-        const totalBeneficiaires = beneficiairesReunion.reduce((sum: number, b: BeneficiaireRow) => sum + (b.montant_final || 0), 0);
+        const totalBeneficiaires = (beneficiairesReunion as BeneficiaireRow[]).reduce((sum: number, b: BeneficiaireRow) => sum + (b.montant_final || 0), 0);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
         doc.text(`BÉNÉFICIAIRES DU MOIS (${beneficiairesReunion.length}) - Total: ${totalBeneficiaires.toLocaleString()} FCFA`, margin, yPosition);
@@ -473,11 +473,11 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        beneficiairesReunion.forEach((b: BeneficiaireRow) => {
+        (beneficiairesReunion as BeneficiaireRow[]).forEach((b: BeneficiaireRow) => {
           checkNewPage(10);
           const statut = b.statut === 'paye' ? '✓' : '○';
           const details = b.deductions && Object.keys(b.deductions).length > 0
-            ? ` (Brut: ${(b.montant_brut || 0).toLocaleString()}, Déductions: -${Object.values(b.deductions as Record<string, number>).reduce((a, c) => a + c, 0).toLocaleString()})`
+            ? ` (Brut: ${(b.montant_brut || 0).toLocaleString()}, Déductions: -${Object.values(b.deductions as unknown as Record<string, number>).reduce((a, c) => a + c, 0).toLocaleString()})`
             : '';
           doc.text(`${statut} ${b.membres?.prenom} ${b.membres?.nom}: ${(b.montant_final || 0).toLocaleString()} FCFA${details}`, margin + 5, yPosition);
           yPosition += 5;
@@ -525,7 +525,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
   const totalEpargnes = epargnesReunion?.reduce((sum: number, e: EpargneRow) => sum + (e.montant || 0), 0) || 0;
   const totalSanctions = sanctionsReunion?.reduce((sum: number, s: SanctionRow) => sum + (s.montant_amende || 0), 0) || 0;
   const totalAides = aidesReunion?.reduce((sum: number, a: AideRow) => sum + (a.montant || 0), 0) || 0;
-  const totalBeneficiaires = beneficiairesReunion?.reduce((sum: number, b: BeneficiaireRow) => sum + (b.montant_final || 0), 0) || 0;
+  const totalBeneficiaires = (beneficiairesReunion as BeneficiaireRow[] | undefined)?.reduce((sum: number, b: BeneficiaireRow) => sum + (b.montant_final || 0), 0) || 0;
 
   if (!reunion) {
     return null;
@@ -829,13 +829,13 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {beneficiairesReunion?.map((b: BeneficiaireRow) => (
+                    {(beneficiairesReunion as BeneficiaireRow[] | undefined)?.map((b: BeneficiaireRow) => (
                       <div key={b.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
                         <div className="flex items-center gap-2">
                           <span>{b.membres?.prenom} {b.membres?.nom}</span>
                           {b.deductions && Object.keys(b.deductions).length > 0 && (
                             <span className="text-xs text-muted-foreground">
-                              (Déductions: -{Object.values(b.deductions as Record<string, number>).reduce((a, c) => a + c, 0).toLocaleString()})
+                              (Déductions: -{Object.values(b.deductions as unknown as Record<string, number>).reduce((a, c) => a + c, 0).toLocaleString()})
                             </span>
                           )}
                         </div>
