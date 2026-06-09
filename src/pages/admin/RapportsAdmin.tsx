@@ -346,117 +346,19 @@ const RapportsAdmin = () => {
     return membres ? `${membres.prenom} ${membres.nom}` : "-";
   };
 
-  // Export PDF
-  const exportPDF = async (type: string) => {
-    const doc = new jsPDF();
-    const title = `Rapport ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-    const periode = selectedExercice !== "all" 
-      ? exercices?.find(e => e.id === selectedExercice)?.nom 
-      : dateDebut && dateFin 
+  const getPeriode = () =>
+    selectedExercice !== "all"
+      ? exercices?.find(e => e.id === selectedExercice)?.nom
+      : dateDebut && dateFin
         ? `${dateDebut} au ${dateFin}`
         : "Toutes périodes";
-    
-    // Ajouter l'en-tête E2D avec logo
-    const startY = await addE2DHeader(doc, title, `Période : ${periode}`);
 
-    let tableData: (string | number)[][] = [];
-    let columns: string[] = [];
+  const exportPDF = (type: string) =>
+    exportRapportPDF(type, { cotisations, prets, sanctions, epargnes, periode: getPeriode() });
 
-    if (type === "cotisations" && cotisations) {
-      columns = ["Membre", "Type", "Montant", "Statut", "Date"];
-      tableData = cotisations.map(c => [
-        formatMembre(c.membres),
-        c.cotisations_types?.nom || "-",
-        `${(c.montant || 0).toLocaleString("fr-FR")} FCFA`,
-        c.statut || "-",
-        c.date_paiement ? format(parseISO(c.date_paiement), "dd/MM/yyyy") : "-"
-      ]);
-    } else if (type === "prets" && prets) {
-      columns = ["Membre", "Montant", "Payé", "Reste", "Statut", "Échéance"];
-      tableData = prets.map(p => [
-        formatMembre(p.membres),
-        `${(p.montant || 0).toLocaleString("fr-FR")} FCFA`,
-        `${(p.montant_paye || 0).toLocaleString("fr-FR")} FCFA`,
-        `${((p.montant_total_du || p.montant) - (p.montant_paye || 0)).toLocaleString("fr-FR")} FCFA`,
-        p.statut,
-        format(parseISO(p.echeance), "dd/MM/yyyy")
-      ]);
-    } else if (type === "sanctions" && sanctions) {
-      columns = ["Membre", "Motif", "Montant", "Statut"];
-      tableData = sanctions.map(s => [
-        formatMembre(s.membres),
-        s.motif || "-",
-        `${(s.montant_amende || 0).toLocaleString("fr-FR")} FCFA`,
-        s.statut
-      ]);
-    } else if (type === "epargnes" && epargnes) {
-      columns = ["Membre", "Montant", "Date", "Statut"];
-      tableData = epargnes.map(e => [
-        formatMembre(e.membres),
-        `${(e.montant || 0).toLocaleString("fr-FR")} FCFA`,
-        format(parseISO(e.date_depot), "dd/MM/yyyy"),
-        e.statut
-      ]);
-    }
+  const exportExcel = (type: string) =>
+    exportRapportExcel(type, { cotisations, prets, sanctions, epargnes });
 
-    autoTable(doc, {
-      head: [columns],
-      body: tableData,
-      startY: startY,
-      headStyles: { fillColor: [30, 64, 175] },
-    });
-
-    // Ajouter le pied de page E2D
-    addE2DFooter(doc);
-
-    doc.save(`rapport-${type}-${format(new Date(), "yyyy-MM-dd")}.pdf`);
-  };
-
-  // Export Excel
-  const exportExcel = (type: string) => {
-    let data: Record<string, string | number>[] = [];
-
-    if (type === "cotisations" && cotisations) {
-      data = cotisations.map(c => ({
-        Membre: formatMembre(c.membres),
-        Type: c.cotisations_types?.nom || "-",
-        Montant: c.montant || 0,
-        Statut: c.statut || "-",
-        Date: c.date_paiement || ""
-      }));
-    } else if (type === "prets" && prets) {
-      data = prets.map(p => ({
-        Membre: formatMembre(p.membres),
-        Montant: p.montant || 0,
-        "Montant Total Dû": p.montant_total_du || p.montant,
-        "Montant Payé": p.montant_paye || 0,
-        Reste: (p.montant_total_du || p.montant) - (p.montant_paye || 0),
-        Statut: p.statut,
-        "Date Prêt": p.date_pret,
-        Échéance: p.echeance
-      }));
-    } else if (type === "sanctions" && sanctions) {
-      data = sanctions.map(s => ({
-        Membre: formatMembre(s.membres),
-        Motif: s.motif || "-",
-        Montant: s.montant_amende || 0,
-        Statut: s.statut,
-        Date: s.created_at
-      }));
-    } else if (type === "epargnes" && epargnes) {
-      data = epargnes.map(e => ({
-        Membre: formatMembre(e.membres),
-        Montant: e.montant || 0,
-        "Date Dépôt": e.date_depot,
-        Statut: e.statut
-      }));
-    }
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, type);
-    XLSX.writeFile(wb, `rapport-${type}-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
-  };
 
   const isLoading = loadingCotisations || loadingPrets || loadingSanctions || loadingEpargnes || loadingCaisse;
 
