@@ -82,7 +82,7 @@ export default function PretsAdmin() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("prets_config")
-        .select("*")
+        .select("id, max_reconductions, duree_reconduction")
         .limit(1)
         .maybeSingle();
       if (error) throw error;
@@ -431,8 +431,8 @@ export default function PretsAdmin() {
   const handleExportPDF = async (pret: PretAdminWithJoins) => {
     // Récupérer les paiements et reconductions pour ce prêt
     const [paiementsRes, recondRes] = await Promise.all([
-      supabase.from('prets_paiements').select('*').eq('pret_id', pret.id).order('date_paiement', { ascending: false }),
-      supabase.from('prets_reconductions').select('*').eq('pret_id', pret.id).order('date_reconduction', { ascending: false })
+      supabase.from('prets_paiements').select('id, pret_id, montant_paye, date_paiement, type_paiement, mode_paiement, notes').eq('pret_id', pret.id).order('date_paiement', { ascending: false }),
+      supabase.from('prets_reconductions').select('id, pret_id, date_reconduction, interet_mois, statut, notes').eq('pret_id', pret.id).order('date_reconduction', { ascending: false })
     ]);
     
     exportPretPDF(pret, paiementsRes.data || [], recondRes.data || []);

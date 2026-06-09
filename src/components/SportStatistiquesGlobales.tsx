@@ -10,7 +10,7 @@ export default function SportStatistiquesGlobales() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sport_e2d_matchs')
-        .select('*');
+        .select('id, score_e2d, score_adverse');
       
       if (error) throw error;
       return data;
@@ -22,7 +22,7 @@ export default function SportStatistiquesGlobales() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('sport_phoenix_matchs')
-        .select('*');
+        .select('id, score_phoenix, score_adverse');
       
       if (error) throw error;
       return data;
@@ -34,7 +34,7 @@ export default function SportStatistiquesGlobales() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('membres')
-        .select('*')
+        .select('id')
         .eq('equipe_e2d', 'true');
       
       if (error) throw error;
@@ -47,7 +47,7 @@ export default function SportStatistiquesGlobales() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('membres')
-        .select('*')
+        .select('id')
         .eq('est_adherent_phoenix', true);
       
       if (error) throw error;
