@@ -1,65 +1,59 @@
-# Plan d'amélioration — Statut final
+# Plan : Finaliser G5 puis G2
 
-Dernière vérification : tous les lots scannés via `rg` / `wc -l` sur l'arborescence `src/`.
+## G5 — `.select('*')` → colonnes explicites (top 10)
 
-## Synthèse
+Ordre par risque croissant (lecture seule d'abord, métier ensuite).
 
-| Lot | Objet | Statut |
-|-----|-------|--------|
-| **G1** | Validation Zod sur les formulaires admin | ✅ TERMINÉ |
-| **G2** | Découpe des composants > 700 lignes | ⏳ EN ATTENTE |
-| **G3** | Suppression des `any` ciblés | ✅ TERMINÉ |
-| **G4** | Audit Realtime + `.map(async)` | ✅ TERMINÉ |
-| **G5** | `.select('*')` → colonnes explicites | ⏳ EN ATTENTE |
-| **G6** | `aria-label` sur boutons icônes | ✅ TERMINÉ |
-| **G7** | `catch (error: unknown)` standardisé | ✅ TERMINÉ |
+| # | Fichier | Approche |
+|---|---------|----------|
+| 1 | `src/hooks/useRoles.ts` | 3 requêtes, schéma simple (`roles`, `user_roles`) |
+| 2 | `src/hooks/usePersonalData.ts` | 3 requêtes user-scoped |
+| 3 | `src/hooks/useE2DPlayerStats.ts` | 4 requêtes stats |
+| 4 | `src/hooks/useLoanRequests.ts` | 3 requêtes loan_requests |
+| 5 | `src/hooks/useSiteContent.ts` | 11 requêtes CMS (lecture) |
+| 6 | `src/pages/EventDetail.tsx` | 5 requêtes site_events |
+| 7 | `src/components/CotisationsCumulAnnuel.tsx` | 5 requêtes agrégation |
+| 8 | `src/components/SportStatistiquesGlobales.tsx` | 4 requêtes stats |
+| 9 | `src/pages/GestionPresences.tsx` | 4 requêtes présences |
+| 10 | `src/pages/admin/PretsAdmin.tsx` | 3 requêtes restantes |
 
-## Détails lots terminés
+Méthode par fichier :
+1. Lire le composant pour relever les colonnes consommées.
+2. Remplacer `select('*')` par la liste explicite ; conserver `relation(*)` quand toutes les colonnes de la jointure sont utilisées.
+3. `tsc --noEmit` après chaque batch de 3 fichiers pour détecter une régression de typage.
 
-- **G1** — 7 formulaires admin (Hero, About, Activities, Events, Gallery, Partners, Messages) passent par un schéma Zod avec `react-hook-form`.
-- **G3** — 66 `any` retirés sur `src/hooks/useSiteContent.ts` (17), `src/pages/admin/PretsAdmin.tsx` (13), `src/components/CompteRenduViewer.tsx` (36). Types nommés (`PresenceRow`, `CotisationRow`, …) + casts via `unknown` aux frontières Supabase. `tsc --noEmit` : 0 erreur.
-- **G4** — Doublons d'abonnements Realtime supprimés ; `Array.prototype.map(async …)` remplacé par `Promise.all(map(async …))` là où c'était requis.
-- **G6** — `aria-label` ajouté sur tous les boutons `size="icon"` / `size="sm"` sans texte.
-- **G7** — Tous les `catch (e|err|error)` typés `unknown`, accès message via `getErrorMessage()`, erreurs Edge Functions extraites via `data?.error`.
+Aucun changement de filtre, RLS ou logique.
 
-## Lots restants
+## G2 — Découpe composants > 700 lignes
 
-### G2 — Découpe des composants > 700 lignes
+Ordre par taille décroissante.
 
-5 fichiers cibles (relevé `find src -name '*.tsx' | xargs wc -l | sort -rn`) :
+| # | Fichier | Lignes | Stratégie d'extraction |
+|---|---------|--------|------------------------|
+| 1 | `src/pages/admin/PaymentConfigAdmin.tsx` | 1037 | Sortir chaque onglet (Stripe, Paddle, Mobile Money, Virement) en sous-composant dans `./_components/` |
+| 2 | `src/pages/admin/PretsAdmin.tsx` | 977 | Extraire `PretsTable`, `PretsDashboardCards`, `ReconductionsAttenteList`, hook `usePretsMutations` |
+| 3 | `src/components/CompteRenduViewer.tsx` | 880 | Sortir le générateur PDF (`handleDownloadPDF`) en `src/lib/compte-rendu-pdf.ts` + sections en sous-composants |
+| 4 | `src/pages/admin/RapportsAdmin.tsx` | 877 | Un sous-composant par onglet rapport |
+| 5 | `src/pages/Epargnes.tsx` | 762 | Extraire `EpargnesTable`, `EpargnesStats`, formulaire en sous-composant |
 
-| Fichier | Lignes |
-|---------|--------|
-| `src/pages/admin/PaymentConfigAdmin.tsx` | 1037 |
-| `src/pages/admin/PretsAdmin.tsx` | 977 |
-| `src/components/CompteRenduViewer.tsx` | 880 |
-| `src/pages/admin/RapportsAdmin.tsx` | 877 |
-| `src/pages/Epargnes.tsx` | 762 |
+Règles communes :
+- Conserver l'export default et les props publiques.
+- Aucun changement de comportement visible (UI, requêtes, handlers identiques).
+- Cible : fichier racine < 400 lignes.
+- Vérif : `tsc --noEmit`, `bunx vitest run`, lecture rapide en preview de chaque page touchée.
 
-Méthode prévue : extraire les sous-blocs dans `./_components/` colocalisés, sortir les handlers volumineux en hooks, conserver l'API publique (export default, props). Cible : < 400 lignes par fichier racine.
+## Livrables
 
-### G5 — `.select('*')` → colonnes explicites
-
-91 fichiers concernés au total. Top 10 prioritaires (relevé `rg -n "\.select\('\*'\)" src --count-matches`) :
-
-| Fichier | Occurrences |
-|---------|-------------|
-| `src/hooks/useSiteContent.ts` | 11 |
-| `src/pages/EventDetail.tsx` | 5 |
-| `src/components/CotisationsCumulAnnuel.tsx` | 5 |
-| `src/pages/GestionPresences.tsx` | 4 |
-| `src/hooks/useE2DPlayerStats.ts` | 4 |
-| `src/components/SportStatistiquesGlobales.tsx` | 4 |
-| `src/pages/admin/PretsAdmin.tsx` | 3 |
-| `src/hooks/useRoles.ts` | 3 |
-| `src/hooks/usePersonalData.ts` | 3 |
-| `src/hooks/useLoanRequests.ts` | 3 |
-
-Méthode prévue : pour chaque requête, expliciter les colonnes réellement consommées par le composant/hook ; conserver `relation(*)` si toutes les colonnes de la jointure sont utilisées. Aucune modification de filtre / RLS / logique métier.
+- Mise à jour `.lovable/plan.md` au fil de l'eau (cocher chaque fichier).
+- Section finale G5 ✅ / G2 ✅ dans `docs/CODE_REVIEW.md`.
 
 ## Hors périmètre
 
 - Aucune migration SQL, RLS, Edge Function.
-- Aucun changement UI/UX.
+- Aucun changement UI/UX visible.
 - Aucune nouvelle dépendance.
-- Aucun ajout de tests (couverture inchangée).
+- Aucun nouveau test (couverture inchangée).
+
+## Volumétrie estimée
+
+≈ 30 éditions de fichiers, plusieurs typechecks intermédiaires. Le travail sera fait d'une traite jusqu'à G5 ✅ + G2 ✅.
