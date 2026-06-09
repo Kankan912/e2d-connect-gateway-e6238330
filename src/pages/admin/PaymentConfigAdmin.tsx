@@ -15,11 +15,8 @@ interface PaymentConfig {
   updated_at?: string;
 }
 
-interface ConnectionStatus {
-  status: 'idle' | 'testing' | 'success' | 'error';
-  message?: string;
-  lastTested?: Date;
-}
+
+
 
 export default function PaymentConfigAdmin() {
   const [configs, setConfigs] = useState<PaymentConfig[]>([]);
