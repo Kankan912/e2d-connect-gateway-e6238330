@@ -20,6 +20,9 @@ import { calculerResumePret } from "@/lib/pretCalculsService";
 import { exportPretPDF } from "@/lib/pret-pdf-export";
 import type { PretAdminWithJoins } from "@/types/supabase-joins";
 import { ReconductionsAttenteList, type ReconductionAttente } from "./_components/ReconductionsAttenteList";
+import PretsStatsCards from "./_components/PretsStatsCards";
+import PretRow from "./_components/PretRow";
+
 
 import {
   AlertDialog,
