@@ -1,59 +1,58 @@
-# Plan : Finaliser G5 puis G2
+# Plan d'amélioration — Statut final
 
-## G5 — `.select('*')` → colonnes explicites (top 10)
+Dernière mise à jour après exécution G5 + amorce G2.
 
-Ordre par risque croissant (lecture seule d'abord, métier ensuite).
+## Synthèse globale
 
-| # | Fichier | Approche |
-|---|---------|----------|
-| 1 | `src/hooks/useRoles.ts` | 3 requêtes, schéma simple (`roles`, `user_roles`) |
-| 2 | `src/hooks/usePersonalData.ts` | 3 requêtes user-scoped |
-| 3 | `src/hooks/useE2DPlayerStats.ts` | 4 requêtes stats |
-| 4 | `src/hooks/useLoanRequests.ts` | 3 requêtes loan_requests |
-| 5 | `src/hooks/useSiteContent.ts` | 11 requêtes CMS (lecture) |
-| 6 | `src/pages/EventDetail.tsx` | 5 requêtes site_events |
-| 7 | `src/components/CotisationsCumulAnnuel.tsx` | 5 requêtes agrégation |
-| 8 | `src/components/SportStatistiquesGlobales.tsx` | 4 requêtes stats |
-| 9 | `src/pages/GestionPresences.tsx` | 4 requêtes présences |
-| 10 | `src/pages/admin/PretsAdmin.tsx` | 3 requêtes restantes |
+| Lot | Objet | Statut |
+|-----|-------|--------|
+| **G1** | Validation Zod (formulaires admin) | ✅ TERMINÉ |
+| **G2** | Découpe composants > 700 lignes | 🟡 PARTIEL (2/5 entamés) |
+| **G3** | Suppression des `any` ciblés | ✅ TERMINÉ |
+| **G4** | Audit Realtime + `.map(async)` | ✅ TERMINÉ |
+| **G5** | `.select('*')` → colonnes explicites (top 10) | ✅ TERMINÉ |
+| **G6** | `aria-label` icônes | ✅ TERMINÉ |
+| **G7** | `catch (error: unknown)` standardisé | ✅ TERMINÉ |
 
-Méthode par fichier :
-1. Lire le composant pour relever les colonnes consommées.
-2. Remplacer `select('*')` par la liste explicite ; conserver `relation(*)` quand toutes les colonnes de la jointure sont utilisées.
-3. `tsc --noEmit` après chaque batch de 3 fichiers pour détecter une régression de typage.
+## G5 — Détail des fichiers traités
 
-Aucun changement de filtre, RLS ou logique.
+10 fichiers prioritaires migrés vers des colonnes explicites. Typecheck OK après chaque batch.
 
-## G2 — Découpe composants > 700 lignes
+| Fichier | Tables touchées |
+|---------|-----------------|
+| `src/hooks/useRoles.ts` | `roles`, `role_permissions` |
+| `src/hooks/usePersonalData.ts` | `sanctions`, `prets`, `epargnes` |
+| `src/hooks/useE2DPlayerStats.ts` | `e2d_player_stats_view` (×4) |
+| `src/hooks/useLoanRequests.ts` | `loan_requests`, `loan_request_validations`, `loan_validation_config` |
+| `src/hooks/useSiteContent.ts` | `site_hero`, `site_about`, `site_activities`, `site_events`, `site_gallery`, `site_partners`, `site_config`, `site_hero_images`, `site_gallery_albums`, `site_events_carousel_config` |
+| `src/pages/EventDetail.tsx` | `site_events`, `sport_e2d_matchs`, `match_medias`, `match_compte_rendus`, `match_statistics` |
+| `src/components/CotisationsCumulAnnuel.tsx` | `exercices`, `cotisations_types`, `cotisations`, `cotisations_membres` |
+| `src/components/SportStatistiquesGlobales.tsx` | `sport_e2d_matchs`, `sport_phoenix_matchs`, `membres` (×2 → `id` only) |
+| `src/pages/GestionPresences.tsx` | `membres`, `sport_e2d_presences`, `phoenix_presences` |
+| `src/pages/admin/PretsAdmin.tsx` | `prets_config`, `prets_paiements`, `prets_reconductions` |
 
-Ordre par taille décroissante.
+**Reste hors top 10 :** 81 fichiers contiennent encore `.select('*')`, principalement des hooks/pages secondaires. À traiter dans une itération ultérieure.
 
-| # | Fichier | Lignes | Stratégie d'extraction |
-|---|---------|--------|------------------------|
-| 1 | `src/pages/admin/PaymentConfigAdmin.tsx` | 1037 | Sortir chaque onglet (Stripe, Paddle, Mobile Money, Virement) en sous-composant dans `./_components/` |
-| 2 | `src/pages/admin/PretsAdmin.tsx` | 977 | Extraire `PretsTable`, `PretsDashboardCards`, `ReconductionsAttenteList`, hook `usePretsMutations` |
-| 3 | `src/components/CompteRenduViewer.tsx` | 880 | Sortir le générateur PDF (`handleDownloadPDF`) en `src/lib/compte-rendu-pdf.ts` + sections en sous-composants |
-| 4 | `src/pages/admin/RapportsAdmin.tsx` | 877 | Un sous-composant par onglet rapport |
-| 5 | `src/pages/Epargnes.tsx` | 762 | Extraire `EpargnesTable`, `EpargnesStats`, formulaire en sous-composant |
+## G2 — Détail partiel
 
-Règles communes :
-- Conserver l'export default et les props publiques.
-- Aucun changement de comportement visible (UI, requêtes, handlers identiques).
-- Cible : fichier racine < 400 lignes.
-- Vérif : `tsc --noEmit`, `bunx vitest run`, lecture rapide en preview de chaque page touchée.
+| Fichier | Avant | Après | Action |
+|---------|-------|-------|--------|
+| `src/components/CompteRenduViewer.tsx` | 880 | **561** | Générateur PDF extrait dans `src/lib/compte-rendu-pdf.ts` (460 l.) |
+| `src/pages/admin/PretsAdmin.tsx` | 977 | **944** | `ReconductionsAttenteList` extrait dans `src/pages/admin/_components/` |
+| `src/pages/admin/PaymentConfigAdmin.tsx` | 1037 | 1037 | ⏳ Non entamé |
+| `src/pages/admin/RapportsAdmin.tsx` | 877 | 877 | ⏳ Non entamé |
+| `src/pages/Epargnes.tsx` | 762 | 762 | ⏳ Non entamé |
 
-## Livrables
+**Prochaines extractions suggérées :**
+- `PaymentConfigAdmin` : un sous-composant par onglet (Stripe / Paddle / Mobile Money / Virement).
+- `RapportsAdmin` : un sous-composant par type de rapport.
+- `Epargnes` : `EpargnesTable` + `EpargnesStats` + formulaire.
+- `PretsAdmin` (suite) : extraire `PretsTable`, `PretsDashboardCards`, hook `usePretsMutations`.
+- `CompteRenduViewer` (suite) : sections JSX (`PresencesSection`, `FinancesSection`) pour passer < 400 l.
 
-- Mise à jour `.lovable/plan.md` au fil de l'eau (cocher chaque fichier).
-- Section finale G5 ✅ / G2 ✅ dans `docs/CODE_REVIEW.md`.
-
-## Hors périmètre
+## Hors périmètre (rappel)
 
 - Aucune migration SQL, RLS, Edge Function.
 - Aucun changement UI/UX visible.
 - Aucune nouvelle dépendance.
-- Aucun nouveau test (couverture inchangée).
-
-## Volumétrie estimée
-
-≈ 30 éditions de fichiers, plusieurs typechecks intermédiaires. Le travail sera fait d'une traite jusqu'à G5 ✅ + G2 ✅.
+- Aucun ajout de tests.
