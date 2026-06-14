@@ -46,6 +46,7 @@ const PretsAdmin = lazyWithRetry(() => import("./admin/PretsAdmin"));
 const PretsConfigAdmin = lazyWithRetry(() => import("./admin/PretsConfigAdmin"));
 const AidesAdmin = lazyWithRetry(() => import("./admin/AidesAdmin"));
 const RapportsAdmin = lazyWithRetry(() => import("./admin/RapportsAdmin"));
+const CotisationsAdmin = lazyWithRetry(() => import("./admin/CotisationsAdmin"));
 
 // Admin Pages - Reunions
 const Reunions = lazyWithRetry(() => import("./reunions"));
@@ -125,10 +126,12 @@ const Dashboard = () => {
           <Route path="/admin/monitoring" element={<PermissionRoute resource="roles" permission="write"><ErrorBoundary fallbackTitle="Erreur - Monitoring"><MonitoringAdmin /></ErrorBoundary></PermissionRoute>} />
           
           {/* ==================== ROUTES TONTINE ==================== */}
+          <Route path="/admin/cotisations" element={<PermissionRoute resource="cotisations" permission="read"><ErrorBoundary fallbackTitle="Erreur - Cotisations"><CotisationsAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/tontine/epargnes" element={<PermissionRoute resource="epargnes" permission="read"><ErrorBoundary fallbackTitle="Erreur - Épargnes"><Epargnes /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/tontine/beneficiaires" element={<PermissionRoute resource="epargnes" permission="read"><ErrorBoundary fallbackTitle="Erreur - Bénéficiaires"><Beneficiaires /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/caisse" element={<PermissionRoute resource="caisse" permission="read"><ErrorBoundary fallbackTitle="Erreur - Caisse"><CaisseAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/tontine/config" element={<PermissionRoute resource="config" permission="write"><ErrorBoundary fallbackTitle="Erreur - Config Tontine"><TontineConfig /></ErrorBoundary></PermissionRoute>} />
+          
           
           {/* ==================== ROUTES RÉUNIONS ==================== */}
           <Route path="/admin/reunions" element={<PermissionRoute resource="reunions" permission="read"><ErrorBoundary fallbackTitle="Erreur - Réunions"><Reunions /></ErrorBoundary></PermissionRoute>} />

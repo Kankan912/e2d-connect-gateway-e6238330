@@ -60,6 +60,7 @@ const memberItems = [
 
 // E2D - Section principale regroupant tous les modules internes
 const e2dCotisationsItems = [
+  { title: "Cotisations", url: "/dashboard/admin/cotisations", icon: Receipt, resource: "cotisations" },
   { title: "Épargnes", url: "/dashboard/admin/tontine/epargnes", icon: PiggyBank, resource: "epargnes" },
   { title: "Bénéficiaires", url: "/dashboard/admin/tontine/beneficiaires", icon: Gift, resource: "epargnes" },
   { title: "Caisse", url: "/dashboard/admin/caisse", icon: Wallet, resource: "caisse" },
