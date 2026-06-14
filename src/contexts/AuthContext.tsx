@@ -1,7 +1,6 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { SessionWarningModal } from '@/components/SessionWarningModal';
 import { useToast } from '@/hooks/use-toast';
