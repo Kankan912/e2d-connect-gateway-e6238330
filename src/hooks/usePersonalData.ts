@@ -21,6 +21,8 @@ export const useUserMemberId = () => {
       return data;
     },
     enabled: !!profile?.id,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
 };
 

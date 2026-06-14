@@ -1,55 +1,88 @@
-# Plan d'amélioration — Statut final
 
-Dernière mise à jour après finalisation G2.
+# Correction du chargement infini + restauration de l'onglet Cotisations admin
 
-## Synthèse globale
+## Causes identifiées
 
-| Lot | Objet | Statut |
-|-----|-------|--------|
-| **G1** | Validation Zod (formulaires admin) | ✅ TERMINÉ |
-| **G2** | Découpe composants > 700 lignes | ✅ TERMINÉ |
-| **G3** | Suppression des `any` ciblés | ✅ TERMINÉ |
-| **G4** | Audit Realtime + `.map(async)` | ✅ TERMINÉ |
-| **G5** | `.select('*')` → colonnes explicites (top 10) | ✅ TERMINÉ |
-| **G6** | `aria-label` icônes | ✅ TERMINÉ |
-| **G7** | `catch (error: unknown)` standardisé | ✅ TERMINÉ |
+1. **AuthContext refetch en boucle (cause principale)**
+   Les logs montrent `Fetching profile for user` exécuté **4 fois** d'affilée au login pour le même utilisateur. Chaque événement `onAuthStateChange` (`INITIAL_SESSION`, `SIGNED_IN`, `TOKEN_REFRESHED`, `USER_UPDATED`) déclenche `fetchUserProfile`, qui :
+   - exécute 3 requêtes séquentielles (profile, role, permissions),
+   - appelle `queryClient.invalidateQueries(['user-permissions'])`.
+   Cette invalidation cascade vers `usePermissions` qui re-déclenche toutes les pages, d'où les chargements qui « tournent en rond ».
 
-## G2 — Découpe finalisée (5/5)
+2. **`useUserCotisations` utilise `.single()`**
+   Sur le lookup membre, `.single()` lève une exception si zéro ligne (ce qui peut arriver pendant la transition de session). Doit être `.maybeSingle()` comme partout ailleurs.
 
-Tous les fichiers > 700 lignes du périmètre initial sont passés sous la barre. Typecheck OK.
+3. **Doublons de lookup membre**
+   Chaque page personnelle (Cotisations, Prêts, Épargnes, Sanctions, Présences, Aides) déclenche **2 requêtes séquentielles** : une pour récupérer le `membre_id` à partir du `user_id`, puis la requête data. Or `useUserMemberId` existe déjà dans `usePersonalData` — `useCotisations` le réimplémente. À centraliser.
 
-| Fichier | Avant | Après | Extractions |
-|---------|-------|-------|-------------|
-| `src/components/CompteRenduViewer.tsx` | 880 | **561** | `src/lib/compte-rendu-pdf.ts` |
-| `src/pages/admin/PretsAdmin.tsx` | 977 | **685** | `_components/ReconductionsAttenteList.tsx`, `_components/PretsStatsCards.tsx`, `_components/PretRow.tsx` |
-| `src/pages/admin/PaymentConfigAdmin.tsx` | 1037 | **473** | `_components/PaymentConfigTabs.tsx` (6 onglets) |
-| `src/pages/admin/RapportsAdmin.tsx` | 877 | **429** | `src/lib/rapports-export.ts`, `_components/RapportsTabsContent.tsx` |
-| `src/pages/Epargnes.tsx` | 762 | **531** | `pages/_components/EpargnesFilters.tsx`, `pages/_components/EpargnesList.tsx` |
+4. **Realtime channels en multiple**
+   `useLoanRequests` / `useMyLoanRequests` créent un nouveau channel `crypto.randomUUID()` à chaque montage de composant. Sur les pages Demandes de prêt, ceci multiplie les abonnements Postgres-changes inutilement.
 
-**Reste :** `src/components/ClotureReunionModal.tsx` (719 l.) hors périmètre initial — à traiter dans une itération future. `src/integrations/supabase/types.ts` (5 709 l.) est auto-généré, ignoré.
+5. **Onglet « Cotisations admin » absent**
+   La sidebar contient `Mes Cotisations` (membre) mais pas de vue admin globale. La grille existe pourtant : `src/components/CotisationsGridView.tsx` + `src/components/CotisationsCumulAnnuel.tsx`. Aucune route ni entrée sidebar ne les expose en standalone (uniquement via Réunions).
 
-## G5 — Détail des fichiers traités
+## Modifications
 
-10 fichiers prioritaires migrés vers des colonnes explicites. Typecheck OK après chaque batch.
+### 1. Stabiliser `AuthContext` (priorité 1)
 
-| Fichier | Tables touchées |
-|---------|-----------------|
-| `src/hooks/useRoles.ts` | `roles`, `role_permissions` |
-| `src/hooks/usePersonalData.ts` | `sanctions`, `prets`, `epargnes` |
-| `src/hooks/useE2DPlayerStats.ts` | `e2d_player_stats_view` (×4) |
-| `src/hooks/useLoanRequests.ts` | `loan_requests`, `loan_request_validations`, `loan_validation_config` |
-| `src/hooks/useSiteContent.ts` | `site_hero`, `site_about`, `site_activities`, `site_events`, `site_gallery`, `site_partners`, `site_config`, `site_hero_images`, `site_gallery_albums`, `site_events_carousel_config` |
-| `src/pages/EventDetail.tsx` | `site_events`, `sport_e2d_matchs`, `match_medias`, `match_compte_rendus`, `match_statistics` |
-| `src/components/CotisationsCumulAnnuel.tsx` | `exercices`, `cotisations_types`, `cotisations`, `cotisations_membres` |
-| `src/components/SportStatistiquesGlobales.tsx` | `sport_e2d_matchs`, `sport_phoenix_matchs`, `membres` (×2 → `id` only) |
-| `src/pages/GestionPresences.tsx` | `membres`, `sport_e2d_presences`, `phoenix_presences` |
-| `src/pages/admin/PretsAdmin.tsx` | `prets_config`, `prets_paiements`, `prets_reconductions` |
+`src/contexts/AuthContext.tsx`
+- Ajouter un `useRef<string | null>(loadedUserId)` pour mémoriser le dernier `user.id` chargé.
+- Dans `onAuthStateChange`, **ne déclencher `fetchUserProfile` que si** :
+  - événement ∈ `['SIGNED_IN', 'INITIAL_SESSION']`,
+  - ET `session.user.id !== loadedUserId.current`.
+- Ignorer `TOKEN_REFRESHED` et `USER_UPDATED` (ils n'ont pas besoin de recharger profile/role/permissions).
+- Retirer `queryClient.invalidateQueries(['user-permissions'])` dans `fetchUserProfile` (la première fetch n'a rien à invalider).
+- Paralléliser les 3 requêtes via `Promise.all([profile, role, permissions])` pour passer de ~900 ms à ~300 ms.
 
-**Reste hors top 10 :** 81 fichiers contiennent encore `.select('*')`, principalement des hooks/pages secondaires. À traiter dans une itération ultérieure.
+### 2. Corriger `useUserCotisations`
 
-## Hors périmètre (rappel)
+`src/hooks/useCotisations.ts`
+- Remplacer le `.single()` interne par un appel à `useUserMemberId()` (déjà exporté par `usePersonalData`), avec `enabled: !!membre?.id`.
+- Bénéfice : un seul lookup membre partagé en cache pour toutes les pages personnelles.
 
-- Aucune migration SQL, RLS, Edge Function.
-- Aucun changement UI/UX visible.
+### 3. Centraliser le lookup membre
+
+`src/hooks/usePersonalData.ts`
+- Augmenter le `staleTime` du `useUserMemberId` à `Infinity` (le `membre_id` ne change jamais pour un user donné).
+- Aucun autre changement (les autres hooks `useUser*` consomment déjà `useUserMemberId`).
+
+### 4. Réduire les channels Realtime
+
+`src/hooks/useLoanRequests.ts`
+- Remplacer `supabase.channel(`loan_requests_admin_${crypto.randomUUID()}`)` par des noms stables (`loan_requests_admin`, `loan_requests_self`).
+- Supabase gère le déduplication ; cela empêche aussi les fuites si un montage rapide ne déclenche pas le cleanup.
+
+### 5. Restaurer l'onglet Cotisations admin
+
+**Nouvelle page** `src/pages/admin/CotisationsAdmin.tsx`
+- Conteneur simple qui affiche :
+  - sélecteur d'exercice,
+  - `<CotisationsCumulAnnuel />` (cumul annuel par membre),
+  - `<CotisationsGridView />` (grille mensuelle).
+- Pas de logique nouvelle, juste composer l'existant.
+
+**Route** dans `src/pages/Dashboard.tsx`
+- Ajouter `<Route path="/admin/cotisations" element={<PermissionRoute resource="cotisations" permission="read"><ErrorBoundary><CotisationsAdmin /></ErrorBoundary></PermissionRoute>} />`.
+- Lazy-load via `lazyWithRetry`.
+
+**Sidebar** dans `src/components/layout/DashboardSidebar.tsx`
+- Ajouter dans `e2dCotisationsItems` :
+  ```ts
+  { title: "Cotisations", url: "/dashboard/admin/cotisations", icon: Receipt, resource: "cotisations" }
+  ```
+  en première position.
+
+## Hors périmètre
+
+- Aucune migration SQL.
+- Aucun changement de RLS.
+- Aucune modification métier (calculs, validations).
 - Aucune nouvelle dépendance.
-- Aucun ajout de tests.
+
+## Vérification
+
+1. Recharger `/dashboard` → un seul `Fetching profile` dans la console.
+2. Ouvrir `/dashboard/my-cotisations` → contenu affiché en < 1 s.
+3. Ouvrir `/dashboard/mes-demandes-pret` → contenu ou message « Aucune demande » en < 1 s.
+4. Ouvrir `/dashboard/admin/cotisations` → grille annuelle visible.
+5. `npx tsc --noEmit` → 0 erreur.

@@ -7,7 +7,8 @@
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+
+import { useUserMemberId } from "@/hooks/usePersonalData";
 import { toast } from "@/hooks/use-toast";
 
 import { logger } from "@/lib/logger";
@@ -34,20 +35,12 @@ export interface Cotisation {
 export type CotisationInsert = Omit<Cotisation, 'id' | 'created_at' | 'type' | 'membre'>;
 
 export const useUserCotisations = () => {
-  const { profile } = useAuth();
+  const { data: membre } = useUserMemberId();
 
   return useQuery({
-    queryKey: ['user-cotisations', profile?.id],
+    queryKey: ['user-cotisations', membre?.id],
     queryFn: async () => {
-      if (!profile?.id) return [];
-
-      const { data: membre } = await supabase
-        .from('membres')
-        .select('id')
-        .eq('user_id', profile.id)
-        .single();
-
-      if (!membre) return [];
+      if (!membre?.id) return [];
 
       const { data, error } = await supabase
         .from('cotisations')
@@ -62,7 +55,7 @@ export const useUserCotisations = () => {
       if (error) throw error;
       return data as Cotisation[];
     },
-    enabled: !!profile?.id,
+    enabled: !!membre?.id,
   });
 };
 

@@ -1,7 +1,6 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSessionManager } from '@/hooks/useSessionManager';
 import { SessionWarningModal } from '@/components/SessionWarningModal';
 import { useToast } from '@/hooks/use-toast';
@@ -39,7 +38,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -49,6 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [memberBlocked, setMemberBlocked] = useState(false);
+  const loadedUserIdRef = useRef<string | null>(null);
 
   // Fetch user permissions
   const fetchUserPermissions = async (userId: string): Promise<Permission[]> => {
@@ -148,6 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (event === 'SIGNED_OUT') {
           isSigningOut = false;
+          loadedUserIdRef.current = null;
           setSession(null);
           setUser(null);
           setProfile(null);
@@ -161,13 +161,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Defer profile fetching with setTimeout
+
+        // Only refetch profile when the user actually changes.
+        // TOKEN_REFRESHED / USER_UPDATED keep the same user id → skip the cascade.
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserProfile(session.user.id);
-          }, 0);
+          if (loadedUserIdRef.current !== session.user.id) {
+            loadedUserIdRef.current = session.user.id;
+            setTimeout(() => {
+              fetchUserProfile(session.user.id);
+            }, 0);
+          }
         } else {
+          loadedUserIdRef.current = null;
           setProfile(null);
           setUserRole(null);
           setPermissions([]);
@@ -181,11 +186,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
-        setTimeout(() => {
-          fetchUserProfile(session.user.id);
-        }, 0);
+        if (loadedUserIdRef.current !== session.user.id) {
+          loadedUserIdRef.current = session.user.id;
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
+        }
       } else {
         setLoading(false);
       }
@@ -197,11 +205,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchUserProfile = async (userId: string) => {
     try {
       logger.info('[AuthContext] Fetching profile for user: ' + userId);
-      
-      // Invalidate permissions cache
-      queryClient.invalidateQueries({ 
-        queryKey: ['user-permissions', userId] 
-      });
+
+
 
       // Check member status first
       const { allowed, status } = await checkMemberStatus(userId);
@@ -234,18 +239,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+      // Parallelize profile + role + permissions for a single network round-trip
+      const [profileRes, roleRes, userPerms] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle(),
+        supabase
+          .from('user_roles')
+          .select('role_id, roles(name)')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        fetchUserPermissions(userId),
+      ]);
 
-      if (profileError) throw profileError;
+      if (profileRes.error) throw profileRes.error;
+      if (roleRes.error) {
+        logger.error('[AuthContext] Role fetch error:', roleRes.error);
+        throw roleRes.error;
+      }
+
+      const profileData = profileRes.data;
+      const roleData = roleRes.data;
+
       logger.success('[AuthContext] Profile loaded: ' + profileData?.nom + ' ' + profileData?.prenom);
       setProfile(profileData);
 
-      // Check if password change is required
       if (profileData?.must_change_password === true) {
         logger.info('[AuthContext] User must change password');
         setMustChangePassword(true);
@@ -253,27 +275,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setMustChangePassword(false);
       }
 
-      // Fetch role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role_id, roles(name)')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (roleError) {
-        logger.error('[AuthContext] Role fetch error:', roleError);
-        throw roleError;
-      }
-      
       logger.success('[AuthContext] Role data received: ' + roleData?.roles?.name);
       setUserRole(roleData?.roles?.name || null);
 
-      // Fetch permissions
-      const userPerms = await fetchUserPermissions(userId);
       setPermissions(userPerms);
       logger.success('[AuthContext] Permissions loaded: ' + userPerms.length);
+
 
     } catch (error: unknown) {
       logger.error('[AuthContext] Error fetching user data:', error);
