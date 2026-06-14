@@ -55,7 +55,7 @@ export function useLoanRequests() {
 
   useEffect(() => {
     const ch = supabase
-      .channel(`loan_requests_admin_${crypto.randomUUID()}`)
+      .channel("loan_requests_admin")
       .on("postgres_changes", { event: "*", schema: "public", table: "loan_requests" }, () => {
         qc.invalidateQueries({ queryKey: ["loan-requests"] });
       })
