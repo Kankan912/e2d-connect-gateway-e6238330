@@ -38,7 +38,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -48,6 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [memberBlocked, setMemberBlocked] = useState(false);
+  const loadedUserIdRef = useRef<string | null>(null);
 
   // Fetch user permissions
   const fetchUserPermissions = async (userId: string): Promise<Permission[]> => {
