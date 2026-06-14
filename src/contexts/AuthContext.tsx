@@ -147,6 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         if (event === 'SIGNED_OUT') {
           isSigningOut = false;
+          loadedUserIdRef.current = null;
           setSession(null);
           setUser(null);
           setProfile(null);
@@ -160,13 +161,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Defer profile fetching with setTimeout
+
+        // Only refetch profile when the user actually changes.
+        // TOKEN_REFRESHED / USER_UPDATED keep the same user id → skip the cascade.
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserProfile(session.user.id);
-          }, 0);
+          if (loadedUserIdRef.current !== session.user.id) {
+            loadedUserIdRef.current = session.user.id;
+            setTimeout(() => {
+              fetchUserProfile(session.user.id);
+            }, 0);
+          }
         } else {
+          loadedUserIdRef.current = null;
           setProfile(null);
           setUserRole(null);
           setPermissions([]);
@@ -180,11 +186,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
-        setTimeout(() => {
-          fetchUserProfile(session.user.id);
-        }, 0);
+        if (loadedUserIdRef.current !== session.user.id) {
+          loadedUserIdRef.current = session.user.id;
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
+        }
       } else {
         setLoading(false);
       }
