@@ -205,11 +205,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchUserProfile = async (userId: string) => {
     try {
       logger.info('[AuthContext] Fetching profile for user: ' + userId);
-      
-      // Invalidate permissions cache
-      queryClient.invalidateQueries({ 
-        queryKey: ['user-permissions', userId] 
-      });
+
+
 
       // Check member status first
       const { allowed, status } = await checkMemberStatus(userId);
