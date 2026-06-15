@@ -1,58 +1,38 @@
-## Objectif
+## 1. Modale "Ajouter un bénéficiaire" — recherche/filtre membre
 
-Permettre aux personnes autorisées (administrateurs et utilisateurs avec la permission `cotisations.update`) de modifier librement le montant de cotisation mensuelle par membre, avec enregistrement systématique dans le journal d'audit.
+**Fichier:** `src/components/config/CalendrierBeneficiairesManager.tsx`
 
-## Constat actuel
+Le `Select` natif (lignes 534-541) n'a pas de champ de recherche : avec une longue liste de membres E2D, impossible de filtrer. Remplacer par un **Combobox cherchable** (`Command` + `Popover` shadcn) :
 
-Le composant `src/components/config/CotisationsMensuellesExerciceManager.tsx` existe déjà et gère les montants par exercice, mais :
+- Champ "Rechercher un membre…" filtrant `membresDisponibles` sur `prenom + nom` (insensible casse/accents).
+- Afficher un message "Tous les membres sont déjà dans le calendrier" si liste vide.
+- Conserver l'état `selectedMembre` et le reset à la fermeture.
+- Même traitement pour le `Select` de mois si utile (laisser tel quel sauf demande).
 
-1. **Détection d'admin par chaîne brute** (ligne 135) : `['admin','administrateur','tresorier','super_admin','secretaire_general'].includes(userRole.toLowerCase())`. Or `userRole` est déjà normalisé à `'administrateur'` dans `AuthContext`, et les autres rôles (trésorier…) devraient passer par `usePermissions`, pas par une liste codée en dur.
-2. **Audit conditionnel** : un log n'est inséré dans `cotisations_mensuelles_audit` que si la ligne est `verrouille = true` ET que l'utilisateur est admin (ligne 175). Toute autre modification (création, ligne non verrouillée) passe sous le radar.
-3. **UX trompeuse** : le cadenas et le badge "Verrouillé" restent affichés même pour un admin qui peut modifier, ce qui laisse croire que le champ est bloqué (cf. capture utilisateur).
-4. **Pas d'historique visible** des modifications dans l'interface admin.
+## 2. Montants des cotisations non répercutés
 
-## Plan d'implémentation
+**Cause:** quand une réunion est ouverte, `projeter_cotisations_reunion()` insère des lignes dans `cotisations` avec le montant figé à cet instant. Modifier ensuite `cotisations_mensuelles_exercice.montant` ne met PAS à jour les lignes `cotisations` déjà créées (statut `en_attente`), donc la grille affiche l'ancien montant.
 
-### 1. Autorisation centralisée
+**Migration SQL** (trigger `AFTER UPDATE` sur `cotisations_mensuelles_exercice`):
 
-Dans `CotisationsMensuellesExerciceManager.tsx` :
+- Lorsque `montant` change, mettre à jour toutes les `cotisations` correspondantes :
+  - `membre_id = NEW.membre_id`
+  - `exercice_id = NEW.exercice_id`
+  - `type_cotisation_id` = id du type "Cotisation mensuelle" obligatoire
+  - `statut = 'en_attente'` (ne jamais toucher aux paiements `paye`/`partiel`)
+- Tracer la propagation dans `cotisations_mensuelles_audit` (raison: "Propagation aux cotisations en_attente").
 
-- Remplacer la liste codée en dur par `usePermissions().hasPermission('cotisations','update')`. Conserver le bypass admin déjà géré par le hook.
-- Variable `canEdit = hasPermission('cotisations','update')` (l'admin reçoit `true` automatiquement).
-- Désactiver l'input seulement si `!canEdit` (le verrou n'est plus un blocage pour les autorisés).
+**Sécurité:** trigger `SECURITY DEFINER`, ne touche que les lignes non payées, ne crée pas de doublon `fond_caisse_operations`.
 
-### 2. Audit systématique
+## 3. Fusion onglet "Configuration Tontine" dans "Configuration E2D"
 
-- Insérer une ligne dans `cotisations_mensuelles_audit` à **chaque** UPDATE de montant (verrouillé ou non), avec :
-  - `montant_avant`, `montant_apres`, `modifie_par = profile?.id`, `raison`
-- À l'INSERT initial : également logger (montant_avant = 0, raison = "Initialisation").
-- Toujours demander une raison via `showAuditDialog` quand l'exercice est `actif` ou `cloture` (modification sensible). Pour un exercice `brouillon`, raison optionnelle.
+Tontine est déjà intégré comme sous-onglet de E2D Config (ligne 235-250 de `E2DConfigAdmin.tsx`). Il reste à **supprimer l'entrée de menu doublon** :
 
-### 3. Sécurité base (migration)
+- `src/components/layout/DashboardSidebar.tsx` lignes 81-83 : retirer `e2dTontineItems` (et son rendu dans la sidebar) pour ne plus exposer le lien standalone.
+- Garder la route `/dashboard/admin/tontine/config` fonctionnelle (au cas où un lien direct existe), mais la masquer du menu.
 
-Vérifier/ajuster la RLS `cotisations_mensuelles_exercice` :
+## Récapitulatif fichiers
 
-- UPDATE/INSERT : autorisé si `has_permission(auth.uid(),'cotisations','update')` OU `is_admin()`.
-- `cotisations_mensuelles_audit` INSERT : autorisé pour le même périmètre, avec `modifie_par = auth.uid()` forcé côté trigger pour empêcher l'usurpation.
-- Ajouter un trigger `BEFORE INSERT` sur `cotisations_mensuelles_audit` qui force `modifie_par = auth.uid()`.
-
-### 4. UX
-
-- Si `canEdit`, masquer l'icône cadenas dans l'input et remplacer le badge "Verrouillé" par "Modifiable (audité)".
-- Garder le cadenas + badge "Verrouillé" pour les utilisateurs non autorisés.
-- Bandeau d'information clair : « Vous pouvez modifier les montants. Chaque modification est enregistrée dans l'historique. »
-
-### 5. Historique consultable
-
-Ajouter un bouton "Historique des modifications" qui ouvre un dialog listant les 50 derniers changements pour l'exercice sélectionné (membre, ancien → nouveau, auteur, raison, date), basé sur `cotisations_mensuelles_audit`.
-
-## Fichiers impactés
-
-- `src/components/config/CotisationsMensuellesExerciceManager.tsx` (refactor autorisation + UX + dialog historique)
-- Nouvelle migration SQL : politiques RLS + trigger `modifie_par`
-- (Optionnel) extraction du dialog historique dans `src/components/config/CotisationsMensuellesAuditDialog.tsx`
-
-## Hors périmètre
-
-- Pas de changement sur la table `cotisations` (paiements réels en réunion).
-- Pas de refonte du calcul des attendus mensuels.
+- `src/components/config/CalendrierBeneficiairesManager.tsx` — Combobox de recherche membre.
+- Nouvelle migration SQL — trigger de propagation `cotisations_mensuelles_exercice` → `cotisations` (en_attente).
+- `src/components/layout/DashboardSidebar.tsx` — retirer le menu "Configuration Tontine".

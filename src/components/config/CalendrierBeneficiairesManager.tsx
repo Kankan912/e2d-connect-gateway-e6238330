@@ -10,8 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
-import { Calendar, Users, Plus, Trash2, Download, Send, Lock, Loader2, X, Edit2 } from "lucide-react";
+import { Calendar, Users, Plus, Trash2, Download, Send, Lock, Loader2, X, Edit2, Check, ChevronsUpDown } from "lucide-react";
 import { useCalendrierBeneficiaires } from "@/hooks/useCalendrierBeneficiaires";
 import { useCotisationsMensuellesExercice } from "@/hooks/useCotisationsMensuelles";
 import { useAuth } from "@/contexts/AuthContext";
@@ -523,7 +524,10 @@ export default function CalendrierBeneficiairesManager() {
       </Card>
 
       {/* Dialog d'ajout */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      <Dialog open={showAddDialog} onOpenChange={(open) => {
+        setShowAddDialog(open);
+        if (!open) { setSelectedMembre(""); setSelectedMois(""); }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Ajouter un bénéficiaire</DialogTitle>
@@ -531,14 +535,53 @@ export default function CalendrierBeneficiairesManager() {
           <div className="space-y-4">
             <div>
               <Label>Membre</Label>
-              <Select value={selectedMembre} onValueChange={setSelectedMembre}>
-                <SelectTrigger><SelectValue placeholder="Sélectionner un membre" /></SelectTrigger>
-                <SelectContent>
-                  {membresDisponibles.map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.prenom} {m.nom}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {membresDisponibles.length === 0 ? (
+                <p className="text-xs text-muted-foreground mt-2 italic">
+                  Tous les membres E2D sont déjà dans le calendrier.
+                </p>
+              ) : (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                      {selectedMembre
+                        ? (() => {
+                            const m = membresDisponibles.find(x => x.id === selectedMembre);
+                            return m ? `${m.prenom} ${m.nom}` : "Sélectionner un membre";
+                          })()
+                        : "Sélectionner un membre"}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command
+                      filter={(value, search) => {
+                        const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                        return norm(value).includes(norm(search)) ? 1 : 0;
+                      }}
+                    >
+                      <CommandInput placeholder="Rechercher un membre…" />
+                      <CommandList>
+                        <CommandEmpty>Aucun membre trouvé.</CommandEmpty>
+                        <CommandGroup>
+                          {membresDisponibles.map(m => {
+                            const label = `${m.prenom} ${m.nom}`;
+                            return (
+                              <CommandItem
+                                key={m.id}
+                                value={label}
+                                onSelect={() => setSelectedMembre(m.id)}
+                              >
+                                <Check className={`mr-2 h-4 w-4 ${selectedMembre === m.id ? 'opacity-100' : 'opacity-0'}`} />
+                                {label}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
             <div>
               <Label>Mois de bénéfice</Label>
