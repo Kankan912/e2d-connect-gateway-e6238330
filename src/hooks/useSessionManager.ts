@@ -131,8 +131,7 @@ export const useSessionManager = ({
     loadConfig();
   }, [session, sessionType, enabled, getSessionStart]);
 
-    loadConfig();
-  }, [session, sessionType, enabled, getSessionStart]);
+
 
   // Fonction pour déclencher la déconnexion
   const triggerLogout = useCallback(async (reason: 'inactivity' | 'session_expired') => {
