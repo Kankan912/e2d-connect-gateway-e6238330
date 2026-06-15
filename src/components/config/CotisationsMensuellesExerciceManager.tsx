@@ -45,12 +45,14 @@ interface CotisationMensuelleExercice {
 
 export function CotisationsMensuellesExerciceManager() {
   const { toast } = useToast();
-  const { profile, userRole } = useAuth();
+  const { profile } = useAuth();
+  const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
   const [selectedExerciceId, setSelectedExerciceId] = useState<string>('');
   const [modifiedMontants, setModifiedMontants] = useState<Record<string, number>>({});
   const [massApplyAmount, setMassApplyAmount] = useState<string>('');
   const [showAuditDialog, setShowAuditDialog] = useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [auditReason, setAuditReason] = useState('');
   const [pendingSave, setPendingSave] = useState<{ membreId: string; montant: number; oldMontant: number }[]>([]);
 
