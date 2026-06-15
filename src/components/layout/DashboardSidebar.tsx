@@ -137,6 +137,7 @@ export function DashboardSidebar() {
   const { userRole } = useAuth();
   const { open } = useSidebar();
   const location = useLocation();
+  const isAdministrateur = userRole === 'administrateur';
 
   // Compter les prêts en retard pour le badge
   const { data: pretsEnRetardCount } = useQuery({
@@ -151,6 +152,7 @@ export function DashboardSidebar() {
       if (error) throw error;
       return count || 0;
     },
+    enabled: isAdministrateur || hasPermission("prets", "read"),
   });
 
   const isActive = (path: string) => {
