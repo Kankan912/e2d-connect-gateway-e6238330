@@ -1,32 +1,58 @@
-## Diagnostic confirmé
+## Objectif
 
-Le problème touche aussi la prod Vercel parce que la cause est **côté base de données Supabase**, pas côté hébergement.
+Permettre aux personnes autorisées (administrateurs et utilisateurs avec la permission `cotisations.update`) de modifier librement le montant de cotisation mensuelle par membre, avec enregistrement systématique dans le journal d'audit.
 
-Vérification effectuée à l'instant :
+## Constat actuel
 
-- Requête `information_schema.role_table_grants` sur `profiles`, `user_roles`, `role_permissions`, `membres`, `roles` pour les rôles `authenticated` / `anon` / `service_role` → **0 ligne**.
-- Table `supabase_migrations.schema_migrations` : la dernière migration appliquée est `20260615145318`. La migration GRANT préparée précédemment (`20260615145321_...sql`) est présente dans le dépôt mais **n'a jamais été approuvée**, donc jamais exécutée sur la base.
+Le composant `src/components/config/CotisationsMensuellesExerciceManager.tsx` existe déjà et gère les montants par exercice, mais :
 
-Conséquence : PostgREST refuse toujours les requêtes de `fetchUserProfile`, d'où le timeout de 8 s identique en preview Lovable et sur Vercel (les deux frontends tapent la même base).
+1. **Détection d'admin par chaîne brute** (ligne 135) : `['admin','administrateur','tresorier','super_admin','secretaire_general'].includes(userRole.toLowerCase())`. Or `userRole` est déjà normalisé à `'administrateur'` dans `AuthContext`, et les autres rôles (trésorier…) devraient passer par `usePermissions`, pas par une liste codée en dur.
+2. **Audit conditionnel** : un log n'est inséré dans `cotisations_mensuelles_audit` que si la ligne est `verrouille = true` ET que l'utilisateur est admin (ligne 175). Toute autre modification (création, ligne non verrouillée) passe sous le radar.
+3. **UX trompeuse** : le cadenas et le badge "Verrouillé" restent affichés même pour un admin qui peut modifier, ce qui laisse croire que le champ est bloqué (cf. capture utilisateur).
+4. **Pas d'historique visible** des modifications dans l'interface admin.
 
-## Plan
+## Plan d'implémentation
 
-1. **Re-soumettre la migration GRANT** (identique à celle du fichier `20260615145321`) via l'outil `supabase--migration` afin qu'elle apparaisse à nouveau dans le panneau d'approbation.
-   - `GRANT SELECT, INSERT, UPDATE, DELETE` sur toutes les tables `public` à `authenticated`
-   - `GRANT ALL` à `service_role`
-   - `GRANT SELECT` à `anon` uniquement sur les tables du site public (`site_*`, `cms_*`)
-   - `GRANT INSERT` à `anon` sur les tables de soumission publique (`messages_contact`, `demandes_adhesion`, `adhesions`, `donations`, `recurring_donations`, `site_pageviews`)
-   - `GRANT USAGE, SELECT` sur toutes les séquences `public`
-   - Aucune modification des politiques RLS
+### 1. Autorisation centralisée
 
-2. **Attendre votre clic « Approuver »** dans la fenêtre de migration. Tant que ce bouton n'est pas cliqué, rien ne change en base — ni en preview, ni sur Vercel.
+Dans `CotisationsMensuellesExerciceManager.tsx` :
 
-3. **Vérification** : relancer la requête `role_table_grants` pour confirmer que les lignes apparaissent, puis vous demander de recharger `/dashboard` sur Vercel (Ctrl+Shift+R) pour confirmer la disparition du « Chargement… » infini.
+- Remplacer la liste codée en dur par `usePermissions().hasPermission('cotisations','update')`. Conserver le bypass admin déjà géré par le hook.
+- Variable `canEdit = hasPermission('cotisations','update')` (l'admin reçoit `true` automatiquement).
+- Désactiver l'input seulement si `!canEdit` (le verrou n'est plus un blocage pour les autorisés).
 
-## Pourquoi rien n'a changé jusque-là
+### 2. Audit systématique
 
-Le fichier SQL existe dans `supabase/migrations/`, mais sur Lovable une migration n'est appliquée qu'**après votre approbation explicite** dans le panneau dédié. Le fichier seul ne touche pas la base distante.
+- Insérer une ligne dans `cotisations_mensuelles_audit` à **chaque** UPDATE de montant (verrouillé ou non), avec :
+  - `montant_avant`, `montant_apres`, `modifie_par = profile?.id`, `raison`
+- À l'INSERT initial : également logger (montant_avant = 0, raison = "Initialisation").
+- Toujours demander une raison via `showAuditDialog` quand l'exercice est `actif` ou `cloture` (modification sensible). Pour un exercice `brouillon`, raison optionnelle.
 
-## À confirmer
+### 3. Sécurité base (migration)
 
-Souhaitez-vous que je re-soumette cette migration maintenant pour que vous puissiez l'approuver ?
+Vérifier/ajuster la RLS `cotisations_mensuelles_exercice` :
+
+- UPDATE/INSERT : autorisé si `has_permission(auth.uid(),'cotisations','update')` OU `is_admin()`.
+- `cotisations_mensuelles_audit` INSERT : autorisé pour le même périmètre, avec `modifie_par = auth.uid()` forcé côté trigger pour empêcher l'usurpation.
+- Ajouter un trigger `BEFORE INSERT` sur `cotisations_mensuelles_audit` qui force `modifie_par = auth.uid()`.
+
+### 4. UX
+
+- Si `canEdit`, masquer l'icône cadenas dans l'input et remplacer le badge "Verrouillé" par "Modifiable (audité)".
+- Garder le cadenas + badge "Verrouillé" pour les utilisateurs non autorisés.
+- Bandeau d'information clair : « Vous pouvez modifier les montants. Chaque modification est enregistrée dans l'historique. »
+
+### 5. Historique consultable
+
+Ajouter un bouton "Historique des modifications" qui ouvre un dialog listant les 50 derniers changements pour l'exercice sélectionné (membre, ancien → nouveau, auteur, raison, date), basé sur `cotisations_mensuelles_audit`.
+
+## Fichiers impactés
+
+- `src/components/config/CotisationsMensuellesExerciceManager.tsx` (refactor autorisation + UX + dialog historique)
+- Nouvelle migration SQL : politiques RLS + trigger `modifie_par`
+- (Optionnel) extraction du dialog historique dans `src/components/config/CotisationsMensuellesAuditDialog.tsx`
+
+## Hors périmètre
+
+- Pas de changement sur la table `cotisations` (paiements réels en réunion).
+- Pas de refonte du calcul des attendus mensuels.
