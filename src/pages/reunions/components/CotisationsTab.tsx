@@ -65,36 +65,32 @@ export default function CotisationsTab({ reunions, selectedReunion, onSelectReun
     return exercices?.find(e => dateReunion >= e.date_debut && dateReunion <= e.date_fin);
   };
 
-  const reunionsParMois = reunionsFiltrees.reduce((acc, r) => {
-    const date = new Date(r.date_reunion);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    const label = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-    if (!acc[key]) acc[key] = { label, reunions: [] };
-    acc[key].reunions.push(r);
-    return acc;
-  }, {} as Record<string, { label: string; reunions: Reunion[] }>);
+  // Tri chronologique ascendant pour affichage horizontal
+  const reunionsTriees = [...reunionsFiltrees].sort((a, b) =>
+    a.date_reunion.localeCompare(b.date_reunion)
+  );
 
   const currentExercice = selectedReunion ? getExerciceForReunion(selectedReunion.date_reunion) : null;
 
   return (
-    <Tabs defaultValue="par-reunion" className="space-y-4">
+    <Tabs defaultValue="par-reunion" className="space-y-3">
       <TabsList>
         <TabsTrigger value="par-reunion">Par Réunion</TabsTrigger>
         <TabsTrigger value="cumul-annuel">Suivi Annuel</TabsTrigger>
       </TabsList>
 
       <TabsContent value="par-reunion">
-        <Card className="mb-4">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-4">
+        <Card className="mb-3">
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
               <div className="flex items-center gap-2">
-                <Coins className="w-5 h-5" />
-                <h3 className="font-semibold">Sélectionner une réunion</h3>
+                <Coins className="w-4 h-4" />
+                <h3 className="font-semibold text-sm">Sélectionner une réunion</h3>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Exercice :</span>
+                <span className="text-xs text-muted-foreground">Exercice :</span>
                 <Select value={selectedExercice} onValueChange={setSelectedExercice}>
-                  <SelectTrigger className="w-48"><SelectValue placeholder="Tous les exercices" /></SelectTrigger>
+                  <SelectTrigger className="w-44 h-8 text-xs"><SelectValue placeholder="Tous les exercices" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous les exercices</SelectItem>
                     {exercices?.map(e => (
@@ -105,52 +101,54 @@ export default function CotisationsTab({ reunions, selectedReunion, onSelectReun
               </div>
             </div>
 
-            {Object.keys(reunionsParMois).length > 0 ? (
-              <div className="space-y-4">
-                {Object.entries(reunionsParMois).map(([key, { label, reunions: reunionsMois }]) => (
-                  <div key={key}>
-                    <p className="text-xs font-medium text-muted-foreground mb-2 uppercase">{label}</p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                      {reunionsMois.map(reunion => {
-                        const isSelected = selectedReunion?.id === reunion.id;
-                        return (
-                          <Button key={reunion.id} variant={isSelected ? "default" : "outline"} size="sm" onClick={() => onSelectReunion(reunion)} className={`justify-start h-auto py-2 ${isSelected ? 'ring-2 ring-primary' : ''}`}>
-                            <div className="flex flex-col items-start w-full">
-                              <div className="flex items-center gap-1 w-full">
-                                <Calendar className="w-3 h-3 flex-shrink-0" />
-                                <span className="font-medium">{new Date(reunion.date_reunion).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
-                                {reunion.statut === 'terminee' && <Lock className="w-3 h-3 ml-auto text-success" />}
-                                {reunion.statut === 'planifie' && <Clock className="w-3 h-3 ml-auto text-muted-foreground" />}
-                                {reunion.statut === 'en_cours' && <Users className="w-3 h-3 ml-auto text-warning" />}
-                              </div>
-                              <span className="text-[10px] text-muted-foreground truncate w-full text-left">
-                                {reunion.statut === 'terminee' ? 'Clôturée' : reunion.statut === 'planifie' ? 'Planifiée' : reunion.statut === 'en_cours' ? 'En cours' : reunion.statut}
-                              </span>
-                            </div>
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+            {reunionsTriees.length > 0 ? (
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {reunionsTriees.map(reunion => {
+                  const isSelected = selectedReunion?.id === reunion.id;
+                  const StatusIcon = reunion.statut === 'terminee' ? Lock
+                    : reunion.statut === 'planifie' ? Clock
+                    : reunion.statut === 'en_cours' ? Users
+                    : null;
+                  const iconClass = reunion.statut === 'terminee' ? 'text-success'
+                    : reunion.statut === 'en_cours' ? 'text-warning'
+                    : 'text-muted-foreground';
+                  return (
+                    <Button
+                      key={reunion.id}
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => onSelectReunion(reunion)}
+                      className={`flex-shrink-0 h-8 px-2 gap-1.5 ${isSelected ? 'ring-2 ring-primary' : ''}`}
+                      title={`${new Date(reunion.date_reunion).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })} - ${reunion.statut}`}
+                    >
+                      <Calendar className="w-3 h-3" />
+                      <span className="text-xs font-medium">
+                        {new Date(reunion.date_reunion).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                      </span>
+                      {StatusIcon && <StatusIcon className={`w-3 h-3 ${isSelected ? '' : iconClass}`} />}
+                    </Button>
+                  );
+                })}
               </div>
             ) : (
-              <p className="text-center text-muted-foreground py-4">Aucune réunion pour cet exercice</p>
+              <p className="text-center text-muted-foreground py-3 text-sm">Aucune réunion pour cet exercice</p>
             )}
           </CardContent>
         </Card>
 
         {selectedReunion && (
-          <div className={`mb-4 p-3 rounded-lg text-sm ${
+          <div className={`mb-3 px-2 py-1.5 rounded-md text-xs ${
             selectedReunion.statut === 'terminee' ? 'bg-success/10 text-success border border-success/30'
               : selectedReunion.statut === 'en_cours' ? 'bg-warning/10 text-warning border border-warning/30'
               : 'bg-primary/10 text-primary border border-primary/30'
           }`}>
-            {selectedReunion.statut === 'terminee' && <p className="flex items-center gap-2"><Lock className="w-4 h-4" /><span>Réunion clôturée - Vue en lecture seule avec comparaison attendu/payé</span></p>}
-            {selectedReunion.statut === 'planifie' && <p className="flex items-center gap-2"><TrendingUp className="w-4 h-4" /><span>Réunion planifiée - Projection des cotisations attendues + saisie possible</span></p>}
-            {selectedReunion.statut === 'en_cours' && <p className="flex items-center gap-2"><Users className="w-4 h-4" /><span>Réunion en cours - Saisie des cotisations activée</span></p>}
+            {selectedReunion.statut === 'terminee' && <p className="flex items-center gap-1.5"><Lock className="w-3 h-3" /><span>Réunion clôturée - lecture seule</span></p>}
+            {selectedReunion.statut === 'planifie' && <p className="flex items-center gap-1.5"><TrendingUp className="w-3 h-3" /><span>Réunion planifiée - projection + saisie possible</span></p>}
+            {selectedReunion.statut === 'en_cours' && <p className="flex items-center gap-1.5"><Users className="w-3 h-3" /><span>Réunion en cours - saisie activée</span></p>}
           </div>
         )}
+
+
 
         {selectedReunion ? (
           selectedReunion.statut === 'terminee' ? (
