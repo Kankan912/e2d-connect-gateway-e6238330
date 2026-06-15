@@ -311,7 +311,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     // Purger toutes les clés de début de session pour éviter de restaurer
     // une session précédente déjà expirée lors de la prochaine connexion.
     try {
@@ -328,7 +328,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setPermissions([]);
     setMustChangePassword(false);
     setMemberBlocked(false);
-  };
+  }, []);
 
   // Session manager integration
   const sessionManager = useSessionManager({
