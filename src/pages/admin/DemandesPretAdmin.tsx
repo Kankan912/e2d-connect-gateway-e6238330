@@ -40,6 +40,8 @@ const statusBadge = (s: LoanRequestStatus) => {
       return <Badge variant="destructive">Rejetée</Badge>;
     case "disbursed":
       return <Badge className="bg-violet-500/15 text-violet-700 border-violet-500/30">Décaissée</Badge>;
+    case "cancelled":
+      return <Badge variant="outline" className="text-muted-foreground">Annulée</Badge>;
   }
 };
 
@@ -195,7 +197,7 @@ export default function DemandesPretAdmin() {
   const { data: requests, isLoading } = useLoanRequests();
   const { userRole } = useAuth();
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"to_validate" | "in_progress" | "approved" | "rejected" | "disbursed" | "all">(
+  const [tab, setTab] = useState<"to_validate" | "in_progress" | "approved" | "rejected" | "disbursed" | "cancelled" | "all">(
     "to_validate"
   );
   const [rejectId, setRejectId] = useState<string | null>(null);
@@ -226,6 +228,7 @@ export default function DemandesPretAdmin() {
     approved: filtered.filter((r) => r.statut === "approved"),
     rejected: filtered.filter((r) => r.statut === "rejected"),
     disbursed: filtered.filter((r) => r.statut === "disbursed"),
+    cancelled: filtered.filter((r) => r.statut === "cancelled"),
     all: filtered,
   }), [filtered]);
 
@@ -301,6 +304,7 @@ export default function DemandesPretAdmin() {
             <TabsTrigger value="approved">Approuvées ({byStatus.approved.length})</TabsTrigger>
             <TabsTrigger value="rejected">Rejetées ({byStatus.rejected.length})</TabsTrigger>
             <TabsTrigger value="disbursed">Décaissées ({byStatus.disbursed.length})</TabsTrigger>
+            <TabsTrigger value="cancelled">Annulées ({byStatus.cancelled.length})</TabsTrigger>
             <TabsTrigger value="all">Toutes ({byStatus.all.length})</TabsTrigger>
           </TabsList>
 
@@ -314,6 +318,7 @@ export default function DemandesPretAdmin() {
           <TabsContent value="approved" className="mt-4">{renderTable(byStatus.approved)}</TabsContent>
           <TabsContent value="rejected" className="mt-4">{renderTable(byStatus.rejected)}</TabsContent>
           <TabsContent value="disbursed" className="mt-4">{renderTable(byStatus.disbursed)}</TabsContent>
+          <TabsContent value="cancelled" className="mt-4">{renderTable(byStatus.cancelled)}</TabsContent>
           <TabsContent value="all" className="mt-4">{renderTable(byStatus.all)}</TabsContent>
         </Tabs>
       )}

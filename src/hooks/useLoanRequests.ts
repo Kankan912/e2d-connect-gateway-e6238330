@@ -95,6 +95,7 @@ export function useMyLoanRequests() {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "loan_request_validations" }, () => {
         qc.invalidateQueries({ queryKey: ["my-loan-requests"] });
+        qc.invalidateQueries({ queryKey: ["loan-request-validations"] });
       })
       .subscribe();
     return () => {
@@ -122,20 +123,30 @@ export function useLoanRequestValidations(requestId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("loan_request_validations" as never)
-        .select("id, loan_request_id, role, label, ordre, statut, commentaire, validated_by, validated_at, validator:profiles!loan_request_validations_validated_by_fkey(prenom, nom)")
+        .select("id, loan_request_id, role, label, ordre, statut, commentaire, validated_by, validated_at")
         .eq("loan_request_id", requestId!)
         .order("ordre", { ascending: true });
-      if (error) {
-        // Fallback sans join si la FK n'a pas le nom attendu
-        const fallback = await supabase
-          .from("loan_request_validations" as never)
-          .select("id, loan_request_id, role, label, ordre, statut, commentaire, validated_by, validated_at")
-          .eq("loan_request_id", requestId!)
-          .order("ordre", { ascending: true });
-        if (fallback.error) throw fallback.error;
-        return (fallback.data ?? []) as unknown as LoanRequestValidation[];
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as LoanRequestValidation[];
+
+      // Pas de FK déclarée vers profiles → fetch séparé puis fusion côté client
+      const ids = Array.from(
+        new Set(rows.map((r) => r.validated_by).filter((v): v is string => !!v))
+      );
+      if (ids.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, prenom, nom")
+          .in("id", ids);
+        const byId = new Map(
+          ((profiles ?? []) as Array<{ id: string; prenom: string | null; nom: string | null }>)
+            .map((p) => [p.id, { prenom: p.prenom, nom: p.nom }])
+        );
+        for (const r of rows) {
+          r.validator = r.validated_by ? byId.get(r.validated_by) ?? null : null;
+        }
       }
-      return (data ?? []) as unknown as LoanRequestValidation[];
+      return rows;
     },
   });
 }
@@ -164,6 +175,7 @@ export function useCancelLoanRequest() {
         _request_id: requestId,
       } as never);
       if (error) throw error;
+      await notifyEvent({ request_id: requestId, event: "cancelled" });
       return data as unknown as { success: boolean; request_id: string };
     },
     onSuccess: () => {
@@ -207,7 +219,7 @@ export interface CreateLoanRequestInput {
 
 async function notifyEvent(payload: {
   request_id: string;
-  event: "created" | "step_validated" | "rejected" | "final_approved";
+  event: "created" | "step_validated" | "rejected" | "final_approved" | "cancelled";
   step_label?: string;
   validator_name?: string;
   motif?: string;
@@ -324,7 +336,13 @@ export function useDisburseLoan() {
       qc.invalidateQueries({ queryKey: ["loan-requests"] });
       qc.invalidateQueries({ queryKey: ["my-loan-requests"] });
       qc.invalidateQueries({ queryKey: ["prets"] });
-      qc.invalidateQueries({ queryKey: ["caisse"] });
+      qc.invalidateQueries({ queryKey: ["user-prets"] });
+      qc.invalidateQueries({ queryKey: ["prets-en-retard"] });
+      qc.invalidateQueries({ queryKey: ["prets-en-retard-count"] });
+      qc.invalidateQueries({ queryKey: ["caisse-operations"] });
+      qc.invalidateQueries({ queryKey: ["caisse-stats"] });
+      qc.invalidateQueries({ queryKey: ["caisse-synthese"] });
+      qc.invalidateQueries({ queryKey: ["caisse-config-alertes"] });
       toast.success("Prêt décaissé et créé");
     },
     onError: (e: unknown) => {

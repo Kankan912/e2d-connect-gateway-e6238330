@@ -1,122 +1,59 @@
-## Lot 3 — Workflow demandes de prêt & notifications côté membre
+## Lot 3.1 — Synchronisation E2E du workflow de prêts
 
-### Constat (déjà en place)
-- ✅ RPC `create_loan_request`, `validate_loan_step`, `reject_loan_step`, `disburse_loan`
-- ✅ Workflow multi-étapes configurable (`loan_validation_config` + triggers d'avancement)
-- ✅ Notifications **email** via edge function `send-loan-notification` (events: `created`, `step_validated`, `rejected`, `final_approved`)
-- ✅ `LoanRequestDialog` (création) + `LoanValidationTimeline` (suivi visuel)
-- ✅ `MesDemandesPret` avec filtres statut/urgence (Lot 2)
-
-Le Lot 3 ne refait donc PAS le workflow : il **enrichit l'expérience membre** sur 4 axes ciblés.
+Audit du workflow `demande → validation → décaissement → caisse → notifications`. 6 défauts de synchronisation détectés. Aucune nouvelle fonctionnalité — uniquement des correctifs ciblés.
 
 ---
 
-### 1. Simulateur dans `LoanRequestDialog`
-Avant soumission, afficher une carte récapitulative live :
-- Taux d'intérêt par défaut lu depuis `caisse_config.taux_interet_defaut` (nouvelle requête légère React Query).
-- **Montant total à rembourser** = `montant + montant × taux/100` (formule alignée avec `calculate_total_pret_amount` côté SQL, sans reconductions à la création).
-- **Mensualité indicative** = `total / duree_mois` (arrondi FCFA).
-- **Date d'échéance estimée** = `today + duree_mois` (date-fns `addMonths`).
-- Note explicative : « Indicatif — le taux final sera fixé au décaissement ».
+### Défauts identifiés
 
-### 2. Annulation d'une demande en attente
-- Nouvelle RPC `cancel_loan_request(_request_id uuid)` :
-  - Vérifie `auth.uid()` propriétaire (`membres.user_id`).
-  - Autorisé uniquement si `statut IN ('pending','in_progress')` ET aucune étape déjà `approved`.
-  - Passe `loan_requests.statut` à `cancelled`, `motif_rejet = 'Annulée par le membre'`.
-  - Marque les étapes restantes `pending` → `cancelled`.
-- Ajout du statut `cancelled` dans le type TS `LoanRequestStatus` + badge gris.
-- Hook `useCancelLoanRequest` (mutation, invalide `my-loan-requests`).
-- Bouton **Annuler ma demande** sur `LoanRequestCard` (AlertDialog de confirmation — pas de `window.confirm`, cf. mémoire UI/UX).
-- Le bouton n'est visible que si statut ∈ {pending, in_progress} ET `current_step <= 1`.
-
-### 3. Timeline enrichie pour le membre
-Modifications dans `LoanValidationTimeline` (ou wrapper côté membre) :
-- Afficher pour chaque étape validée/rejetée :
-  - **Nom du validateur** (joindre `profiles` via `validated_by`).
-  - **Date** au format `dd/MM/yyyy HH:mm`.
-  - **Commentaire** s'il existe (déjà en base, juste à exposer).
-- Étendre `useLoanRequestValidations` pour ramener `profiles:validated_by(prenom, nom)`.
-
-### 4. Notifications in-app (cloche du dashboard)
-- Étendre `supabase/functions/send-loan-notification/index.ts` pour, en plus de l'email, **insérer une ligne dans `notifications_historique`** côté membre demandeur sur les événements `step_validated`, `rejected`, `final_approved`, et côté validateurs sur `created`.
-  - Champs : `user_id`, `type='loan_request'`, `titre`, `message`, `lu=false`, `reference_id=request_id`.
-  - Service role utilisé (déjà disponible dans la fonction).
-- Aucune modification du `NotificationCenter` : il consomme déjà `notifications_historique` en realtime.
-- Vérifier au préalable la structure exacte de `notifications_historique` (11 colonnes — lecture via `supabase--read-query` avant migration éventuelle de policy).
+| # | Symptôme | Cause | Fix |
+|---|---|---|---|
+| 1 | Nom du validateur jamais affiché dans la timeline | `useLoanRequestValidations` joint `profiles!loan_request_validations_validated_by_fkey` — cette FK n'existe pas → fallback sans join | Ajouter la FK `validated_by → profiles(id)` via migration, OU faire un fetch séparé des profils. Choix : **fetch séparé** (moins intrusif, pas de changement de schéma) |
+| 2 | Solde caisse / synthèse / opérations ne se rafraîchissent pas après un décaissement | `useDisburseLoan` invalide `["caisse"]` (clé inexistante) au lieu de `["caisse-operations"]`, `["caisse-stats"]`, `["caisse-synthese"]`, `["caisse-config-alertes"]` | Aligner les invalidations sur les vraies clés |
+| 3 | `MyPrets` du membre reste vide après décaissement | `useDisburseLoan` n'invalide pas `["user-prets"]` ni `["prets-en-retard"]` / `["prets-en-retard-count"]` | Ajouter ces invalidations |
+| 4 | Badge admin vide pour une demande annulée | `statusBadge` dans `DemandesPretAdmin` n'a pas de case `cancelled` (switch non exhaustif → `undefined`) | Ajouter le case `cancelled` + un onglet "Annulées" |
+| 5 | Validateurs non notifiés quand un membre annule sa demande | `useCancelLoanRequest` ne déclenche aucun email | Étendre `send-loan-notification` avec event `cancelled` (notifie les validateurs) + appeler depuis le hook |
+| 6 | Realtime côté membre rate les avancées de validation | Channel `loan_requests_self` invalide bien `my-loan-requests` mais pas `loan-request-validations` par requestId (alors que l'admin le fait) | Aligner sur l'admin : invalider aussi `["loan-request-validations"]` |
 
 ---
 
-### Migration SQL (un seul fichier)
-```sql
--- 1) Ajouter le statut 'cancelled' au domaine applicatif (colonne text, pas d'enum → rien à modifier)
+### Implémentation
 
--- 2) RPC d'annulation
-CREATE OR REPLACE FUNCTION public.cancel_loan_request(_request_id uuid)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE
-  v_request record;
-  v_membre_user uuid;
-BEGIN
-  IF auth.uid() IS NULL THEN RAISE EXCEPTION 'Authentification requise'; END IF;
+#### A. `src/hooks/useLoanRequests.ts`
+- **`useLoanRequestValidations`** : retirer le join cassé, faire un second fetch sur `profiles` (`in: validated_by IN (...)`) et fusionner côté client en `validator`. Conserve le type existant.
+- **`useDisburseLoan.onSuccess`** : remplacer `["caisse"]` par `["caisse-operations"]`, `["caisse-stats"]`, `["caisse-synthese"]`, `["caisse-config-alertes"]`. Ajouter `["user-prets"]`, `["prets-en-retard"]`, `["prets-en-retard-count"]`.
+- **`useMyLoanRequests`** channel : ajouter `qc.invalidateQueries({ queryKey: ["loan-request-validations"] })` dans le handler `loan_request_validations` (déjà présent côté admin).
+- **`useCancelLoanRequest`** : après succès, appeler `notifyEvent({ request_id, event: "cancelled" })` (non bloquant).
+- Étendre le type union `EventType` côté hook (`notifyEvent`) pour inclure `"cancelled"`.
 
-  SELECT lr.*, m.user_id AS owner_uid
-    INTO v_request
-    FROM public.loan_requests lr
-    JOIN public.membres m ON m.id = lr.membre_id
-   WHERE lr.id = _request_id
-   FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Demande introuvable'; END IF;
+#### B. `supabase/functions/send-loan-notification/index.ts`
+- Ajouter `"cancelled"` au type `EventType`.
+- Branche `cancelled` : récupérer les validateurs via `get_loan_request_validators_emails`, envoyer un email "Demande de prêt annulée par le membre" (sujet + body court avec recap). Pas de notification au membre lui-même (action initiée par lui).
+- Aucun secret ni paramètre nouveau.
 
-  IF v_request.owner_uid <> auth.uid() AND NOT public.is_admin() THEN
-    RAISE EXCEPTION 'Action non autorisée';
-  END IF;
-
-  IF v_request.statut NOT IN ('pending','in_progress') THEN
-    RAISE EXCEPTION 'Seules les demandes en attente ou en cours peuvent être annulées';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM public.loan_request_validations
-     WHERE loan_request_id = _request_id AND statut = 'approved'
-  ) THEN
-    RAISE EXCEPTION 'Une validation a déjà été enregistrée — annulation impossible';
-  END IF;
-
-  UPDATE public.loan_request_validations
-     SET statut = 'cancelled'
-   WHERE loan_request_id = _request_id AND statut = 'pending';
-
-  UPDATE public.loan_requests
-     SET statut = 'cancelled',
-         motif_rejet = COALESCE(motif_rejet, 'Annulée par le membre')
-   WHERE id = _request_id;
-
-  RETURN jsonb_build_object('success', true, 'request_id', _request_id);
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.cancel_loan_request(uuid) TO authenticated;
-```
-*(Pas de nouvelle table — donc pas de bloc GRANT supplémentaire à prévoir.)*
-
-### Edge function — modifications
-- Ouvrir `supabase/functions/send-loan-notification/index.ts`, après l'envoi email, insérer dans `notifications_historique` via le client `service_role` (déjà construit dans la fonction). Schéma à confirmer avant écriture (lecture via `supabase--read-query`).
-- Aucune nouvelle secret nécessaire.
+#### C. `src/pages/admin/DemandesPretAdmin.tsx`
+- `statusBadge` : ajouter `case "cancelled": return <Badge variant="outline" className="text-muted-foreground">Annulée</Badge>;`.
+- `byStatus` : ajouter `cancelled: filtered.filter(r => r.statut === "cancelled")`.
+- Ajouter un onglet `<TabsTrigger value="cancelled">Annulées ({byStatus.cancelled.length})</TabsTrigger>` + son `TabsContent`.
+- Étendre `type` du `useState` du tab pour inclure `"cancelled"`.
 
 ### Hors périmètre
-- Pas de modification du moteur de validation (RPC existantes intactes).
-- Pas d'écran d'historique global, pas d'export PDF des demandes (Lot 1/2 couvrent les exports).
-- Pas d'ajout au workflow admin (`DemandesPretAdmin` reste tel quel — il affichera juste le nouveau statut `cancelled`).
-- Pas de modification des emails existants.
+- Pas de modification des RPC `validate_loan_step`, `reject_loan_step`, `disburse_loan`, `cancel_loan_request`, `create_loan_request` (déjà conformes).
+- Pas de changement de schéma (pas de FK ajoutée).
+- Pas de modification du trigger `create_caisse_operation_from_source` (déjà câblé sur INSERT prets).
+- Pas de notification in-app cloche (toujours hors scope, cf. Lot 3).
+- Pas de bouton "Annuler" côté admin (la RPC l'autorise déjà pour `is_admin()`, mais l'usage UI n'a pas été demandé).
 
 ### Validation
 - `tsc --noEmit` propre.
-- Test fonctionnel : créer une demande → vérifier simulateur, annuler avant validation, valider une étape côté admin et vérifier que le membre reçoit l'in-app notification + voit le validateur + la date dans la timeline.
-- Vérifier que le bouton Annuler disparaît après la 1ère validation.
+- Scénario E2E manuel à dérouler par l'utilisateur :
+  1. Créer une demande → vérifier email validateurs.
+  2. Annuler avant validation → vérifier email "annulée" reçu côté validateurs.
+  3. Créer une nouvelle demande, valider toutes les étapes côté admin → vérifier que la timeline membre affiche nom + date du validateur en temps réel sans rechargement.
+  4. Décaisser → vérifier que la caisse (solde, opérations, synthèse) ET la page `MyPrets` se rafraîchissent immédiatement, et que le badge "Décaissée" remonte.
+  5. Vérifier l'onglet "Annulées" dans l'admin.
 
 ### Détails techniques
-- TS : étendre `LoanRequestStatus = "pending" | "in_progress" | "rejected" | "approved" | "disbursed" | "cancelled"`.
-- Badge `cancelled` : variant `outline` + texte gris.
-- Simulateur : nouveau hook `useDefaultLoanRate()` (query `caisse_config` → `taux_interet_defaut`, stale 5 min).
-- AlertDialog shadcn pour la confirmation d'annulation.
+- Le fetch profils séparé reste léger (≤ N étapes par demande). Utilisé uniquement quand des `validated_by` non nuls existent.
+- Les invalidations ajoutées sont idempotentes côté React Query.
+- L'event `cancelled` réutilise `get_loan_request_validators_emails` (déjà accessible service_role dans la fonction Edge).
