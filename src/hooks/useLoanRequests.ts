@@ -4,6 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 import { logger } from "@/lib/logger";
+
+function extractErrorMessage(e: unknown): string {
+  if (e instanceof Error && e.message) return e.message;
+  if (typeof e === "object" && e !== null && "message" in e) {
+    const m = (e as { message?: unknown }).message;
+    if (typeof m === "string" && m.length > 0) return m;
+  }
+  return "Erreur inconnue";
+}
 export type LoanRequestStatus =
   | "pending"
   | "awaiting_avaliste"
