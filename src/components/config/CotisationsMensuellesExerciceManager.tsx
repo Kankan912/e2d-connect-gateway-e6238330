@@ -293,13 +293,13 @@ export function CotisationsMensuellesExerciceManager() {
       };
     });
 
-    // If any locked records are being modified and user is admin, show audit dialog
-    const modifyingLocked = itemsToSave.some(item => {
+    // Demander une raison pour toute modification sensible : exercice actif/clôturé OU ligne verrouillée
+    const requiresReason = itemsToSave.some(item => {
       const existing = cotisationsMensuelles?.find(c => c.membre_id === item.membreId);
-      return existing?.verrouille;
+      return isExerciceLocked || existing?.verrouille;
     });
 
-    if (modifyingLocked && isAdmin) {
+    if (requiresReason) {
       setPendingSave(itemsToSave);
       setShowAuditDialog(true);
     } else {
