@@ -15,7 +15,10 @@ type EventType =
   | "rejected"
   | "final_approved"
   | "cancelled"
-  | "disbursed";
+  | "disbursed"
+  | "avaliste_request"
+  | "avaliste_approved"
+  | "avaliste_rejected";
 
 interface Payload {
   request_id: string;
