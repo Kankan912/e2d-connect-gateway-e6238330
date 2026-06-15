@@ -330,6 +330,7 @@ export function useDisburseLoan() {
         _request_id: requestId,
       } as never);
       if (error) throw error;
+      await notifyEvent({ request_id: requestId, event: "disbursed" });
       return data as unknown as { success: boolean; pret_id: string };
     },
     onSuccess: () => {
