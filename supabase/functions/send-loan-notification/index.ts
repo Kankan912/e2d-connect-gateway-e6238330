@@ -8,7 +8,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-type EventType = "created" | "step_validated" | "rejected" | "final_approved";
+type EventType = "created" | "step_validated" | "rejected" | "final_approved" | "cancelled";
 
 interface Payload {
   request_id: string;
@@ -78,7 +78,7 @@ serve(async (req) => {
     const sent: string[] = [];
     const failed: string[] = [];
 
-    if (payload.event === "created") {
+    if (payload.event === "created" || payload.event === "cancelled") {
       // Notifier tous les validateurs
       const { data: validators } = await supabase.rpc("get_loan_request_validators_emails", {
         _request_id: payload.request_id,
@@ -86,10 +86,16 @@ serve(async (req) => {
       const recipients: string[] = Array.from(
         new Set(((validators ?? []) as Array<{ email: string }>).map((v) => v.email).filter(Boolean))
       );
-      const subject = `Nouvelle demande de prêt — ${membreNom}`;
+      const isCancelled = payload.event === "cancelled";
+      const subject = isCancelled
+        ? `Demande de prêt annulée — ${membreNom}`
+        : `Nouvelle demande de prêt — ${membreNom}`;
+      const intro = isCancelled
+        ? `<p>Le membre <strong>${membreNom}</strong> a <strong>annulé</strong> sa demande de prêt. Aucune action n'est requise de votre part.</p>`
+        : `<p>Une nouvelle demande de prêt a été soumise et requiert validation.</p>`;
       const html = htmlShell(
-        "Nouvelle demande de prêt",
-        `<p>Une nouvelle demande de prêt a été soumise et requiert validation.</p>${recap}${link}`
+        isCancelled ? "Demande de prêt annulée" : "Nouvelle demande de prêt",
+        `${intro}${recap}${link}`
       );
 
       for (const to of recipients) {
