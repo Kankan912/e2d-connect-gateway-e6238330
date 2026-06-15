@@ -182,6 +182,7 @@ export default function MesDemandesPret() {
                 <SelectItem value="approved">Approuvée</SelectItem>
                 <SelectItem value="rejected">Rejetée</SelectItem>
                 <SelectItem value="disbursed">Décaissée</SelectItem>
+                <SelectItem value="cancelled">Annulée</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filtreUrgence} onValueChange={(v) => setFiltreUrgence(v as UrgenceFiltre)}>
