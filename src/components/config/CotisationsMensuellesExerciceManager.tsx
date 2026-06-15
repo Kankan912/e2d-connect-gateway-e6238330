@@ -484,7 +484,7 @@ export function CotisationsMensuellesExerciceManager() {
                                       disabled={disabled}
                                       className={`w-36 text-center ${isModified ? 'border-primary ring-1 ring-primary' : ''} ${disabled ? 'bg-muted' : ''}`}
                                     />
-                                    {locked && (
+                                    {locked && !canEdit && (
                                       <Lock className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                                     )}
                                   </div>
