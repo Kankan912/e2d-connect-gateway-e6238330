@@ -198,9 +198,11 @@ export default function MesDemandesPret() {
               <SelectContent>
                 <SelectItem value="toutes">Tous statuts</SelectItem>
                 <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="awaiting_avaliste">En attente de l'avaliste</SelectItem>
                 <SelectItem value="in_progress">En cours de validation</SelectItem>
                 <SelectItem value="approved">Approuvée</SelectItem>
                 <SelectItem value="rejected">Rejetée</SelectItem>
+                <SelectItem value="rejected_by_avaliste">Refusée par l'avaliste</SelectItem>
                 <SelectItem value="disbursed">Décaissée</SelectItem>
                 <SelectItem value="cancelled">Annulée</SelectItem>
               </SelectContent>
