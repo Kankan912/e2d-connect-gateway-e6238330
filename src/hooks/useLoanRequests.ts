@@ -9,7 +9,8 @@ export type LoanRequestStatus =
   | "in_progress"
   | "rejected"
   | "approved"
-  | "disbursed";
+  | "disbursed"
+  | "cancelled";
 
 export interface LoanRequest {
   id: string;
@@ -34,10 +35,11 @@ export interface LoanRequestValidation {
   role: string;
   label: string;
   ordre: number;
-  statut: "pending" | "approved" | "rejected";
+  statut: "pending" | "approved" | "rejected" | "cancelled";
   commentaire: string | null;
   validated_by: string | null;
   validated_at: string | null;
+  validator?: { prenom: string | null; nom: string | null } | null;
 }
 
 export interface LoanValidationConfigItem {
@@ -120,11 +122,59 @@ export function useLoanRequestValidations(requestId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("loan_request_validations" as never)
-        .select("id, loan_request_id, role, label, ordre, statut, commentaire, validated_by, validated_at")
+        .select("id, loan_request_id, role, label, ordre, statut, commentaire, validated_by, validated_at, validator:profiles!loan_request_validations_validated_by_fkey(prenom, nom)")
         .eq("loan_request_id", requestId!)
         .order("ordre", { ascending: true });
-      if (error) throw error;
+      if (error) {
+        // Fallback sans join si la FK n'a pas le nom attendu
+        const fallback = await supabase
+          .from("loan_request_validations" as never)
+          .select("id, loan_request_id, role, label, ordre, statut, commentaire, validated_by, validated_at")
+          .eq("loan_request_id", requestId!)
+          .order("ordre", { ascending: true });
+        if (fallback.error) throw fallback.error;
+        return (fallback.data ?? []) as unknown as LoanRequestValidation[];
+      }
       return (data ?? []) as unknown as LoanRequestValidation[];
+    },
+  });
+}
+
+export function useDefaultLoanRate() {
+  return useQuery({
+    queryKey: ["caisse-config-taux-defaut"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("caisse_config")
+        .select("taux_interet_defaut")
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return Number((data as { taux_interet_defaut?: number } | null)?.taux_interet_defaut ?? 5);
+    },
+  });
+}
+
+export function useCancelLoanRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      const { data, error } = await supabase.rpc("cancel_loan_request" as never, {
+        _request_id: requestId,
+      } as never);
+      if (error) throw error;
+      return data as unknown as { success: boolean; request_id: string };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["loan-requests"] });
+      qc.invalidateQueries({ queryKey: ["my-loan-requests"] });
+      qc.invalidateQueries({ queryKey: ["loan-request-validations"] });
+      toast.success("Demande annulée");
+    },
+    onError: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      toast.error(msg);
     },
   });
 }
