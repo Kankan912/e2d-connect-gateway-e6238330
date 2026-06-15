@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Receipt } from "lucide-react";
-import CotisationsCumulAnnuel from "@/components/CotisationsCumulAnnuel";
 import CotisationsTab from "@/pages/reunions/components/CotisationsTab";
 import type { Reunion } from "@/pages/reunions/types";
 
@@ -25,7 +22,7 @@ const CotisationsAdmin = () => {
   });
 
   return (
-    <div className="p-3 sm:p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
           <Receipt className="h-7 w-7 text-primary" />
@@ -36,31 +33,11 @@ const CotisationsAdmin = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="par-reunion" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="par-reunion">Par Réunion</TabsTrigger>
-          <TabsTrigger value="cumul">Cumul annuel</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="par-reunion">
-          <CotisationsTab
-            reunions={reunions}
-            selectedReunion={selectedReunion}
-            onSelectReunion={setSelectedReunion}
-          />
-        </TabsContent>
-
-        <TabsContent value="cumul">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cumul annuel par membre</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CotisationsCumulAnnuel />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <CotisationsTab
+        reunions={reunions}
+        selectedReunion={selectedReunion}
+        onSelectReunion={setSelectedReunion}
+      />
     </div>
   );
 };
