@@ -26,6 +26,10 @@ export const usePageviewTracker = () => {
   useEffect(() => {
     const path = location.pathname;
 
+    if (path.startsWith("/dashboard")) {
+      return;
+    }
+
     // Throttle 5s per path
     const now = Date.now();
     if (
