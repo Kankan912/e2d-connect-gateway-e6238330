@@ -81,22 +81,36 @@ function LoanRequestCard({ r }: { r: LoanRequest }) {
           <p className="text-sm">{r.description}</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Capacité de remboursement</p>
-            <p>{r.capacite_remboursement}</p>
-          </div>
+          {r.capacite_remboursement && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Capacité de remboursement</p>
+              <p>{r.capacite_remboursement}</p>
+            </div>
+          )}
           {r.garantie && (
             <div>
               <p className="text-xs font-medium text-muted-foreground">Garantie</p>
               <p>{r.garantie}</p>
             </div>
           )}
+          {r.avaliste && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Avaliste (garant)</p>
+              <p>
+                {r.avaliste_self
+                  ? "Moi-même (auto-avalisation)"
+                  : `${r.avaliste.prenom} ${r.avaliste.nom}${r.avaliste.fonction ? ` — ${r.avaliste.fonction}` : ""}`}
+              </p>
+            </div>
+          )}
         </div>
 
-        {r.statut === "rejected" && r.motif_rejet && (
+        {(r.statut === "rejected" || r.statut === "rejected_by_avaliste") && (r.motif_rejet || r.avaliste_motif_refus) && (
           <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3">
-            <p className="text-xs font-medium text-destructive">Motif du rejet</p>
-            <p className="text-sm mt-1">{r.motif_rejet}</p>
+            <p className="text-xs font-medium text-destructive">
+              {r.statut === "rejected_by_avaliste" ? "Motif du refus (avaliste)" : "Motif du rejet"}
+            </p>
+            <p className="text-sm mt-1">{r.avaliste_motif_refus ?? r.motif_rejet}</p>
           </div>
         )}
 
