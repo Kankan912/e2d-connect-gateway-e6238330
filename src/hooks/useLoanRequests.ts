@@ -202,7 +202,7 @@ export function useCancelLoanRequest() {
       toast.success("Demande annulée");
     },
     onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      const msg = extractErrorMessage(e);
       toast.error(msg);
     },
   });
@@ -290,7 +290,7 @@ export function useCreateLoanRequest() {
       toast.success("Demande de prêt envoyée");
     },
     onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      const msg = extractErrorMessage(e);
       toast.error(msg);
     },
   });
@@ -355,7 +355,7 @@ export function useAvalisteApprove() {
       qc.invalidateQueries({ queryKey: ["loan-request-validations"] });
       toast.success("Vous avez validé cette demande en tant qu'avaliste");
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Erreur inconnue"),
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 }
 
@@ -377,7 +377,7 @@ export function useAvalisteReject() {
       qc.invalidateQueries({ queryKey: ["avaliste-pending-requests"] });
       toast.success("Refus enregistré");
     },
-    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Erreur inconnue"),
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 }
 
@@ -405,7 +405,7 @@ export function useValidateLoanStep() {
       toast.success("Étape validée");
     },
     onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      const msg = extractErrorMessage(e);
       toast.error(msg);
     },
   });
@@ -436,7 +436,7 @@ export function useRejectLoanStep() {
       toast.success("Demande rejetée");
     },
     onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      const msg = extractErrorMessage(e);
       toast.error(msg);
     },
   });
@@ -467,7 +467,7 @@ export function useDisburseLoan() {
       toast.success("Prêt décaissé et créé");
     },
     onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      const msg = extractErrorMessage(e);
       toast.error(msg);
     },
   });
@@ -493,7 +493,7 @@ export function useUpdateLoanValidationConfig() {
       toast.success("Configuration mise à jour");
     },
     onError: (e: unknown) => {
-      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      const msg = extractErrorMessage(e);
       toast.error(msg);
     },
   });
