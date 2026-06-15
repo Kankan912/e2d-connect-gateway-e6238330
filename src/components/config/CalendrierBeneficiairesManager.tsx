@@ -10,8 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Label } from "@/components/ui/label";
-import { Calendar, Users, Plus, Trash2, Download, Send, Lock, Loader2, X, Edit2 } from "lucide-react";
+import { Calendar, Users, Plus, Trash2, Download, Send, Lock, Loader2, X, Edit2, Check, ChevronsUpDown } from "lucide-react";
 import { useCalendrierBeneficiaires } from "@/hooks/useCalendrierBeneficiaires";
 import { useCotisationsMensuellesExercice } from "@/hooks/useCotisationsMensuelles";
 import { useAuth } from "@/contexts/AuthContext";
