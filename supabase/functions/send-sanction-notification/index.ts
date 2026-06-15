@@ -74,7 +74,7 @@ serve(async (req) => {
     // Récupérer les informations du membre
     const { data: membre, error: membreError } = await supabase
       .from("membres")
-      .select("id, nom, prenom, email")
+      .select("id, nom, prenom, email, user_id")
       .eq("id", membreId)
       .single();
 
