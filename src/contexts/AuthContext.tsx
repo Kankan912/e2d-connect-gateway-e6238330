@@ -203,17 +203,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchUserProfile = async (userId: string) => {
+    // Filet de sécurité : si la requête combinée n'a pas répondu en 8s,
+    // on libère le loader pour éviter un "Chargement..." infini
+    // (cas typique : reconnexion réseau / HMR Vite qui suspend une requête en cours).
+    const SAFETY_TIMEOUT_MS = 8000;
+    let safetyTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      logger.error('[AuthContext] fetchUserProfile safety timeout (8s) — releasing loader');
+      setLoading(false);
+      safetyTimer = null;
+    }, SAFETY_TIMEOUT_MS);
+
+    const clearSafety = () => {
+      if (safetyTimer) {
+        clearTimeout(safetyTimer);
+        safetyTimer = null;
+      }
+    };
+
     try {
       logger.info('[AuthContext] Fetching profile for user: ' + userId);
-
-
 
       // Check member status first
       const { allowed, status } = await checkMemberStatus(userId);
       if (!allowed) {
         setMemberBlocked(true);
-        
-        // Display specific message based on status
+
         const statusMessages: Record<string, { title: string; description: string }> = {
           inactif: {
             title: "Compte inactif",
@@ -224,17 +238,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             description: "Votre compte a été suspendu. Veuillez contacter l'administrateur pour plus d'informations."
           }
         };
-        
+
         const message = statusMessages[status || ''] || {
           title: "Accès refusé",
           description: "Votre compte ne vous permet pas d'accéder à l'application. Contactez l'administrateur."
         };
-        
+
         toast({
           title: message.title,
           description: message.description,
           variant: "destructive"
         });
+        clearSafety();
+        setLoading(false);
         await signOut();
         return;
       }
@@ -280,14 +296,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setPermissions(userPerms);
       logger.success('[AuthContext] Permissions loaded: ' + userPerms.length);
-
-
     } catch (error: unknown) {
       logger.error('[AuthContext] Error fetching user data:', error);
     } finally {
+      clearSafety();
       setLoading(false);
     }
   };
+
 
   const signOut = async () => {
     // Purger toutes les clés de début de session pour éviter de restaurer
