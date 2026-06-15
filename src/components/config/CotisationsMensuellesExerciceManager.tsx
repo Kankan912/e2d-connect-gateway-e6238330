@@ -15,8 +15,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Coins, Save, Lock, Unlock, AlertCircle, Users, RefreshCw, Wand2, CheckCircle } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Coins, Save, Lock, Unlock, AlertCircle, Users, RefreshCw, Wand2, CheckCircle, History, ShieldCheck } from 'lucide-react';
 import { formatFCFA } from '@/lib/utils';
+import { CotisationsMensuellesAuditDialog } from './CotisationsMensuellesAuditDialog';
 
 interface Membre {
   id: string;
@@ -43,12 +45,14 @@ interface CotisationMensuelleExercice {
 
 export function CotisationsMensuellesExerciceManager() {
   const { toast } = useToast();
-  const { profile, userRole } = useAuth();
+  const { profile } = useAuth();
+  const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
   const [selectedExerciceId, setSelectedExerciceId] = useState<string>('');
   const [modifiedMontants, setModifiedMontants] = useState<Record<string, number>>({});
   const [massApplyAmount, setMassApplyAmount] = useState<string>('');
   const [showAuditDialog, setShowAuditDialog] = useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [auditReason, setAuditReason] = useState('');
   const [pendingSave, setPendingSave] = useState<{ membreId: string; montant: number; oldMontant: number }[]>([]);
 
@@ -131,11 +135,10 @@ export function CotisationsMensuellesExerciceManager() {
   const hasLockedRecords = cotisationsMensuelles?.some(c => c.verrouille) || false;
   const isExerciceLocked = selectedExercice?.statut === 'actif' || selectedExercice?.statut === 'cloture';
 
-  // Check if user is admin
-  const isAdmin = userRole && ['admin', 'administrateur', 'tresorier', 'super_admin', 'secretaire_general'].includes(userRole.toLowerCase());
-
-  // Determine if editing is allowed
-  const canEdit = !isExerciceLocked || (isExerciceLocked && isAdmin);
+  // Autorisation centralisée : permission cotisations.update (admin = true via has_permission)
+  const canEdit = hasPermission('cotisations', 'update');
+  // L'admin bypass est déjà géré par usePermissions (isAdministrateur)
+  const isAdmin = canEdit;
 
   // Get montant for a membre
   const getMontant = (membreId: string): number => {
@@ -171,8 +174,8 @@ export function CotisationsMensuellesExerciceManager() {
             .eq('id', existing.id);
           if (error) throw error;
 
-          // Log audit if locked
-          if (existing.verrouille && isAdmin) {
+          // Log audit systématique pour toute modification (verrouillée ou non)
+          if (item.oldMontant !== item.montant) {
             await supabase.from('cotisations_mensuelles_audit').insert({
               cotisation_mensuelle_id: existing.id,
               membre_id: item.membreId,
@@ -180,21 +183,34 @@ export function CotisationsMensuellesExerciceManager() {
               montant_avant: item.oldMontant,
               montant_apres: item.montant,
               modifie_par: profile?.id,
-              raison: item.reason || 'Modification administrative'
+              raison: item.reason?.trim() || (existing.verrouille ? 'Modification (exercice verrouillé)' : 'Modification du montant'),
             });
           }
         } else {
           // Insert new
-          const { error } = await supabase
+          const { data: inserted, error } = await supabase
             .from('cotisations_mensuelles_exercice')
             .insert({
               membre_id: item.membreId,
               exercice_id: selectedExerciceId,
               montant: item.montant,
               actif: true,
-              verrouille: isExerciceLocked
-            });
+              verrouille: isExerciceLocked,
+            })
+            .select('id')
+            .single();
           if (error) throw error;
+
+          // Log la création initiale
+          await supabase.from('cotisations_mensuelles_audit').insert({
+            cotisation_mensuelle_id: inserted.id,
+            membre_id: item.membreId,
+            exercice_id: selectedExerciceId,
+            montant_avant: 0,
+            montant_apres: item.montant,
+            modifie_par: profile?.id,
+            raison: item.reason?.trim() || 'Initialisation du montant',
+          });
         }
       }
     },
@@ -277,13 +293,13 @@ export function CotisationsMensuellesExerciceManager() {
       };
     });
 
-    // If any locked records are being modified and user is admin, show audit dialog
-    const modifyingLocked = itemsToSave.some(item => {
+    // Demander une raison pour toute modification sensible : exercice actif/clôturé OU ligne verrouillée
+    const requiresReason = itemsToSave.some(item => {
       const existing = cotisationsMensuelles?.find(c => c.membre_id === item.membreId);
-      return existing?.verrouille;
+      return isExerciceLocked || existing?.verrouille;
     });
 
-    if (modifyingLocked && isAdmin) {
+    if (requiresReason) {
       setPendingSave(itemsToSave);
       setShowAuditDialog(true);
     } else {
@@ -374,6 +390,11 @@ export function CotisationsMensuellesExerciceManager() {
                     Initialiser {membresNotConfigured} membre(s)
                   </Button>
                 )}
+
+                <Button variant="outline" size="sm" onClick={() => setShowHistoryDialog(true)}>
+                  <History className="h-4 w-4 mr-2" />
+                  Historique
+                </Button>
               </>
             )}
           </div>
@@ -390,12 +411,12 @@ export function CotisationsMensuellesExerciceManager() {
 
           {/* Message si exercice verrouillé */}
           {selectedExerciceId && isExerciceLocked && (
-            <Alert variant={isAdmin ? "default" : "destructive"}>
-              <Lock className="h-4 w-4" />
+            <Alert variant={canEdit ? "default" : "destructive"}>
+              {canEdit ? <ShieldCheck className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
               <AlertDescription>
                 <strong>Exercice {selectedExercice?.statut === 'actif' ? 'actif' : 'clôturé'}</strong>
-                {isAdmin 
-                  ? " - En tant qu'administrateur, vous pouvez modifier les montants. Les modifications seront auditées."
+                {canEdit
+                  ? " - Vous êtes autorisé à modifier les montants. Une raison vous sera demandée et chaque modification sera enregistrée dans l'historique."
                   : " - Les montants sont verrouillés. Contactez un administrateur pour toute modification."
                 }
               </AlertDescription>
@@ -463,7 +484,7 @@ export function CotisationsMensuellesExerciceManager() {
                                       disabled={disabled}
                                       className={`w-36 text-center ${isModified ? 'border-primary ring-1 ring-primary' : ''} ${disabled ? 'bg-muted' : ''}`}
                                     />
-                                    {locked && (
+                                    {locked && !canEdit && (
                                       <Lock className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                                     )}
                                   </div>
@@ -484,10 +505,16 @@ export function CotisationsMensuellesExerciceManager() {
                                       Non configuré
                                     </Badge>
                                   )}
-                                  {locked && (
+                                  {locked && !canEdit && (
                                     <Badge variant="secondary" className="text-[10px]">
                                       <Lock className="h-2 w-2 mr-1" />
                                       Verrouillé
+                                    </Badge>
+                                  )}
+                                  {locked && canEdit && (
+                                    <Badge variant="outline" className="text-[10px]">
+                                      <ShieldCheck className="h-2 w-2 mr-1" />
+                                      Modifiable (audité)
                                     </Badge>
                                   )}
                                   {isModified && (
@@ -575,6 +602,14 @@ export function CotisationsMensuellesExerciceManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedExerciceId && (
+        <CotisationsMensuellesAuditDialog
+          open={showHistoryDialog}
+          onOpenChange={setShowHistoryDialog}
+          exerciceId={selectedExerciceId}
+        />
+      )}
     </>
   );
 }
