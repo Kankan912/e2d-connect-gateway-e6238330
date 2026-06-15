@@ -52,15 +52,21 @@ export function LoanValidationTimeline({ requestId, currentStep, globalStatus }:
                 <span className="text-xs text-muted-foreground">
                   {s.statut === "approved" && "Validé"}
                   {s.statut === "rejected" && "Rejeté"}
+                  {s.statut === "cancelled" && "Annulé"}
                   {s.statut === "pending" && (isCurrent ? "En cours" : "En attente")}
                 </span>
               </div>
+              {s.validator && (s.validator.prenom || s.validator.nom) && (
+                <p className="text-xs text-foreground/80 mt-1">
+                  Par <span className="font-medium">{`${s.validator.prenom ?? ""} ${s.validator.nom ?? ""}`.trim()}</span>
+                </p>
+              )}
               {s.commentaire && (
                 <p className="text-sm text-muted-foreground mt-1 italic">« {s.commentaire} »</p>
               )}
               {s.validated_at && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {format(new Date(s.validated_at), "PPp", { locale: fr })}
+                  {format(new Date(s.validated_at), "dd/MM/yyyy HH:mm", { locale: fr })}
                 </p>
               )}
             </div>

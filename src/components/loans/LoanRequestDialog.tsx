@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useCreateLoanRequest } from "@/hooks/useLoanRequests";
+import { useCreateLoanRequest, useDefaultLoanRate } from "@/hooks/useLoanRequests";
+import { addMonths, format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 const schema = z.object({
   montant: z.coerce.number().int("Sans décimales").positive("Montant > 0"),
@@ -32,7 +34,10 @@ interface Props {
 
 export function LoanRequestDialog({ open, onOpenChange }: Props) {
   const create = useCreateLoanRequest();
+  const { data: tauxDefaut } = useDefaultLoanRate();
   const [submitting, setSubmitting] = useState(false);
+
+  const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(Math.round(n)) + " FCFA";
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -131,6 +136,35 @@ export function LoanRequestDialog({ open, onOpenChange }: Props) {
             <Label htmlFor="garantie">Garantie (optionnel)</Label>
             <Input id="garantie" {...form.register("garantie")} />
           </div>
+
+          {(() => {
+            const m = Number(form.watch("montant") ?? 0);
+            const d = Number(form.watch("duree_mois") ?? 0);
+            const taux = Number(tauxDefaut ?? 5);
+            if (!m || m <= 0 || !d || d <= 0) return null;
+            const total = m + (m * taux) / 100;
+            const mensualite = total / d;
+            const echeance = addMonths(new Date(), d);
+            return (
+              <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
+                <p className="font-medium">Simulation indicative</p>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  <span className="text-muted-foreground">Taux par défaut</span>
+                  <span className="text-right">{taux} %</span>
+                  <span className="text-muted-foreground">Total à rembourser</span>
+                  <span className="text-right font-medium">{fmt(total)}</span>
+                  <span className="text-muted-foreground">Mensualité estimée</span>
+                  <span className="text-right">{fmt(mensualite)}</span>
+                  <span className="text-muted-foreground">Échéance estimée</span>
+                  <span className="text-right">{format(echeance, "PPP", { locale: fr })}</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground pt-1">
+                  Indicatif — le taux final sera fixé au décaissement.
+                </p>
+              </div>
+            );
+          })()}
+
 
           <div className="flex items-start gap-2">
             <Checkbox
