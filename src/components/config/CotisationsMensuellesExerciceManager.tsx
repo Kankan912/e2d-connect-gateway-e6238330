@@ -505,10 +505,16 @@ export function CotisationsMensuellesExerciceManager() {
                                       Non configuré
                                     </Badge>
                                   )}
-                                  {locked && (
+                                  {locked && !canEdit && (
                                     <Badge variant="secondary" className="text-[10px]">
                                       <Lock className="h-2 w-2 mr-1" />
                                       Verrouillé
+                                    </Badge>
+                                  )}
+                                  {locked && canEdit && (
+                                    <Badge variant="outline" className="text-[10px]">
+                                      <ShieldCheck className="h-2 w-2 mr-1" />
+                                      Modifiable (audité)
                                     </Badge>
                                   )}
                                   {isModified && (
