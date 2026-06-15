@@ -180,6 +180,19 @@ serve(async (req) => {
 
       console.log(`Email de sanction envoyé à ${membre.email} via ${emailConfig.service}`);
 
+      // Notification in-app pour le membre sanctionné
+      if (membre.user_id) {
+        await notifyInApp({
+          user_id: membre.user_id,
+          type: "sanction_created",
+          title: `Nouvelle sanction — ${motif}`,
+          body: `${Math.floor(Number(montant)).toLocaleString("fr-FR")} FCFA • ${dateFormatted}`,
+          link: "/dashboard/mes-sanctions",
+          dedupe_key: sanctionId ? `sanction:${sanctionId}` : undefined,
+          metadata: { sanction_id: sanctionId, motif, montant },
+        }, supabase);
+      }
+
       // Enregistrer dans l'historique
       await supabase.from("notifications_historique").insert({
         type_notification: "sanction_notification",
