@@ -22,6 +22,7 @@ const MyPrets = lazyWithRetry(() => import("./dashboard/MyPrets"));
 const MyPresences = lazyWithRetry(() => import("./dashboard/MyPresences"));
 const MyAides = lazyWithRetry(() => import("./dashboard/MyAides"));
 const MesDemandesPret = lazyWithRetry(() => import("./dashboard/MesDemandesPret"));
+const MesAvalisations = lazyWithRetry(() => import("./dashboard/MesAvalisations"));
 const DemandesPretAdmin = lazyWithRetry(() => import("./admin/DemandesPretAdmin"));
 const LoanWorkflowConfig = lazyWithRetry(() => import("./admin/LoanWorkflowConfig"));
 
