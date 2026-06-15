@@ -602,6 +602,14 @@ export function CotisationsMensuellesExerciceManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedExerciceId && (
+        <CotisationsMensuellesAuditDialog
+          open={showHistoryDialog}
+          onOpenChange={setShowHistoryDialog}
+          exerciceId={selectedExerciceId}
+        />
+      )}
     </>
   );
 }
