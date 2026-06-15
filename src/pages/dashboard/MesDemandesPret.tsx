@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2, HandCoins } from "lucide-react";
 import { useMyLoanRequests, type LoanRequest, type LoanRequestStatus } from "@/hooks/useLoanRequests";
 import { LoanRequestDialog } from "@/components/loans/LoanRequestDialog";
@@ -9,6 +10,9 @@ import { LoanValidationTimeline } from "@/components/loans/LoanValidationTimelin
 import { usePretRequestPermissions } from "@/hooks/usePretRequestPermissions";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+
+type StatutFiltre = "toutes" | LoanRequestStatus;
+type UrgenceFiltre = "toutes" | "normal" | "urgent";
 
 const statusBadge = (s: LoanRequestStatus) => {
   switch (s) {
