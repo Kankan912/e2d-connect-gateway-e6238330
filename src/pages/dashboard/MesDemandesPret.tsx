@@ -95,6 +95,17 @@ export default function MesDemandesPret() {
   const { data: requests, isLoading } = useMyLoanRequests();
   const { canCreate } = usePretRequestPermissions();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [filtreStatut, setFiltreStatut] = useState<StatutFiltre>("toutes");
+  const [filtreUrgence, setFiltreUrgence] = useState<UrgenceFiltre>("toutes");
+
+  const filtered = useMemo(() => {
+    if (!requests) return [];
+    return requests.filter((r) => {
+      if (filtreStatut !== "toutes" && r.statut !== filtreStatut) return false;
+      if (filtreUrgence !== "toutes" && r.urgence !== filtreUrgence) return false;
+      return true;
+    });
+  }, [requests, filtreStatut, filtreUrgence]);
 
   return (
     <div className="p-3 sm:p-6 space-y-4 max-w-4xl mx-auto">
@@ -112,6 +123,40 @@ export default function MesDemandesPret() {
         )}
       </div>
 
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+            <Select value={filtreStatut} onValueChange={(v) => setFiltreStatut(v as StatutFiltre)}>
+              <SelectTrigger className="w-full sm:w-[220px]">
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="toutes">Tous statuts</SelectItem>
+                <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="in_progress">En cours de validation</SelectItem>
+                <SelectItem value="approved">Approuvée</SelectItem>
+                <SelectItem value="rejected">Rejetée</SelectItem>
+                <SelectItem value="disbursed">Décaissée</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filtreUrgence} onValueChange={(v) => setFiltreUrgence(v as UrgenceFiltre)}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Urgence" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="toutes">Toutes urgences</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground sm:ml-auto">
+              {filtered.length} demande{filtered.length > 1 ? "s" : ""} affichée
+              {filtered.length > 1 ? "s" : ""} / {requests?.length ?? 0} au total
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {isLoading ? (
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Chargement...
@@ -128,9 +173,15 @@ export default function MesDemandesPret() {
             )}
           </CardContent>
         </Card>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center text-muted-foreground">
+            <p>Aucune demande pour ces filtres.</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-3">
-          {requests.map((r) => (
+          {filtered.map((r) => (
             <LoanRequestCard key={r.id} r={r} />
           ))}
         </div>
