@@ -102,6 +102,35 @@ function LoanRequestCard({ r }: { r: LoanRequest }) {
             globalStatus={r.statut}
           />
         </div>
+
+        {canCancel && (
+          <div className="pt-2 border-t">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                  <XCircle className="h-4 w-4 mr-2" /> Annuler ma demande
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Annuler cette demande de prêt&nbsp;?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    L'annulation est définitive. Vous pourrez soumettre une nouvelle demande à tout moment.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Non, garder</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => cancel.mutate(r.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Oui, annuler
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
