@@ -29,12 +29,16 @@ const statusBadge = (s: LoanRequestStatus) => {
   switch (s) {
     case "pending":
       return <Badge variant="secondary">En attente</Badge>;
+    case "awaiting_avaliste":
+      return <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30">En attente de l'avaliste</Badge>;
     case "in_progress":
       return <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30">En cours de validation</Badge>;
     case "approved":
       return <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">Approuvée</Badge>;
     case "rejected":
       return <Badge variant="destructive">Rejetée</Badge>;
+    case "rejected_by_avaliste":
+      return <Badge variant="destructive">Refusée par l'avaliste</Badge>;
     case "disbursed":
       return <Badge className="bg-violet-500/15 text-violet-700 border-violet-500/30">Décaissée</Badge>;
     case "cancelled":
@@ -48,7 +52,9 @@ const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(n) + " FCFA";
 
 function LoanRequestCard({ r }: { r: LoanRequest }) {
   const cancel = useCancelLoanRequest();
-  const canCancel = (r.statut === "pending" || r.statut === "in_progress") && r.current_step <= 1;
+  const canCancel =
+    (r.statut === "pending" || r.statut === "awaiting_avaliste" || r.statut === "in_progress") &&
+    r.current_step <= 1;
 
   return (
     <Card>
