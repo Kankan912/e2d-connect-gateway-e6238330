@@ -30,6 +30,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   userRole: string | null;
+  permissions: Permission[];
   loading: boolean;
   mustChangePassword: boolean;
   signOut: () => Promise<void>;
@@ -48,6 +49,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [memberBlocked, setMemberBlocked] = useState(false);
   const loadedUserIdRef = useRef<string | null>(null);
+  const loadingUserIdRef = useRef<string | null>(null);
+
+  const withTimeout = async <T,>(promise: Promise<T>, label: string, timeoutMs = 8000): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timeout after ${timeoutMs}ms`)), timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeout]);
+    } finally {
+      clearTimeout(timer!);
+    }
+  };
 
   // Fetch user permissions
   const fetchUserPermissions = async (userId: string): Promise<Permission[]> => {
@@ -129,18 +144,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         // Handle expired/invalid refresh token gracefully
         if (event === 'TOKEN_REFRESHED' && !session) {
           if (!isSigningOut) {
             isSigningOut = true;
             logger.info('[AuthContext] Token refresh failed — signing out');
-            await signOut();
-            toast({
-              title: "Session expirée",
-              description: "Votre session a expiré. Veuillez vous reconnecter.",
-              variant: "default"
-            });
+            setTimeout(() => {
+              signOut();
+              toast({
+                title: "Session expirée",
+                description: "Votre session a expiré. Veuillez vous reconnecter.",
+                variant: "default"
+              });
+            }, 0);
           }
           return;
         }
@@ -165,8 +182,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Only refetch profile when the user actually changes.
         // TOKEN_REFRESHED / USER_UPDATED keep the same user id → skip the cascade.
         if (session?.user) {
-          if (loadedUserIdRef.current !== session.user.id) {
-            loadedUserIdRef.current = session.user.id;
+          if (loadedUserIdRef.current !== session.user.id && loadingUserIdRef.current !== session.user.id) {
+            loadingUserIdRef.current = session.user.id;
             setTimeout(() => {
               fetchUserProfile(session.user.id);
             }, 0);
@@ -188,8 +205,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        if (loadedUserIdRef.current !== session.user.id) {
-          loadedUserIdRef.current = session.user.id;
+        if (loadedUserIdRef.current !== session.user.id && loadingUserIdRef.current !== session.user.id) {
+          loadingUserIdRef.current = session.user.id;
           setTimeout(() => {
             fetchUserProfile(session.user.id);
           }, 0);
@@ -203,28 +220,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchUserProfile = async (userId: string) => {
-    // Filet de sécurité : si la requête combinée n'a pas répondu en 8s,
-    // on libère le loader pour éviter un "Chargement..." infini
-    // (cas typique : reconnexion réseau / HMR Vite qui suspend une requête en cours).
-    const SAFETY_TIMEOUT_MS = 8000;
-    let safetyTimer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
-      logger.error('[AuthContext] fetchUserProfile safety timeout (8s) — releasing loader');
-      setLoading(false);
-      safetyTimer = null;
-    }, SAFETY_TIMEOUT_MS);
-
-    const clearSafety = () => {
-      if (safetyTimer) {
-        clearTimeout(safetyTimer);
-        safetyTimer = null;
-      }
-    };
-
     try {
       logger.info('[AuthContext] Fetching profile for user: ' + userId);
 
       // Check member status first
-      const { allowed, status } = await checkMemberStatus(userId);
+      const { allowed, status } = await withTimeout(checkMemberStatus(userId), 'checkMemberStatus');
       if (!allowed) {
         setMemberBlocked(true);
 
@@ -249,28 +249,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: message.description,
           variant: "destructive"
         });
-        clearSafety();
         setLoading(false);
         await signOut();
         return;
       }
 
       // Parallelize profile + role + permissions for a single network round-trip
-      const [profileRes, roleRes, userPerms] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle(),
-        supabase
-          .from('user_roles')
-          .select('role_id, roles(name)')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        fetchUserPermissions(userId),
-      ]);
+      const [profileRes, roleRes, userPerms] = await withTimeout(
+        Promise.all([
+          supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle(),
+          supabase
+            .from('user_roles')
+            .select('role_id, roles(name)')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          fetchUserPermissions(userId),
+        ]),
+        'fetchUserProfile'
+      );
 
       if (profileRes.error) throw profileRes.error;
       if (roleRes.error) {
@@ -295,11 +297,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUserRole(roleData?.roles?.name || null);
 
       setPermissions(userPerms);
+      loadedUserIdRef.current = userId;
       logger.success('[AuthContext] Permissions loaded: ' + userPerms.length);
     } catch (error: unknown) {
       logger.error('[AuthContext] Error fetching user data:', error);
+      loadedUserIdRef.current = null;
     } finally {
-      clearSafety();
+      if (loadingUserIdRef.current === userId) {
+        loadingUserIdRef.current = null;
+      }
       setLoading(false);
     }
   };
@@ -345,7 +351,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   });
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, userRole, loading, mustChangePassword, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, userRole, permissions, loading, mustChangePassword, signOut }}>
       {children}
       
       {/* Modal d'avertissement de session */}
