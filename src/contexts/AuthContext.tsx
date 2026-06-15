@@ -290,6 +290,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
+    // Purger toutes les clés de début de session pour éviter de restaurer
+    // une session précédente déjà expirée lors de la prochaine connexion.
+    try {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('lovable_session_start'));
+      keys.forEach(k => localStorage.removeItem(k));
+    } catch (e) {
+      logger.error('[AuthContext] Failed to clear session storage:', e);
+    }
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
