@@ -1,28 +1,34 @@
-# Correction de l'erreur "Edge Function returned a non-2xx status code" lors du test SMTP
+## Problème
 
-## Diagnostic
+Le bouton « Annuler ma demande » échoue avec un toast « Erreur inconnue ». Deux causes :
 
-1. **Cause de l'affichage générique** : la fonction `test-email-configuration` renvoie des statuts HTTP `400` (validation) ou `502` (échec d'envoi) avec le vrai motif dans `data.message`. Or `supabase.functions.invoke()` considère tout statut non-2xx comme une `FunctionsHttpError` et **ne renseigne pas `data`** — le frontend tombe donc dans le `catch` générique et affiche le message technique du SDK.
+1. **Violation de contrainte côté base** : la table `loan_request_validations` a un `CHECK (statut IN ('pending','approved','rejected'))`. La RPC `cancel_loan_request` essaie d'écrire `'cancelled'` dans les étapes en attente → la mise à jour échoue dès qu'il existe au moins une ligne de validation (cas d'une demande `in_progress`, comme la demande auto‑avalisée du haut de la capture).
+2. **Message d'erreur masqué côté front** : dans `useCancelLoanRequest`, l'erreur renvoyée par `supabase.rpc` est un `PostgrestError` (objet simple), pas une instance de `Error`. Le test `e instanceof Error ? e.message : "Erreur inconnue"` retombe systématiquement sur le message générique, ce qui cache la vraie raison.
 
-2. **Cause probable côté Gmail** (config visible : `smtp.gmail.com` / `zpekinho@gmail.com` / TLS 587) : Google a désactivé l'accès par mot de passe simple. Il faut un **mot de passe d'application** (16 caractères, sans espaces) généré via [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), avec la validation en 2 étapes activée. Un mot de passe de compte standard renvoie systématiquement `535-5.7.8 Username and Password not accepted`.
+## Correctifs
 
-## Modifications
+### 1. Migration SQL
 
-### 1. `supabase/functions/test-email-configuration/index.ts`
-- Toujours renvoyer **HTTP 200** (le succès/échec est porté par `success: boolean` dans le corps JSON). Conserver 401/403 uniquement pour les rejets d'auth.
-- Inclure dans la réponse un champ `details` avec le diagnostic SMTP brut (banner, étape échouée) déjà loggé, pour faciliter le débogage.
+- Élargir le `CHECK` de `public.loan_request_validations.statut` pour inclure `'cancelled'` (et conserver `pending/approved/rejected`).
+  - `ALTER TABLE ... DROP CONSTRAINT loan_request_validations_statut_check`
+  - `ALTER TABLE ... ADD CONSTRAINT loan_request_validations_statut_check CHECK (statut IN ('pending','approved','rejected','cancelled'))`
+- Aucune autre modification de schéma : la RPC `cancel_loan_request` actuelle est déjà correcte (statuts autorisés, vérification owner/admin, blocage si une étape est `approved`).
 
-### 2. `src/components/config/EmailConfigManager.tsx`
-- Dans `runConfigurationTest`, quand `supabase.functions.invoke` renvoie une `error`, lire le corps via `error.context?.response?.json()` (fallback `error.context?.text()`) pour récupérer le `message` réel et l'afficher dans le toast au lieu de « Edge Function returned a non-2xx status code ».
-- Ajouter une **note d'aide contextuelle** sous le bouton « Tester la connexion SMTP » quand `smtpHost` contient `gmail.com` : « Gmail requiert un mot de passe d'application (16 caractères) — activez la validation 2 étapes puis générez-en un sur myaccount.google.com/apppasswords ».
-- Garder le comportement existant de sauvegarde préalable du mot de passe avant le test.
+### 2. `src/hooks/useLoanRequests.ts` — `useCancelLoanRequest.onError`
 
-### 3. (Optionnel) `supabase/functions/_shared/email-utils.ts`
-- Dans `sendViaSMTP`, en cas d'échec d'authentification, enrichir le message d'erreur retourné avec une mention explicite quand `smtpHost.includes("gmail")` : suggérer un mot de passe d'application.
+Remplacer l'extraction du message par une lecture défensive qui couvre :
+- `Error` standard (`e.message`)
+- `PostgrestError` (`e.message` même si non‑Error)
+- Objet inattendu (fallback final `"Erreur inconnue"`)
+
+Implémentation : tester `typeof e === "object" && e && "message" in e && typeof e.message === "string"` avant le fallback. Appliquer le même utilitaire (petite fonction locale `extractErrorMessage`) aux autres `onError` du fichier qui souffrent du même biais : `useCreateLoanRequest`, `useAvalisteApprove`, `useAvalisteReject`, `useValidateLoanStep`, `useRejectLoanStep`, `useDisburseLoanRequest` (si présents et concernés). Aucune modification UI.
 
 ## Validation
-- Tester avec mot de passe vide → toast affiche « Configuration SMTP incomplète… ».
-- Tester avec mauvais mot de passe Gmail → toast affiche le 535 + suggestion mot de passe d'application.
-- Tester avec mot de passe d'application valide → succès vert.
 
-Aucune migration SQL, aucun changement de schéma.
+- Cliquer « Annuler ma demande » sur la demande auto‑avalisée (`in_progress`) → toast « Demande annulée », statut passe à `cancelled`, lignes `loan_request_validations` en `pending` deviennent `cancelled`.
+- Cliquer « Annuler ma demande » sur la demande `awaiting_avaliste` → toast « Demande annulée » (cas déjà fonctionnel, simplement vérifié).
+- Tenter d'annuler une demande dont une étape est déjà `approved` → toast affichant le vrai message « Au moins une étape déjà validée — annulation impossible » (au lieu de « Erreur inconnue »).
+
+## Hors périmètre
+
+- Pas de changement du workflow avaliste, des emails, ni de l'UI des cartes de demande.
