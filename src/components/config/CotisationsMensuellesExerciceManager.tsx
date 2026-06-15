@@ -411,8 +411,8 @@ export function CotisationsMensuellesExerciceManager() {
 
           {/* Message si exercice verrouillé */}
           {selectedExerciceId && isExerciceLocked && (
-            <Alert variant={isAdmin ? "default" : "destructive"}>
-              <Lock className="h-4 w-4" />
+            <Alert variant={canEdit ? "default" : "destructive"}>
+              {canEdit ? <ShieldCheck className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
               <AlertDescription>
                 <strong>Exercice {selectedExercice?.statut === 'actif' ? 'actif' : 'clôturé'}</strong>
                 {isAdmin 
