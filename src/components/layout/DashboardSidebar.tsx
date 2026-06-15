@@ -78,9 +78,8 @@ const e2dFinancesItems = [
   { title: "Aides", url: "/dashboard/admin/finances/aides", icon: HandHeart, resource: "aides" },
 ];
 
-const e2dTontineItems = [
-  { title: "Configuration Tontine", url: "/dashboard/admin/tontine/config", icon: Settings, resource: "config" },
-];
+// Tontine config est désormais intégrée dans Configuration E2D (onglet Tontine)
+const e2dTontineItems: { title: string; url: string; icon: any; resource: string }[] = [];
 
 const e2dGestionItems = [
   { title: "Membres", url: "/dashboard/admin/membres", icon: Users, resource: "membres" },
