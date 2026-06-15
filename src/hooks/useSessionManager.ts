@@ -59,24 +59,29 @@ export const useSessionManager = ({
   // Déterminer le type de session
   const sessionType = getRoleSessionType(userRole, permissions);
 
-  // Récupérer ou initialiser le début de session depuis localStorage
-  const getSessionStart = useCallback((userId: string): Date => {
+  // Récupérer ou initialiser le début de session.
+  // La date stockée est liée à l'access_token courant : si le token a changé
+  // (nouvelle connexion), on écrase la date par now() pour éviter de restaurer
+  // une session précédente déjà expirée.
+  const getSessionStart = useCallback((userId: string, accessToken: string, maxDurationMinutes: number): Date => {
     const storageKey = `${SESSION_START_KEY}_${userId}`;
+    const tokenKey = `${SESSION_START_KEY}_token_${userId}`;
     const stored = localStorage.getItem(storageKey);
-    
-    if (stored) {
+    const storedToken = localStorage.getItem(tokenKey);
+
+    if (stored && storedToken === accessToken) {
       const storedDate = new Date(stored);
-      // Vérifier que la date stockée est valide et pas trop ancienne (ex: 24h max)
-      const maxAge = 24 * 60 * 60 * 1000; // 24 heures
-      if (!isNaN(storedDate.getTime()) && (Date.now() - storedDate.getTime()) < maxAge) {
+      const maxAgeMs = Math.min(24 * 60 * 60 * 1000, maxDurationMinutes * 60 * 1000);
+      if (!isNaN(storedDate.getTime()) && (Date.now() - storedDate.getTime()) < maxAgeMs) {
         logger.info('[SessionManager] Session start restored from localStorage: ' + storedDate.toISOString());
         return storedDate;
       }
     }
-    
-    // Nouvelle session
+
+    // Nouvelle session (token différent, première connexion ou date trop ancienne)
     const now = new Date();
     localStorage.setItem(storageKey, now.toISOString());
+    localStorage.setItem(tokenKey, accessToken);
     logger.info('[SessionManager] New session start saved: ' + now.toISOString());
     return now;
   }, []);
