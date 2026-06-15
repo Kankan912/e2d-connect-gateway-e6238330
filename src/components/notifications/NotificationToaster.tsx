@@ -77,6 +77,26 @@ export const NotificationToaster = () => {
           queryClient.invalidateQueries({ queryKey: ['solde-caisse-alertes'] });
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const n = payload.new as { title?: string; body?: string | null; link?: string | null };
+          if (!n?.title) return;
+          toast(n.title, {
+            description: n.body ?? undefined,
+            action: n.link
+              ? { label: 'Voir', onClick: () => navigate(n.link as string) }
+              : undefined,
+          });
+          queryClient.invalidateQueries({ queryKey: ['in-app-notifications'] });
+        }
+      )
       .subscribe();
 
     return () => {
