@@ -78,7 +78,7 @@ serve(async (req) => {
 
     const validation = validateFullEmailConfig(config);
     if (!validation.valid) {
-      return json(400, {
+      return json(200, {
         success: false,
         provider: config.service,
         message: validation.error || "Configuration invalide",
@@ -98,11 +98,16 @@ serve(async (req) => {
     const duration_ms = Date.now() - start;
 
     if (!result.success) {
-      return json(502, {
+      let message = result.error || "Échec de l'envoi";
+      // Aide contextuelle Gmail
+      if (config.service === "smtp" && /gmail\.com/i.test(config.smtpHost || "") && /auth|535|password|credenti/i.test(message)) {
+        message += " — Gmail requiert un mot de passe d'application (16 caractères) : activez la validation 2 étapes puis générez-en un sur https://myaccount.google.com/apppasswords";
+      }
+      return json(200, {
         success: false,
         provider: config.service,
         duration_ms,
-        message: result.error || "Échec de l'envoi",
+        message,
       });
     }
 
@@ -117,6 +122,7 @@ serve(async (req) => {
         ? `Envoyé via fallback ${config.service === "resend" ? "SMTP" : "Resend"}`
         : `Email de test envoyé via ${config.service}`,
     });
+
   } catch (e) {
     console.error("[test-email-configuration] FATAL:", e);
     return json(500, {
