@@ -84,7 +84,7 @@ export function useLoanRequests() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("loan_requests" as never)
-        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at, membres:membre_id(nom, prenom)")
+        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at, avaliste_id, avaliste_self, avaliste_statut, avaliste_motif_refus, avaliste_validated_at, membres:membre_id(nom, prenom), avaliste:membres!avaliste_id(nom, prenom, fonction)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as LoanRequest[];
@@ -116,7 +116,7 @@ export function useMyLoanRequests() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("loan_requests" as never)
-        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at")
+        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at, avaliste_id, avaliste_self, avaliste_statut, avaliste_motif_refus, avaliste_validated_at, avaliste:membres!avaliste_id(nom, prenom, fonction)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as LoanRequest[];
