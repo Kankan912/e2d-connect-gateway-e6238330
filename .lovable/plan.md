@@ -1,58 +1,38 @@
-## Problème
+## 1. Modale "Ajouter un bénéficiaire" — recherche/filtre membre
 
-La page `/dashboard/admin/cotisations` n'affiche qu'une seule carte (« Cumul annuel par membre »). Il manque le **tableau de détail mensuel** (membres × mois) qui permet de voir, pour chaque membre et chaque mois de l'exercice actif, le montant attendu, le montant payé et le statut. C'est ce tableau opérationnel que les administrateurs utilisent pour suivre les paiements mois par mois.
+**Fichier:** `src/components/config/CalendrierBeneficiairesManager.tsx`
 
-## Plan
+Le `Select` natif (lignes 534-541) n'a pas de champ de recherche : avec une longue liste de membres E2D, impossible de filtrer. Remplacer par un **Combobox cherchable** (`Command` + `Popover` shadcn) :
 
-### 1. Restructurer `src/pages/admin/CotisationsAdmin.tsx` avec des onglets
+- Champ "Rechercher un membre…" filtrant `membresDisponibles` sur `prenom + nom` (insensible casse/accents).
+- Afficher un message "Tous les membres sont déjà dans le calendrier" si liste vide.
+- Conserver l'état `selectedMembre` et le reset à la fermeture.
+- Même traitement pour le `Select` de mois si utile (laisser tel quel sauf demande).
 
-Ajouter un composant `Tabs` shadcn avec deux onglets :
+## 2. Montants des cotisations non répercutés
 
-- **Cumul annuel** — conserve l'actuel `<CotisationsCumulAnnuel exerciceId={...} />`
-- **Détail mensuel** — nouveau composant `<CotisationsDetailMensuel exerciceId={...} />`
+**Cause:** quand une réunion est ouverte, `projeter_cotisations_reunion()` insère des lignes dans `cotisations` avec le montant figé à cet instant. Modifier ensuite `cotisations_mensuelles_exercice.montant` ne met PAS à jour les lignes `cotisations` déjà créées (statut `en_attente`), donc la grille affiche l'ancien montant.
 
-Le sélecteur d'exercice reste partagé en haut de page.
+**Migration SQL** (trigger `AFTER UPDATE` sur `cotisations_mensuelles_exercice`):
 
-### 2. Créer `src/components/CotisationsDetailMensuel.tsx`
+- Lorsque `montant` change, mettre à jour toutes les `cotisations` correspondantes :
+  - `membre_id = NEW.membre_id`
+  - `exercice_id = NEW.exercice_id`
+  - `type_cotisation_id` = id du type "Cotisation mensuelle" obligatoire
+  - `statut = 'en_attente'` (ne jamais toucher aux paiements `paye`/`partiel`)
+- Tracer la propagation dans `cotisations_mensuelles_audit` (raison: "Propagation aux cotisations en_attente").
 
-Tableau matriciel **Membres × Mois** pour l'exercice sélectionné (ou actif).
+**Sécurité:** trigger `SECURITY DEFINER`, ne touche que les lignes non payées, ne crée pas de doublon `fond_caisse_operations`.
 
-**Données requises** (toutes filtrées sur `exercice_id`) :
-- `membres` (actifs, `est_membre_e2d = true`)
-- `cotisations_mensuelles_exercice` (montant mensuel personnalisé par membre, `actif = true`)
-- `cotisations_types` via `exercices_cotisations_types` filtré sur le type « Cotisation mensuelle » (`actif = true`)
-- `cotisations` (toutes lignes liées à l'exercice, avec `date_paiement`, `montant`, `statut`, `type_cotisation_id`, `membre_id`)
-- `exercices` pour récupérer `date_debut` / `date_fin` et générer la liste des mois
+## 3. Fusion onglet "Configuration Tontine" dans "Configuration E2D"
 
-**Affichage** :
-- Colonne fixe : Membre (nom + prénom + badge équipe)
-- Une colonne par mois (libellé court ex. `janv. 26`)
-- Cellule : montant payé / montant attendu pour le mois, code couleur :
-  - vert : payé ≥ attendu
-  - orange : paiement partiel
-  - rouge : `en_attente` ou non payé alors que le mois est passé
-  - gris : mois futur
-- Colonne finale : total annuel attendu / payé + progression
-- En-tête avec stats globales (réutiliser le style des cards existantes)
+Tontine est déjà intégré comme sous-onglet de E2D Config (ligne 235-250 de `E2DConfigAdmin.tsx`). Il reste à **supprimer l'entrée de menu doublon** :
 
-**Filtres** :
-- Recherche par nom/prénom
-- Filtre équipe (jaune/rouge/toutes)
-- Filtre statut mensuel (à jour / en retard / complet)
+- `src/components/layout/DashboardSidebar.tsx` lignes 81-83 : retirer `e2dTontineItems` (et son rendu dans la sidebar) pour ne plus exposer le lien standalone.
+- Garder la route `/dashboard/admin/tontine/config` fonctionnelle (au cas où un lien direct existe), mais la masquer du menu.
 
-**Performance** :
-- Tableau dans un `ScrollArea` horizontal (`overflow-x-auto`) pour gérer 12 colonnes mois + colonnes fixes
-- Cellule « sticky » sur la 1re colonne (nom du membre)
-- Agréger les `cotisations` côté client par `membre_id` + mois (`date_paiement`) — c'est ce que fait déjà `CotisationsCumulAnnuel`
+## Récapitulatif fichiers
 
-**Exports** :
-- Bouton CSV et PDF (réutiliser le pattern jsPDF + autoTable de `CotisationsCumulAnnuel`)
-
-### 3. Aucune modification base de données
-
-Toutes les données nécessaires existent déjà. Aucun migration SQL.
-
-## Fichiers impactés
-
-- `src/pages/admin/CotisationsAdmin.tsx` (modifié — onglets)
-- `src/components/CotisationsDetailMensuel.tsx` (créé)
+- `src/components/config/CalendrierBeneficiairesManager.tsx` — Combobox de recherche membre.
+- Nouvelle migration SQL — trigger de propagation `cotisations_mensuelles_exercice` → `cotisations` (en_attente).
+- `src/components/layout/DashboardSidebar.tsx` — retirer le menu "Configuration Tontine".
