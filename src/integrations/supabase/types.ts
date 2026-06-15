@@ -1736,7 +1736,12 @@ export type Database = {
       }
       loan_requests: {
         Row: {
-          capacite_remboursement: string
+          avaliste_id: string | null
+          avaliste_motif_refus: string | null
+          avaliste_self: boolean
+          avaliste_statut: string
+          avaliste_validated_at: string | null
+          capacite_remboursement: string | null
           conditions_acceptees: boolean
           created_at: string
           current_step: number
@@ -1753,7 +1758,12 @@ export type Database = {
           urgence: string
         }
         Insert: {
-          capacite_remboursement: string
+          avaliste_id?: string | null
+          avaliste_motif_refus?: string | null
+          avaliste_self?: boolean
+          avaliste_statut?: string
+          avaliste_validated_at?: string | null
+          capacite_remboursement?: string | null
           conditions_acceptees?: boolean
           created_at?: string
           current_step?: number
@@ -1770,7 +1780,12 @@ export type Database = {
           urgence?: string
         }
         Update: {
-          capacite_remboursement?: string
+          avaliste_id?: string | null
+          avaliste_motif_refus?: string | null
+          avaliste_self?: boolean
+          avaliste_statut?: string
+          avaliste_validated_at?: string | null
+          capacite_remboursement?: string | null
           conditions_acceptees?: boolean
           created_at?: string
           current_step?: number
@@ -1787,6 +1802,20 @@ export type Database = {
           urgence?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "loan_requests_avaliste_id_fkey"
+            columns: ["avaliste_id"]
+            isOneToOne: false
+            referencedRelation: "e2d_player_stats_view"
+            referencedColumns: ["membre_id"]
+          },
+          {
+            foreignKeyName: "loan_requests_avaliste_id_fkey"
+            columns: ["avaliste_id"]
+            isOneToOne: false
+            referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "loan_requests_membre_id_fkey"
             columns: ["membre_id"]
@@ -5455,6 +5484,14 @@ export type Database = {
           type: string
         }[]
       }
+      avaliste_approve_loan_request: {
+        Args: { _request_id: string }
+        Returns: Json
+      }
+      avaliste_reject_loan_request: {
+        Args: { _motif: string; _request_id: string }
+        Returns: Json
+      }
       calculate_total_pret_amount: {
         Args: {
           montant_initial: number
@@ -5468,14 +5505,17 @@ export type Database = {
         Returns: Json
       }
       can_manage_beneficiaires: { Args: never; Returns: boolean }
+      can_self_avaliser: { Args: { _membre_id: string }; Returns: boolean }
       cancel_loan_request: { Args: { _request_id: string }; Returns: Json }
       create_loan_request: {
         Args: {
-          _capacite_remboursement: string
-          _conditions_acceptees: boolean
+          _avaliste_id: string
+          _avaliste_self: boolean
+          _capacite_remboursement?: string
+          _conditions_acceptees?: boolean
           _description: string
           _duree_mois: number
-          _garantie: string
+          _garantie?: string
           _montant: number
           _urgence: string
         }
