@@ -118,11 +118,18 @@ export const useSessionManager = ({
         isLoading: false
       }));
 
-      // Récupérer le début de session depuis localStorage
-      if (session.user?.id) {
-        sessionStartRef.current = getSessionStart(session.user.id);
+      // Récupérer le début de session depuis localStorage (lié au token)
+      if (session.user?.id && session.access_token) {
+        sessionStartRef.current = getSessionStart(
+          session.user.id,
+          session.access_token,
+          finalConfig.session_duration_minutes
+        );
       }
     };
+
+    loadConfig();
+  }, [session, sessionType, enabled, getSessionStart]);
 
     loadConfig();
   }, [session, sessionType, enabled, getSessionStart]);
