@@ -212,7 +212,7 @@ export function EmailConfigManager() {
         body: { to, provider, enableFallback },
       });
 
-      const payload = (data ?? {}) as {
+      let payload = (data ?? {}) as {
         success?: boolean;
         message?: string;
         provider?: string;
@@ -220,12 +220,24 @@ export function EmailConfigManager() {
         duration_ms?: number;
       };
 
+      // Si erreur non-2xx, tenter de lire le vrai message dans le corps de la réponse
+      if (error && (!payload || !payload.message)) {
+        try {
+          const resp = (error as any)?.context?.response;
+          if (resp && typeof resp.json === "function") {
+            const body = await resp.clone().json();
+            payload = { ...payload, ...body };
+          }
+        } catch { /* ignore */ }
+      }
+
       if (error || !payload.success) {
         const msg = payload.message || (error as any)?.message || "Échec du test";
         setLastTestResult({ success: false, message: msg, provider: payload.provider });
         toast.error(msg, { icon: <XCircle className="h-4 w-4 text-red-500" /> });
         return;
       }
+
 
       setLastTestResult({
         success: true,
