@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
 import { requirePrivilegedUser } from "../_shared/auth-check.ts";
+import { notifyInApp } from "../_shared/in-app-notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,7 +82,7 @@ serve(async (req) => {
         date_pret,
         reconductions,
         membre_id,
-        membres!inner(id, nom, prenom, email, statut)
+        membres!inner(id, nom, prenom, email, statut, user_id)
       `)
       .neq("statut", "rembourse")
       .gte("echeance", todayStr)
@@ -110,7 +111,7 @@ serve(async (req) => {
         date_pret,
         reconductions,
         membre_id,
-        membres!inner(id, nom, prenom, email, statut)
+        membres!inner(id, nom, prenom, email, statut, user_id)
       `)
       .neq("statut", "rembourse")
       .lt("echeance", todayStr)
@@ -132,7 +133,7 @@ serve(async (req) => {
     const errors: string[] = [];
 
     for (const pret of allPrets) {
-      const membre = (pret as { membres?: { email?: string; nom?: string; prenom?: string }; [k: string]: unknown }).membres;
+      const membre = (pret as { membres?: { email?: string; nom?: string; prenom?: string; user_id?: string }; [k: string]: unknown }).membres;
       if (!membre?.email) continue;
 
       const montantTotal = pret.montant_total_du || (pret.montant + (pret.montant * (pret.taux_interet || 0) / 100) * (1 + (pret.reconductions || 0)));
@@ -256,6 +257,22 @@ serve(async (req) => {
         } else {
           console.log(`Email envoyé à ${membre.email} via ${emailConfig.service}`);
           emailsSent++;
+
+          // Notification in-app pour l'emprunteur (dedupe par jour)
+          if (membre.user_id) {
+            const dayKey = todayStr;
+            await notifyInApp({
+              user_id: membre.user_id,
+              type: isEnRetard ? "loan_overdue" : "loan_due_soon",
+              title: isEnRetard
+                ? `Prêt en retard — ${Math.floor(resteAPayer).toLocaleString("fr-FR")} FCFA`
+                : `Échéance proche — ${dateEcheance.toLocaleDateString("fr-FR")}`,
+              body: `Reste à payer : ${Math.floor(resteAPayer).toLocaleString("fr-FR")} FCFA`,
+              link: "/dashboard/mes-prets",
+              dedupe_key: `pret:${pret.id}:${isEnRetard ? "overdue" : "due"}:${dayKey}`,
+              metadata: { pret_id: pret.id, reste: resteAPayer, en_retard: isEnRetard },
+            }, supabase);
+          }
 
           // Enregistrer dans l'historique
           await supabase.from("notifications_historique").insert({

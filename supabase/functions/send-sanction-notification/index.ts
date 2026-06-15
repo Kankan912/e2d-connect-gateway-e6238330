@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
 import { requirePrivilegedUser } from "../_shared/auth-check.ts";
+import { notifyInApp } from "../_shared/in-app-notify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -73,7 +74,7 @@ serve(async (req) => {
     // Récupérer les informations du membre
     const { data: membre, error: membreError } = await supabase
       .from("membres")
-      .select("id, nom, prenom, email")
+      .select("id, nom, prenom, email, user_id")
       .eq("id", membreId)
       .single();
 
@@ -178,6 +179,19 @@ serve(async (req) => {
       }
 
       console.log(`Email de sanction envoyé à ${membre.email} via ${emailConfig.service}`);
+
+      // Notification in-app pour le membre sanctionné
+      if (membre.user_id) {
+        await notifyInApp({
+          user_id: membre.user_id,
+          type: "sanction_created",
+          title: `Nouvelle sanction — ${motif}`,
+          body: `${Math.floor(Number(montant)).toLocaleString("fr-FR")} FCFA • ${dateFormatted}`,
+          link: "/dashboard/mes-sanctions",
+          dedupe_key: sanctionId ? `sanction:${sanctionId}` : undefined,
+          metadata: { sanction_id: sanctionId, motif, montant },
+        }, supabase);
+      }
 
       // Enregistrer dans l'historique
       await supabase.from("notifications_historique").insert({

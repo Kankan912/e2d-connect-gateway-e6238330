@@ -219,7 +219,7 @@ export interface CreateLoanRequestInput {
 
 async function notifyEvent(payload: {
   request_id: string;
-  event: "created" | "step_validated" | "rejected" | "final_approved" | "cancelled";
+  event: "created" | "step_validated" | "rejected" | "final_approved" | "cancelled" | "disbursed";
   step_label?: string;
   validator_name?: string;
   motif?: string;
@@ -330,6 +330,7 @@ export function useDisburseLoan() {
         _request_id: requestId,
       } as never);
       if (error) throw error;
+      await notifyEvent({ request_id: requestId, event: "disbursed" });
       return data as unknown as { success: boolean; pret_id: string };
     },
     onSuccess: () => {
