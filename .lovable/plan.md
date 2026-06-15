@@ -1,56 +1,62 @@
-## Lot 1 — Enrichir Cotisations admin : filtres + export CSV/PDF
+## Lot 2 — Pages membre : filtres, échéancier, exports
+
+Lot 1 vérifié ✅ : filtres (recherche / statut / équipe), colonne Équipe, exports CSV + PDF, états vides gérés, mémoïsation — tout est conforme au plan.
 
 ### Objectif
-Ajouter des filtres (statut, équipe, recherche par nom) et l'export CSV/PDF au tableau de cumul annuel des cotisations.
+Aligner les pages côté membre (`MyCotisations`, `MyPrets`, `MesDemandesPret`) sur le même standard que l'admin : filtres, vue détaillée et export PDF personnel.
 
-### Modifications
+---
 
-**1. `src/components/CotisationsCumulAnnuel.tsx`**
-- Récupérer `equipe_jaune_rouge` dans la requête `membres-e2d-cumul`.
-- Ajouter des états React :
-  - `search` (texte) — recherche par prénom/nom.
-  - `filtreStatut` — `tous | complet | a_jour | en_cours | en_retard`.
-  - `filtreEquipe` — `toutes | jaune | rouge`.
-- Appliquer les filtres sur `membresStats` (avant rendu et avant export).
-- Ajouter une barre de filtres au-dessus du tableau :
-  - `Input` recherche (icône Search).
-  - `Select` statut (4 options + Tous).
-  - `Select` équipe (Toutes / Jaune / Rouge).
-  - 2 boutons : `Export CSV`, `Export PDF`.
-- Afficher la colonne **Équipe** (badge couleur) dans le tableau.
-- Compteur "X membres affichés / Y total" sous les filtres.
+### 1. `src/pages/dashboard/MyCotisations.tsx`
+- Ajouter un **sélecteur d'exercice** (Select avec liste des exercices liés aux cotisations du membre, "Tous" par défaut).
+- Ajouter un filtre **Statut** (`Tous | Payé | En attente | Annulé`) et un filtre **Type de cotisation** (alimenté dynamiquement depuis `cotisations.type.nom`).
+- Ajouter une carte **Progression annuelle** (sur l'exercice sélectionné si défini) :
+  - Montant attendu (via `cotisations_mensuelles_exercice` + `exercices_cotisations_types`).
+  - Montant payé, reste à payer, % progression (`Progress` shadcn).
+- Bouton **Export PDF récapitulatif personnel** :
+  - jsPDF A4 portrait, en-tête "Mes cotisations — <prénom nom>", exercice, date édition.
+  - Tableau (`autoTable`) : Type, Date, Montant, Statut.
+  - Bloc total payé.
+  - Nom : `mes_cotisations_<exercice>_<YYYY-MM-DD>.pdf`.
+- Aucun changement sur `useUserCotisations`.
 
-**2. Export CSV**
-- Fonction locale `exportCSV()` qui :
-  - Génère l'en-tête : `Membre;Équipe;Attendu (FCFA);Payé (FCFA);Reste (FCFA);Progression (%);Statut`.
-  - Sérialise les lignes filtrées (séparateur `;`, BOM UTF-8 pour Excel).
-  - Déclenche un téléchargement via `Blob` + `URL.createObjectURL`.
-  - Nom du fichier : `cotisations_cumul_<exercice.nom>_<YYYY-MM-DD>.csv`.
+### 2. `src/pages/dashboard/MyPrets.tsx`
+- Ajouter un filtre **Statut** (`Tous | En cours | Remboursé | En attente | Refusé`).
+- Ajouter une carte **Échéancier prochain remboursement** :
+  - Affiche le prochain prêt actif (`en_cours` ou `approuve`) avec `echeance`, montant restant et badge couleur si proche (< 7 j = destructive, < 30 j = warning).
+- Bouton **Export PDF "Mes prêts"** :
+  - A4 paysage, en-tête membre + date.
+  - Tableau : Date, Montant initial, Remboursé, Reste, Échéance, Statut.
+  - Footer : totaux remboursés / restants.
+- Réutilise `useUserPrets` (aucun nouveau hook).
 
-**3. Export PDF**
-- Utilise `jspdf` + `jspdf-autotable` (déjà installés, `jspdf ^3.0.3` selon mémoire).
-- Fonction `exportPDF()` :
-  - Format A4 paysage.
-  - En-tête : titre `Cotisations - Cumul annuel`, sous-titre `Exercice <nom>`, date d'édition.
-  - Encadré stats globales (Total attendu, Total payé, Progression).
-  - `autoTable` avec mêmes colonnes que CSV, couleurs alternées, en-tête primary.
-  - Pied de page : numéro de page.
-  - Nom du fichier identique au CSV en `.pdf`.
+### 3. `src/pages/dashboard/MesDemandesPret.tsx`
+- Ajouter un filtre **Statut** (`Toutes | En attente | En cours | Approuvée | Rejetée | Décaissée`).
+- Ajouter un filtre **Urgence** (`Toutes | Normal | Urgent`).
+- Compteur "X demandes affichées / Y total".
+- Pas d'export (les demandes restent suivies dans l'admin).
+- Aucun changement sur `useMyLoanRequests` ni `LoanRequestDialog`.
 
-**4. Petits ajustements UX**
-- Désactiver les boutons d'export si `membresStats` est vide.
-- Mémoïser la liste filtrée avec `useMemo` pour éviter recalculs inutiles.
-- Pas de changement de RLS, de schéma DB, ni de logique business.
+### 4. Utilitaire partagé
+- Créer `src/lib/membre-pdf.ts` exposant `buildMembrePDFHeader(doc, { titre, membreLabel, exerciceLabel? })` pour mutualiser l'en-tête PDF des deux exports membre. Évite la duplication entre `MyCotisations` et `MyPrets`.
 
 ### Hors périmètre
-- Aucune nouvelle table ou migration.
-- Pas de modification des hooks `useCotisations` ni des autres pages.
-- Filtre par type de cotisation laissé pour plus tard (le tableau actuel agrège tous les types).
+- Pas de migration, pas de nouvelle RPC, pas de modification des hooks ou des RLS.
+- Pas de modifications côté admin (déjà couvert par Lot 1).
+- Pas de modification de `LoanRequestDialog` (workflow et notifications restent identiques — cf. mémoire `request-workflow`).
+- Filtres serveur (pagination) hors scope : volumes membres faibles → filtrage client suffisant.
 
 ### Détails techniques
-- Réutilise `Input`, `Select`, `Button`, `Badge` shadcn.
-- Couleurs équipe : `jaune` → `bg-yellow-500/20 text-yellow-700`, `rouge` → `bg-red-500/20 text-red-700`.
-- Formatage des montants : `toLocaleString('fr-FR')` + suffixe `FCFA`.
-- Imports lazy non nécessaires (composant déjà dans page lazy).
+- Composants : `Input`, `Select`, `Button`, `Badge`, `Progress`, `Card` shadcn déjà importés.
+- Date utils : `date-fns` + locale `fr` (déjà utilisés).
+- Format montant : `formatFCFA` (déjà utilisé) et `Intl.NumberFormat('fr-FR')` pour PDF.
+- PDF : `jspdf ^3.0.3` + `jspdf-autotable` (mêmes versions que Lot 1, cf. mémoire).
+- Identité du membre récupérée via `useAuth()` → `user.user_metadata` ou via la première ligne de `cotisations.membre` / `prets.membre` selon ce qui est déjà exposé par le hook (à vérifier au moment de l'implémentation, fallback sur `Mon récapitulatif`).
 
-Une fois validé, passage automatique au Lot 2 demandé via message séparé.
+### Validation
+- Build TypeScript propre.
+- Vérifier visuellement les 3 pages dans `/dashboard/...` (vue desktop + mobile).
+- Tester un export PDF par page.
+- Vérifier que les filtres se combinent (statut + type/urgence).
+
+Lot 3 (workflow demandes + notifications côté membre) sera proposé après validation du Lot 2.
