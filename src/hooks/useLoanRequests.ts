@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 export type LoanRequestStatus =
   | "pending"
+  | "awaiting_avaliste"
   | "in_progress"
   | "rejected"
+  | "rejected_by_avaliste"
   | "approved"
   | "disbursed"
   | "cancelled";
@@ -19,14 +21,20 @@ export interface LoanRequest {
   description: string;
   urgence: "normal" | "urgent";
   duree_mois: number;
-  capacite_remboursement: string;
+  capacite_remboursement: string | null;
   garantie: string | null;
   statut: LoanRequestStatus;
   current_step: number;
   motif_rejet: string | null;
   pret_id: string | null;
   created_at: string;
+  avaliste_id: string | null;
+  avaliste_self: boolean;
+  avaliste_statut: "pending" | "approved" | "rejected";
+  avaliste_motif_refus: string | null;
+  avaliste_validated_at: string | null;
   membres?: { nom: string; prenom: string };
+  avaliste?: { nom: string; prenom: string; fonction: string | null } | null;
 }
 
 export interface LoanRequestValidation {
