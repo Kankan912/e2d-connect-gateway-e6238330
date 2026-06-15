@@ -1,40 +1,65 @@
-# Correctifs Portail Membre + Chargement infini
+# Diagnostic
 
-## Diagnostic
+J'ai trouvé la **cause racine** des trois symptômes (loader infini, modules invisibles, déconnexion qui semble échouer) et elle est unique : **toutes les tables du schéma `public` sont sans `GRANT` pour les rôles `anon` / `authenticated` / `service_role`**.
 
-Console logs après login admin :
-- Premier cycle : `Fetching profile` → `Profile loaded` → `Role data received` → `Permissions loaded: 78` → SessionManager OK ✅
-- Ensuite : `[vite] server connection lost. Polling for restart…` puis `Fetching profile…` répété toutes les ~30s sans aucun log de complétion (`Profile loaded`, etc.).
+Preuve :
+- `SELECT … FROM information_schema.role_table_grants WHERE table_schema='public' AND grantee IN ('anon','authenticated','service_role')` → **0 ligne** (117 tables existent dans `public`).
+- L'`USAGE` sur le schéma est OK, mais sans `GRANT` table par table, PostgREST renvoie systématiquement « permission denied » ou laisse la requête pendre.
+- Console : `[AuthContext] fetchUserProfile safety timeout (8s)` se répète → le `Promise.all` sur `profiles` / `user_roles` / `role_permissions` ne se résout jamais.
+- Le compte admin (`ci-administrateur@e2d-test.local`) a bien le rôle `administrateur` avec **78 permissions**. Le sidebar est vide uniquement parce que `usePermissions` ne reçoit aucune ligne → tout est filtré.
+- La déconnexion : `signOut()` part bien, mais comme `fetchUserProfile` est en boucle (relogin/refresh), la session se ré-établit immédiatement et l'utilisateur a l'impression que rien ne se passe.
 
-Conséquence : à chaque reconnexion du dev server / rechargement de page, `AuthProvider` se remonte, `loading` repart à `true`, `fetchUserProfile()` est relancé mais ne ressort jamais (requête bloquée sur reconnexion réseau) → le `<PageLoader fullPage>` reste affiché indéfiniment.
+Le warning CSP « eval » de l'image vient d'une lib tierce dans la preview Lovable (recharts/jspdf). Ce n'est pas la cause des bugs et ce sera traité séparément si besoin.
 
-Côté image 1, le bouton "Portail Membre" du `Navbar.tsx` :
-- Utilise `window.location.href = "/auth"` (full reload, lent et casse la SPA)
-- Le `Navbar` n'a pas de `z-index` explicite : la bande bleue du Hero (image 1) passe par-dessus au scroll en haut.
+# Plan
 
-## Plan d'action
+## 1. Migration SQL — restaurer les GRANTs Data API
 
-### 1. AuthContext — garantir la sortie de l'état `loading`
-Fichier : `src/contexts/AuthContext.tsx`
+Une seule migration qui, pour chaque table `BASE TABLE` du schéma `public` :
+- Accorde `SELECT, INSERT, UPDATE, DELETE` à `authenticated`.
+- Accorde `ALL` à `service_role`.
+- N'accorde **rien** à `anon` (les politiques RLS du projet sont quasi toutes scopées à `auth.uid()` / `is_admin()`). Les rares tables publiques (`site_*`, `events_public`, etc.) seront ouvertes à `anon` au cas par cas dans un second bloc explicite si on les identifie après vérification.
 
-- Ajouter un **timeout de sécurité** (8 s) dans `fetchUserProfile` : si la requête combinée profil + rôle + permissions n'a pas répondu, on force `setLoading(false)` et on log un warning. Ainsi l'utilisateur voit le dashboard même si une requête réseau s'éternise après une reconnexion HMR.
-- Encadrer `fetchUserProfile` avec un `AbortController` pour éviter qu'un appel précédent (resté pendant) ne re-déclenche `setLoading(true)` après un nouveau cycle.
-- S'assurer que `setLoading(false)` est appelé même quand `checkMemberStatus` déclenche un `signOut` (déjà partiellement géré, à durcir).
-- Ne plus relancer `fetchUserProfile` si la session n'a pas changé ET si on a déjà un `profile` chargé en mémoire (déduplication renforcée).
+Forme :
 
-### 2. Navbar — bouton Portail Membre
-Fichier : `src/components/Navbar.tsx`
+```sql
+DO $$
+DECLARE t record;
+BEGIN
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname='public'
+  LOOP
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO authenticated', t.tablename);
+    EXECUTE format('GRANT ALL ON public.%I TO service_role', t.tablename);
+  END LOOP;
+END$$;
 
-- Remplacer `window.location.href = "/auth"` par `useNavigate()` → `navigate("/auth")` (desktop **et** mobile) pour éviter le full reload qui aggrave le blocage observé.
-- Ajouter `z-50` (ou `z-[60]`) + `relative`/`sticky` sur le `<nav>` racine si absent, pour qu'aucune section colorée du Hero ne déborde au-dessus du bouton (image 1).
+-- Ouvertures anon ciblées (lecture publique du site vitrine)
+GRANT SELECT ON public.site_hero, public.site_about, public.site_activities,
+                public.site_events, public.site_gallery, public.site_partners,
+                public.site_config, public.site_images TO anon;
+-- (la liste exacte sera validée à l'exécution selon les tables réellement présentes)
+```
 
-### 3. Vérification
-- Recharger `/`, cliquer "Portail Membre" → la navigation reste SPA.
-- Se connecter en tant qu'administrateur → vérifier dans la console les logs `Profile loaded` + `Permissions loaded`, et que `loading` repasse à `false` (DashboardHome s'affiche).
-- Simuler une reconnexion (couper/rallumer le réseau) → l'écran "Chargement…" doit disparaître au max après 8 s grâce au timeout.
+Aucun changement RLS : les policies existantes sécurisent déjà l'accès ligne par ligne. On rétablit seulement le canal Data API.
 
-## Détails techniques
+## 2. Validation après migration
 
-- Le timeout de sécurité utilisera `Promise.race([fetchPromise, timeoutPromise])` et ne touche pas au `signOut` (les requêtes en arrière-plan peuvent quand même se résoudre et hydrater l'UI).
-- Aucune modification de migration / RLS nécessaire — les GRANTs et policies sur `profiles`, `user_roles`, `role_permissions`, `membres` sont corrects (vérifié via `pg_class` + `has_table_privilege`).
-- Aucun impact sur le flux Lot 4 (notifications in-app).
+1. Recharger `/dashboard` connecté comme `administrateur`.
+2. Console : plus de `fetchUserProfile safety timeout`. On doit revoir :
+   - `[AuthContext] Profile loaded: …`
+   - `[AuthContext] Role data received: administrateur`
+   - `[AuthContext] Permissions loaded: 78`
+3. Sidebar : sections **E2D / Administration / Sport / Communication / Site Web** visibles.
+4. Bouton **Déconnexion** (header avatar) → retour sur `/` + toast « Déconnexion réussie ».
+5. Vérifier que le site vitrine public (`/`, `/sport`, etc.) charge toujours ses contenus (sinon ajouter le `GRANT SELECT … TO anon` manquant).
+
+## 3. Hors périmètre (à traiter ensuite si besoin)
+
+- Warning CSP `eval` (lib tierce, non bloquant).
+- Audit complet de chaque bouton du dashboard (à faire une fois la nav rétablie, sinon on chasse des bugs fantômes causés par le manque de GRANT).
+
+# Détails techniques
+
+- Fichier créé : `supabase/migrations/<timestamp>_restore_public_grants.sql`.
+- Aucun changement côté React. Le code `AuthContext` / `usePermissions` est correct ; il était juste affamé de données.
+- Le `service_role` bypasse déjà RLS, mais on ajoute `GRANT ALL` par cohérence (requis par les Edge Functions qui utilisent la clé service).
