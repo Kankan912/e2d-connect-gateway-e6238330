@@ -219,7 +219,7 @@ export interface CreateLoanRequestInput {
 
 async function notifyEvent(payload: {
   request_id: string;
-  event: "created" | "step_validated" | "rejected" | "final_approved" | "cancelled";
+  event: "created" | "step_validated" | "rejected" | "final_approved" | "cancelled" | "disbursed";
   step_label?: string;
   validator_name?: string;
   motif?: string;
