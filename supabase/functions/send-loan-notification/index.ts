@@ -64,7 +64,7 @@ serve(async (req) => {
     const { data: request, error: errReq } = await supabase
       .from("loan_requests")
       .select(
-        "id, montant, description, urgence, duree_mois, statut, motif_rejet, membre_id, membres(nom, prenom, user_id)",
+        "id, montant, description, urgence, duree_mois, statut, motif_rejet, membre_id, avaliste_id, avaliste_self, avaliste_motif_refus, membres!loan_requests_membre_id_fkey(nom, prenom, user_id), avaliste:membres!loan_requests_avaliste_id_fkey(nom, prenom, user_id, email)",
       )
       .eq("id", payload.request_id)
       .single();
