@@ -174,8 +174,8 @@ export function CotisationsMensuellesExerciceManager() {
             .eq('id', existing.id);
           if (error) throw error;
 
-          // Log audit if locked
-          if (existing.verrouille && isAdmin) {
+          // Log audit systématique pour toute modification (verrouillée ou non)
+          if (item.oldMontant !== item.montant) {
             await supabase.from('cotisations_mensuelles_audit').insert({
               cotisation_mensuelle_id: existing.id,
               membre_id: item.membreId,
@@ -183,21 +183,34 @@ export function CotisationsMensuellesExerciceManager() {
               montant_avant: item.oldMontant,
               montant_apres: item.montant,
               modifie_par: profile?.id,
-              raison: item.reason || 'Modification administrative'
+              raison: item.reason?.trim() || (existing.verrouille ? 'Modification (exercice verrouillé)' : 'Modification du montant'),
             });
           }
         } else {
           // Insert new
-          const { error } = await supabase
+          const { data: inserted, error } = await supabase
             .from('cotisations_mensuelles_exercice')
             .insert({
               membre_id: item.membreId,
               exercice_id: selectedExerciceId,
               montant: item.montant,
               actif: true,
-              verrouille: isExerciceLocked
-            });
+              verrouille: isExerciceLocked,
+            })
+            .select('id')
+            .single();
           if (error) throw error;
+
+          // Log la création initiale
+          await supabase.from('cotisations_mensuelles_audit').insert({
+            cotisation_mensuelle_id: inserted.id,
+            membre_id: item.membreId,
+            exercice_id: selectedExerciceId,
+            montant_avant: 0,
+            montant_apres: item.montant,
+            modifie_par: profile?.id,
+            raison: item.reason?.trim() || 'Initialisation du montant',
+          });
         }
       }
     },
