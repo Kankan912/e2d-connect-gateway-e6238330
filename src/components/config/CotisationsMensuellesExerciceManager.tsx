@@ -415,8 +415,8 @@ export function CotisationsMensuellesExerciceManager() {
               {canEdit ? <ShieldCheck className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
               <AlertDescription>
                 <strong>Exercice {selectedExercice?.statut === 'actif' ? 'actif' : 'clôturé'}</strong>
-                {isAdmin 
-                  ? " - En tant qu'administrateur, vous pouvez modifier les montants. Les modifications seront auditées."
+                {canEdit
+                  ? " - Vous êtes autorisé à modifier les montants. Une raison vous sera demandée et chaque modification sera enregistrée dans l'historique."
                   : " - Les montants sont verrouillés. Contactez un administrateur pour toute modification."
                 }
               </AlertDescription>
