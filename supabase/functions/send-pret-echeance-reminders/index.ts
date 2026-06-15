@@ -258,6 +258,22 @@ serve(async (req) => {
           console.log(`Email envoyé à ${membre.email} via ${emailConfig.service}`);
           emailsSent++;
 
+          // Notification in-app pour l'emprunteur (dedupe par jour)
+          if (membre.user_id) {
+            const dayKey = todayStr;
+            await notifyInApp({
+              user_id: membre.user_id,
+              type: isEnRetard ? "loan_overdue" : "loan_due_soon",
+              title: isEnRetard
+                ? `Prêt en retard — ${Math.floor(resteAPayer).toLocaleString("fr-FR")} FCFA`
+                : `Échéance proche — ${dateEcheance.toLocaleDateString("fr-FR")}`,
+              body: `Reste à payer : ${Math.floor(resteAPayer).toLocaleString("fr-FR")} FCFA`,
+              link: "/dashboard/mes-prets",
+              dedupe_key: `pret:${pret.id}:${isEnRetard ? "overdue" : "due"}:${dayKey}`,
+              metadata: { pret_id: pret.id, reste: resteAPayer, en_retard: isEnRetard },
+            }, supabase);
+          }
+
           // Enregistrer dans l'historique
           await supabase.from("notifications_historique").insert({
             type_notification: "rappel_pret",
