@@ -3,8 +3,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Loader2, HandCoins } from "lucide-react";
-import { useMyLoanRequests, type LoanRequest, type LoanRequestStatus } from "@/hooks/useLoanRequests";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Plus, Loader2, HandCoins, XCircle } from "lucide-react";
+import { useMyLoanRequests, useCancelLoanRequest, type LoanRequest, type LoanRequestStatus } from "@/hooks/useLoanRequests";
 import { LoanRequestDialog } from "@/components/loans/LoanRequestDialog";
 import { LoanValidationTimeline } from "@/components/loans/LoanValidationTimeline";
 import { usePretRequestPermissions } from "@/hooks/usePretRequestPermissions";
@@ -26,6 +37,8 @@ const statusBadge = (s: LoanRequestStatus) => {
       return <Badge variant="destructive">Rejetée</Badge>;
     case "disbursed":
       return <Badge className="bg-violet-500/15 text-violet-700 border-violet-500/30">Décaissée</Badge>;
+    case "cancelled":
+      return <Badge variant="outline" className="text-muted-foreground">Annulée</Badge>;
     default:
       return <Badge variant="outline">{s}</Badge>;
   }
@@ -34,6 +47,9 @@ const statusBadge = (s: LoanRequestStatus) => {
 const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(n) + " FCFA";
 
 function LoanRequestCard({ r }: { r: LoanRequest }) {
+  const cancel = useCancelLoanRequest();
+  const canCancel = (r.statut === "pending" || r.statut === "in_progress") && r.current_step <= 1;
+
   return (
     <Card>
       <CardHeader className="pb-3">
