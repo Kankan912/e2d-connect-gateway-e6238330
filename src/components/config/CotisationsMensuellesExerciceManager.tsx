@@ -135,11 +135,10 @@ export function CotisationsMensuellesExerciceManager() {
   const hasLockedRecords = cotisationsMensuelles?.some(c => c.verrouille) || false;
   const isExerciceLocked = selectedExercice?.statut === 'actif' || selectedExercice?.statut === 'cloture';
 
-  // Check if user is admin
-  const isAdmin = userRole && ['admin', 'administrateur', 'tresorier', 'super_admin', 'secretaire_general'].includes(userRole.toLowerCase());
-
-  // Determine if editing is allowed
-  const canEdit = !isExerciceLocked || (isExerciceLocked && isAdmin);
+  // Autorisation centralisée : permission cotisations.update (admin = true via has_permission)
+  const canEdit = hasPermission('cotisations', 'update');
+  // L'admin bypass est déjà géré par usePermissions (isAdministrateur)
+  const isAdmin = canEdit;
 
   // Get montant for a membre
   const getMontant = (membreId: string): number => {
