@@ -29,12 +29,16 @@ const statusBadge = (s: LoanRequestStatus) => {
   switch (s) {
     case "pending":
       return <Badge variant="secondary">En attente</Badge>;
+    case "awaiting_avaliste":
+      return <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30">En attente de l'avaliste</Badge>;
     case "in_progress":
       return <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30">En cours de validation</Badge>;
     case "approved":
       return <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">Approuvée</Badge>;
     case "rejected":
       return <Badge variant="destructive">Rejetée</Badge>;
+    case "rejected_by_avaliste":
+      return <Badge variant="destructive">Refusée par l'avaliste</Badge>;
     case "disbursed":
       return <Badge className="bg-violet-500/15 text-violet-700 border-violet-500/30">Décaissée</Badge>;
     case "cancelled":
@@ -48,7 +52,9 @@ const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(n) + " FCFA";
 
 function LoanRequestCard({ r }: { r: LoanRequest }) {
   const cancel = useCancelLoanRequest();
-  const canCancel = (r.statut === "pending" || r.statut === "in_progress") && r.current_step <= 1;
+  const canCancel =
+    (r.statut === "pending" || r.statut === "awaiting_avaliste" || r.statut === "in_progress") &&
+    r.current_step <= 1;
 
   return (
     <Card>
@@ -75,22 +81,36 @@ function LoanRequestCard({ r }: { r: LoanRequest }) {
           <p className="text-sm">{r.description}</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Capacité de remboursement</p>
-            <p>{r.capacite_remboursement}</p>
-          </div>
+          {r.capacite_remboursement && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Capacité de remboursement</p>
+              <p>{r.capacite_remboursement}</p>
+            </div>
+          )}
           {r.garantie && (
             <div>
               <p className="text-xs font-medium text-muted-foreground">Garantie</p>
               <p>{r.garantie}</p>
             </div>
           )}
+          {r.avaliste && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Avaliste (garant)</p>
+              <p>
+                {r.avaliste_self
+                  ? "Moi-même (auto-avalisation)"
+                  : `${r.avaliste.prenom} ${r.avaliste.nom}${r.avaliste.fonction ? ` — ${r.avaliste.fonction}` : ""}`}
+              </p>
+            </div>
+          )}
         </div>
 
-        {r.statut === "rejected" && r.motif_rejet && (
+        {(r.statut === "rejected" || r.statut === "rejected_by_avaliste") && (r.motif_rejet || r.avaliste_motif_refus) && (
           <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3">
-            <p className="text-xs font-medium text-destructive">Motif du rejet</p>
-            <p className="text-sm mt-1">{r.motif_rejet}</p>
+            <p className="text-xs font-medium text-destructive">
+              {r.statut === "rejected_by_avaliste" ? "Motif du refus (avaliste)" : "Motif du rejet"}
+            </p>
+            <p className="text-sm mt-1">{r.avaliste_motif_refus ?? r.motif_rejet}</p>
           </div>
         )}
 
@@ -178,9 +198,11 @@ export default function MesDemandesPret() {
               <SelectContent>
                 <SelectItem value="toutes">Tous statuts</SelectItem>
                 <SelectItem value="pending">En attente</SelectItem>
+                <SelectItem value="awaiting_avaliste">En attente de l'avaliste</SelectItem>
                 <SelectItem value="in_progress">En cours de validation</SelectItem>
                 <SelectItem value="approved">Approuvée</SelectItem>
                 <SelectItem value="rejected">Rejetée</SelectItem>
+                <SelectItem value="rejected_by_avaliste">Refusée par l'avaliste</SelectItem>
                 <SelectItem value="disbursed">Décaissée</SelectItem>
                 <SelectItem value="cancelled">Annulée</SelectItem>
               </SelectContent>

@@ -6,8 +6,10 @@ import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 export type LoanRequestStatus =
   | "pending"
+  | "awaiting_avaliste"
   | "in_progress"
   | "rejected"
+  | "rejected_by_avaliste"
   | "approved"
   | "disbursed"
   | "cancelled";
@@ -19,14 +21,20 @@ export interface LoanRequest {
   description: string;
   urgence: "normal" | "urgent";
   duree_mois: number;
-  capacite_remboursement: string;
+  capacite_remboursement: string | null;
   garantie: string | null;
   statut: LoanRequestStatus;
   current_step: number;
   motif_rejet: string | null;
   pret_id: string | null;
   created_at: string;
+  avaliste_id: string | null;
+  avaliste_self: boolean;
+  avaliste_statut: "pending" | "approved" | "rejected";
+  avaliste_motif_refus: string | null;
+  avaliste_validated_at: string | null;
   membres?: { nom: string; prenom: string };
+  avaliste?: { nom: string; prenom: string; fonction: string | null } | null;
 }
 
 export interface LoanRequestValidation {
@@ -76,7 +84,7 @@ export function useLoanRequests() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("loan_requests" as never)
-        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at, membres:membre_id(nom, prenom)")
+        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at, avaliste_id, avaliste_self, avaliste_statut, avaliste_motif_refus, avaliste_validated_at, membres:membre_id(nom, prenom), avaliste:membres!avaliste_id(nom, prenom, fonction)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as LoanRequest[];
@@ -108,7 +116,7 @@ export function useMyLoanRequests() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("loan_requests" as never)
-        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at")
+        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at, avaliste_id, avaliste_self, avaliste_statut, avaliste_motif_refus, avaliste_validated_at, avaliste:membres!avaliste_id(nom, prenom, fonction)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as LoanRequest[];
@@ -212,14 +220,25 @@ export interface CreateLoanRequestInput {
   description: string;
   urgence: "normal" | "urgent";
   duree_mois: number;
-  capacite_remboursement: string;
+  avaliste_id: string;
+  avaliste_self: boolean;
+  capacite_remboursement?: string | null;
   garantie?: string | null;
   conditions_acceptees: boolean;
 }
 
 async function notifyEvent(payload: {
   request_id: string;
-  event: "created" | "step_validated" | "rejected" | "final_approved" | "cancelled" | "disbursed";
+  event:
+    | "created"
+    | "step_validated"
+    | "rejected"
+    | "final_approved"
+    | "cancelled"
+    | "disbursed"
+    | "avaliste_request"
+    | "avaliste_approved"
+    | "avaliste_rejected";
   step_label?: string;
   validator_name?: string;
   motif?: string;
@@ -240,24 +259,116 @@ export function useCreateLoanRequest() {
         _description: input.description,
         _urgence: input.urgence,
         _duree_mois: input.duree_mois,
-        _capacite_remboursement: input.capacite_remboursement,
+        _avaliste_id: input.avaliste_id,
+        _avaliste_self: input.avaliste_self,
+        _capacite_remboursement: input.capacite_remboursement ?? null,
         _garantie: input.garantie ?? null,
         _conditions_acceptees: input.conditions_acceptees,
       } as never);
       if (error) throw error;
       const requestId = data as unknown as string;
-      await notifyEvent({ request_id: requestId, event: "created" });
+      // If avaliste is a third party, notify them; otherwise notify the workflow steps
+      await notifyEvent({
+        request_id: requestId,
+        event: input.avaliste_self ? "created" : "avaliste_request",
+      });
       return requestId;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["loan-requests"] });
       qc.invalidateQueries({ queryKey: ["my-loan-requests"] });
+      qc.invalidateQueries({ queryKey: ["avaliste-pending-requests"] });
       toast.success("Demande de prêt envoyée");
     },
     onError: (e: unknown) => {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       toast.error(msg);
     },
+  });
+}
+
+export function useCanSelfAvaliser(membreId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["can-self-avaliser", membreId],
+    enabled: !!membreId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("can_self_avaliser" as never, {
+        _membre_id: membreId,
+      } as never);
+      if (error) throw error;
+      return Boolean(data);
+    },
+  });
+}
+
+export function useAvalistePendingRequests() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const ch = supabase
+      .channel("loan_requests_avaliste")
+      .on("postgres_changes", { event: "*", schema: "public", table: "loan_requests" }, () => {
+        qc.invalidateQueries({ queryKey: ["avaliste-pending-requests"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc]);
+
+  return useQuery({
+    queryKey: ["avaliste-pending-requests"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("loan_requests" as never)
+        .select("id, membre_id, montant, description, urgence, duree_mois, capacite_remboursement, garantie, statut, current_step, motif_rejet, pret_id, created_at, avaliste_id, avaliste_self, avaliste_statut, avaliste_motif_refus, avaliste_validated_at, membres:membre_id(nom, prenom)")
+        .eq("statut", "awaiting_avaliste")
+        .eq("avaliste_statut", "pending")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as LoanRequest[];
+    },
+  });
+}
+
+export function useAvalisteApprove() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (requestId: string) => {
+      const { data, error } = await supabase.rpc("avaliste_approve_loan_request" as never, {
+        _request_id: requestId,
+      } as never);
+      if (error) throw error;
+      await notifyEvent({ request_id: requestId, event: "avaliste_approved" });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["loan-requests"] });
+      qc.invalidateQueries({ queryKey: ["my-loan-requests"] });
+      qc.invalidateQueries({ queryKey: ["avaliste-pending-requests"] });
+      qc.invalidateQueries({ queryKey: ["loan-request-validations"] });
+      toast.success("Vous avez validé cette demande en tant qu'avaliste");
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Erreur inconnue"),
+  });
+}
+
+export function useAvalisteReject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, motif }: { requestId: string; motif: string }) => {
+      const { data, error } = await supabase.rpc("avaliste_reject_loan_request" as never, {
+        _request_id: requestId,
+        _motif: motif,
+      } as never);
+      if (error) throw error;
+      await notifyEvent({ request_id: requestId, event: "avaliste_rejected", motif });
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["loan-requests"] });
+      qc.invalidateQueries({ queryKey: ["my-loan-requests"] });
+      qc.invalidateQueries({ queryKey: ["avaliste-pending-requests"] });
+      toast.success("Refus enregistré");
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Erreur inconnue"),
   });
 }
 

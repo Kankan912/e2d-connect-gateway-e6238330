@@ -56,6 +56,7 @@ const memberItems = [
   { title: "Mes Dons", url: "/dashboard/my-donations", icon: Heart },
   { title: "Mes Cotisations", url: "/dashboard/my-cotisations", icon: Receipt },
   { title: "Mes Demandes de Prêt", url: "/dashboard/mes-demandes-pret", icon: HandCoins },
+  { title: "Mes Avalisations", url: "/dashboard/mes-avalisations", icon: Shield },
 ];
 
 // E2D - Section principale regroupant tous les modules internes

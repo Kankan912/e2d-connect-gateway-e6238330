@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,16 +9,25 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useCreateLoanRequest, useDefaultLoanRate } from "@/hooks/useLoanRequests";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, ShieldCheck } from "lucide-react";
+import { useCreateLoanRequest, useDefaultLoanRate, useCanSelfAvaliser } from "@/hooks/useLoanRequests";
+import { useMembers } from "@/hooks/useMembers";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { addMonths, format } from "date-fns";
 import { fr } from "date-fns/locale";
+
+const SELF_VALUE = "__self__";
 
 const schema = z.object({
   montant: z.coerce.number().int("Sans décimales").positive("Montant > 0"),
   description: z.string().trim().min(5, "Description trop courte").max(2000),
   urgence: z.enum(["normal", "urgent"]),
   duree_mois: z.coerce.number().int().positive("Durée > 0").max(120),
-  capacite_remboursement: z.string().trim().min(3, "Précisez votre capacité"),
+  avaliste_choice: z.string().min(1, "Veuillez sélectionner un avaliste"),
+  capacite_remboursement: z.string().trim().max(500).optional().or(z.literal("")),
   garantie: z.string().trim().max(500).optional().or(z.literal("")),
   conditions_acceptees: z.literal(true, {
     errorMap: () => ({ message: "Vous devez accepter les conditions" }),
@@ -35,7 +44,26 @@ interface Props {
 export function LoanRequestDialog({ open, onOpenChange }: Props) {
   const create = useCreateLoanRequest();
   const { data: tauxDefaut } = useDefaultLoanRate();
+  const { members } = useMembers();
+  const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+
+  // Current member id (from user_id)
+  const { data: currentMembreId } = useQuery({
+    queryKey: ["current-membre-id", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("membres")
+        .select("id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as { id: string } | null)?.id ?? null;
+    },
+  });
+
+  const { data: canSelf, isLoading: loadingSelf } = useCanSelfAvaliser(currentMembreId);
 
   const fmt = (n: number) => new Intl.NumberFormat("fr-FR").format(Math.round(n)) + " FCFA";
 
@@ -46,13 +74,33 @@ export function LoanRequestDialog({ open, onOpenChange }: Props) {
       description: "",
       urgence: "normal",
       duree_mois: 6,
+      avaliste_choice: "",
       capacite_remboursement: "",
       garantie: "",
       conditions_acceptees: false as unknown as true,
     },
   });
 
+  useEffect(() => {
+    if (!open) form.reset();
+  }, [open, form]);
+
+  const avalisteChoice = form.watch("avaliste_choice");
+  const isSelf = avalisteChoice === SELF_VALUE;
+
+  const otherMembers = useMemo(() => {
+    return (members ?? []).filter(
+      (m) =>
+        m.id !== currentMembreId &&
+        !["supprime", "suspendu", "inactif"].includes((m.statut ?? "actif").toLowerCase()),
+    );
+  }, [members, currentMembreId]);
+
   const onSubmit = async (values: FormValues) => {
+    if (!currentMembreId) return;
+    const avaliste_self = values.avaliste_choice === SELF_VALUE;
+    const avaliste_id = avaliste_self ? currentMembreId : values.avaliste_choice;
+
     setSubmitting(true);
     try {
       await create.mutateAsync({
@@ -60,7 +108,9 @@ export function LoanRequestDialog({ open, onOpenChange }: Props) {
         description: values.description,
         urgence: values.urgence,
         duree_mois: values.duree_mois,
-        capacite_remboursement: values.capacite_remboursement,
+        avaliste_id,
+        avaliste_self,
+        capacite_remboursement: values.capacite_remboursement?.trim() || null,
         garantie: values.garantie?.trim() || null,
         conditions_acceptees: true,
       });
@@ -73,7 +123,7 @@ export function LoanRequestDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Demande de prêt</DialogTitle>
         </DialogHeader>
@@ -119,21 +169,70 @@ export function LoanRequestDialog({ open, onOpenChange }: Props) {
           </div>
 
           <div>
-            <Label htmlFor="capacite_remboursement">Capacité de remboursement *</Label>
-            <Input
-              id="capacite_remboursement"
-              placeholder="Ex: 50 000 FCFA / mois"
-              {...form.register("capacite_remboursement")}
-            />
-            {form.formState.errors.capacite_remboursement && (
+            <Label>Avaliste (garant) *</Label>
+            <Select
+              value={avalisteChoice}
+              onValueChange={(v) => form.setValue("avaliste_choice", v, { shouldValidate: true })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un avaliste" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SELF_VALUE} disabled={!loadingSelf && canSelf === false}>
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Moi-même (auto-avalisation)
+                  </span>
+                </SelectItem>
+                {otherMembers.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.prenom} {m.nom}
+                    {m.fonction ? ` — ${m.fonction}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {form.formState.errors.avaliste_choice && (
               <p className="text-xs text-destructive mt-1">
-                {form.formState.errors.capacite_remboursement.message}
+                {form.formState.errors.avaliste_choice.message}
+              </p>
+            )}
+            {isSelf && canSelf === false && (
+              <Alert variant="destructive" className="mt-2">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Vous avez déjà bénéficié de votre cotisation annuelle sur l'exercice en cours.
+                  Vous ne pouvez plus vous désigner comme avaliste. Veuillez sélectionner un autre
+                  membre comme garant.
+                </AlertDescription>
+              </Alert>
+            )}
+            {isSelf && canSelf === true && (
+              <p className="text-xs text-muted-foreground mt-1">
+                L'étape avaliste sera automatiquement validée sur la base de votre futur bénéfice de cotisation.
+              </p>
+            )}
+            {!isSelf && avalisteChoice && (
+              <p className="text-xs text-muted-foreground mt-1">
+                L'avaliste recevra un email et devra approuver avant le démarrage du workflow de validation.
               </p>
             )}
           </div>
 
           <div>
-            <Label htmlFor="garantie">Garantie (optionnel)</Label>
+            <Label htmlFor="capacite_remboursement">Capacité de remboursement (facultatif)</Label>
+            <Input
+              id="capacite_remboursement"
+              placeholder="Ex: 50 000 FCFA / mois"
+              {...form.register("capacite_remboursement")}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Information indicative à l'attention des validateurs. Sans incidence sur l'acceptation de la demande.
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="garantie">Garantie (facultatif)</Label>
             <Input id="garantie" {...form.register("garantie")} />
           </div>
 
@@ -165,7 +264,6 @@ export function LoanRequestDialog({ open, onOpenChange }: Props) {
             );
           })()}
 
-
           <div className="flex items-start gap-2">
             <Checkbox
               id="conditions"
@@ -186,7 +284,10 @@ export function LoanRequestDialog({ open, onOpenChange }: Props) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Annuler
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button
+              type="submit"
+              disabled={submitting || (isSelf && canSelf === false)}
+            >
               {submitting ? "Envoi..." : "Soumettre la demande"}
             </Button>
           </DialogFooter>

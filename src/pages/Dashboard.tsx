@@ -22,6 +22,7 @@ const MyPrets = lazyWithRetry(() => import("./dashboard/MyPrets"));
 const MyPresences = lazyWithRetry(() => import("./dashboard/MyPresences"));
 const MyAides = lazyWithRetry(() => import("./dashboard/MyAides"));
 const MesDemandesPret = lazyWithRetry(() => import("./dashboard/MesDemandesPret"));
+const MesAvalisations = lazyWithRetry(() => import("./dashboard/MesAvalisations"));
 const DemandesPretAdmin = lazyWithRetry(() => import("./admin/DemandesPretAdmin"));
 const LoanWorkflowConfig = lazyWithRetry(() => import("./admin/LoanWorkflowConfig"));
 
@@ -113,6 +114,7 @@ const Dashboard = () => {
           <Route path="/my-presences" element={<ErrorBoundary fallbackTitle="Erreur - Mes présences"><MyPresences /></ErrorBoundary>} />
           <Route path="/my-aides" element={<ErrorBoundary fallbackTitle="Erreur - Mes aides"><MyAides /></ErrorBoundary>} />
           <Route path="/mes-demandes-pret" element={<ErrorBoundary fallbackTitle="Erreur - Mes demandes de prêt"><MesDemandesPret /></ErrorBoundary>} />
+          <Route path="/mes-avalisations" element={<ErrorBoundary fallbackTitle="Erreur - Mes avalisations"><MesAvalisations /></ErrorBoundary>} />
           {/* ==================== ADMIN ROUTES - FINANCE ==================== */}
           <Route path="/admin/donations" element={<PermissionRoute resource="donations" permission="read"><ErrorBoundary fallbackTitle="Erreur - Donations"><DonationsAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/donations/mobile-money" element={<PermissionRoute resource="donations" permission="read"><ErrorBoundary fallbackTitle="Erreur - Mobile Money"><MobileMoneyAdmin /></ErrorBoundary></PermissionRoute>} />

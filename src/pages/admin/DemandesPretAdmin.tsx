@@ -32,12 +32,16 @@ const statusBadge = (s: LoanRequestStatus) => {
   switch (s) {
     case "pending":
       return <Badge variant="secondary">En attente</Badge>;
+    case "awaiting_avaliste":
+      return <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/30">En attente avaliste</Badge>;
     case "in_progress":
       return <Badge className="bg-blue-500/15 text-blue-700 border-blue-500/30">En validation</Badge>;
     case "approved":
       return <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">Approuvée</Badge>;
     case "rejected":
       return <Badge variant="destructive">Rejetée</Badge>;
+    case "rejected_by_avaliste":
+      return <Badge variant="destructive">Refusée par l'avaliste</Badge>;
     case "disbursed":
       return <Badge className="bg-violet-500/15 text-violet-700 border-violet-500/30">Décaissée</Badge>;
     case "cancelled":
@@ -362,10 +366,12 @@ export default function DemandesPretAdmin() {
                 <p className="text-xs font-medium text-muted-foreground">Objet</p>
                 <p className="text-sm">{detail.description}</p>
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Capacité de remboursement</p>
-                <p className="text-sm">{detail.capacite_remboursement}</p>
-              </div>
+              {detail.capacite_remboursement && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Capacité de remboursement</p>
+                  <p className="text-sm">{detail.capacite_remboursement}</p>
+                </div>
+              )}
               {detail.garantie && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Garantie</p>

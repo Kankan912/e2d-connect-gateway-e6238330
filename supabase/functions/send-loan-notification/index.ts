@@ -15,7 +15,10 @@ type EventType =
   | "rejected"
   | "final_approved"
   | "cancelled"
-  | "disbursed";
+  | "disbursed"
+  | "avaliste_request"
+  | "avaliste_approved"
+  | "avaliste_rejected";
 
 interface Payload {
   request_id: string;
@@ -61,7 +64,7 @@ serve(async (req) => {
     const { data: request, error: errReq } = await supabase
       .from("loan_requests")
       .select(
-        "id, montant, description, urgence, duree_mois, statut, motif_rejet, membre_id, membres(nom, prenom, user_id)",
+        "id, montant, description, urgence, duree_mois, statut, motif_rejet, membre_id, avaliste_id, avaliste_self, avaliste_motif_refus, membres!loan_requests_membre_id_fkey(nom, prenom, user_id), avaliste:membres!loan_requests_avaliste_id_fkey(nom, prenom, user_id, email)",
       )
       .eq("id", payload.request_id)
       .single();
@@ -93,7 +96,71 @@ serve(async (req) => {
     const sent: string[] = [];
     const failed: string[] = [];
 
-    // ----- Branch: events ciblés VALIDATEURS -----
+    const avaliste = (request as any).avaliste ?? null;
+
+    // ----- Branch: events AVALISTE -----
+    if (payload.event === "avaliste_request") {
+      if (avaliste?.email) {
+        const subject = `Vous êtes désigné avaliste — Demande de prêt de ${membreNom}`;
+        const body = `<p>Bonjour ${avaliste.prenom ?? ""},</p>
+          <p>Le membre <strong>${membreNom}</strong> vous a désigné comme <strong>avaliste (garant)</strong> pour sa demande de prêt.</p>
+          ${recap}
+          <p>Veuillez vous connecter à l'application pour <strong>approuver</strong> ou <strong>refuser</strong> cette demande.</p>${link}`;
+        const r = await sendEmailAuto({ to: avaliste.email, subject, html: htmlShell(subject, body) });
+        (r.success ? sent : failed).push(avaliste.email);
+      }
+      if (avaliste?.user_id) {
+        await notifyInApp({
+          user_id: avaliste.user_id,
+          type: "loan_avaliste_request",
+          title: `Vous êtes désigné avaliste — ${membreNom}`,
+          body: `${montantFmt} • ${request.duree_mois} mois`,
+          link: "/dashboard/mes-avalisations",
+          dedupe_key: `${payload.request_id}:avaliste_request`,
+          metadata: { request_id: payload.request_id },
+        }, supabase);
+      }
+      return new Response(JSON.stringify({ success: true, sent, failed, event: payload.event }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (payload.event === "avaliste_approved" || payload.event === "avaliste_rejected") {
+      const isApproved = payload.event === "avaliste_approved";
+      const subject = isApproved
+        ? `Votre avaliste a approuvé votre demande de prêt`
+        : `Votre avaliste a refusé votre demande de prêt`;
+      const avalisteName = avaliste ? `${avaliste.prenom ?? ""} ${avaliste.nom ?? ""}`.trim() : "votre avaliste";
+      const body = isApproved
+        ? `<p>Bonjour ${m.prenom ?? membreNom},</p>
+            <p><strong>${avalisteName}</strong> a <strong>approuvé</strong> votre demande de prêt. Le workflow de validation se poursuit.</p>${recap}${link}`
+        : `<p>Bonjour ${m.prenom ?? membreNom},</p>
+            <p><strong>${avalisteName}</strong> a <strong>refusé</strong> de se porter avaliste pour votre demande de prêt.</p>
+            <p><strong>Motif :</strong> ${payload.motif ?? (request as any).avaliste_motif_refus ?? "—"}</p>${recap}${link}`;
+      // Email demandeur
+      const { data: rows } = await supabase.rpc("get_loan_request_member_email", { _request_id: payload.request_id });
+      const member = (rows ?? [])[0] as { email: string; nom: string; prenom: string } | undefined;
+      if (member?.email) {
+        const r = await sendEmailAuto({ to: member.email, subject, html: htmlShell(subject, body) });
+        (r.success ? sent : failed).push(member.email);
+      }
+      if (memberUserId) {
+        await notifyInApp({
+          user_id: memberUserId,
+          type: isApproved ? "loan_avaliste_approved" : "loan_avaliste_rejected",
+          title: subject,
+          body: isApproved ? `${montantFmt} • ${request.duree_mois} mois` : `Motif : ${payload.motif ?? "—"}`,
+          link: "/dashboard/mes-demandes-pret",
+          dedupe_key: `${payload.request_id}:${payload.event}`,
+          metadata: { request_id: payload.request_id },
+        }, supabase);
+      }
+      return new Response(JSON.stringify({ success: true, sent, failed, event: payload.event }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+
     if (payload.event === "created" || payload.event === "cancelled") {
       const { data: validators } = await supabase.rpc(
         "get_loan_request_validators_emails",
