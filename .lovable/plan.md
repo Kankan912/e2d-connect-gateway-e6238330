@@ -1,65 +1,32 @@
-# Diagnostic
+## Diagnostic confirmé
 
-J'ai trouvé la **cause racine** des trois symptômes (loader infini, modules invisibles, déconnexion qui semble échouer) et elle est unique : **toutes les tables du schéma `public` sont sans `GRANT` pour les rôles `anon` / `authenticated` / `service_role`**.
+Le problème touche aussi la prod Vercel parce que la cause est **côté base de données Supabase**, pas côté hébergement.
 
-Preuve :
-- `SELECT … FROM information_schema.role_table_grants WHERE table_schema='public' AND grantee IN ('anon','authenticated','service_role')` → **0 ligne** (117 tables existent dans `public`).
-- L'`USAGE` sur le schéma est OK, mais sans `GRANT` table par table, PostgREST renvoie systématiquement « permission denied » ou laisse la requête pendre.
-- Console : `[AuthContext] fetchUserProfile safety timeout (8s)` se répète → le `Promise.all` sur `profiles` / `user_roles` / `role_permissions` ne se résout jamais.
-- Le compte admin (`ci-administrateur@e2d-test.local`) a bien le rôle `administrateur` avec **78 permissions**. Le sidebar est vide uniquement parce que `usePermissions` ne reçoit aucune ligne → tout est filtré.
-- La déconnexion : `signOut()` part bien, mais comme `fetchUserProfile` est en boucle (relogin/refresh), la session se ré-établit immédiatement et l'utilisateur a l'impression que rien ne se passe.
+Vérification effectuée à l'instant :
 
-Le warning CSP « eval » de l'image vient d'une lib tierce dans la preview Lovable (recharts/jspdf). Ce n'est pas la cause des bugs et ce sera traité séparément si besoin.
+- Requête `information_schema.role_table_grants` sur `profiles`, `user_roles`, `role_permissions`, `membres`, `roles` pour les rôles `authenticated` / `anon` / `service_role` → **0 ligne**.
+- Table `supabase_migrations.schema_migrations` : la dernière migration appliquée est `20260615145318`. La migration GRANT préparée précédemment (`20260615145321_...sql`) est présente dans le dépôt mais **n'a jamais été approuvée**, donc jamais exécutée sur la base.
 
-# Plan
+Conséquence : PostgREST refuse toujours les requêtes de `fetchUserProfile`, d'où le timeout de 8 s identique en preview Lovable et sur Vercel (les deux frontends tapent la même base).
 
-## 1. Migration SQL — restaurer les GRANTs Data API
+## Plan
 
-Une seule migration qui, pour chaque table `BASE TABLE` du schéma `public` :
-- Accorde `SELECT, INSERT, UPDATE, DELETE` à `authenticated`.
-- Accorde `ALL` à `service_role`.
-- N'accorde **rien** à `anon` (les politiques RLS du projet sont quasi toutes scopées à `auth.uid()` / `is_admin()`). Les rares tables publiques (`site_*`, `events_public`, etc.) seront ouvertes à `anon` au cas par cas dans un second bloc explicite si on les identifie après vérification.
+1. **Re-soumettre la migration GRANT** (identique à celle du fichier `20260615145321`) via l'outil `supabase--migration` afin qu'elle apparaisse à nouveau dans le panneau d'approbation.
+   - `GRANT SELECT, INSERT, UPDATE, DELETE` sur toutes les tables `public` à `authenticated`
+   - `GRANT ALL` à `service_role`
+   - `GRANT SELECT` à `anon` uniquement sur les tables du site public (`site_*`, `cms_*`)
+   - `GRANT INSERT` à `anon` sur les tables de soumission publique (`messages_contact`, `demandes_adhesion`, `adhesions`, `donations`, `recurring_donations`, `site_pageviews`)
+   - `GRANT USAGE, SELECT` sur toutes les séquences `public`
+   - Aucune modification des politiques RLS
 
-Forme :
+2. **Attendre votre clic « Approuver »** dans la fenêtre de migration. Tant que ce bouton n'est pas cliqué, rien ne change en base — ni en preview, ni sur Vercel.
 
-```sql
-DO $$
-DECLARE t record;
-BEGIN
-  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname='public'
-  LOOP
-    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO authenticated', t.tablename);
-    EXECUTE format('GRANT ALL ON public.%I TO service_role', t.tablename);
-  END LOOP;
-END$$;
+3. **Vérification** : relancer la requête `role_table_grants` pour confirmer que les lignes apparaissent, puis vous demander de recharger `/dashboard` sur Vercel (Ctrl+Shift+R) pour confirmer la disparition du « Chargement… » infini.
 
--- Ouvertures anon ciblées (lecture publique du site vitrine)
-GRANT SELECT ON public.site_hero, public.site_about, public.site_activities,
-                public.site_events, public.site_gallery, public.site_partners,
-                public.site_config, public.site_images TO anon;
--- (la liste exacte sera validée à l'exécution selon les tables réellement présentes)
-```
+## Pourquoi rien n'a changé jusque-là
 
-Aucun changement RLS : les policies existantes sécurisent déjà l'accès ligne par ligne. On rétablit seulement le canal Data API.
+Le fichier SQL existe dans `supabase/migrations/`, mais sur Lovable une migration n'est appliquée qu'**après votre approbation explicite** dans le panneau dédié. Le fichier seul ne touche pas la base distante.
 
-## 2. Validation après migration
+## À confirmer
 
-1. Recharger `/dashboard` connecté comme `administrateur`.
-2. Console : plus de `fetchUserProfile safety timeout`. On doit revoir :
-   - `[AuthContext] Profile loaded: …`
-   - `[AuthContext] Role data received: administrateur`
-   - `[AuthContext] Permissions loaded: 78`
-3. Sidebar : sections **E2D / Administration / Sport / Communication / Site Web** visibles.
-4. Bouton **Déconnexion** (header avatar) → retour sur `/` + toast « Déconnexion réussie ».
-5. Vérifier que le site vitrine public (`/`, `/sport`, etc.) charge toujours ses contenus (sinon ajouter le `GRANT SELECT … TO anon` manquant).
-
-## 3. Hors périmètre (à traiter ensuite si besoin)
-
-- Warning CSP `eval` (lib tierce, non bloquant).
-- Audit complet de chaque bouton du dashboard (à faire une fois la nav rétablie, sinon on chasse des bugs fantômes causés par le manque de GRANT).
-
-# Détails techniques
-
-- Fichier créé : `supabase/migrations/<timestamp>_restore_public_grants.sql`.
-- Aucun changement côté React. Le code `AuthContext` / `usePermissions` est correct ; il était juste affamé de données.
-- Le `service_role` bypasse déjà RLS, mais on ajoute `GRANT ALL` par cohérence (requis par les Edge Functions qui utilisent la clé service).
+Souhaitez-vous que je re-soumette cette migration maintenant pour que vous puissiez l'approuver ?
