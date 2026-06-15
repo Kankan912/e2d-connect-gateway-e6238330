@@ -5432,6 +5432,7 @@ export type Database = {
         Returns: Json
       }
       can_manage_beneficiaires: { Args: never; Returns: boolean }
+      cancel_loan_request: { Args: { _request_id: string }; Returns: Json }
       create_loan_request: {
         Args: {
           _capacite_remboursement: string
