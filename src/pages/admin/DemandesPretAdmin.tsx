@@ -362,10 +362,12 @@ export default function DemandesPretAdmin() {
                 <p className="text-xs font-medium text-muted-foreground">Objet</p>
                 <p className="text-sm">{detail.description}</p>
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Capacité de remboursement</p>
-                <p className="text-sm">{detail.capacite_remboursement}</p>
-              </div>
+              {detail.capacite_remboursement && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">Capacité de remboursement</p>
+                  <p className="text-sm">{detail.capacite_remboursement}</p>
+                </div>
+              )}
               {detail.garantie && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">Garantie</p>
