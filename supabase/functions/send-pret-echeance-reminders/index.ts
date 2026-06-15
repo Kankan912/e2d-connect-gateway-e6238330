@@ -82,7 +82,7 @@ serve(async (req) => {
         date_pret,
         reconductions,
         membre_id,
-        membres!inner(id, nom, prenom, email, statut)
+        membres!inner(id, nom, prenom, email, statut, user_id)
       `)
       .neq("statut", "rembourse")
       .gte("echeance", todayStr)
