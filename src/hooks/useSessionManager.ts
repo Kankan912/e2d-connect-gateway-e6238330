@@ -90,6 +90,7 @@ export const useSessionManager = ({
   const clearSessionStorage = useCallback((userId?: string) => {
     if (userId) {
       localStorage.removeItem(`${SESSION_START_KEY}_${userId}`);
+      localStorage.removeItem(`${SESSION_START_KEY}_token_${userId}`);
     }
     // Nettoyer toutes les clés de session si pas d'userId
     const keys = Object.keys(localStorage).filter(k => k.startsWith(SESSION_START_KEY));
