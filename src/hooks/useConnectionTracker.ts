@@ -9,17 +9,19 @@ import { logger } from "@/lib/logger";
 export const useConnectionTracker = () => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (event === "SIGNED_IN" && session?.user) {
-          try {
-            await supabase.from("historique_connexion").insert({
-              user_id: session.user.id,
-              statut: "succes",
-              user_agent: navigator.userAgent,
-            });
-          } catch (err: unknown) {
-            logger.error("[useConnectionTracker] insert failed:", err);
-          }
+          setTimeout(async () => {
+            try {
+              await supabase.from("historique_connexion").insert({
+                user_id: session.user.id,
+                statut: "succes",
+                user_agent: navigator.userAgent,
+              });
+            } catch (err: unknown) {
+              logger.error("[useConnectionTracker] insert failed:", err);
+            }
+          }, 0);
         }
       }
     );
