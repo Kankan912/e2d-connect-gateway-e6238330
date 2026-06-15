@@ -166,6 +166,17 @@ export default function LoanWorkflowConfig() {
         </Dialog>
       </div>
 
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <CardContent className="p-3 flex items-start gap-2 text-sm">
+          <Info className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+          <p>
+            <b>Étape 0 — Avaliste</b> (obligatoire, non configurable). Toute demande commence par
+            l'approbation de l'avaliste désigné. Les étapes ci-dessous ne démarrent qu'après cette
+            validation.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card className="border-blue-500/30 bg-blue-500/5">
         <CardContent className="p-3 flex items-start gap-2 text-sm">
           <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
