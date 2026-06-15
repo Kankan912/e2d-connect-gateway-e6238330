@@ -15,8 +15,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Coins, Save, Lock, Unlock, AlertCircle, Users, RefreshCw, Wand2, CheckCircle } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
+import { Coins, Save, Lock, Unlock, AlertCircle, Users, RefreshCw, Wand2, CheckCircle, History, ShieldCheck } from 'lucide-react';
 import { formatFCFA } from '@/lib/utils';
+import { CotisationsMensuellesAuditDialog } from './CotisationsMensuellesAuditDialog';
 
 interface Membre {
   id: string;
