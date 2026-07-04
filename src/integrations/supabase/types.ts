@@ -67,6 +67,7 @@ export type Database = {
       }
       adhesions: {
         Row: {
+          association_id: string | null
           created_at: string
           email: string
           id: string
@@ -84,6 +85,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string
           email: string
           id?: string
@@ -101,6 +103,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string
           email?: string
           id?: string
@@ -119,6 +122,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "adhesions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "adhesions_membre_id_fkey"
             columns: ["membre_id"]
             isOneToOne: false
@@ -136,9 +146,11 @@ export type Database = {
       }
       aides: {
         Row: {
+          association_id: string | null
           beneficiaire_id: string
           contexte_aide: string
           created_at: string
+          created_by: string | null
           date_allocation: string
           exercice_id: string | null
           id: string
@@ -148,11 +160,14 @@ export type Database = {
           reunion_id: string | null
           statut: string
           type_aide_id: string
+          updated_at: string | null
         }
         Insert: {
+          association_id?: string | null
           beneficiaire_id: string
           contexte_aide?: string
           created_at?: string
+          created_by?: string | null
           date_allocation?: string
           exercice_id?: string | null
           id?: string
@@ -162,11 +177,14 @@ export type Database = {
           reunion_id?: string | null
           statut?: string
           type_aide_id: string
+          updated_at?: string | null
         }
         Update: {
+          association_id?: string | null
           beneficiaire_id?: string
           contexte_aide?: string
           created_at?: string
+          created_by?: string | null
           date_allocation?: string
           exercice_id?: string | null
           id?: string
@@ -176,8 +194,16 @@ export type Database = {
           reunion_id?: string | null
           statut?: string
           type_aide_id?: string
+          updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "aides_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "aides_exercice_id_fkey"
             columns: ["exercice_id"]
@@ -217,6 +243,7 @@ export type Database = {
       }
       aides_types: {
         Row: {
+          association_id: string | null
           created_at: string
           delai_remboursement: number | null
           description: string | null
@@ -226,6 +253,7 @@ export type Database = {
           nom: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string
           delai_remboursement?: number | null
           description?: string | null
@@ -235,6 +263,7 @@ export type Database = {
           nom: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string
           delai_remboursement?: number | null
           description?: string | null
@@ -242,6 +271,50 @@ export type Database = {
           mode_repartition?: string
           montant_defaut?: number | null
           nom?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aides_types_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aides_validation_history: {
+        Row: {
+          action: string
+          aide_id: string
+          ancien_statut: string | null
+          association_id: string | null
+          commentaire: string | null
+          created_at: string | null
+          id: string
+          nouveau_statut: string | null
+          valide_par: string | null
+        }
+        Insert: {
+          action: string
+          aide_id: string
+          ancien_statut?: string | null
+          association_id?: string | null
+          commentaire?: string | null
+          created_at?: string | null
+          id?: string
+          nouveau_statut?: string | null
+          valide_par?: string | null
+        }
+        Update: {
+          action?: string
+          aide_id?: string
+          ancien_statut?: string | null
+          association_id?: string | null
+          commentaire?: string | null
+          created_at?: string | null
+          id?: string
+          nouveau_statut?: string | null
+          valide_par?: string | null
         }
         Relationships: []
       }
@@ -290,9 +363,31 @@ export type Database = {
         }
         Relationships: []
       }
+      associations: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          nom: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          nom: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          nom?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
+          association_id: string | null
           created_at: string | null
           id: string
           ip_address: string | null
@@ -305,6 +400,7 @@ export type Database = {
         }
         Insert: {
           action: string
+          association_id?: string | null
           created_at?: string | null
           id?: string
           ip_address?: string | null
@@ -317,6 +413,7 @@ export type Database = {
         }
         Update: {
           action?: string
+          association_id?: string | null
           created_at?: string | null
           id?: string
           ip_address?: string | null
@@ -327,7 +424,15 @@ export type Database = {
           user_agent?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       beneficiaires_config: {
         Row: {
@@ -368,6 +473,7 @@ export type Database = {
       beneficiaires_paiements_audit: {
         Row: {
           action: string
+          association_id: string | null
           created_at: string
           deductions: Json | null
           effectue_par: string | null
@@ -386,6 +492,7 @@ export type Database = {
         }
         Insert: {
           action: string
+          association_id?: string | null
           created_at?: string
           deductions?: Json | null
           effectue_par?: string | null
@@ -404,6 +511,7 @@ export type Database = {
         }
         Update: {
           action?: string
+          association_id?: string | null
           created_at?: string
           deductions?: Json | null
           effectue_par?: string | null
@@ -421,6 +529,13 @@ export type Database = {
           user_agent?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "beneficiaires_paiements_audit_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "beneficiaires_paiements_audit_exercice_id_fkey"
             columns: ["exercice_id"]
@@ -487,6 +602,7 @@ export type Database = {
       }
       calendrier_beneficiaires: {
         Row: {
+          association_id: string | null
           created_at: string
           date_prevue: string | null
           exercice_id: string
@@ -501,6 +617,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string
           date_prevue?: string | null
           exercice_id: string
@@ -515,6 +632,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string
           date_prevue?: string | null
           exercice_id?: string
@@ -529,6 +647,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "calendrier_beneficiaires_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "calendrier_beneficiaires_exercice_id_fkey"
             columns: ["exercice_id"]
@@ -839,6 +964,7 @@ export type Database = {
       }
       cotisations: {
         Row: {
+          association_id: string | null
           created_at: string | null
           date_paiement: string | null
           exercice_id: string | null
@@ -852,6 +978,7 @@ export type Database = {
           type_cotisation_id: string | null
         }
         Insert: {
+          association_id?: string | null
           created_at?: string | null
           date_paiement?: string | null
           exercice_id?: string | null
@@ -865,6 +992,7 @@ export type Database = {
           type_cotisation_id?: string | null
         }
         Update: {
+          association_id?: string | null
           created_at?: string | null
           date_paiement?: string | null
           exercice_id?: string | null
@@ -878,6 +1006,13 @@ export type Database = {
           type_cotisation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "cotisations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cotisations_exercice_id_fkey"
             columns: ["exercice_id"]
@@ -1027,6 +1162,7 @@ export type Database = {
       cotisations_mensuelles_exercice: {
         Row: {
           actif: boolean
+          association_id: string | null
           created_at: string
           exercice_id: string
           id: string
@@ -1037,6 +1173,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          association_id?: string | null
           created_at?: string
           exercice_id: string
           id?: string
@@ -1047,6 +1184,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          association_id?: string | null
           created_at?: string
           exercice_id?: string
           id?: string
@@ -1056,6 +1194,13 @@ export type Database = {
           verrouille?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "cotisations_mensuelles_exercice_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cotisations_mensuelles_exercice_exercice_id_fkey"
             columns: ["exercice_id"]
@@ -1138,6 +1283,7 @@ export type Database = {
       }
       demandes_adhesion: {
         Row: {
+          association_id: string | null
           created_at: string | null
           email: string
           id: string
@@ -1149,6 +1295,7 @@ export type Database = {
           type_adhesion: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string | null
           email: string
           id?: string
@@ -1160,6 +1307,7 @@ export type Database = {
           type_adhesion: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string | null
           email?: string
           id?: string
@@ -1170,11 +1318,20 @@ export type Database = {
           telephone?: string | null
           type_adhesion?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "demandes_adhesion_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       donations: {
         Row: {
           amount: number
+          association_id: string | null
           bank_transfer_reference: string | null
           created_at: string
           currency: string
@@ -1198,6 +1355,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          association_id?: string | null
           bank_transfer_reference?: string | null
           created_at?: string
           currency?: string
@@ -1221,6 +1379,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          association_id?: string | null
           bank_transfer_reference?: string | null
           created_at?: string
           currency?: string
@@ -1242,7 +1401,15 @@ export type Database = {
           transaction_metadata?: Json | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "donations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_logs: {
         Row: {
@@ -1282,6 +1449,7 @@ export type Database = {
       }
       epargnes: {
         Row: {
+          association_id: string | null
           created_at: string
           date_depot: string
           exercice_id: string | null
@@ -1294,6 +1462,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string
           date_depot?: string
           exercice_id?: string | null
@@ -1306,6 +1475,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string
           date_depot?: string
           exercice_id?: string | null
@@ -1318,6 +1488,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "epargnes_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "epargnes_reunion_id_fkey"
             columns: ["reunion_id"]
@@ -1343,6 +1520,7 @@ export type Database = {
       }
       exercices: {
         Row: {
+          association_id: string | null
           created_at: string
           croissance_fond_caisse: number | null
           date_debut: string
@@ -1354,6 +1532,7 @@ export type Database = {
           taux_interet_prets: number | null
         }
         Insert: {
+          association_id?: string | null
           created_at?: string
           croissance_fond_caisse?: number | null
           date_debut: string
@@ -1365,6 +1544,7 @@ export type Database = {
           taux_interet_prets?: number | null
         }
         Update: {
+          association_id?: string | null
           created_at?: string
           croissance_fond_caisse?: number | null
           date_debut?: string
@@ -1375,7 +1555,15 @@ export type Database = {
           statut?: string
           taux_interet_prets?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exercices_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       exercices_cotisations_types: {
         Row: {
@@ -1556,6 +1744,7 @@ export type Database = {
       }
       fond_caisse_operations: {
         Row: {
+          association_id: string | null
           beneficiaire_id: string | null
           categorie: string | null
           created_at: string
@@ -1576,6 +1765,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          association_id?: string | null
           beneficiaire_id?: string | null
           categorie?: string | null
           created_at?: string
@@ -1596,6 +1786,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          association_id?: string | null
           beneficiaire_id?: string | null
           categorie?: string | null
           created_at?: string
@@ -1642,6 +1833,13 @@ export type Database = {
             columns: ["operateur_id"]
             isOneToOne: false
             referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fond_caisse_operations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
             referencedColumns: ["id"]
           },
           {
@@ -1736,6 +1934,7 @@ export type Database = {
       }
       loan_requests: {
         Row: {
+          association_id: string | null
           avaliste_id: string | null
           avaliste_motif_refus: string | null
           avaliste_self: boolean
@@ -1758,6 +1957,7 @@ export type Database = {
           urgence: string
         }
         Insert: {
+          association_id?: string | null
           avaliste_id?: string | null
           avaliste_motif_refus?: string | null
           avaliste_self?: boolean
@@ -1780,6 +1980,7 @@ export type Database = {
           urgence?: string
         }
         Update: {
+          association_id?: string | null
           avaliste_id?: string | null
           avaliste_motif_refus?: string | null
           avaliste_self?: boolean
@@ -1802,6 +2003,13 @@ export type Database = {
           urgence?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "loan_requests_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "loan_requests_avaliste_id_fkey"
             columns: ["avaliste_id"]
@@ -2110,6 +2318,7 @@ export type Database = {
       match_statistics: {
         Row: {
           assists: number
+          association_id: string | null
           created_at: string
           goals: number
           id: string
@@ -2124,6 +2333,7 @@ export type Database = {
         }
         Insert: {
           assists?: number
+          association_id?: string | null
           created_at?: string
           goals?: number
           id?: string
@@ -2138,6 +2348,7 @@ export type Database = {
         }
         Update: {
           assists?: number
+          association_id?: string | null
           created_at?: string
           goals?: number
           id?: string
@@ -2151,6 +2362,13 @@ export type Database = {
           yellow_cards?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "match_statistics_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "match_statistics_membre_id_fkey"
             columns: ["membre_id"]
@@ -2169,6 +2387,7 @@ export type Database = {
       }
       membres: {
         Row: {
+          association_id: string | null
           created_at: string | null
           date_inscription: string | null
           email: string | null
@@ -2189,6 +2408,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          association_id?: string | null
           created_at?: string | null
           date_inscription?: string | null
           email?: string | null
@@ -2209,6 +2429,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          association_id?: string | null
           created_at?: string | null
           date_inscription?: string | null
           email?: string | null
@@ -2228,7 +2449,15 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "membres_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       membres_cotisations_config: {
         Row: {
@@ -2357,6 +2586,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          association_id: string | null
           body: string | null
           created_at: string
           id: string
@@ -2368,6 +2598,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          association_id?: string | null
           body?: string | null
           created_at?: string
           id?: string
@@ -2379,6 +2610,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          association_id?: string | null
           body?: string | null
           created_at?: string
           id?: string
@@ -2389,7 +2621,15 @@ export type Database = {
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications_campagnes: {
         Row: {
@@ -3426,6 +3666,7 @@ export type Database = {
       }
       prets: {
         Row: {
+          association_id: string | null
           avaliste_id: string | null
           capital_paye: number | null
           created_at: string
@@ -3450,6 +3691,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string | null
           avaliste_id?: string | null
           capital_paye?: number | null
           created_at?: string
@@ -3474,6 +3716,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string | null
           avaliste_id?: string | null
           capital_paye?: number | null
           created_at?: string
@@ -3510,6 +3753,13 @@ export type Database = {
             columns: ["membre_id"]
             isOneToOne: false
             referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prets_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
             referencedColumns: ["id"]
           },
           {
@@ -3588,6 +3838,7 @@ export type Database = {
       }
       prets_paiements: {
         Row: {
+          association_id: string | null
           created_at: string
           date_paiement: string
           id: string
@@ -3599,6 +3850,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string
           date_paiement?: string
           id?: string
@@ -3610,6 +3862,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string
           date_paiement?: string
           id?: string
@@ -3622,6 +3875,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "prets_paiements_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "prets_paiements_pret_id_fkey"
             columns: ["pret_id"]
             isOneToOne: false
@@ -3632,6 +3892,7 @@ export type Database = {
       }
       prets_reconductions: {
         Row: {
+          association_id: string | null
           created_at: string | null
           created_by: string | null
           current_step: number | null
@@ -3646,6 +3907,7 @@ export type Database = {
           validee_par: string | null
         }
         Insert: {
+          association_id?: string | null
           created_at?: string | null
           created_by?: string | null
           current_step?: number | null
@@ -3660,6 +3922,7 @@ export type Database = {
           validee_par?: string | null
         }
         Update: {
+          association_id?: string | null
           created_at?: string | null
           created_by?: string | null
           current_step?: number | null
@@ -3675,6 +3938,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "prets_reconductions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "prets_reconductions_pret_id_fkey"
             columns: ["pret_id"]
             isOneToOne: false
@@ -3685,6 +3955,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          association_id: string | null
           created_at: string | null
           date_inscription: string | null
           email: string | null
@@ -3703,6 +3974,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          association_id?: string | null
           created_at?: string | null
           date_inscription?: string | null
           email?: string | null
@@ -3721,6 +3993,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          association_id?: string | null
           created_at?: string | null
           date_inscription?: string | null
           email?: string | null
@@ -3738,7 +4011,15 @@ export type Database = {
           telephone?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rapports_seances: {
         Row: {
@@ -3834,6 +4115,7 @@ export type Database = {
       }
       reunion_beneficiaires: {
         Row: {
+          association_id: string | null
           calendrier_id: string | null
           config_id: string | null
           created_at: string
@@ -3852,6 +4134,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string | null
           calendrier_id?: string | null
           config_id?: string | null
           created_at?: string
@@ -3870,6 +4153,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string | null
           calendrier_id?: string | null
           config_id?: string | null
           created_at?: string
@@ -3888,6 +4172,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reunion_beneficiaires_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reunion_beneficiaires_calendrier_id_fkey"
             columns: ["calendrier_id"]
@@ -3941,6 +4232,7 @@ export type Database = {
       }
       reunions: {
         Row: {
+          association_id: string | null
           beneficiaire_id: string | null
           compte_rendu_url: string | null
           created_at: string
@@ -3956,6 +4248,7 @@ export type Database = {
           type_reunion: string | null
         }
         Insert: {
+          association_id?: string | null
           beneficiaire_id?: string | null
           compte_rendu_url?: string | null
           created_at?: string
@@ -3971,6 +4264,7 @@ export type Database = {
           type_reunion?: string | null
         }
         Update: {
+          association_id?: string | null
           beneficiaire_id?: string | null
           compte_rendu_url?: string | null
           created_at?: string
@@ -3998,6 +4292,13 @@ export type Database = {
             columns: ["lieu_membre_id"]
             isOneToOne: false
             referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reunions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
             referencedColumns: ["id"]
           },
           {
@@ -4084,6 +4385,7 @@ export type Database = {
       }
       reunions_presences: {
         Row: {
+          association_id: string | null
           created_at: string
           heure_arrivee: string | null
           id: string
@@ -4096,6 +4398,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string
           heure_arrivee?: string | null
           id?: string
@@ -4108,6 +4411,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string
           heure_arrivee?: string | null
           id?: string
@@ -4120,6 +4424,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reunions_presences_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reunions_presences_membre_id_fkey"
             columns: ["membre_id"]
@@ -4145,6 +4456,7 @@ export type Database = {
       }
       reunions_sanctions: {
         Row: {
+          association_id: string | null
           contexte: string | null
           created_at: string
           date_levee: string | null
@@ -4159,6 +4471,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string | null
           contexte?: string | null
           created_at?: string
           date_levee?: string | null
@@ -4173,6 +4486,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string | null
           contexte?: string | null
           created_at?: string
           date_levee?: string | null
@@ -4187,6 +4501,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reunions_sanctions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reunions_sanctions_membre_id_fkey"
             columns: ["membre_id"]
@@ -4212,6 +4533,7 @@ export type Database = {
       }
       role_permissions: {
         Row: {
+          association_id: string | null
           created_at: string
           granted: boolean
           id: string
@@ -4220,6 +4542,7 @@ export type Database = {
           role_id: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string
           granted?: boolean
           id?: string
@@ -4228,6 +4551,7 @@ export type Database = {
           role_id: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string
           granted?: boolean
           id?: string
@@ -4236,6 +4560,13 @@ export type Database = {
           role_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "role_permissions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "role_permissions_role_id_fkey"
             columns: ["role_id"]
@@ -4247,27 +4578,39 @@ export type Database = {
       }
       roles: {
         Row: {
+          association_id: string | null
           created_at: string | null
           description: string | null
           id: string
           name: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "roles_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sanctions: {
         Row: {
+          association_id: string | null
           contexte_sanction: string | null
           created_at: string
           date_sanction: string
@@ -4280,6 +4623,7 @@ export type Database = {
           type_sanction_id: string
         }
         Insert: {
+          association_id?: string | null
           contexte_sanction?: string | null
           created_at?: string
           date_sanction?: string
@@ -4292,6 +4636,7 @@ export type Database = {
           type_sanction_id: string
         }
         Update: {
+          association_id?: string | null
           contexte_sanction?: string | null
           created_at?: string
           date_sanction?: string
@@ -4323,6 +4668,13 @@ export type Database = {
             columns: ["type_sanction_id"]
             isOneToOne: false
             referencedRelation: "sanctions_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sanctions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
             referencedColumns: ["id"]
           },
         ]
@@ -5390,6 +5742,7 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          association_id: string | null
           created_at: string
           id: string
           role_id: string
@@ -5397,6 +5750,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string
           id?: string
           role_id: string
@@ -5404,6 +5758,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string
           id?: string
           role_id?: string
@@ -5411,6 +5766,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_roles_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_roles_new_role_id_fkey"
             columns: ["role_id"]
@@ -5492,6 +5854,10 @@ export type Database = {
         Args: { _motif: string; _request_id: string }
         Returns: Json
       }
+      avancer_workflow_aide: {
+        Args: { p_action: string; p_aide_id: string; p_commentaire?: string }
+        Returns: Json
+      }
       calculate_total_pret_amount: {
         Args: {
           montant_initial: number
@@ -5507,6 +5873,7 @@ export type Database = {
       can_manage_beneficiaires: { Args: never; Returns: boolean }
       can_self_avaliser: { Args: { _membre_id: string }; Returns: boolean }
       cancel_loan_request: { Args: { _request_id: string }; Returns: Json }
+      clear_must_change_flag: { Args: never; Returns: boolean }
       create_loan_request: {
         Args: {
           _avaliste_id: string
@@ -5527,13 +5894,15 @@ export type Database = {
         Args: { _id: string }
         Returns: boolean
       }
-      disburse_loan: { Args: { _request_id: string }; Returns: Json }
+      disburse_loan: { Args: { p_pret_id: string }; Returns: boolean }
+      get_active_payment_config_public: { Args: never; Returns: Json }
       get_caisse_stats: { Args: never; Returns: Json }
       get_caisse_synthese: { Args: never; Returns: Json }
       get_cotisation_mensuelle_membre: {
         Args: { _exercice_id: string; _membre_id: string }
         Returns: number
       }
+      get_current_association_id: { Args: never; Returns: string }
       get_current_user_role: { Args: never; Returns: string }
       get_exercice_nb_mois: { Args: { _exercice_id: string }; Returns: number }
       get_loan_request_member_email: {
@@ -5574,24 +5943,24 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       has_permission: {
-        Args: { _permission: string; _resource: string }
+        Args: { perm: string; resource_name: string }
         Returns: boolean
       }
       has_role:
-        | {
-            Args: {
-              _role: Database["public"]["Enums"]["app_role"]
-              _user_id: string
-            }
-            Returns: boolean
-          }
+        | { Args: { _role: string; _user_id: string }; Returns: boolean }
         | { Args: { role_name: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
-      mark_all_notifications_read: { Args: never; Returns: number }
-      projeter_cotisations_reunion: {
-        Args: { _reunion_id: string }
-        Returns: Json
+      log_audit_event: {
+        Args: {
+          p_action: string
+          p_new_data?: Json
+          p_old_data?: Json
+          p_record_id?: string
+          p_table_name: string
+        }
+        Returns: string
       }
+      mark_all_notifications_read: { Args: never; Returns: number }
       reject_loan_step: {
         Args: { _motif: string; _request_id: string }
         Returns: Json
@@ -5608,6 +5977,7 @@ export type Database = {
         Args: { _ids: string[] }
         Returns: boolean
       }
+      strip_secrets: { Args: { p_data: Json }; Returns: Json }
       upsert_loan_validation_step: {
         Args: {
           _actif: boolean
