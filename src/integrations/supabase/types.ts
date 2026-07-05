@@ -5961,6 +5961,10 @@ export type Database = {
         Returns: string
       }
       mark_all_notifications_read: { Args: never; Returns: number }
+      projeter_cotisations_reunion: {
+        Args: { _reunion_id: string }
+        Returns: Json
+      }
       reject_loan_step: {
         Args: { _motif: string; _request_id: string }
         Returns: Json
