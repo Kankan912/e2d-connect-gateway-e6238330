@@ -1,34 +1,41 @@
 ## Problème
 
-Le bouton « Annuler ma demande » échoue avec un toast « Erreur inconnue ». Deux causes :
+La table `public.membres` a la RLS activée mais **aucune politique** définie. Résultat : toute opération client (INSERT/UPDATE/DELETE/SELECT) est bloquée → « new row violates row-level security policy for table "membres" » lors de la création d'un membre depuis `/admin/membres`.
 
-1. **Violation de contrainte côté base** : la table `loan_request_validations` a un `CHECK (statut IN ('pending','approved','rejected'))`. La RPC `cancel_loan_request` essaie d'écrire `'cancelled'` dans les étapes en attente → la mise à jour échoue dès qu'il existe au moins une ligne de validation (cas d'une demande `in_progress`, comme la demande auto‑avalisée du haut de la capture).
-2. **Message d'erreur masqué côté front** : dans `useCancelLoanRequest`, l'erreur renvoyée par `supabase.rpc` est un `PostgrestError` (objet simple), pas une instance de `Error`. Le test `e instanceof Error ? e.message : "Erreur inconnue"` retombe systématiquement sur le message générique, ce qui cache la vraie raison.
+Le hook `useMembers` appelle directement `supabase.from("membres").insert(...)` avec la clé anon, ce qui exige des politiques RLS explicites.
 
-## Correctifs
+## Correctif (migration SQL uniquement)
 
-### 1. Migration SQL
+Ajouter les 4 politiques standard sur `public.membres`, alignées sur le reste du projet :
 
-- Élargir le `CHECK` de `public.loan_request_validations.statut` pour inclure `'cancelled'` (et conserver `pending/approved/rejected`).
-  - `ALTER TABLE ... DROP CONSTRAINT loan_request_validations_statut_check`
-  - `ALTER TABLE ... ADD CONSTRAINT loan_request_validations_statut_check CHECK (statut IN ('pending','approved','rejected','cancelled'))`
-- Aucune autre modification de schéma : la RPC `cancel_loan_request` actuelle est déjà correcte (statuts autorisés, vérification owner/admin, blocage si une étape est `approved`).
+- **SELECT** : tout utilisateur authentifié (nécessaire pour listes, sélecteurs d'avaliste, jointures, etc.).
+- **INSERT** : réservé aux admins via `public.is_admin()`.
+- **UPDATE** : admins OU le propriétaire du compte lié (`user_id = auth.uid()`) pour permettre à un membre de mettre à jour ses propres infos si l'app le prévoit — sinon admin only. Par défaut je pars sur **admin only** pour rester strict (la page profil passe par `profiles`, pas `membres`).
+- **DELETE** : admins uniquement.
 
-### 2. `src/hooks/useLoanRequests.ts` — `useCancelLoanRequest.onError`
+Grants : `membres` est déjà accessible aux rôles `authenticated`/`service_role` (les autres requêtes fonctionnent). Aucun GRANT à ajouter, seulement les policies.
 
-Remplacer l'extraction du message par une lecture défensive qui couvre :
-- `Error` standard (`e.message`)
-- `PostgrestError` (`e.message` même si non‑Error)
-- Objet inattendu (fallback final `"Erreur inconnue"`)
+```sql
+CREATE POLICY "membres_select_authenticated"
+  ON public.membres FOR SELECT TO authenticated USING (true);
 
-Implémentation : tester `typeof e === "object" && e && "message" in e && typeof e.message === "string"` avant le fallback. Appliquer le même utilitaire (petite fonction locale `extractErrorMessage`) aux autres `onError` du fichier qui souffrent du même biais : `useCreateLoanRequest`, `useAvalisteApprove`, `useAvalisteReject`, `useValidateLoanStep`, `useRejectLoanStep`, `useDisburseLoanRequest` (si présents et concernés). Aucune modification UI.
+CREATE POLICY "membres_insert_admin"
+  ON public.membres FOR INSERT TO authenticated WITH CHECK (public.is_admin());
+
+CREATE POLICY "membres_update_admin"
+  ON public.membres FOR UPDATE TO authenticated
+  USING (public.is_admin()) WITH CHECK (public.is_admin());
+
+CREATE POLICY "membres_delete_admin"
+  ON public.membres FOR DELETE TO authenticated USING (public.is_admin());
+```
 
 ## Validation
 
-- Cliquer « Annuler ma demande » sur la demande auto‑avalisée (`in_progress`) → toast « Demande annulée », statut passe à `cancelled`, lignes `loan_request_validations` en `pending` deviennent `cancelled`.
-- Cliquer « Annuler ma demande » sur la demande `awaiting_avaliste` → toast « Demande annulée » (cas déjà fonctionnel, simplement vérifié).
-- Tenter d'annuler une demande dont une étape est déjà `approved` → toast affichant le vrai message « Au moins une étape déjà validée — annulation impossible » (au lieu de « Erreur inconnue »).
+1. Recréer un membre depuis `/dashboard/admin/membres` → toast « Membre créé ».
+2. Vérifier que la liste des membres s'affiche toujours (SELECT ok).
+3. Vérifier qu'un utilisateur non-admin ne peut ni insérer ni supprimer (toast d'erreur RLS attendu).
 
 ## Hors périmètre
 
-- Pas de changement du workflow avaliste, des emails, ni de l'UI des cartes de demande.
+Vous avez confirmé « uniquement `membres` ». Les 34 autres tables sans policies (cotisations, prets, epargnes, reunions, fond_caisse_operations, sanctions, notifications_*, etc.) ne sont pas touchées — elles fonctionnent probablement via des RPC `SECURITY DEFINER`. Si un jour l'une d'elles renvoie la même erreur RLS, on ouvrira un correctif ciblé.
