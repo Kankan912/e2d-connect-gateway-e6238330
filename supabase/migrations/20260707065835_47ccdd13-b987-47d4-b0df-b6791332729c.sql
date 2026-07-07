@@ -1,0 +1,1 @@
+ALTER FUNCTION public.strip_secrets(jsonb) SET search_path = public, pg_temp;
