@@ -1,127 +1,80 @@
 
-# Lot 1.2 — Refactor `create-user-account` en transaction atomique
+# Lot 1.3 — Découplage envoi identifiants + reset MDP
 
-Objectif : garantir qu'un utilisateur créé est **complet** (profil + rôles + lien membre) ou **inexistant**. Aujourd'hui la fonction chaîne 4 requêtes SDK avec un rollback JS best-effort — si le process meurt entre deux étapes, on laisse des données orphelines. On centralise tout le côté DB dans une **RPC PostgreSQL transactionnelle**.
+## État actuel (déjà en place)
 
-## Diagnostic
+- `create-user-account` **n'envoie plus** d'email (retiré depuis Lot 1.1). ✅
+- Bouton "Envoyer identifiants" existe déjà dans `CreateUserDialog` (post-création) et `UtilisateursAdmin` ("Renvoyer les identifiants" dans le menu ligne). ✅
+- Edge function `send-user-credentials` accepte `resetPassword: true|false`. ✅
 
-Après Lot 1.1, la fonction fait :
-1. `auth.admin.createUser` (hors transaction possible)
-2. `UPDATE profiles` (créée par trigger `handle_new_user`)
-3. `INSERT user_roles`
-4. `UPDATE membres.user_id`
-5. `INSERT membres_roles`
+## Manques à corriger
 
-Un `throw` réseau entre 3 et 4 laisse un utilisateur avec rôles mais sans membre lié → état incohérent. Le rollback JS actuel n'est exécuté que si `await` renvoie une erreur, pas si le worker Deno crashe.
+Le comportement fonctionne mais l'UX et le code sont dupliqués/faibles :
+
+1. Le "Renvoyer identifiants" du tableau **réinitialise le mot de passe sans confirmation** (`resetPassword: true` + pas de dialog) → risque élevé de casser un compte par accident. Violation memory core (`AlertDialog` obligatoire, pas de confirm implicite).
+2. Chaque appelant redéfinit son propre dictionnaire `codes` FR — Lot 1.1 a introduit `toToastError` / `translateErrorCode` dans `src/lib/errors.ts` qui n'est pas utilisé.
+3. Pas de distinction UI claire entre "**Renvoyer**" (même mot de passe, si connu) et "**Réinitialiser + envoyer**" (nouveau mot de passe forcé). Un seul bouton fait les deux → confusion.
+4. Pas de désactivation multi-clic globale : deux boutons différents pour deux utilisateurs → possible double reset simultané.
 
 ## Livrables
 
-### 1. Migration — RPC `provision_user_account`
+### 1. `src/hooks/useSendUserCredentials.ts` (nouveau)
 
-Nouvelle fonction Postgres `SECURITY DEFINER` :
-
-```
-provision_user_account(
-  p_user_id      uuid,
-  p_email        text,
-  p_nom          text,
-  p_prenom       text,
-  p_telephone    text,
-  p_role_ids     uuid[],
-  p_membre_id    uuid
-) RETURNS jsonb
-```
-
-Comportement dans **une seule transaction** :
-- `UPDATE profiles` (nom, prenom, email, telephone, must_change_password=true).
-- Si `p_role_ids` vide → sélectionner le rôle par défaut `membre` ; sinon utiliser la liste.
-- `INSERT INTO user_roles` (idempotent via `ON CONFLICT DO NOTHING`).
-- Si `p_membre_id` : vérifier `user_id IS NULL` (sinon `RAISE EXCEPTION 'membre_already_linked'`), puis `UPDATE membres SET user_id = p_user_id` + `INSERT INTO membres_roles`.
-- Renvoie `{ user_id, role_ids, membre_id }`.
-- Toute exception → rollback automatique Postgres.
-
-Sécurité :
-- `EXECUTE` **réservé à `service_role`** uniquement (pas à `authenticated`, pas à `anon`).
-- `SET search_path = public`.
-- Utilise `has_role`/checks internes pour ne pas dépendre du caller.
-
-Ajout dans `audit_logs` : entrée `{ action: 'user_provisioned', resource: 'profiles', resource_id: p_user_id, metadata }` insérée par la RPC.
-
-### 2. Refonte edge function `create-user-account`
-
-Pipeline simplifié :
+Hook centralisé, utilisé par `CreateUserDialog` et `UtilisateursAdmin`.
 
 ```
-1. Auth + admin check                   (Lot 1.1)
-2. Validation input (zod)               ← NEW
-3. Pré-check email libre (profiles)     (Lot 1.1)
-4. Pré-check membre libre               (Lot 1.1)
-5. auth.admin.createUser
-6. supaAdmin.rpc('provision_user_account', {...})
-   ├─ succès  → successResponse({ userId, email, tempPassword })
-   └─ échec   → auth.admin.deleteUser(userId) + throw AppError adapté
-                (mapping 'membre_already_linked' → ConflictError FR)
+useSendUserCredentials() → {
+  sendExisting(userId, options?)  // resetPassword: false, password optionnel
+  resetAndSend(userId)             // resetPassword: true
+  isPending(userId?): boolean
+}
 ```
 
-Le rollback JS multi-étapes disparaît (remplacé par la transaction Postgres).
+- Appelle `send-user-credentials` via `supabase.functions.invoke`.
+- Utilise `extractEdgeError` + `translateErrorCode` (déjà présents).
+- Toast succès : `Nouveaux identifiants envoyés à <email>` / `Identifiants envoyés à <email>`.
+- Toast erreur : `toToastError()` (titre FR mappé + description serveur).
+- Invalide `["utilisateurs"]` en cas de reset (pour rafraîchir `password_changed`).
 
-### 3. Validation zod
+### 2. `UtilisateursAdmin.tsx`
 
-Nouveau schéma dans le fichier edge :
+- Deux entrées distinctes dans le menu ligne :
+  - **"Renvoyer identifiants"** (Mail) → uniquement disponible si `password_changed === false` (le mot de passe temporaire est encore valide côté back). Envoie via `sendExisting` (reset côté back seulement si nécessaire).
+  - **"Réinitialiser mot de passe"** (KeyRound) → confirme via `AlertDialog` (`"Cette action génère un nouveau mot de passe temporaire et l'envoie par email. L'utilisateur devra le changer à sa prochaine connexion."`), puis `resetAndSend`.
+- Suppression du dictionnaire local `codes` (remplacé par `toToastError`).
+- Retire l'action existante `Renvoyer les identifiants` (unifiée).
 
-```
-BodySchema = z.object({
-  email: z.string().trim().toLowerCase().email().max(255),
-  nom: z.string().trim().min(1).max(100),
-  prenom: z.string().trim().min(1).max(100),
-  telephone: z.string().trim().max(30).nullable().optional(),
-  password: z.string().min(8).max(128).optional(),
-  roleIds: z.array(z.string().uuid()).max(20).optional(),
-  membreId: z.string().uuid().nullable().optional(),
-});
-```
+### 3. `CreateUserDialog.tsx`
 
-`safeParse` → `ValidationError` avec `details = flatten().fieldErrors`.
+- Utilise `useSendUserCredentials().sendExisting(created.userId, { password: created.password })`.
+- Retire l'objet local `ERROR_MESSAGES` (remplacé par le mapping central).
+- Bouton "Envoyer les identifiants par email" garde son loader existant.
 
-### 4. Tests Deno
+### 4. Petit nettoyage `src/lib/errors.ts`
 
-Fichier `supabase/functions/create-user-account/index.test.ts` :
-
-- `dotenv/load` pour charger `.env`.
-- Tests **sans authentification** (contre la fonction déployée via `fetch`) :
-  - `POST` sans `Authorization` → 401 code `UNAUTHORIZED`.
-  - `POST` avec token anon → 401 ou 403.
-  - `POST` avec body vide → 400 code `VALIDATION_ERROR`.
-  - `POST` avec email invalide → 400 code `VALIDATION_ERROR` + `details.email`.
-- Pas de test de succès (nécessiterait un admin de test — reporté en Phase 3 avec le seed `seed-test-users`).
-- Toujours consommer `response.text()` pour éviter les fuites Deno.
+- Rien à changer côté logique. Vérifier que le mapping `translateErrorCode` couvre bien `EMAIL_SEND_FAILED`, `USER_NOT_FOUND`, `FORBIDDEN`, `EMAIL_ALREADY_EXISTS` (déjà fait Lot 1.1). ✅
 
 ## Fichiers touchés
 
 | Fichier | Action |
 |---|---|
-| `supabase/migrations/<nouveau>.sql` | RPC `provision_user_account` + grant `service_role` + audit log |
-| `supabase/functions/create-user-account/index.ts` | refonte complète (validation zod + RPC + rollback auth simple) |
-| `supabase/functions/create-user-account/index.test.ts` | **création**, tests d'entrée invalides |
+| `src/hooks/useSendUserCredentials.ts` | **création** |
+| `src/pages/admin/UtilisateursAdmin.tsx` | remplace `handleResendCredentials`, ajoute `AlertDialog` de reset, deux entrées menu |
+| `src/components/admin/CreateUserDialog.tsx` | remplace `handleSendCredentials`, retire `ERROR_MESSAGES` local |
 
 ## Hors périmètre
 
-- Bouton "Envoyer identifiants" dédié + retrait auto-envoi → **Lot 1.3** (la fonction ne fait déjà pas d'envoi email, mais l'UI a besoin d'un bouton propre séparé).
-- Migration des 23 autres edge functions vers le format `errors.ts` → **plus tard**.
-- Ajout `association_id` sur `profiles` / `membres` → **Phase 2**.
+- Refactor de `UserMemberLinkManager.tsx` (n'appelle pas `send-user-credentials`, seulement `create-user-account`) → intact.
+- Migration des 22 autres edge functions vers `_shared/errors.ts` → plus tard.
+- Décision Resend/SMTP → Lot 1.5.
 
-## Validation avant merge
+## Validation
 
-- Tests Deno verts (`test_edge_functions`).
-- Test manuel UI : création d'un membre avec un membre déjà lié → toast FR `Cet email est déjà utilisé` / `Ce membre a déjà un compte`, aucun utilisateur auth créé.
-- Test manuel : simuler échec RPC (ex : `roleIds` avec UUID inexistant) → l'utilisateur auth créé est bien supprimé (vérif `auth.users`).
+- Build TypeScript propre.
+- Test manuel :
+  - Créer un compte → bouton "Envoyer identifiants" fonctionne (comportement inchangé, mais code centralisé).
+  - Depuis le tableau : "Renvoyer identifiants" grisé si `password_changed = true`. "Réinitialiser mot de passe" ouvre AlertDialog, puis reset + envoi.
 
 ## Rollback
 
-- Suppression de la RPC : `DROP FUNCTION public.provision_user_account`.
-- Restauration du edge function via git revert.
-- Le format de réponse restant inchangé, les consommateurs UI (`CreateUserDialog`, `UserMemberLinkManager`) ne bougent pas.
-
----
-
-Prêt à exécuter dès validation.
+Restauration git des 2 fichiers UI + suppression du hook. La edge function n'est pas touchée.
