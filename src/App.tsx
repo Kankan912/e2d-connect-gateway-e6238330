@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AssociationProvider } from "@/contexts/AssociationContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FullPageFallback } from "@/components/ui/page-loader";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
@@ -63,7 +64,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
-            <TrackedRoutes />
+            <AssociationProvider>
+              <TrackedRoutes />
+            </AssociationProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
