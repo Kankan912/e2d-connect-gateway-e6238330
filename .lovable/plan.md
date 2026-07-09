@@ -30,12 +30,13 @@
 |---|---|---|
 | 4.1 | Cartographie du domaine finance (`docs/FINANCE_DOMAIN_MAP.md`) | ✅ Terminée |
 | 4.2 | FinancialEngine SQL : `record_caisse_movement()` + `get_solde_empruntable()` | ✅ Terminée |
-| 4.3 | Services TypeScript `src/domain/finance/` (LoanService, CotisationService, AideService, EpargneService, SanctionService, BeneficiaireService) | ⏳ À faire |
+| 4.3 | Services TypeScript `src/domain/finance/` (Caisse, Loan, Cotisation, Aide, Epargne, Sanction, Beneficiaire) | ✅ Terminée |
 | 4.4 | Migration progressive des hooks + réécriture interne des triggers pour appeler la RPC | ⏳ À faire |
 | 4.5 | Vue matérialisée `caisse_soldes_snapshot` | ⏳ À faire |
-| 4.6 | Tests Vitest domaine finance + `docs/FINANCIAL_ENGINE.md` + `mem://` | ⏳ À faire |
+| 4.6 | Tests Vitest domaine finance + `docs/FINANCIAL_ENGINE.md` + `mem://` | 🚧 Partiel (tests 4.3 livrés) |
 
 ## Prochaine action
 
-Démarrer la **sous-phase 4.3** : création des services TypeScript sous `src/domain/finance/`, en commençant par `LoanService` (règles d'intérêts, statuts, seuil empruntable via la nouvelle RPC).
+Démarrer la **sous-phase 4.4** : brancher progressivement les hooks (`useCaisse`, `useDonations`, `useLoanRequests`) sur `CaisseService.recordMovement()` et `CaisseService.getSoldeEmpruntable()`, en conservant la compatibilité avec les triggers existants.
+
 
