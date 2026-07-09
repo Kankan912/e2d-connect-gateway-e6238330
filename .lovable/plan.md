@@ -20,10 +20,10 @@
 | 2.1 | Audit préparatoire (`docs/PHASE2_TENANT_AUDIT.md`) | ✅ Terminée |
 | 2.2 | Migrations schéma (7 migrations + correctifs) | ✅ Terminée |
 | 2.3 | (fusionnée avec 2.2 : helpers RLS créés en Migration 7) | ✅ Terminée |
-| 2.4 | Refonte policies RLS tenant-aware | 🎯 **Prochaine** |
-| 2.5 | Frontend : `AuthContext` + `AssociationSwitcher` + `tenantQuery` | ⏳ À faire |
+| 2.4 | Refonte policies RLS tenant-aware (8 migrations, 7 lots) | ✅ Terminée |
+| 2.5 | Frontend : `AuthContext` + `AssociationSwitcher` + `tenantQuery` | 🎯 **Prochaine** |
 | 2.6 | Edge function `provision-association` + page admin plateforme | ⏳ À faire |
 
 ## Prochaine action
 
-Attendre validation utilisateur pour démarrer la **Phase 2.4** (refonte des policies RLS). Cette phase touchera table par table et nécessite un plan dédié avant exécution.
+Démarrer la **Phase 2.5** (frontend multi-tenant) : contexte d'association côté client, sélecteur d'association pour super-admins, injection automatique du `association_id` dans les insertions et helpers `tenantQuery`.

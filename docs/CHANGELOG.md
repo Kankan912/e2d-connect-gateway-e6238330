@@ -92,3 +92,26 @@ Livraison de 7 migrations SQL préparant l'isolation stricte par association. Au
 
 **Fichier de suivi** : `docs/PHASE2_TENANT_AUDIT.md`.
 
+
+## Refonte Juillet 2026 — Phase 2.4 — Refonte RLS tenant-aware
+
+Livraison de 8 migrations SQL branchant l'isolation stricte par association sur l'ensemble des tables métier via les helpers `has_association_access`, `is_admin_of` et `is_super_admin`. Aucune donnée n'a été modifiée.
+
+**Helpers ajoutés :**
+- `current_association_id()` : première association de l'utilisateur, fallback E2D.
+- `can_view_profile(profile_id)` : lecture croisée d'un profil autorisée si le viewer partage une association avec lui.
+- `_apply_tenant_rls(table, admin_write, public_select, cond)` : fonction interne (invoquée par les migrations) qui drop toutes les policies existantes et re-crée le patron standard tenant-aware.
+
+**Lots livrés :**
+- **2.4.1 — Cœur membres & auth** : `membres`, `profiles`, `user_roles`, `membres_roles`, `roles` (scope-aware), `role_permissions`.
+- **2.4.2 — Finance & caisse** : 17 tables (aides, cotisations, prêts, donations, épargnes, caisse, bénéficiaires) + 5 enfants (`cotisations_membres`, audits).
+- **2.4.3 — Adhésions & réunions** : 7 tables + INSERT public conservé sur `adhesions` et `demandes_adhesion`.
+- **2.4.4 — Sport E2D & Phoenix** : 13 tables publiques (matchs, compositions, stats) + 8 tables internes (dépenses/recettes/adhérents Phoenix).
+- **2.4.5 — Configuration & exercices** : 15 tables tenant + `platform_settings` (super_admin only) + 3 configs globales (`loan_validation_config`, `pret_reconduction_validation_config`, `configurations`) en lecture auth / écriture admin.
+- **2.4.6 — CMS & site public** : 14 tables `site_*`/`cms_*` (lecture publique, écriture admin) + `messages_contact` (INSERT public conservé) + `site_pageviews`.
+- **2.4.7 — Audit, notifications & logs** : `notifications` (own + admin), 8 tables tenant + audit_logs/email_logs (admin_of ou super_admin si NULL) + tables user_id (`historique_connexion`, `utilisateurs_actions_log`, `permissions_audit`) + `security_scans` (super_admin).
+
+**Impact utilisateur E2D** : nul. La fonction `default_association_id()` continue d'injecter E2D par défaut, `has_association_access` et `is_admin_of` reconnaissent l'appartenance historique via `membres.association_id`.
+
+**Reste avant Phase 2.5 (frontend)** : les tables `session_config`, `configurations` legacy et quelques audits restent en accès "authenticated large" pour compatibilité — elles seront affinées au moment du switch d'association côté client.
+

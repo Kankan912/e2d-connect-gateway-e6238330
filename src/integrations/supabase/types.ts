@@ -6674,6 +6674,15 @@ export type Database = {
       }
     }
     Functions: {
+      _apply_tenant_rls: {
+        Args: {
+          _admin_write?: boolean
+          _public_select?: boolean
+          _public_select_cond?: string
+          _table: string
+        }
+        Returns: undefined
+      }
       audit_auth_membres_sync: {
         Args: never
         Returns: {
@@ -6708,6 +6717,10 @@ export type Database = {
       }
       can_manage_beneficiaires: { Args: never; Returns: boolean }
       can_self_avaliser: { Args: { _membre_id: string }; Returns: boolean }
+      can_view_profile: {
+        Args: { _profile_id: string; _viewer?: string }
+        Returns: boolean
+      }
       cancel_loan_request: { Args: { _request_id: string }; Returns: Json }
       clear_must_change_flag: { Args: never; Returns: boolean }
       create_loan_request: {
@@ -6724,6 +6737,7 @@ export type Database = {
         }
         Returns: string
       }
+      current_association_id: { Args: never; Returns: string }
       current_membre_id: { Args: never; Returns: string }
       default_association_id: { Args: never; Returns: string }
       delete_loan_validation_step: { Args: { _id: string }; Returns: boolean }
