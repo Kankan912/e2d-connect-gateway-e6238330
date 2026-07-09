@@ -796,8 +796,11 @@ export function EmailConfigManager() {
           Envoyer un email de test
         </Button>
         
-        <Button 
-          onClick={() => saveConfigMutation.mutate()}
+        <Button
+          onClick={() => {
+            if (!validate("all")) return;
+            saveConfigMutation.mutate();
+          }}
           disabled={saveConfigMutation.isPending}
           size="lg"
         >
@@ -807,6 +810,51 @@ export function EmailConfigManager() {
           Sauvegarder les modifications
         </Button>
       </div>
+
+      {/* Dialog de confirmation de bascule de provider */}
+      <AlertDialog open={switchTarget !== null} onOpenChange={(open) => !open && setSwitchTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Basculer les envois d'emails sur {switchTarget === "smtp" ? "SMTP" : "Resend"} ?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  <strong>Impact immédiat :</strong> tous les emails applicatifs (invitations,
+                  réinitialisations de mot de passe, notifications, compte-rendus de réunion,
+                  rappels de cotisation…) partiront désormais via{" "}
+                  <strong>{switchTarget === "smtp" ? "SMTP" : "Resend"}</strong>.
+                </p>
+                <p>
+                  Le provider précédent (
+                  <strong>{switchTarget === "smtp" ? "Resend" : "SMTP"}</strong>) reste
+                  configuré et sert de <strong>fallback automatique</strong> si le principal
+                  échoue.
+                </p>
+                {switchTarget === "resend" ? (
+                  <p className="text-amber-700 dark:text-amber-300">
+                    ⚠ Sans domaine vérifié dans Resend, seuls les emails vers l'adresse du
+                    propriétaire du compte Resend aboutiront.
+                  </p>
+                ) : (
+                  <p className="text-amber-700 dark:text-amber-300">
+                    ⚠ Assurez-vous d'avoir testé la connexion SMTP au moins une fois avant de
+                    basculer en production.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={() => switchTarget && handleSwitchProvider(switchTarget)}>
+              Confirmer la bascule
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
