@@ -26,6 +26,9 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, X, Copy, Mail, CheckCircle2 } from "lucide-react";
 
 import { logger } from "@/lib/logger";
+import { translateErrorCode, extractEdgeError } from "@/lib/errors";
+import { useSendUserCredentials } from "@/hooks/useSendUserCredentials";
+
 interface CreateUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,16 +43,6 @@ interface ApiResponse<T = Record<string, unknown>> {
   email?: string;
   tempPassword?: string;
 }
-
-const ERROR_MESSAGES: Record<string, string> = {
-  EMAIL_EXISTS: "Cet email est déjà utilisé",
-  INVALID_DATA: "Données invalides",
-  SERVER_ERROR: "Erreur serveur, veuillez réessayer",
-  EMAIL_SEND_FAILED: "L'email n'a pas pu être envoyé",
-  FORBIDDEN: "Accès réservé aux administrateurs",
-  UNAUTHENTICATED: "Session expirée, veuillez vous reconnecter",
-  USER_NOT_FOUND: "Utilisateur introuvable",
-};
 
 function generatePassword(length = 12): string {
   const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
