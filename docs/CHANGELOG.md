@@ -151,3 +151,27 @@ Console super-admin permettant de créer un tenant complet en une seule action.
 
 **Impact utilisateur E2D** : aucun changement fonctionnel. Le groupe « Plateforme » est invisible pour les utilisateurs standards. La Phase 2 est désormais complète : le noyau multi-tenant (schéma + RLS + frontend + provisioning) est en place.
 
+
+
+## Refonte Juillet 2026 — Phase 3 — RBAC granulaire par tenant & audit unifié
+
+Les permissions et l'audit deviennent conscients du tenant courant, sans changer l'expérience E2D.
+
+**Migration SQL :**
+- `public.current_tenant_id()` — retourne le tenant courant : lit la GUC `app.current_association_id`, fallback sur `default_association_id()` (association du membre lié → 1er `user_roles.association_id` → E2D).
+- `public.has_permission(resource_name, perm)` réécrite (même signature) : court-circuits `is_super_admin()` puis rôle plateforme `administrateur`, sinon vérification granulaire dans `role_permissions` filtrée sur `ur.association_id IS NULL OR ur.association_id = current_tenant_id()`.
+- `public.has_permission_in(_association_id, _resource, _permission)` — variante explicite pour vérifier une permission dans un tenant précis (utilisée en edge / RPC).
+- Backfill : pour chaque rôle `scope='association'` sans permissions, copie des `role_permissions` du rôle plateforme homonyme.
+- Trigger `trg_audit_logs_fill_association` (BEFORE INSERT) : renseigne `association_id` avec `current_tenant_id()` si NULL.
+- `public.log_audit(_action, _table, _row_id, _details)` — helper SECURITY DEFINER inséré dans `audit_logs` avec `auth.uid()` + tenant courant.
+- `public.set_current_association(_association_id)` — RPC : vérifie l'accès via `is_super_admin() OR has_association_access(_id)`, pose la GUC via `set_config('app.current_association_id', ..., false)`.
+
+**Edge function `provision-association` :**
+- Après clonage des rôles, clone aussi leurs `role_permissions` depuis les templates plateforme (`administrateur`, `membre`, `tresorier`, `secretaire_general`). L'admin d'un nouveau tenant a immédiatement le set de permissions complet.
+
+**Frontend :**
+- `src/hooks/useRoles.ts` — la query `roles` retourne désormais aussi `scope` et `association_id`.
+- `src/contexts/AssociationContext.tsx` — `syncTenantOnDb()` appelle `supabase.rpc('set_current_association')` au chargement initial et à chaque `switchAssociation()`, avant l'`invalidateQueries` pour que le cache React Query se remplisse déjà avec le bon tenant côté RLS.
+- `src/pages/admin/PermissionsAdmin.tsx` — filtre `<Select>` affiché quand ≥ 2 associations sont accessibles. Les rôles `scope='platform'` restent toujours visibles ; les rôles `scope='association'` sont filtrés sur le tenant sélectionné. `super_admin` gagne également l'accès admin à cette page.
+
+**Impact utilisateur E2D** : aucun. Une seule association visible → filtre masqué, GUC vide → `default_association_id()` renvoie E2D, `has_permission()` retourne exactement les mêmes résultats qu'avant.
