@@ -270,6 +270,43 @@ export function EmailConfigManager() {
   const sendingTestEmail = testingResend || testingSmtp;
 
   // ============================================================
+  // Bascule explicite d'un provider à l'autre
+  // ============================================================
+  const smtpReady = Boolean(smtpHost && smtpUser && (smtpConfigId || smtpPassword));
+  const resendReady = resendApiKey.trim().startsWith("re_") || Boolean(smtpConfigId /* clé déjà en base */);
+  // Note : on ne peut pas lire resend_api_key côté client (secret). On considère la clé "présente"
+  // si l'admin en saisit une nouvelle valide OU si elle est déjà en base (heuristique : email_service peut être resend).
+  const resendKeyProbablySaved = !resendApiKey || resendApiKey.trim().length === 0;
+
+  const handleSwitchProvider = async (target: "smtp" | "resend") => {
+    if (target === emailService) return;
+    if (target === "smtp" && !smtpReady) {
+      toast.error("Complétez la configuration SMTP avant de basculer");
+      return;
+    }
+    if (target === "resend" && !resendKeyProbablySaved && !resendApiKey.trim().startsWith("re_")) {
+      toast.error("Clé API Resend invalide (doit commencer par 're_')");
+      return;
+    }
+    setEmailService(target);
+    // Persister immédiatement le changement de provider
+    try {
+      const { error } = await supabase
+        .from("configurations")
+        .update({ valeur: target, updated_at: new Date().toISOString() })
+        .eq("cle", "email_service")
+        .select();
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["email-configurations"] });
+      toast.success(`Provider actif : ${target === "smtp" ? "SMTP" : "Resend"}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erreur inconnue";
+      toast.error("Bascule échouée : " + msg);
+    }
+  };
+
+
+  // ============================================================
   // Statut de la configuration (validité)
   // ============================================================
   const configStatus = (() => {
