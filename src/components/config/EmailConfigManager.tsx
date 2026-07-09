@@ -270,9 +270,13 @@ export function EmailConfigManager() {
   };
 
   const runConfigurationTest = async (provider: "auto" | "resend" | "smtp", enableFallback = false) => {
+    // Validation client avant l'appel réseau
+    const needsSmtp = provider === "smtp" || (provider === "auto" && emailService === "smtp");
+    if (!validate(needsSmtp ? "smtp" : "common")) return;
 
     if (provider === "resend" || provider === "auto") setTestingResend(true);
     if (provider === "smtp") setTestingSmtp(true);
+
 
     try {
       // Si on teste SMTP et que l'admin a saisi un nouveau mot de passe, sauvegarder d'abord
