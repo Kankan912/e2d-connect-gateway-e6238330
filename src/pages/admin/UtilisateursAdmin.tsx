@@ -78,11 +78,8 @@ import {
   RefreshCw,
   Mail,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { useSendUserCredentials } from "@/hooks/useSendUserCredentials";
 
-import { logger } from "@/lib/logger";
 interface UtilisateursAdminProps {
   embedded?: boolean;
 }
