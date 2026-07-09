@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAssociation } from "@/contexts/AssociationContext";
 import { useRoles } from "@/hooks/useRoles";
 import { useRefreshPermissions, usePermissionsAudit } from "@/hooks/usePermissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PermissionsMatrix } from "@/components/admin/PermissionsMatrix";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, RefreshCw, Shield, History, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -37,13 +39,26 @@ const PERMISSIONS = [
 
 const PermissionsAdmin = () => {
   const { userRole } = useAuth();
+  const { currentAssociation, availableAssociations } = useAssociation();
   const { roles, useRolePermissions, useAllRolesPermissions } = useRoles();
   const { data: allPermissions, isLoading: permissionsLoading } = useAllRolesPermissions();
   const refreshPermissions = useRefreshPermissions();
   const { toast } = useToast();
   const [selectedRole, setSelectedRole] = useState<string>("");
+  const [tenantFilter, setTenantFilter] = useState<string>(currentAssociation?.id ?? "");
 
-  const isAdmin = userRole === "administrateur";
+  const isAdmin = userRole === "administrateur" || userRole === "super_admin";
+
+  // Filtre : rôles plateforme (toujours visibles) + rôles du tenant sélectionné
+  const visibleRoles = useMemo(() => {
+    if (!roles) return [];
+    const effectiveTenant = tenantFilter || currentAssociation?.id || null;
+    return roles.filter((r: any) => {
+      if (r.scope === 'platform') return true;
+      if (r.scope === 'association') return effectiveTenant ? r.association_id === effectiveTenant : true;
+      return true;
+    });
+  }, [roles, tenantFilter, currentAssociation?.id]);
 
   // Helper pour vérifier si un rôle a une permission
   const hasRolePermission = (roleId: string, resource: string, permission: string): boolean => {
