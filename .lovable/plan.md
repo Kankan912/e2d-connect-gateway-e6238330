@@ -1,4 +1,10 @@
-# Lot 1.5 — Choix SMTP / Resend + config domaine pro (report)
+# Lot 1.5 — Choix SMTP / Resend + config domaine pro (report) ✅ LIVRÉ
+
+Statut : livré. CHANGELOG + Guide utilisateur mis à jour ; état runtime vérifié
+(`email_service=smtp`, `smtp_config` actif sur Gmail). Aucune modif code/schéma.
+
+---
+
 
 ## Constat après audit
 
