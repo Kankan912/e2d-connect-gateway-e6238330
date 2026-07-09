@@ -638,6 +638,27 @@ export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdmi
 
       {/* Create User Dialog */}
       <CreateUserDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
+
+      {/* Reset password confirmation */}
+      <AlertDialog open={!!resetTarget} onOpenChange={(o) => !o && setResetTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Réinitialiser le mot de passe ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Un nouveau mot de passe temporaire va être généré et envoyé à{" "}
+              <strong>{resetTarget?.email}</strong>. L'utilisateur devra le
+              changer à sa prochaine connexion. L'ancien mot de passe sera
+              immédiatement invalidé.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmResetPassword}>
+              Réinitialiser et envoyer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
