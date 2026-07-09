@@ -13,9 +13,20 @@ import { Mail, Server, Key, Globe, Send, Eye, EyeOff, Loader2, CheckCircle, XCir
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { z } from "zod";
 
 import { logger } from "@/lib/logger";
+
 export function EmailConfigManager() {
   const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
