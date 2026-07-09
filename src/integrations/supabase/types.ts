@@ -320,6 +320,7 @@ export type Database = {
       }
       alertes_budgetaires: {
         Row: {
+          association_id: string
           categorie: string
           created_at: string | null
           description: string | null
@@ -334,6 +335,7 @@ export type Database = {
           valeur_actuelle: number | null
         }
         Insert: {
+          association_id?: string
           categorie: string
           created_at?: string | null
           description?: string | null
@@ -348,6 +350,7 @@ export type Database = {
           valeur_actuelle?: number | null
         }
         Update: {
+          association_id?: string
           categorie?: string
           created_at?: string | null
           description?: string | null
@@ -361,7 +364,15 @@ export type Database = {
           updated_at?: string | null
           valeur_actuelle?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "alertes_budgetaires_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       associations: {
         Row: {
@@ -464,6 +475,7 @@ export type Database = {
       beneficiaires_config: {
         Row: {
           actif: boolean
+          association_id: string
           created_at: string
           description: string | null
           id: string
@@ -475,6 +487,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          association_id?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -486,6 +499,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          association_id?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -495,7 +509,15 @@ export type Database = {
           pourcentage_cotisations?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "beneficiaires_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       beneficiaires_paiements_audit: {
         Row: {
@@ -602,6 +624,7 @@ export type Database = {
       }
       caisse_config: {
         Row: {
+          association_id: string
           created_at: string | null
           id: string
           pourcentage_empruntable: number | null
@@ -610,6 +633,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          association_id?: string
           created_at?: string | null
           id?: string
           pourcentage_empruntable?: number | null
@@ -618,6 +642,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          association_id?: string
           created_at?: string | null
           id?: string
           pourcentage_empruntable?: number | null
@@ -625,7 +650,15 @@ export type Database = {
           seuil_alerte_solde?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "caisse_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       calendrier_beneficiaires: {
         Row: {
@@ -706,6 +739,7 @@ export type Database = {
       }
       cms_events: {
         Row: {
+          association_id: string
           auto_sync: boolean | null
           created_at: string | null
           description: string | null
@@ -722,6 +756,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          association_id?: string
           auto_sync?: boolean | null
           created_at?: string | null
           description?: string | null
@@ -738,6 +773,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          association_id?: string
           auto_sync?: boolean | null
           created_at?: string | null
           description?: string | null
@@ -753,11 +789,20 @@ export type Database = {
           title?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cms_events_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cms_gallery: {
         Row: {
           album_name: string
+          association_id: string
           created_at: string | null
           description: string | null
           id: string
@@ -770,6 +815,7 @@ export type Database = {
         }
         Insert: {
           album_name: string
+          association_id?: string
           created_at?: string | null
           description?: string | null
           id?: string
@@ -782,6 +828,7 @@ export type Database = {
         }
         Update: {
           album_name?: string
+          association_id?: string
           created_at?: string | null
           description?: string | null
           id?: string
@@ -792,10 +839,19 @@ export type Database = {
           title?: string | null
           video_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cms_gallery_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cms_hero_slides: {
         Row: {
+          association_id: string
           background_image: string
           created_at: string | null
           cta_link: string | null
@@ -808,6 +864,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          association_id?: string
           background_image: string
           created_at?: string | null
           cta_link?: string | null
@@ -820,6 +877,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          association_id?: string
           background_image?: string
           created_at?: string | null
           cta_link?: string | null
@@ -831,10 +889,19 @@ export type Database = {
           title?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cms_hero_slides_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cms_pages: {
         Row: {
+          association_id: string
           content: string | null
           created_at: string | null
           id: string
@@ -845,6 +912,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          association_id?: string
           content?: string | null
           created_at?: string | null
           id?: string
@@ -855,6 +923,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          association_id?: string
           content?: string | null
           created_at?: string | null
           id?: string
@@ -864,10 +933,19 @@ export type Database = {
           title?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cms_pages_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cms_partners: {
         Row: {
+          association_id: string
           created_at: string | null
           description: string | null
           id: string
@@ -878,6 +956,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          association_id?: string
           created_at?: string | null
           description?: string | null
           id?: string
@@ -888,6 +967,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          association_id?: string
           created_at?: string | null
           description?: string | null
           id?: string
@@ -897,10 +977,19 @@ export type Database = {
           order_index?: number | null
           website_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cms_partners_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cms_sections: {
         Row: {
+          association_id: string
           content: string | null
           created_at: string | null
           id: string
@@ -913,6 +1002,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          association_id?: string
           content?: string | null
           created_at?: string | null
           id?: string
@@ -925,6 +1015,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          association_id?: string
           content?: string | null
           created_at?: string | null
           id?: string
@@ -936,10 +1027,19 @@ export type Database = {
           title?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cms_sections_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cms_settings: {
         Row: {
+          association_id: string
           description: string | null
           key: string
           label: string | null
@@ -947,6 +1047,7 @@ export type Database = {
           value: string | null
         }
         Insert: {
+          association_id?: string
           description?: string | null
           key: string
           label?: string | null
@@ -954,13 +1055,22 @@ export type Database = {
           value?: string | null
         }
         Update: {
+          association_id?: string
           description?: string | null
           key?: string
           label?: string | null
           updated_at?: string | null
           value?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cms_settings_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       configurations: {
         Row: {
@@ -1280,6 +1390,7 @@ export type Database = {
       }
       cotisations_types: {
         Row: {
+          association_id: string
           created_at: string | null
           description: string | null
           id: string
@@ -1289,6 +1400,7 @@ export type Database = {
           type_saisie: string | null
         }
         Insert: {
+          association_id?: string
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1298,6 +1410,7 @@ export type Database = {
           type_saisie?: string | null
         }
         Update: {
+          association_id?: string
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1306,7 +1419,15 @@ export type Database = {
           obligatoire?: boolean | null
           type_saisie?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cotisations_types_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       demandes_adhesion: {
         Row: {
@@ -1595,6 +1716,7 @@ export type Database = {
       exercices_cotisations_types: {
         Row: {
           actif: boolean | null
+          association_id: string
           created_at: string | null
           exercice_id: string
           id: string
@@ -1602,6 +1724,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean | null
+          association_id?: string
           created_at?: string | null
           exercice_id: string
           id?: string
@@ -1609,12 +1732,20 @@ export type Database = {
         }
         Update: {
           actif?: boolean | null
+          association_id?: string
           created_at?: string | null
           exercice_id?: string
           id?: string
           type_cotisation_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "exercices_cotisations_types_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "exercices_cotisations_types_exercice_id_fkey"
             columns: ["exercice_id"]
@@ -1634,6 +1765,7 @@ export type Database = {
       exports_programmes: {
         Row: {
           actif: boolean | null
+          association_id: string
           configuration: Json | null
           created_at: string | null
           dernier_export: string | null
@@ -1648,6 +1780,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean | null
+          association_id?: string
           configuration?: Json | null
           created_at?: string | null
           dernier_export?: string | null
@@ -1662,6 +1795,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean | null
+          association_id?: string
           configuration?: Json | null
           created_at?: string | null
           dernier_export?: string | null
@@ -1674,10 +1808,19 @@ export type Database = {
           type?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exports_programmes_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fichiers_joint: {
         Row: {
+          association_id: string
           created_at: string
           entite_id: string
           entite_type: string
@@ -1689,6 +1832,7 @@ export type Database = {
           url_fichier: string
         }
         Insert: {
+          association_id?: string
           created_at?: string
           entite_id: string
           entite_type: string
@@ -1700,6 +1844,7 @@ export type Database = {
           url_fichier: string
         }
         Update: {
+          association_id?: string
           created_at?: string
           entite_id?: string
           entite_type?: string
@@ -1710,10 +1855,19 @@ export type Database = {
           uploaded_by?: string | null
           url_fichier?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fichiers_joint_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fond_caisse_clotures: {
         Row: {
+          association_id: string
           cloture_par: string
           created_at: string
           date_cloture: string
@@ -1727,6 +1881,7 @@ export type Database = {
           total_sorties: number
         }
         Insert: {
+          association_id?: string
           cloture_par: string
           created_at?: string
           date_cloture: string
@@ -1740,6 +1895,7 @@ export type Database = {
           total_sorties?: number
         }
         Update: {
+          association_id?: string
           cloture_par?: string
           created_at?: string
           date_cloture?: string
@@ -1765,6 +1921,13 @@ export type Database = {
             columns: ["cloture_par"]
             isOneToOne: false
             referencedRelation: "membres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fond_caisse_clotures_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
             referencedColumns: ["id"]
           },
         ]
@@ -2108,6 +2271,7 @@ export type Database = {
         Row: {
           ambiance: string | null
           arbitrage_commentaire: string | null
+          association_id: string
           conditions_jeu: string | null
           created_at: string | null
           created_by: string | null
@@ -2121,6 +2285,7 @@ export type Database = {
         Insert: {
           ambiance?: string | null
           arbitrage_commentaire?: string | null
+          association_id?: string
           conditions_jeu?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2134,6 +2299,7 @@ export type Database = {
         Update: {
           ambiance?: string | null
           arbitrage_commentaire?: string | null
+          association_id?: string
           conditions_jeu?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2146,6 +2312,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "match_compte_rendus_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "match_compte_rendus_match_id_fkey"
             columns: ["match_id"]
             isOneToOne: true
@@ -2157,6 +2330,7 @@ export type Database = {
       match_gala_config: {
         Row: {
           actif: boolean | null
+          association_id: string
           created_at: string | null
           id: string
           nombre_matchs_minimum: number | null
@@ -2167,6 +2341,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean | null
+          association_id?: string
           created_at?: string | null
           id?: string
           nombre_matchs_minimum?: number | null
@@ -2177,6 +2352,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean | null
+          association_id?: string
           created_at?: string | null
           id?: string
           nombre_matchs_minimum?: number | null
@@ -2185,7 +2361,15 @@ export type Database = {
           taux_cotisation_minimum?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "match_gala_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       match_joueurs: {
         Row: {
@@ -2244,6 +2428,7 @@ export type Database = {
       }
       match_medias: {
         Row: {
+          association_id: string
           created_at: string | null
           created_by: string | null
           id: string
@@ -2254,6 +2439,7 @@ export type Database = {
           url: string
         }
         Insert: {
+          association_id?: string
           created_at?: string | null
           created_by?: string | null
           id?: string
@@ -2264,6 +2450,7 @@ export type Database = {
           url: string
         }
         Update: {
+          association_id?: string
           created_at?: string | null
           created_by?: string | null
           id?: string
@@ -2274,6 +2461,13 @@ export type Database = {
           url?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "match_medias_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "match_medias_match_id_fkey"
             columns: ["match_id"]
@@ -2580,6 +2774,7 @@ export type Database = {
       }
       messages_contact: {
         Row: {
+          association_id: string
           created_at: string | null
           email: string
           id: string
@@ -2590,6 +2785,7 @@ export type Database = {
           telephone: string | null
         }
         Insert: {
+          association_id?: string
           created_at?: string | null
           email: string
           id?: string
@@ -2600,6 +2796,7 @@ export type Database = {
           telephone?: string | null
         }
         Update: {
+          association_id?: string
           created_at?: string | null
           email?: string
           id?: string
@@ -2609,7 +2806,15 @@ export type Database = {
           statut?: string | null
           telephone?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "messages_contact_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -2977,6 +3182,7 @@ export type Database = {
       }
       payment_configs: {
         Row: {
+          association_id: string
           config_data: Json
           created_at: string
           id: string
@@ -2986,6 +3192,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          association_id?: string
           config_data?: Json
           created_at?: string
           id?: string
@@ -2995,6 +3202,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          association_id?: string
           config_data?: Json
           created_at?: string
           id?: string
@@ -3004,6 +3212,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "payment_configs_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payment_configs_updated_by_fkey"
             columns: ["updated_by"]
@@ -3055,6 +3270,7 @@ export type Database = {
       phoenix_adherents: {
         Row: {
           adhesion_payee: boolean | null
+          association_id: string
           created_at: string | null
           date_adhesion: string | null
           date_limite_paiement: string | null
@@ -3064,6 +3280,7 @@ export type Database = {
         }
         Insert: {
           adhesion_payee?: boolean | null
+          association_id?: string
           created_at?: string | null
           date_adhesion?: string | null
           date_limite_paiement?: string | null
@@ -3073,6 +3290,7 @@ export type Database = {
         }
         Update: {
           adhesion_payee?: boolean | null
+          association_id?: string
           created_at?: string | null
           date_adhesion?: string | null
           date_limite_paiement?: string | null
@@ -3081,6 +3299,13 @@ export type Database = {
           montant_adhesion?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "phoenix_adherents_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "phoenix_adherents_membre_id_fkey"
             columns: ["membre_id"]
@@ -3099,6 +3324,7 @@ export type Database = {
       }
       phoenix_compositions: {
         Row: {
+          association_id: string
           created_at: string
           equipe_nom: string
           est_capitaine: boolean | null
@@ -3108,6 +3334,7 @@ export type Database = {
           poste: string | null
         }
         Insert: {
+          association_id?: string
           created_at?: string
           equipe_nom: string
           est_capitaine?: boolean | null
@@ -3117,6 +3344,7 @@ export type Database = {
           poste?: string | null
         }
         Update: {
+          association_id?: string
           created_at?: string
           equipe_nom?: string
           est_capitaine?: boolean | null
@@ -3147,11 +3375,19 @@ export type Database = {
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "phoenix_compositions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       phoenix_cotisations_annuelles: {
         Row: {
           annee: number
+          association_id: string
           created_at: string
           date_paiement: string | null
           id: string
@@ -3163,6 +3399,7 @@ export type Database = {
         }
         Insert: {
           annee: number
+          association_id?: string
           created_at?: string
           date_paiement?: string | null
           id?: string
@@ -3174,6 +3411,7 @@ export type Database = {
         }
         Update: {
           annee?: number
+          association_id?: string
           created_at?: string
           date_paiement?: string | null
           id?: string
@@ -3198,10 +3436,18 @@ export type Database = {
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "phoenix_cotisations_annuelles_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       phoenix_entrainements: {
         Row: {
+          association_id: string
           created_at: string
           date_entrainement: string
           heure_debut: string | null
@@ -3212,6 +3458,7 @@ export type Database = {
           type_entrainement: string | null
         }
         Insert: {
+          association_id?: string
           created_at?: string
           date_entrainement: string
           heure_debut?: string | null
@@ -3222,6 +3469,7 @@ export type Database = {
           type_entrainement?: string | null
         }
         Update: {
+          association_id?: string
           created_at?: string
           date_entrainement?: string
           heure_debut?: string | null
@@ -3231,10 +3479,19 @@ export type Database = {
           notes?: string | null
           type_entrainement?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "phoenix_entrainements_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phoenix_entrainements_internes: {
         Row: {
+          association_id: string
           created_at: string
           date_entrainement: string
           equipe_gagnante: string | null
@@ -3249,6 +3506,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string
           created_at?: string
           date_entrainement: string
           equipe_gagnante?: string | null
@@ -3263,6 +3521,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string
           created_at?: string
           date_entrainement?: string
           equipe_gagnante?: string | null
@@ -3276,10 +3535,19 @@ export type Database = {
           statut?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "phoenix_entrainements_internes_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phoenix_equipes: {
         Row: {
+          association_id: string
           couleur_hex: string | null
           created_at: string
           id: string
@@ -3287,6 +3555,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string
           couleur_hex?: string | null
           created_at?: string
           id?: string
@@ -3294,16 +3563,26 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string
           couleur_hex?: string | null
           created_at?: string
           id?: string
           nom?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "phoenix_equipes_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phoenix_evenements_match: {
         Row: {
+          association_id: string
           created_at: string
           description: string | null
           equipe_nom: string
@@ -3314,6 +3593,7 @@ export type Database = {
           type_evenement: string
         }
         Insert: {
+          association_id?: string
           created_at?: string
           description?: string | null
           equipe_nom: string
@@ -3324,6 +3604,7 @@ export type Database = {
           type_evenement: string
         }
         Update: {
+          association_id?: string
           created_at?: string
           description?: string | null
           equipe_nom?: string
@@ -3355,11 +3636,19 @@ export type Database = {
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "phoenix_evenements_match_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       phoenix_presences: {
         Row: {
           adherent_id: string | null
+          association_id: string
           created_at: string | null
           date_entrainement: string
           id: string
@@ -3367,6 +3656,7 @@ export type Database = {
         }
         Insert: {
           adherent_id?: string | null
+          association_id?: string
           created_at?: string | null
           date_entrainement: string
           id?: string
@@ -3374,6 +3664,7 @@ export type Database = {
         }
         Update: {
           adherent_id?: string | null
+          association_id?: string
           created_at?: string | null
           date_entrainement?: string
           id?: string
@@ -3387,10 +3678,18 @@ export type Database = {
             referencedRelation: "phoenix_adherents"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "phoenix_presences_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       phoenix_presences_entrainement: {
         Row: {
+          association_id: string
           created_at: string
           entrainement_id: string
           excuse: string | null
@@ -3400,6 +3699,7 @@ export type Database = {
           retard_minutes: number | null
         }
         Insert: {
+          association_id?: string
           created_at?: string
           entrainement_id: string
           excuse?: string | null
@@ -3409,6 +3709,7 @@ export type Database = {
           retard_minutes?: number | null
         }
         Update: {
+          association_id?: string
           created_at?: string
           entrainement_id?: string
           excuse?: string | null
@@ -3439,11 +3740,19 @@ export type Database = {
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "phoenix_presences_entrainement_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       phoenix_statistiques_annuelles: {
         Row: {
           annee: number
+          association_id: string
           buts_jaune: number | null
           buts_rouge: number | null
           cartons_jaunes_jaune: number | null
@@ -3462,6 +3771,7 @@ export type Database = {
         }
         Insert: {
           annee: number
+          association_id?: string
           buts_jaune?: number | null
           buts_rouge?: number | null
           cartons_jaunes_jaune?: number | null
@@ -3480,6 +3790,7 @@ export type Database = {
         }
         Update: {
           annee?: number
+          association_id?: string
           buts_jaune?: number | null
           buts_rouge?: number | null
           cartons_jaunes_jaune?: number | null
@@ -3498,6 +3809,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "phoenix_statistiques_annuelles_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "phoenix_statistiques_annuelles_exercice_id_fkey"
             columns: ["exercice_id"]
             isOneToOne: false
@@ -3509,6 +3827,7 @@ export type Database = {
       phoenix_statistiques_joueur: {
         Row: {
           arrets_gardien: number | null
+          association_id: string
           buts: number | null
           cartons_jaunes: number | null
           cartons_rouges: number | null
@@ -3523,6 +3842,7 @@ export type Database = {
         }
         Insert: {
           arrets_gardien?: number | null
+          association_id?: string
           buts?: number | null
           cartons_jaunes?: number | null
           cartons_rouges?: number | null
@@ -3537,6 +3857,7 @@ export type Database = {
         }
         Update: {
           arrets_gardien?: number | null
+          association_id?: string
           buts?: number | null
           cartons_jaunes?: number | null
           cartons_rouges?: number | null
@@ -3564,11 +3885,19 @@ export type Database = {
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "phoenix_statistiques_joueur_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       phoenix_stats_jaune_rouge: {
         Row: {
           annee: number
+          association_id: string
           buts_jaune: number | null
           buts_rouge: number | null
           cartons_jaunes_jaune: number | null
@@ -3584,6 +3913,7 @@ export type Database = {
         }
         Insert: {
           annee: number
+          association_id?: string
           buts_jaune?: number | null
           buts_rouge?: number | null
           cartons_jaunes_jaune?: number | null
@@ -3599,6 +3929,7 @@ export type Database = {
         }
         Update: {
           annee?: number
+          association_id?: string
           buts_jaune?: number | null
           buts_rouge?: number | null
           cartons_jaunes_jaune?: number | null
@@ -3612,11 +3943,20 @@ export type Database = {
           victoires_jaune?: number | null
           victoires_rouge?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "phoenix_stats_jaune_rouge_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pret_reconduction_validation_config: {
         Row: {
           actif: boolean
+          association_id: string
           created_at: string
           id: string
           label: string
@@ -3626,6 +3966,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          association_id?: string
           created_at?: string
           id?: string
           label: string
@@ -3635,6 +3976,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          association_id?: string
           created_at?: string
           id?: string
           label?: string
@@ -3642,7 +3984,15 @@ export type Database = {
           role?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pret_reconduction_validation_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pret_reconduction_validations: {
         Row: {
@@ -3821,6 +4171,7 @@ export type Database = {
       }
       prets_config: {
         Row: {
+          association_id: string
           created_at: string | null
           duree_mois: number
           duree_reconduction: number
@@ -3832,6 +4183,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          association_id?: string
           created_at?: string | null
           duree_mois?: number
           duree_reconduction?: number
@@ -3843,6 +4195,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          association_id?: string
           created_at?: string | null
           duree_mois?: number
           duree_reconduction?: number
@@ -3854,6 +4207,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "prets_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "prets_config_exercice_id_fkey"
             columns: ["exercice_id"]
@@ -4050,6 +4410,7 @@ export type Database = {
       }
       rapports_seances: {
         Row: {
+          association_id: string
           created_at: string
           decisions: string | null
           description: string | null
@@ -4060,6 +4421,7 @@ export type Database = {
           sujet: string
         }
         Insert: {
+          association_id?: string
           created_at?: string
           decisions?: string | null
           description?: string | null
@@ -4070,6 +4432,7 @@ export type Database = {
           sujet: string
         }
         Update: {
+          association_id?: string
           created_at?: string
           decisions?: string | null
           description?: string | null
@@ -4079,11 +4442,20 @@ export type Database = {
           reunion_id?: string
           sujet?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rapports_seances_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recurring_donations: {
         Row: {
           amount: number
+          association_id: string
           created_at: string
           currency: string
           donation_id: string
@@ -4100,6 +4472,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          association_id?: string
           created_at?: string
           currency?: string
           donation_id: string
@@ -4116,6 +4489,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          association_id?: string
           created_at?: string
           currency?: string
           donation_id?: string
@@ -4131,6 +4505,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "recurring_donations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recurring_donations_donation_id_fkey"
             columns: ["donation_id"]
@@ -4709,6 +5090,7 @@ export type Database = {
       sanctions_tarifs: {
         Row: {
           actif: boolean
+          association_id: string
           categorie_membre: string
           created_at: string
           id: string
@@ -4718,6 +5100,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          association_id?: string
           categorie_membre?: string
           created_at?: string
           id?: string
@@ -4727,6 +5110,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          association_id?: string
           categorie_membre?: string
           created_at?: string
           id?: string
@@ -4735,6 +5119,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sanctions_tarifs_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sanctions_tarifs_type_sanction_id_fkey"
             columns: ["type_sanction_id"]
@@ -4746,6 +5137,7 @@ export type Database = {
       }
       sanctions_types: {
         Row: {
+          association_id: string
           categorie: string
           created_at: string
           description: string | null
@@ -4754,6 +5146,7 @@ export type Database = {
           nom: string
         }
         Insert: {
+          association_id?: string
           categorie: string
           created_at?: string
           description?: string | null
@@ -4762,6 +5155,7 @@ export type Database = {
           nom: string
         }
         Update: {
+          association_id?: string
           categorie?: string
           created_at?: string
           description?: string | null
@@ -4769,7 +5163,15 @@ export type Database = {
           montant?: number
           nom?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sanctions_types_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       security_scans: {
         Row: {
@@ -4809,6 +5211,7 @@ export type Database = {
       }
       session_config: {
         Row: {
+          association_id: string
           created_at: string | null
           id: string
           inactivity_timeout_minutes: number
@@ -4818,6 +5221,7 @@ export type Database = {
           warning_before_logout_seconds: number | null
         }
         Insert: {
+          association_id?: string
           created_at?: string | null
           id?: string
           inactivity_timeout_minutes: number
@@ -4827,6 +5231,7 @@ export type Database = {
           warning_before_logout_seconds?: number | null
         }
         Update: {
+          association_id?: string
           created_at?: string | null
           id?: string
           inactivity_timeout_minutes?: number
@@ -4835,11 +5240,20 @@ export type Database = {
           updated_at?: string | null
           warning_before_logout_seconds?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "session_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_about: {
         Row: {
           actif: boolean
+          association_id: string
           created_at: string
           histoire_contenu: string
           histoire_titre: string
@@ -4851,6 +5265,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          association_id?: string
           created_at?: string
           histoire_contenu: string
           histoire_titre?: string
@@ -4862,6 +5277,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          association_id?: string
           created_at?: string
           histoire_contenu?: string
           histoire_titre?: string
@@ -4871,11 +5287,20 @@ export type Database = {
           updated_at?: string
           valeurs?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "site_about_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_activities: {
         Row: {
           actif: boolean
+          association_id: string
           created_at: string
           description: string
           features: Json
@@ -4887,6 +5312,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          association_id?: string
           created_at?: string
           description: string
           features?: Json
@@ -4898,6 +5324,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          association_id?: string
           created_at?: string
           description?: string
           features?: Json
@@ -4907,10 +5334,19 @@ export type Database = {
           titre?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "site_activities_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_config: {
         Row: {
+          association_id: string
           categorie: string
           cle: string
           created_at: string
@@ -4921,6 +5357,7 @@ export type Database = {
           valeur: string
         }
         Insert: {
+          association_id?: string
           categorie?: string
           cle: string
           created_at?: string
@@ -4931,6 +5368,7 @@ export type Database = {
           valeur: string
         }
         Update: {
+          association_id?: string
           categorie?: string
           cle?: string
           created_at?: string
@@ -4940,12 +5378,21 @@ export type Database = {
           updated_at?: string
           valeur?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "site_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_events: {
         Row: {
           actif: boolean
           album_id: string | null
+          association_id: string
           auto_sync: boolean | null
           created_at: string
           date: string
@@ -4965,6 +5412,7 @@ export type Database = {
         Insert: {
           actif?: boolean
           album_id?: string | null
+          association_id?: string
           auto_sync?: boolean | null
           created_at?: string
           date: string
@@ -4984,6 +5432,7 @@ export type Database = {
         Update: {
           actif?: boolean
           album_id?: string | null
+          association_id?: string
           auto_sync?: boolean | null
           created_at?: string
           date?: string
@@ -5008,11 +5457,19 @@ export type Database = {
             referencedRelation: "site_gallery_albums"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "site_events_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       site_events_carousel_config: {
         Row: {
           actif: boolean | null
+          association_id: string
           auto_play: boolean | null
           created_at: string | null
           id: string
@@ -5023,6 +5480,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean | null
+          association_id?: string
           auto_play?: boolean | null
           created_at?: string | null
           id?: string
@@ -5033,6 +5491,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean | null
+          association_id?: string
           auto_play?: boolean | null
           created_at?: string | null
           id?: string
@@ -5041,12 +5500,21 @@ export type Database = {
           show_indicators?: boolean | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "site_events_carousel_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_gallery: {
         Row: {
           actif: boolean
           album_id: string | null
+          association_id: string
           categorie: string
           created_at: string
           id: string
@@ -5060,6 +5528,7 @@ export type Database = {
         Insert: {
           actif?: boolean
           album_id?: string | null
+          association_id?: string
           categorie: string
           created_at?: string
           id?: string
@@ -5073,6 +5542,7 @@ export type Database = {
         Update: {
           actif?: boolean
           album_id?: string | null
+          association_id?: string
           categorie?: string
           created_at?: string
           id?: string
@@ -5091,11 +5561,19 @@ export type Database = {
             referencedRelation: "site_gallery_albums"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "site_gallery_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       site_gallery_albums: {
         Row: {
           actif: boolean | null
+          association_id: string
           cover_image_url: string | null
           created_at: string | null
           description: string | null
@@ -5106,6 +5584,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean | null
+          association_id?: string
           cover_image_url?: string | null
           created_at?: string | null
           description?: string | null
@@ -5116,6 +5595,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean | null
+          association_id?: string
           cover_image_url?: string | null
           created_at?: string | null
           description?: string | null
@@ -5124,11 +5604,20 @@ export type Database = {
           titre?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "site_gallery_albums_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_hero: {
         Row: {
           actif: boolean
+          association_id: string
           badge_text: string
           bouton_1_lien: string
           bouton_1_texte: string
@@ -5152,6 +5641,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          association_id?: string
           badge_text?: string
           bouton_1_lien?: string
           bouton_1_texte?: string
@@ -5175,6 +5665,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          association_id?: string
           badge_text?: string
           bouton_1_lien?: string
           bouton_1_texte?: string
@@ -5196,11 +5687,20 @@ export type Database = {
           titre?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "site_hero_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_hero_images: {
         Row: {
           actif: boolean | null
+          association_id: string
           created_at: string | null
           hero_id: string
           id: string
@@ -5210,6 +5710,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean | null
+          association_id?: string
           created_at?: string | null
           hero_id: string
           id?: string
@@ -5219,6 +5720,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean | null
+          association_id?: string
           created_at?: string | null
           hero_id?: string
           id?: string
@@ -5227,6 +5729,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "site_hero_images_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "site_hero_images_hero_id_fkey"
             columns: ["hero_id"]
@@ -5272,6 +5781,7 @@ export type Database = {
       site_partners: {
         Row: {
           actif: boolean
+          association_id: string
           created_at: string
           description: string | null
           id: string
@@ -5284,6 +5794,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          association_id?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -5296,6 +5807,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          association_id?: string
           created_at?: string
           description?: string | null
           id?: string
@@ -5306,11 +5818,20 @@ export type Database = {
           site_web?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "site_partners_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       smtp_config: {
         Row: {
           actif: boolean | null
+          association_id: string
           created_at: string | null
           encryption_type: string | null
           id: string
@@ -5322,6 +5843,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean | null
+          association_id?: string
           created_at?: string | null
           encryption_type?: string | null
           id?: string
@@ -5333,6 +5855,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean | null
+          association_id?: string
           created_at?: string | null
           encryption_type?: string | null
           id?: string
@@ -5342,10 +5865,19 @@ export type Database = {
           updated_at?: string | null
           utilisateur_smtp?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "smtp_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sport_e2d_activites: {
         Row: {
+          association_id: string
           created_at: string
           date_activite: string
           id: string
@@ -5354,6 +5886,7 @@ export type Database = {
           participants_count: number | null
         }
         Insert: {
+          association_id?: string
           created_at?: string
           date_activite: string
           id?: string
@@ -5362,6 +5895,7 @@ export type Database = {
           participants_count?: number | null
         }
         Update: {
+          association_id?: string
           created_at?: string
           date_activite?: string
           id?: string
@@ -5369,10 +5903,19 @@ export type Database = {
           notes?: string | null
           participants_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sport_e2d_activites_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sport_e2d_config: {
         Row: {
+          association_id: string
           couleur_maillot: string | null
           created_at: string
           entraineur: string | null
@@ -5383,6 +5926,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string
           couleur_maillot?: string | null
           created_at?: string
           entraineur?: string | null
@@ -5393,6 +5937,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string
           couleur_maillot?: string | null
           created_at?: string
           entraineur?: string | null
@@ -5402,10 +5947,19 @@ export type Database = {
           nom_equipe?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sport_e2d_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sport_e2d_depenses: {
         Row: {
+          association_id: string
           created_at: string
           date_depense: string
           id: string
@@ -5414,6 +5968,7 @@ export type Database = {
           montant: number
         }
         Insert: {
+          association_id?: string
           created_at?: string
           date_depense?: string
           id?: string
@@ -5422,6 +5977,7 @@ export type Database = {
           montant: number
         }
         Update: {
+          association_id?: string
           created_at?: string
           date_depense?: string
           id?: string
@@ -5429,10 +5985,19 @@ export type Database = {
           libelle?: string
           montant?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sport_e2d_depenses_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sport_e2d_matchs: {
         Row: {
+          association_id: string
           created_at: string
           date_match: string
           equipe_adverse: string
@@ -5450,6 +6015,7 @@ export type Database = {
           type_match: string
         }
         Insert: {
+          association_id?: string
           created_at?: string
           date_match?: string
           equipe_adverse: string
@@ -5467,6 +6033,7 @@ export type Database = {
           type_match?: string
         }
         Update: {
+          association_id?: string
           created_at?: string
           date_match?: string
           equipe_adverse?: string
@@ -5483,7 +6050,15 @@ export type Database = {
           statut_publication?: string | null
           type_match?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sport_e2d_matchs_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sport_e2d_presences: {
         Row: {
@@ -5517,6 +6092,7 @@ export type Database = {
       }
       sport_e2d_recettes: {
         Row: {
+          association_id: string
           created_at: string
           date_recette: string
           id: string
@@ -5525,6 +6101,7 @@ export type Database = {
           notes: string | null
         }
         Insert: {
+          association_id?: string
           created_at?: string
           date_recette?: string
           id?: string
@@ -5533,6 +6110,7 @@ export type Database = {
           notes?: string | null
         }
         Update: {
+          association_id?: string
           created_at?: string
           date_recette?: string
           id?: string
@@ -5540,10 +6118,19 @@ export type Database = {
           montant?: number
           notes?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sport_e2d_recettes_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sport_phoenix_config: {
         Row: {
+          association_id: string
           created_at: string
           duree_adhesion_mois: number | null
           id: string
@@ -5552,6 +6139,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string
           created_at?: string
           duree_adhesion_mois?: number | null
           id?: string
@@ -5560,6 +6148,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string
           created_at?: string
           duree_adhesion_mois?: number | null
           id?: string
@@ -5567,10 +6156,19 @@ export type Database = {
           nom_club?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sport_phoenix_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sport_phoenix_depenses: {
         Row: {
+          association_id: string
           created_at: string | null
           date_depense: string
           id: string
@@ -5580,6 +6178,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          association_id?: string
           created_at?: string | null
           date_depense?: string
           id?: string
@@ -5589,6 +6188,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          association_id?: string
           created_at?: string | null
           date_depense?: string
           id?: string
@@ -5597,10 +6197,19 @@ export type Database = {
           montant?: number
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sport_phoenix_depenses_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sport_phoenix_matchs: {
         Row: {
+          association_id: string
           created_at: string
           date_match: string
           equipe_adverse: string
@@ -5614,6 +6223,7 @@ export type Database = {
           type_match: string
         }
         Insert: {
+          association_id?: string
           created_at?: string
           date_match?: string
           equipe_adverse: string
@@ -5627,6 +6237,7 @@ export type Database = {
           type_match?: string
         }
         Update: {
+          association_id?: string
           created_at?: string
           date_match?: string
           equipe_adverse?: string
@@ -5639,10 +6250,19 @@ export type Database = {
           statut?: string
           type_match?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sport_phoenix_matchs_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sport_phoenix_recettes: {
         Row: {
+          association_id: string
           created_at: string | null
           date_recette: string
           id: string
@@ -5652,6 +6272,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          association_id?: string
           created_at?: string | null
           date_recette?: string
           id?: string
@@ -5661,6 +6282,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          association_id?: string
           created_at?: string | null
           date_recette?: string
           id?: string
@@ -5669,7 +6291,15 @@ export type Database = {
           notes?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sport_phoenix_recettes_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tontine_attributions: {
         Row: {
@@ -5706,6 +6336,7 @@ export type Database = {
       }
       tontine_configurations: {
         Row: {
+          association_id: string
           categorie: string | null
           cle: string
           created_at: string | null
@@ -5716,6 +6347,7 @@ export type Database = {
           valeur: string
         }
         Insert: {
+          association_id?: string
           categorie?: string | null
           cle: string
           created_at?: string | null
@@ -5726,6 +6358,7 @@ export type Database = {
           valeur: string
         }
         Update: {
+          association_id?: string
           categorie?: string | null
           cle?: string
           created_at?: string | null
@@ -5735,10 +6368,19 @@ export type Database = {
           updated_at?: string | null
           valeur?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tontine_configurations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       types_sanctions: {
         Row: {
+          association_id: string
           categorie: string | null
           contexte: string | null
           created_at: string
@@ -5748,6 +6390,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string
           categorie?: string | null
           contexte?: string | null
           created_at?: string
@@ -5757,6 +6400,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string
           categorie?: string | null
           contexte?: string | null
           created_at?: string
@@ -5765,7 +6409,15 @@ export type Database = {
           nom?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "types_sanctions_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
