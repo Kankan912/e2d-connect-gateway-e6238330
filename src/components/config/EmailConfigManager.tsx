@@ -363,72 +363,169 @@ export function EmailConfigManager() {
         </AlertDescription>
       </Alert>
 
-      {/* Service Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Service d'envoi email
-          </CardTitle>
-          <CardDescription>
-            Choisissez le service à utiliser pour l'envoi des emails
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RadioGroup
-            value={emailService || "resend"}
-            onValueChange={(value) => setEmailService(value as "resend" | "smtp")}
-            className="grid gap-4 md:grid-cols-2"
-          >
-            <div className={`flex items-start space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${emailService === "resend" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
-              <RadioGroupItem value="resend" id="resend" className="mt-1" />
-              <div className="flex-1">
-                <Label htmlFor="resend" className="cursor-pointer font-medium">
-                  Resend API
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Service recommandé. Simple, fiable et facile à configurer.
-                </p>
-              </div>
-            </div>
-            <div className={`flex items-start space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${emailService === "smtp" ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}>
-              <RadioGroupItem value="smtp" id="smtp" className="mt-1" />
-              <div className="flex-1">
-                <Label htmlFor="smtp" className="cursor-pointer font-medium">
-                  SMTP Personnalisé
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Utilisez votre propre serveur SMTP (Outlook, Gmail, etc.)
-                </p>
-              </div>
-            </div>
-          </RadioGroup>
-        </CardContent>
-      </Card>
-
-      {/* Resend Configuration */}
-      {emailService === "resend" && (
-        <Card>
+      {/* Deux providers côte à côte */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* ============================ SMTP ============================ */}
+        <Card className={cn("relative", emailService === "smtp" && "border-primary ring-1 ring-primary/40")}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
-              Configuration Resend API
-            </CardTitle>
-            <CardDescription>
-              Saisissez votre clé API Resend pour activer l'envoi d'emails
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
-            <Info className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800 dark:text-amber-200">
-              <strong>Mode Test Resend :</strong> sans domaine vérifié, les emails ne peuvent être envoyés
-              qu'à l'adresse du propriétaire du compte Resend.
-              Pour envoyer à tous les membres, <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="underline font-medium">vérifiez un domaine</a>.
-            </AlertDescription>
-          </Alert>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Server className="h-5 w-5" />
+                  SMTP personnalisé
+                </CardTitle>
+                <CardDescription>Votre propre serveur (Gmail, Outlook, OVH…)</CardDescription>
+              </div>
+              {emailService === "smtp" ? (
+                <Badge className="bg-green-600 hover:bg-green-600 text-white">Actif</Badge>
+              ) : (
+                <Badge variant="secondary">En réserve</Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="smtp-host">Serveur SMTP</Label>
+                <Input
+                  id="smtp-host"
+                  placeholder="smtp.gmail.com"
+                  value={smtpHost}
+                  onChange={(e) => setSmtpHost(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="smtp-port">Port</Label>
+                <Input
+                  id="smtp-port"
+                  type="number"
+                  placeholder="587"
+                  value={smtpPort}
+                  onChange={(e) => setSmtpPort(e.target.value)}
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="resend-api-key">Clé API Resend</Label>
+              <Label htmlFor="smtp-user">Utilisateur</Label>
+              <Input
+                id="smtp-user"
+                placeholder="votre@email.com"
+                value={smtpUser}
+                onChange={(e) => setSmtpUser(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="smtp-password">
+                Mot de passe
+                {smtpConfigId && (
+                  <span className="ml-2 text-xs text-muted-foreground font-normal">
+                    (laisser vide pour conserver l'existant)
+                  </span>
+                )}
+              </Label>
+              <div className="relative">
+                <Input
+                  id="smtp-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={smtpPassword}
+                  onChange={(e) => setSmtpPassword(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="smtp-encryption">Chiffrement</Label>
+              <Select value={smtpEncryption} onValueChange={(v) => setSmtpEncryption(v as typeof smtpEncryption)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tls">TLS (recommandé)</SelectItem>
+                  <SelectItem value="ssl">SSL</SelectItem>
+                  <SelectItem value="none">Aucun</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={testSmtpConnection}
+                disabled={testingSmtp}
+                className="flex-1"
+              >
+                {testingSmtp ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Tester SMTP
+              </Button>
+              {emailService !== "smtp" && (
+                <Button
+                  onClick={() => handleSwitchProvider("smtp")}
+                  disabled={!smtpReady}
+                  className="flex-1"
+                >
+                  Basculer sur SMTP
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ============================ Resend ============================ */}
+        <Card className={cn("relative", emailService === "resend" && "border-primary ring-1 ring-primary/40")}>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  Resend API
+                </CardTitle>
+                <CardDescription>Service transactionnel, idéal avec un domaine pro</CardDescription>
+              </div>
+              {emailService === "resend" ? (
+                <Badge className="bg-green-600 hover:bg-green-600 text-white">Actif</Badge>
+              ) : (
+                <Badge variant="secondary">En réserve</Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950">
+              <Info className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200 text-xs">
+                <strong>Mode test :</strong> sans domaine vérifié, les emails partent uniquement vers l'adresse du
+                propriétaire du compte Resend.{" "}
+                <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+                  Vérifiez un domaine
+                </a>{" "}
+                pour envoyer à tous les membres.
+              </AlertDescription>
+            </Alert>
+
+            <div className="space-y-2">
+              <Label htmlFor="resend-api-key">
+                Clé API Resend
+                {smtpConfigId /* heuristique : config existante */ && (
+                  <span className="ml-2 text-xs text-muted-foreground font-normal">
+                    (laisser vide pour conserver l'existante)
+                  </span>
+                )}
+              </Label>
               <div className="relative">
                 <Input
                   id="resend-api-key"
@@ -448,158 +545,75 @@ export function EmailConfigManager() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Obtenez votre clé sur <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">resend.com/api-keys</a>
+                Obtenez votre clé sur{" "}
+                <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                  resend.com/api-keys
+                </a>
               </p>
             </div>
-            
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="secondary"
-                onClick={async () => {
-                  if (!resendApiKey || !resendApiKey.startsWith('re_')) {
-                    toast.error("Clé API invalide. Elle doit commencer par 're_'");
-                    return;
+
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={async () => {
+                if (!resendApiKey || !resendApiKey.startsWith("re_")) {
+                  toast.error("Clé API invalide. Elle doit commencer par 're_'");
+                  return;
+                }
+                setSavingResendKey(true);
+                try {
+                  const { error } = await supabase.functions.invoke("update-email-config", {
+                    body: { resend_api_key: resendApiKey, email_mode: "resend", email_service: "resend" },
+                  });
+                  if (error) {
+                    const errorMessage = (error as any)?.message || "Impossible d'enregistrer la clé";
+                    throw new Error(errorMessage);
                   }
-                  setSavingResendKey(true);
-                  try {
-                    const { error } = await supabase.functions.invoke("update-email-config", {
-                      body: { resend_api_key: resendApiKey, email_mode: "resend", email_service: "resend" }
-                    });
-                    if (error) {
-                      const errorMessage = (error as any)?.message || "Impossible d'enregistrer la clé";
-                      throw new Error(errorMessage);
-                    }
-                    toast.success("Clé API Resend enregistrée");
-                  } catch (err: any) {
-                    toast.error("Erreur: " + (err.message || "Impossible d'enregistrer la clé"));
-                  } finally {
-                    setSavingResendKey(false);
-                  }
-                }}
-                disabled={savingResendKey || !resendApiKey}
-              >
-                {savingResendKey ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Key className="h-4 w-4 mr-2" />
-                )}
-                Enregistrer la clé API
-              </Button>
-              
-              <Button 
-                variant="outline" 
+                  toast.success("Clé API Resend enregistrée");
+                  setResendApiKey("");
+                } catch (err: any) {
+                  toast.error("Erreur: " + (err.message || "Impossible d'enregistrer la clé"));
+                } finally {
+                  setSavingResendKey(false);
+                }
+              }}
+              disabled={savingResendKey || !resendApiKey}
+            >
+              {savingResendKey ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Key className="h-4 w-4 mr-2" />
+              )}
+              Enregistrer la clé API
+            </Button>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button
+                variant="outline"
                 onClick={testResendConnection}
                 disabled={testingResend}
+                className="flex-1"
               >
                 {testingResend ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4 mr-2" />
                 )}
-                Tester la connexion
+                Tester Resend
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* SMTP Configuration */}
-      {emailService === "smtp" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Server className="h-5 w-5" />
-              Configuration SMTP
-            </CardTitle>
-            <CardDescription>
-              Paramètres de votre serveur SMTP
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="smtp-host">Serveur SMTP</Label>
-                <Input
-                  id="smtp-host"
-                  placeholder="smtp.outlook.com"
-                  value={smtpHost}
-                  onChange={(e) => setSmtpHost(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="smtp-port">Port</Label>
-                <Input
-                  id="smtp-port"
-                  type="number"
-                  placeholder="587"
-                  value={smtpPort}
-                  onChange={(e) => setSmtpPort(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="smtp-user">Utilisateur</Label>
-                <Input
-                  id="smtp-user"
-                  placeholder="votre@email.com"
-                  value={smtpUser}
-                  onChange={(e) => setSmtpUser(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="smtp-password">Mot de passe</Label>
-                <div className="relative">
-                  <Input
-                    id="smtp-password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={smtpPassword}
-                    onChange={(e) => setSmtpPassword(e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="smtp-encryption">Chiffrement</Label>
-              <Select value={smtpEncryption} onValueChange={(v) => setSmtpEncryption(v as typeof smtpEncryption)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tls">TLS (recommandé)</SelectItem>
-                  <SelectItem value="ssl">SSL</SelectItem>
-                  <SelectItem value="none">Aucun</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button 
-              variant="outline" 
-              onClick={testSmtpConnection}
-              disabled={testingSmtp}
-            >
-              {testingSmtp ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
+              {emailService !== "resend" && (
+                <Button
+                  onClick={() => handleSwitchProvider("resend")}
+                  className="flex-1"
+                >
+                  Basculer sur Resend
+                </Button>
               )}
-              Tester la connexion SMTP
-            </Button>
+            </div>
           </CardContent>
         </Card>
-      )}
+      </div>
+
 
       <Separator />
 
