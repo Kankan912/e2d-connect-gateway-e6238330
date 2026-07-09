@@ -1,0 +1,1 @@
+ALTER VIEW public.configurations_v_compat SET (security_invoker = true);
