@@ -379,18 +379,30 @@ export function EmailConfigManager() {
   // si l'admin en saisit une nouvelle valide OU si elle est déjà en base (heuristique : email_service peut être resend).
   const resendKeyProbablySaved = !resendApiKey || resendApiKey.trim().length === 0;
 
-  const handleSwitchProvider = async (target: "smtp" | "resend") => {
+  /** Demande de bascule : valide puis ouvre la dialog de confirmation. */
+  const requestSwitchProvider = (target: "smtp" | "resend") => {
     if (target === emailService) return;
-    if (target === "smtp" && !smtpReady) {
-      toast.error("Complétez la configuration SMTP avant de basculer");
-      return;
+    if (target === "smtp") {
+      if (!validate("smtp")) return;
+      if (!smtpReady) {
+        toast.error("Complétez la configuration SMTP avant de basculer");
+        return;
+      }
     }
-    if (target === "resend" && !resendKeyProbablySaved && !resendApiKey.trim().startsWith("re_")) {
-      toast.error("Clé API Resend invalide (doit commencer par 're_')");
-      return;
+    if (target === "resend") {
+      // Si l'admin a saisi une nouvelle clé, elle doit être valide.
+      if (resendApiKey && !resendApiKey.trim().startsWith("re_")) {
+        setFieldErrors((prev) => ({ ...prev, resendApiKey: "La clé doit commencer par 're_'" }));
+        toast.error("Clé API Resend invalide (doit commencer par 're_')");
+        return;
+      }
     }
+    setSwitchTarget(target);
+  };
+
+  /** Exécution effective (déclenchée depuis la dialog). */
+  const handleSwitchProvider = async (target: "smtp" | "resend") => {
     setEmailService(target);
-    // Persister immédiatement le changement de provider
     try {
       const { error } = await supabase
         .from("configurations")
@@ -403,8 +415,11 @@ export function EmailConfigManager() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       toast.error("Bascule échouée : " + msg);
+    } finally {
+      setSwitchTarget(null);
     }
   };
+
 
 
   // ============================================================
