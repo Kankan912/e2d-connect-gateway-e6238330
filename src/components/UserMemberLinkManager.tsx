@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserPlus, Link2, Unlink, Mail, Search, Loader2, AlertCircle, CheckCircle, RefreshCw, Ban, Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { toToastError } from "@/lib/errors";
 
 interface Member {
   id: string;
@@ -184,45 +185,55 @@ export default function UserMemberLinkManager() {
   // Create account for member
   const handleCreateAccount = async () => {
     if (!selectedMember || !newAccountEmail) return;
-    
+
     setIsCreatingAccount(true);
     try {
-      // Call edge function to create account
+      // Call edge function to create account (Lot 1.2 contract)
       const { data, error } = await supabase.functions.invoke('create-user-account', {
         body: {
-          email: newAccountEmail,
-          memberId: selectedMember.id,
-          memberNom: selectedMember.nom,
-          memberPrenom: selectedMember.prenom,
-          memberTelephone: selectedMember.telephone,
-          tempPassword: tempPassword || undefined
-        }
+          email: newAccountEmail.trim().toLowerCase(),
+          nom: selectedMember.nom,
+          prenom: selectedMember.prenom,
+          telephone: selectedMember.telephone ?? null,
+          password: tempPassword || undefined,
+          membreId: selectedMember.id,
+        },
       });
 
-      if (error) {
-        const errorMessage = data?.error || error.message;
-        throw new Error(errorMessage);
+      const resp = (data ?? null) as { success?: boolean; code?: string; message?: string } | null;
+
+      if (error && !resp) {
+        toast({
+          title: "Erreur réseau",
+          description: "Veuillez réessayer",
+          variant: "destructive",
+        });
+        return;
       }
 
-      if (data?.error) {
-        throw new Error(data.error);
+      if (!resp?.success) {
+        const { title, description } = toToastError(error, resp, "Erreur lors de la création du compte");
+        toast({ title, description, variant: "destructive" });
+        return;
       }
 
-      toast({ 
-        title: "Compte créé", 
-        description: `Un email avec les identifiants a été envoyé à ${newAccountEmail}` 
+      toast({
+        title: "Compte créé",
+        description: `Un email avec les identifiants a été envoyé à ${newAccountEmail}`,
       });
-      
+
       queryClient.invalidateQueries({ queryKey: ['members-with-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['utilisateurs'] });
+      queryClient.invalidateQueries({ queryKey: ['membres'] });
       setShowCreateAccountDialog(false);
       setSelectedMember(null);
       setNewAccountEmail("");
       setTempPassword("");
     } catch (error: unknown) {
-      toast({ 
-        title: "Erreur de création", 
-        description: error instanceof Error ? error.message : "Impossible de créer le compte", 
-        variant: "destructive" 
+      toast({
+        title: "Erreur de création",
+        description: error instanceof Error ? error.message : "Impossible de créer le compte",
+        variant: "destructive",
       });
     } finally {
       setIsCreatingAccount(false);
