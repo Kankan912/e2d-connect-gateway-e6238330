@@ -175,3 +175,24 @@ Les permissions et l'audit deviennent conscients du tenant courant, sans changer
 - `src/pages/admin/PermissionsAdmin.tsx` — filtre `<Select>` affiché quand ≥ 2 associations sont accessibles. Les rôles `scope='platform'` restent toujours visibles ; les rôles `scope='association'` sont filtrés sur le tenant sélectionné. `super_admin` gagne également l'accès admin à cette page.
 
 **Impact utilisateur E2D** : aucun. Une seule association visible → filtre masqué, GUC vide → `default_association_id()` renvoie E2D, `has_permission()` retourne exactement les mêmes résultats qu'avant.
+
+
+
+## Refonte Juillet 2026 — Phase 4.1 & 4.2 — Cartographie finance & FinancialEngine (SQL)
+
+Démarrage du chantier Domain Services. Deux livrables : la carte du domaine financier, et les deux premières briques serveur du moteur unifié.
+
+**Documentation :**
+- `docs/FINANCE_DOMAIN_MAP.md` — inventaire complet : table de vérité `fond_caisse_operations`, 21 triggers producteurs de mouvements, écritures directes frontend (`useCaisse`, `useDonations`, `process-adhesion`), RPC de lecture (`get_solde_caisse`, `get_caisse_synthese`, `get_caisse_stats`), 6 services domaine à extraire, 6 gaps identifiés (doubles sources, absence d'idempotence, `association_id` non forcé, solde empruntable client-side, pas de matérialisation, métadonnées éparses).
+
+**Migration SQL :**
+- `public.record_caisse_movement(p_type, p_montant, p_categorie, p_libelle, p_source_table, p_source_id, p_beneficiaire_id, p_reunion_id, p_exercice_id, p_date_operation, p_notes, p_justificatif_url)` — point d'entrée unique pour toute écriture caisse. Valide `type ∈ {entree, sortie}` et `montant > 0`, exige `auth.uid()`, résout `association_id` via `current_tenant_id()` (fallback `default_association_id()`), garantit l'idempotence sur `(source_table, source_id, type_operation, categorie, association_id)` — un rejeu de trigger ou un double INSERT renvoie l'UUID existant sans doublon.
+- `public.get_solde_empruntable(p_association_id, p_pourcentage)` — porte la règle des 80 % côté serveur : `max(0, floor(fond × %/100) − prêts_en_cours)`. Cohérence garantie entre dashboard, workflow de validation des prêts et edge functions.
+- `GRANT EXECUTE` sur les deux fonctions pour `authenticated` et `service_role`.
+
+**Compatibilité :**
+- Aucun trigger existant n'est modifié ni supprimé. La migration progressive des producteurs (hooks + triggers) vers `record_caisse_movement` est planifiée en Phase 4.4.
+- Le calcul client `calcSoldeEmpruntable` (`src/lib/caisseCalculations.test.ts`) reste valide en tant que fallback ; les hooks basculeront sur la RPC en 4.4.
+
+**Impact utilisateur E2D** : aucun changement fonctionnel. Deux nouvelles fonctions serveur disponibles, aucune modification de table, aucun trigger touché.
+
