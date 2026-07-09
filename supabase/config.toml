@@ -54,3 +54,6 @@ verify_jwt = false
 [functions.test-email-configuration]
 verify_jwt = false
 
+
+[functions.provision-association]
+verify_jwt = true

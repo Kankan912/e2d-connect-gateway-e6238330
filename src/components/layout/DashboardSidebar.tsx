@@ -138,6 +138,7 @@ export function DashboardSidebar() {
   const { open } = useSidebar();
   const location = useLocation();
   const isAdministrateur = userRole === 'administrateur';
+  const isSuperAdmin = userRole === 'super_admin';
 
   // Compter les prêts en retard pour le badge
   const { data: pretsEnRetardCount } = useQuery({
@@ -354,6 +355,28 @@ export function DashboardSidebar() {
             <SidebarGroupLabel>Site Web</SidebarGroupLabel>
             <SidebarGroupContent>
               {renderMenuItems(visibleSiteItems)}
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Plateforme - super_admin uniquement */}
+        {isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Plateforme
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/dashboard/admin/platform/associations")}>
+                    <NavLink to="/dashboard/admin/platform/associations" className="flex items-center gap-3">
+                      <Building2 className="h-4 w-4" />
+                      {open && <span>Associations</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
