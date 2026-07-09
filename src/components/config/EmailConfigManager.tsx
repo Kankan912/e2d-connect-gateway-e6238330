@@ -213,8 +213,13 @@ export function EmailConfigManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["email-configurations"], refetchType: "all" });
       queryClient.invalidateQueries({ queryKey: ["smtp-config"], refetchType: "all" });
+      // Sécurité : re-masquer et vider le champ mot de passe SMTP après sauvegarde
+      setSmtpPassword("");
+      setShowPassword(false);
+      setFieldErrors({});
       toast.success("Configuration email sauvegardée");
     },
+
     onError: (error) => {
       logger.error("Error saving config:", error);
       toast.error("Erreur lors de la sauvegarde");
