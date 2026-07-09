@@ -66,4 +66,35 @@ export const CaisseService = {
     if (error) throw new DomainError(error.message);
     return Number(data ?? 0);
   },
+
+  /**
+   * Instantané précalculé (vue matérialisée `caisse_soldes_snapshot`).
+   * Lecture rapide destinée aux dashboards ; à rafraîchir via
+   * `CaisseService.refreshSnapshot()` après un lot de mouvements.
+   */
+  async getSoldeSnapshot(associationId?: string): Promise<{
+    association_id: string;
+    total_entrees: number;
+    total_sorties: number;
+    solde_net: number;
+    nb_operations: number;
+    derniere_operation: string | null;
+    refreshed_at: string;
+  } | null> {
+    const { data, error } = await supabase.rpc("get_caisse_solde_snapshot", {
+      p_association_id: associationId ?? null,
+    });
+    if (error) throw new DomainError(error.message);
+    const row = Array.isArray(data) ? data[0] : data;
+    return (row ?? null) as never;
+  },
+
+  /**
+   * Rafraîchit l'instantané des soldes caisse (CONCURRENTLY quand possible).
+   */
+  async refreshSnapshot(): Promise<void> {
+    const { error } = await supabase.rpc("refresh_caisse_soldes_snapshot");
+    if (error) throw new DomainError(error.message);
+  },
 };
+
