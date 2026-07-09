@@ -13,9 +13,57 @@ import { Mail, Server, Key, Globe, Send, Eye, EyeOff, Loader2, CheckCircle, XCir
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { z } from "zod";
 
 import { logger } from "@/lib/logger";
+
+// Validation ciblée — utilisée avant sauvegarde / test / bascule
+const nonEmpty = (label: string) =>
+  z.string().trim().min(1, { message: `${label} est requis` });
+
+const commonSchema = z.object({
+  emailExpediteur: nonEmpty("Email expéditeur")
+    .email({ message: "Email expéditeur invalide" })
+    .max(255, "Email expéditeur trop long (255 max)"),
+  emailExpediteurNom: nonEmpty("Nom expéditeur").max(100, "Nom expéditeur trop long (100 max)"),
+  appUrl: nonEmpty("URL de l'application")
+    .max(500, "URL trop longue (500 max)")
+    .regex(/^https?:\/\/[^\s]+$/i, "URL invalide (http:// ou https://)"),
+});
+
+const smtpFieldsSchema = z.object({
+  smtpHost: nonEmpty("Serveur SMTP")
+    .max(255, "Serveur trop long")
+    .regex(/^\S+$/, "Le serveur ne doit pas contenir d'espaces"),
+  smtpPort: z.coerce
+    .number({ invalid_type_error: "Port invalide" })
+    .int("Port doit être un entier")
+    .min(1, "Port ≥ 1")
+    .max(65535, "Port ≤ 65535"),
+  smtpUser: nonEmpty("Utilisateur SMTP")
+    .email({ message: "Utilisateur SMTP doit être un email" })
+    .max(255, "Utilisateur trop long"),
+  smtpEncryption: z.enum(["tls", "ssl", "none"]),
+});
+
+const resendKeySchema = z
+  .string()
+  .trim()
+  .min(20, "Clé API Resend trop courte")
+  .regex(/^re_/, "La clé doit commencer par 're_'");
+
+
+
 export function EmailConfigManager() {
   const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
@@ -38,6 +86,11 @@ export function EmailConfigManager() {
   const [smtpPassword, setSmtpPassword] = useState("");
   const [smtpEncryption, setSmtpEncryption] = useState<"tls" | "ssl" | "none">("tls");
   const [smtpConfigId, setSmtpConfigId] = useState<string | null>(null);
+
+  // Validation & bascule
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [switchTarget, setSwitchTarget] = useState<"smtp" | "resend" | null>(null);
+
 
   // Fetch configurations
   const { data: configs, isLoading: configsLoading } = useQuery({
@@ -160,8 +213,13 @@ export function EmailConfigManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["email-configurations"], refetchType: "all" });
       queryClient.invalidateQueries({ queryKey: ["smtp-config"], refetchType: "all" });
+      // Sécurité : re-masquer et vider le champ mot de passe SMTP après sauvegarde
+      setSmtpPassword("");
+      setShowPassword(false);
+      setFieldErrors({});
       toast.success("Configuration email sauvegardée");
     },
+
     onError: (error) => {
       logger.error("Error saving config:", error);
       toast.error("Erreur lors de la sauvegarde");
@@ -179,9 +237,46 @@ export function EmailConfigManager() {
     duration_ms?: number;
   } | null>(null);
 
+  // ============================================================
+  // Validation client (zod)
+  // ============================================================
+  /** Valide les champs demandés. Renvoie true si OK, sinon met à jour fieldErrors + toast. */
+  const validate = (scope: "common" | "smtp" | "resend-key" | "all"): boolean => {
+    const errors: Record<string, string> = {};
+    const commonPayload = { emailExpediteur, emailExpediteurNom, appUrl };
+    const smtpPayload = { smtpHost, smtpPort, smtpUser, smtpEncryption };
+
+    if (scope === "common" || scope === "smtp" || scope === "all") {
+      const r = commonSchema.safeParse(commonPayload);
+      if (!r.success) for (const iss of r.error.issues) errors[String(iss.path[0])] = iss.message;
+    }
+    if (scope === "smtp" || (scope === "all" && emailService === "smtp")) {
+      const r = smtpFieldsSchema.safeParse(smtpPayload);
+      if (!r.success) for (const iss of r.error.issues) errors[String(iss.path[0])] = iss.message;
+      // Mot de passe requis si aucune config n'existe encore en base
+      if (!smtpConfigId && !smtpPassword) errors.smtpPassword = "Mot de passe requis (première configuration)";
+    }
+    if (scope === "resend-key") {
+      const r = resendKeySchema.safeParse(resendApiKey);
+      if (!r.success) errors.resendApiKey = r.error.issues[0]?.message || "Clé Resend invalide";
+    }
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      toast.error(Object.values(errors)[0]);
+      return false;
+    }
+    return true;
+  };
+
   const runConfigurationTest = async (provider: "auto" | "resend" | "smtp", enableFallback = false) => {
+    // Validation client avant l'appel réseau
+    const needsSmtp = provider === "smtp" || (provider === "auto" && emailService === "smtp");
+    if (!validate(needsSmtp ? "smtp" : "common")) return;
+
     if (provider === "resend" || provider === "auto") setTestingResend(true);
     if (provider === "smtp") setTestingSmtp(true);
+
 
     try {
       // Si on teste SMTP et que l'admin a saisi un nouveau mot de passe, sauvegarder d'abord
@@ -253,6 +348,11 @@ export function EmailConfigManager() {
         ? `Fallback ${payload.provider} utilisé — email envoyé à ${to}`
         : `Test ${payload.provider} réussi — email envoyé à ${to}${payload.duration_ms ? ` (${payload.duration_ms} ms)` : ""}`;
       toast.success(label, { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
+      // Test SMTP OK avec un nouveau mot de passe → vider le champ (déjà persisté en base)
+      if (needsSmtp && smtpPassword) {
+        setSmtpPassword("");
+        setShowPassword(false);
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       setLastTestResult({ success: false, message: msg });
@@ -261,6 +361,7 @@ export function EmailConfigManager() {
       setTestingResend(false);
       setTestingSmtp(false);
     }
+
   };
 
   // Wrappers conservés pour compat avec les boutons existants
@@ -278,18 +379,30 @@ export function EmailConfigManager() {
   // si l'admin en saisit une nouvelle valide OU si elle est déjà en base (heuristique : email_service peut être resend).
   const resendKeyProbablySaved = !resendApiKey || resendApiKey.trim().length === 0;
 
-  const handleSwitchProvider = async (target: "smtp" | "resend") => {
+  /** Demande de bascule : valide puis ouvre la dialog de confirmation. */
+  const requestSwitchProvider = (target: "smtp" | "resend") => {
     if (target === emailService) return;
-    if (target === "smtp" && !smtpReady) {
-      toast.error("Complétez la configuration SMTP avant de basculer");
-      return;
+    if (target === "smtp") {
+      if (!validate("smtp")) return;
+      if (!smtpReady) {
+        toast.error("Complétez la configuration SMTP avant de basculer");
+        return;
+      }
     }
-    if (target === "resend" && !resendKeyProbablySaved && !resendApiKey.trim().startsWith("re_")) {
-      toast.error("Clé API Resend invalide (doit commencer par 're_')");
-      return;
+    if (target === "resend") {
+      // Si l'admin a saisi une nouvelle clé, elle doit être valide.
+      if (resendApiKey && !resendApiKey.trim().startsWith("re_")) {
+        setFieldErrors((prev) => ({ ...prev, resendApiKey: "La clé doit commencer par 're_'" }));
+        toast.error("Clé API Resend invalide (doit commencer par 're_')");
+        return;
+      }
     }
+    setSwitchTarget(target);
+  };
+
+  /** Exécution effective (déclenchée depuis la dialog). */
+  const handleSwitchProvider = async (target: "smtp" | "resend") => {
     setEmailService(target);
-    // Persister immédiatement le changement de provider
     try {
       const { error } = await supabase
         .from("configurations")
@@ -302,8 +415,11 @@ export function EmailConfigManager() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       toast.error("Bascule échouée : " + msg);
+    } finally {
+      setSwitchTarget(null);
     }
   };
+
 
 
   // ============================================================
@@ -392,17 +508,29 @@ export function EmailConfigManager() {
                   placeholder="smtp.gmail.com"
                   value={smtpHost}
                   onChange={(e) => setSmtpHost(e.target.value)}
+                  aria-invalid={!!fieldErrors.smtpHost}
+                  className={cn(fieldErrors.smtpHost && "border-destructive focus-visible:ring-destructive")}
                 />
+                {fieldErrors.smtpHost && (
+                  <p className="text-xs text-destructive">{fieldErrors.smtpHost}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="smtp-port">Port</Label>
                 <Input
                   id="smtp-port"
                   type="number"
+                  min={1}
+                  max={65535}
                   placeholder="587"
                   value={smtpPort}
                   onChange={(e) => setSmtpPort(e.target.value)}
+                  aria-invalid={!!fieldErrors.smtpPort}
+                  className={cn(fieldErrors.smtpPort && "border-destructive focus-visible:ring-destructive")}
                 />
+                {fieldErrors.smtpPort && (
+                  <p className="text-xs text-destructive">{fieldErrors.smtpPort}</p>
+                )}
               </div>
             </div>
 
@@ -410,28 +538,56 @@ export function EmailConfigManager() {
               <Label htmlFor="smtp-user">Utilisateur</Label>
               <Input
                 id="smtp-user"
+                type="email"
                 placeholder="votre@email.com"
                 value={smtpUser}
                 onChange={(e) => setSmtpUser(e.target.value)}
+                aria-invalid={!!fieldErrors.smtpUser}
+                className={cn(fieldErrors.smtpUser && "border-destructive focus-visible:ring-destructive")}
               />
+              {fieldErrors.smtpUser && (
+                <p className="text-xs text-destructive">{fieldErrors.smtpUser}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="smtp-password">
-                Mot de passe
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="smtp-password" className="flex items-center gap-2">
+                  Mot de passe
+                  {smtpConfigId && !smtpPassword && (
+                    <Badge variant="outline" className="text-xs font-normal">Défini</Badge>
+                  )}
+                </Label>
                 {smtpConfigId && (
-                  <span className="ml-2 text-xs text-muted-foreground font-normal">
-                    (laisser vide pour conserver l'existant)
-                  </span>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => {
+                      document.getElementById("smtp-password")?.focus();
+                      toast.info("Saisissez le nouveau mot de passe puis Sauvegarder");
+                    }}
+                  >
+                    Réinitialiser
+                  </Button>
                 )}
-              </Label>
+              </div>
+              {smtpConfigId && (
+                <p className="text-xs text-muted-foreground">
+                  Laisser vide pour conserver le mot de passe existant.
+                </p>
+              )}
               <div className="relative">
                 <Input
                   id="smtp-password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   value={smtpPassword}
                   onChange={(e) => setSmtpPassword(e.target.value)}
+                  aria-invalid={!!fieldErrors.smtpPassword}
+                  className={cn(fieldErrors.smtpPassword && "border-destructive focus-visible:ring-destructive")}
                 />
                 <Button
                   type="button"
@@ -443,7 +599,11 @@ export function EmailConfigManager() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
+              {fieldErrors.smtpPassword && (
+                <p className="text-xs text-destructive">{fieldErrors.smtpPassword}</p>
+              )}
             </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="smtp-encryption">Chiffrement</Label>
@@ -475,7 +635,7 @@ export function EmailConfigManager() {
               </Button>
               {emailService !== "smtp" && (
                 <Button
-                  onClick={() => handleSwitchProvider("smtp")}
+                  onClick={() => requestSwitchProvider("smtp")}
                   disabled={!smtpReady}
                   className="flex-1"
                 >
@@ -531,8 +691,11 @@ export function EmailConfigManager() {
                   id="resend-api-key"
                   type={showResendKey ? "text" : "password"}
                   placeholder="re_xxxxxxxx..."
+                  autoComplete="new-password"
                   value={resendApiKey}
                   onChange={(e) => setResendApiKey(e.target.value)}
+                  aria-invalid={!!fieldErrors.resendApiKey}
+                  className={cn(fieldErrors.resendApiKey && "border-destructive focus-visible:ring-destructive")}
                 />
                 <Button
                   type="button"
@@ -544,6 +707,9 @@ export function EmailConfigManager() {
                   {showResendKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
+              {fieldErrors.resendApiKey && (
+                <p className="text-xs text-destructive">{fieldErrors.resendApiKey}</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Obtenez votre clé sur{" "}
                 <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">
@@ -556,10 +722,8 @@ export function EmailConfigManager() {
               variant="secondary"
               className="w-full"
               onClick={async () => {
-                if (!resendApiKey || !resendApiKey.startsWith("re_")) {
-                  toast.error("Clé API invalide. Elle doit commencer par 're_'");
-                  return;
-                }
+                if (!validate("resend-key")) return;
+
                 setSavingResendKey(true);
                 try {
                   const { error } = await supabase.functions.invoke("update-email-config", {
@@ -603,7 +767,7 @@ export function EmailConfigManager() {
               </Button>
               {emailService !== "resend" && (
                 <Button
-                  onClick={() => handleSwitchProvider("resend")}
+                  onClick={() => requestSwitchProvider("resend")}
                   className="flex-1"
                 >
                   Basculer sur Resend
@@ -633,13 +797,20 @@ export function EmailConfigManager() {
             <Label htmlFor="app-url">URL de l'application</Label>
             <Input
               id="app-url"
+              type="url"
               placeholder="https://votre-domaine.com"
               value={appUrl}
               onChange={(e) => setAppUrl(e.target.value)}
+              aria-invalid={!!fieldErrors.appUrl}
+              className={cn(fieldErrors.appUrl && "border-destructive focus-visible:ring-destructive")}
             />
-            <p className="text-xs text-muted-foreground">
-              Utilisée dans les emails pour les liens de connexion (variable {"{{app_url}}"})
-            </p>
+            {fieldErrors.appUrl ? (
+              <p className="text-xs text-destructive">{fieldErrors.appUrl}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Utilisée dans les emails pour les liens de connexion (variable {"{{app_url}}"})
+              </p>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -648,20 +819,33 @@ export function EmailConfigManager() {
               <Input
                 id="from-name"
                 placeholder="E2D"
+                maxLength={100}
                 value={emailExpediteurNom}
                 onChange={(e) => setEmailExpediteurNom(e.target.value)}
+                aria-invalid={!!fieldErrors.emailExpediteurNom}
+                className={cn(fieldErrors.emailExpediteurNom && "border-destructive focus-visible:ring-destructive")}
               />
+              {fieldErrors.emailExpediteurNom && (
+                <p className="text-xs text-destructive">{fieldErrors.emailExpediteurNom}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="from-email">Email expéditeur</Label>
               <Input
                 id="from-email"
+                type="email"
                 placeholder="contact@e2d.org"
                 value={emailExpediteur}
                 onChange={(e) => setEmailExpediteur(e.target.value)}
+                aria-invalid={!!fieldErrors.emailExpediteur}
+                className={cn(fieldErrors.emailExpediteur && "border-destructive focus-visible:ring-destructive")}
               />
+              {fieldErrors.emailExpediteur && (
+                <p className="text-xs text-destructive">{fieldErrors.emailExpediteur}</p>
+              )}
             </div>
           </div>
+
         </CardContent>
       </Card>
 
@@ -680,8 +864,11 @@ export function EmailConfigManager() {
           Envoyer un email de test
         </Button>
         
-        <Button 
-          onClick={() => saveConfigMutation.mutate()}
+        <Button
+          onClick={() => {
+            if (!validate("all")) return;
+            saveConfigMutation.mutate();
+          }}
           disabled={saveConfigMutation.isPending}
           size="lg"
         >
@@ -691,6 +878,51 @@ export function EmailConfigManager() {
           Sauvegarder les modifications
         </Button>
       </div>
+
+      {/* Dialog de confirmation de bascule de provider */}
+      <AlertDialog open={switchTarget !== null} onOpenChange={(open) => !open && setSwitchTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Basculer les envois d'emails sur {switchTarget === "smtp" ? "SMTP" : "Resend"} ?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <p>
+                  <strong>Impact immédiat :</strong> tous les emails applicatifs (invitations,
+                  réinitialisations de mot de passe, notifications, compte-rendus de réunion,
+                  rappels de cotisation…) partiront désormais via{" "}
+                  <strong>{switchTarget === "smtp" ? "SMTP" : "Resend"}</strong>.
+                </p>
+                <p>
+                  Le provider précédent (
+                  <strong>{switchTarget === "smtp" ? "Resend" : "SMTP"}</strong>) reste
+                  configuré et sert de <strong>fallback automatique</strong> si le principal
+                  échoue.
+                </p>
+                {switchTarget === "resend" ? (
+                  <p className="text-amber-700 dark:text-amber-300">
+                    ⚠ Sans domaine vérifié dans Resend, seuls les emails vers l'adresse du
+                    propriétaire du compte Resend aboutiront.
+                  </p>
+                ) : (
+                  <p className="text-amber-700 dark:text-amber-300">
+                    ⚠ Assurez-vous d'avoir testé la connexion SMTP au moins une fois avant de
+                    basculer en production.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={() => switchTarget && handleSwitchProvider(switchTarget)}>
+              Confirmer la bascule
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+

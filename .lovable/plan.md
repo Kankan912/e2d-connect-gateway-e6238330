@@ -1,79 +1,74 @@
-# Refonte UI — Configuration email (SMTP ⇄ Resend)
+# Confirmation de bascule + validations client email
 
-## Objectif
+## 1. Dialog de confirmation avant bascule SMTP ↔ Resend
 
-Rebâtir l'UI de `EmailConfigManager.tsx` (onglet **Email** dans `/dashboard/admin/e2d-config`) en un layout deux colonnes qui affiche **SMTP et Resend côte à côte en permanence**, avec un badge « Actif » sur le provider en cours et un bouton **Basculer sur ce provider** explicite dans la colonne inactive.
+Le bouton « Basculer sur SMTP / Resend » ne persiste plus le changement immédiatement. Il ouvre d'abord un `AlertDialog` (shadcn) qui explique l'impact :
 
-Aucun changement backend, aucune migration, aucun renommage de champ en base. Toute la logique existante (lecture `configurations`, `smtp_config`, mutations, tests, fallback) est réutilisée telle quelle.
+- Le titre nomme le provider cible (`Basculer les envois d'emails sur Resend ?`).
+- La description liste concrètement :
+  - **Tous les emails applicatifs** (invitations, réinitialisations, notifications, compte-rendus, rappels de cotisation) partiront désormais via ce provider.
+  - Les envois en cours de traitement (non encore consommés dans la file) utiliseront le nouveau provider.
+  - Le provider précédent reste configuré et sert de **fallback automatique** en cas d'échec.
+  - Pour Resend sans domaine vérifié : rappel que seuls les envois vers l'email du propriétaire du compte aboutiront.
+  - Pour SMTP : rappel qu'il faut avoir testé la connexion au moins une fois.
+- Deux actions : `Annuler` / `Confirmer la bascule`. Confirmation exécute l'`handleSwitchProvider` actuel.
 
-## Design cible
+Toast succès inchangé (« Provider actif : … »).
 
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│ Bandeau statut : ✔ Configuration valide — Provider actif : SMTP     │
-│                                              [ Tester + fallback ]   │
-└──────────────────────────────────────────────────────────────────────┘
+## 2. Validation client des champs
 
-┌─────────────────── SMTP ─────────────┐  ┌────────────── Resend ────────┐
-│ [Badge vert : ACTIF]                 │  │ [Badge gris : En réserve]    │
-│                                      │  │                              │
-│ Serveur SMTP     [smtp.gmail.com  ]  │  │ Clé API   [re_xxxxx… 👁]     │
-│ Port             [587             ]  │  │           Enregistrer la clé │
-│ Utilisateur      [zpekinho@…      ]  │  │                              │
-│ Mot de passe     [•••••••• 👁     ]  │  │ Info : mode test = envoi     │
-│ Chiffrement      [ TLS ▼          ]  │  │ vers propriétaire uniquement │
-│                                      │  │ tant qu'aucun domaine n'est  │
-│ [ Tester SMTP ]                      │  │ vérifié.                     │
-│                                      │  │                              │
-│                                      │  │ [ Tester Resend ]            │
-│                                      │  │ [ Basculer sur Resend ]      │
-└──────────────────────────────────────┘  └──────────────────────────────┘
+Introduction d'un schéma `zod` local (`emailConfigSchema`) validé au moment de :
+- clic sur **Sauvegarder les modifications** (bouton global)
+- clic sur **Tester …** (SMTP ou Resend) — validation partielle du provider concerné
+- clic sur **Basculer sur …** (avant d'ouvrir le dialog)
 
-┌──────────────── Paramètres communs ──────────────────────────────────┐
-│ URL de l'application  [https://…]                                    │
-│ Nom expéditeur [E2D]      Email expéditeur [contact@…]               │
-└──────────────────────────────────────────────────────────────────────┘
+Règles :
 
-                                       [ Envoyer email de test ]  [ Sauvegarder ]
-```
+| Champ | Règle |
+|---|---|
+| `emailExpediteur` | requis, email valide (`z.string().trim().email()`), ≤ 255 car. |
+| `emailExpediteurNom` | requis, non vide, ≤ 100 car. |
+| `appUrl` | requis, URL valide http/https (`z.string().url().regex(/^https?:\/\//)`), ≤ 500 car. |
+| `smtpHost` (si SMTP actif ou test SMTP) | requis, non vide, ≤ 255 car., pas d'espaces |
+| `smtpPort` | entier `1..65535` (`z.coerce.number().int().min(1).max(65535)`) |
+| `smtpUser` | requis, email valide, ≤ 255 car. |
+| `smtpPassword` | requis uniquement si **nouvelle** config (pas de `smtpConfigId`) ; sinon optionnel (garde l'existant) |
+| `smtpEncryption` | `tls` \| `ssl` \| `none` |
+| `resendApiKey` (bouton Enregistrer la clé) | doit commencer par `re_`, ≥ 20 car. |
 
-## Comportements
+En cas d'échec :
+- Toast erreur avec le premier message d'erreur explicite.
+- Le champ fautif reçoit une bordure `border-destructive` et un texte d'aide `<p className="text-xs text-destructive">…</p>` sous l'input.
+- État local `fieldErrors: Record<string, string>` remis à zéro à chaque nouvelle tentative de sauvegarde/test.
 
-1. **Toujours afficher les deux colonnes** — les champs de chaque provider restent modifiables même quand il est inactif, pour permettre de préparer la bascule.
-2. **Badge d'état par colonne** :
-   - Provider actif → badge vert `Actif` + bordure `border-primary`.
-   - Provider inactif → badge gris `En réserve` + bordure neutre.
-3. **Bouton « Basculer sur ce provider »** :
-   - Visible uniquement dans la colonne inactive.
-   - Action : `setEmailService(...)` + appel immédiat de `saveConfigMutation` (persiste dans `configurations.email_service`) + toast confirmant la bascule.
-   - Désactivé tant que les champs minimaux du provider cible ne sont pas remplis (SMTP : host/user, Resend : clé commençant par `re_`).
-4. **Boutons de test conservés** dans chaque colonne (`Tester SMTP`, `Tester Resend`) + le bouton global `Tester la configuration` (auto + fallback) reste dans le bandeau supérieur.
-5. **Ordre visuel** : SMTP à gauche, Resend à droite (SMTP est actuellement le provider actif ; on met en avant la config qui compte au quotidien).
-6. **Responsive** : sur mobile (`< md`), les deux colonnes s'empilent, badge en haut de chaque carte, boutons pleine largeur.
+## 3. Masquage & rechargement du mot de passe SMTP
 
-## Détails techniques
+Actuellement le mot de passe SMTP :
+- n'est jamais préchargé depuis la base (ok, déjà en place).
+- reste en mémoire après sauvegarde et le champ garde la valeur en clair (masquée seulement par `type=password`).
 
-- Un seul fichier touché : `src/components/config/EmailConfigManager.tsx`.
-- Retirer le `RadioGroup` du bloc « Service d'envoi » et le remplacer par les cartes SMTP/Resend affichées en permanence dans `grid gap-6 lg:grid-cols-2`.
-- Nouveau composant local `ProviderCard` (dans le même fichier) qui encapsule : badge, contenu spécifique (children), boutons de test / bascule. Isole la duplication badge + bouton bascule.
-- Utiliser `Badge` de `@/components/ui/badge` (déjà présent dans le design system).
-- La logique métier existante (`saveConfigMutation`, `testSmtpConnection`, `testResendConnection`, `runConfigurationTest`, chargement, fallback, gestion `email_mode`) est **conservée à l'identique** — c'est une refonte de présentation.
-- Nouveau helper local `handleSwitchProvider(target: "smtp" | "resend")` qui met à jour l'état + lance `saveConfigMutation.mutate()` puis toast.
-- Aucun changement à `email-utils.ts`, aux edge functions, ni aux tables.
+Modifications :
+- **Après succès** de `saveConfigMutation` ou de `runConfigurationTest('smtp'|'auto')` avec mot de passe fraîchement saisi : `setSmtpPassword("")` + `setShowPassword(false)` pour re-masquer visuellement.
+- Le label du champ affiche déjà « laisser vide pour conserver l'existant » ; renforcer avec un petit indicateur `<Badge variant="outline">Défini</Badge>` à droite du label lorsque `smtpConfigId` existe et que `smtpPassword === ""`, pour indiquer qu'un mot de passe est en base sans le divulguer.
+- Ajout d'un lien « Réinitialiser le mot de passe SMTP » à côté du champ : simple `<Button variant="link" size="sm">` qui met le focus dans le champ et affiche un toast d'aide (« Saisissez le nouveau mot de passe puis Sauvegarder ») — pas d'appel API.
+
+## Fichier touché
+
+- `src/components/config/EmailConfigManager.tsx` (unique).
+- Ajout imports : `AlertDialog`, `AlertDialogAction`, `AlertDialogCancel`, `AlertDialogContent`, `AlertDialogDescription`, `AlertDialogFooter`, `AlertDialogHeader`, `AlertDialogTitle`, `AlertDialogTrigger` depuis `@/components/ui/alert-dialog` ; `z` depuis `zod` (déjà dans les deps).
 
 ## Vérification
 
-- Typecheck OK (`tsgo`).
-- Sur `/dashboard/admin/e2d-config` → onglet Email :
-  - Les deux colonnes s'affichent en même temps.
-  - Badge « Actif » sur SMTP (car `email_service = 'smtp'` en base).
-  - Bouton « Basculer sur Resend » visible dans la colonne Resend, désactivé si le champ clé est vide.
-  - Les 3 boutons de test fonctionnent comme avant.
-  - Sauvegarde globale conserve tous les champs.
+- Typecheck OK.
+- Clic sur `Basculer sur Resend` avec provider = SMTP → dialog s'affiche avec impact ; `Annuler` ne change rien ; `Confirmer` bascule et affiche le toast.
+- Saisir un port `70000` puis Tester SMTP → erreur inline + toast.
+- Saisir `email_expediteur = "pas un email"` puis Sauvegarder → erreur inline + toast, aucune requête envoyée.
+- Après Sauvegarder avec nouveau mot de passe SMTP → champ mot de passe revient à vide + `type=password`.
+- Le mot de passe existant en base n'est jamais renvoyé au client (déjà le cas).
 
 ## Hors périmètre
 
-- Pas de nouvelle route ni d'entrée sidebar (décision utilisateur : refonte in-place).
-- Pas de touche à la clé Resend en base (décision utilisateur du Lot 1.5).
-- Pas de modification schéma / RLS / edge functions.
-- Pas de changement du logo, du thème ou des composants globaux.
+- Pas de changement des edge functions / RLS / schéma.
+- Pas de modification de la logique de fallback ni des tests.
+- Pas de renommage des champs base.
+- Pas de rotation ni de touche à la clé Resend actuelle en base.
