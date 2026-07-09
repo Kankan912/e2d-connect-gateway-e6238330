@@ -85,7 +85,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string
           email: string
           id?: string
@@ -163,7 +163,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          association_id: string
+          association_id?: string
           beneficiaire_id: string
           contexte_aide?: string
           created_at?: string
@@ -253,7 +253,7 @@ export type Database = {
           nom: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string
           delai_remboursement?: number | null
           description?: string | null
@@ -298,7 +298,7 @@ export type Database = {
           action: string
           aide_id: string
           ancien_statut?: string | null
-          association_id: string
+          association_id?: string
           commentaire?: string | null
           created_at?: string | null
           id?: string
@@ -519,7 +519,7 @@ export type Database = {
         }
         Insert: {
           action: string
-          association_id: string
+          association_id?: string
           created_at?: string
           deductions?: Json | null
           effectue_par?: string | null
@@ -644,7 +644,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string
           date_prevue?: string | null
           exercice_id: string
@@ -1005,7 +1005,7 @@ export type Database = {
           type_cotisation_id: string | null
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string | null
           date_paiement?: string | null
           exercice_id?: string | null
@@ -1200,7 +1200,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
-          association_id: string
+          association_id?: string
           created_at?: string
           exercice_id: string
           id?: string
@@ -1322,7 +1322,7 @@ export type Database = {
           type_adhesion: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string | null
           email: string
           id?: string
@@ -1382,7 +1382,7 @@ export type Database = {
         }
         Insert: {
           amount: number
-          association_id: string
+          association_id?: string
           bank_transfer_reference?: string | null
           created_at?: string
           currency?: string
@@ -1489,7 +1489,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string
           date_depot?: string
           exercice_id?: string | null
@@ -1559,7 +1559,7 @@ export type Database = {
           taux_interet_prets: number | null
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string
           croissance_fond_caisse?: number | null
           date_debut: string
@@ -1792,7 +1792,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
-          association_id: string
+          association_id?: string
           beneficiaire_id?: string | null
           categorie?: string | null
           created_at?: string
@@ -1984,7 +1984,7 @@ export type Database = {
           urgence: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           avaliste_id?: string | null
           avaliste_motif_refus?: string | null
           avaliste_self?: boolean
@@ -2360,7 +2360,7 @@ export type Database = {
         }
         Insert: {
           assists?: number
-          association_id: string
+          association_id?: string
           created_at?: string
           goals?: number
           id?: string
@@ -2435,7 +2435,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string | null
           date_inscription?: string | null
           email?: string | null
@@ -2625,7 +2625,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           body?: string | null
           created_at?: string
           id?: string
@@ -3718,7 +3718,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           avaliste_id?: string | null
           capital_paye?: number | null
           created_at?: string
@@ -3877,7 +3877,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string
           date_paiement?: string
           id?: string
@@ -3934,7 +3934,7 @@ export type Database = {
           validee_par: string | null
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string | null
           created_by?: string | null
           current_step?: number | null
@@ -4001,7 +4001,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string | null
           date_inscription?: string | null
           email?: string | null
@@ -4161,7 +4161,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           calendrier_id?: string | null
           config_id?: string | null
           created_at?: string
@@ -4275,7 +4275,7 @@ export type Database = {
           type_reunion: string | null
         }
         Insert: {
-          association_id: string
+          association_id?: string
           beneficiaire_id?: string | null
           compte_rendu_url?: string | null
           created_at?: string
@@ -4425,7 +4425,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           created_at?: string
           heure_arrivee?: string | null
           id?: string
@@ -4498,7 +4498,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           contexte?: string | null
           created_at?: string
           date_levee?: string | null
@@ -4650,7 +4650,7 @@ export type Database = {
           type_sanction_id: string
         }
         Insert: {
-          association_id: string
+          association_id?: string
           contexte_sanction?: string | null
           created_at?: string
           date_sanction?: string
@@ -5916,6 +5916,7 @@ export type Database = {
         Returns: string
       }
       current_membre_id: { Args: never; Returns: string }
+      default_association_id: { Args: never; Returns: string }
       delete_loan_validation_step: { Args: { _id: string }; Returns: boolean }
       delete_pret_reconduction_validation_step: {
         Args: { _id: string }
