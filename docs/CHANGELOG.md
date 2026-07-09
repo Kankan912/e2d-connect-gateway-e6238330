@@ -58,3 +58,10 @@ Récapitulatif des 8 lots livrés lors de la refonte d'avril 2026.
   - Buckets publics : intentionnels (photos, assets site).
   - SECURITY DEFINER exposés : nécessaires au fonctionnement RLS.
   - Auth (OTP, leaked password, version Postgres) : à régler côté dashboard Supabase.
+
+## Refonte Juillet 2026 — Lot 1.4 — LoadingButton + formatFCFA
+- Nouveau composant `LoadingButton` (`src/components/ui/loading-button.tsx`) : wrapper `Button` + `Loader2`, prop `loading` / `loadingText`.
+- Migration ciblée des formulaires à forte fréquence : `CompteRenduForm`, `CotisationSaisieForm`, `E2DMatchForm`, `E2DMatchEditForm`, `ReunionForm`, `MemberForm`, `CreateUserDialog`.
+- Centralisation du formatage FCFA via `formatFCFA()` (`src/lib/utils.ts`) dans 7 fichiers à forte densité : `RapportsTabsContent`, `compte-rendu-pdf`, `CompteRenduViewer`, `rapports-export`, `CotisationsCumulAnnuel`, `AidesAdmin`, `ClotureReunionModal`.
+- Audit liens internes `<a href="/…">` : 0 occurrence détectée, aucun correctif nécessaire (usage systématique de `useNavigate` / `<Link>`).
+
