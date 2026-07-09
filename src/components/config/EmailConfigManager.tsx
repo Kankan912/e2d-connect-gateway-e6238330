@@ -50,6 +50,11 @@ export function EmailConfigManager() {
   const [smtpEncryption, setSmtpEncryption] = useState<"tls" | "ssl" | "none">("tls");
   const [smtpConfigId, setSmtpConfigId] = useState<string | null>(null);
 
+  // Validation & bascule
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [switchTarget, setSwitchTarget] = useState<"smtp" | "resend" | null>(null);
+
+
   // Fetch configurations
   const { data: configs, isLoading: configsLoading } = useQuery({
     queryKey: ["email-configurations"],
