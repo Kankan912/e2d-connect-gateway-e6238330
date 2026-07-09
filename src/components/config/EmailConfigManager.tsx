@@ -719,7 +719,7 @@ export function EmailConfigManager() {
               </Button>
               {emailService !== "resend" && (
                 <Button
-                  onClick={() => handleSwitchProvider("resend")}
+                  onClick={() => requestSwitchProvider("resend")}
                   className="flex-1"
                 >
                   Basculer sur Resend
