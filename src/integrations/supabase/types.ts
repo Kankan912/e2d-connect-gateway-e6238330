@@ -6674,6 +6674,15 @@ export type Database = {
       }
     }
     Functions: {
+      _apply_tenant_rls: {
+        Args: {
+          _admin_write?: boolean
+          _public_select?: boolean
+          _public_select_cond?: string
+          _table: string
+        }
+        Returns: undefined
+      }
       audit_auth_membres_sync: {
         Args: never
         Returns: {
