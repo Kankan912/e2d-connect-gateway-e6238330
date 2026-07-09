@@ -348,6 +348,11 @@ export function EmailConfigManager() {
         ? `Fallback ${payload.provider} utilisé — email envoyé à ${to}`
         : `Test ${payload.provider} réussi — email envoyé à ${to}${payload.duration_ms ? ` (${payload.duration_ms} ms)` : ""}`;
       toast.success(label, { icon: <CheckCircle className="h-4 w-4 text-green-500" /> });
+      // Test SMTP OK avec un nouveau mot de passe → vider le champ (déjà persisté en base)
+      if (needsSmtp && smtpPassword) {
+        setSmtpPassword("");
+        setShowPassword(false);
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Erreur inconnue";
       setLastTestResult({ success: false, message: msg });
@@ -356,6 +361,7 @@ export function EmailConfigManager() {
       setTestingResend(false);
       setTestingSmtp(false);
     }
+
   };
 
   // Wrappers conservés pour compat avec les boutons existants
