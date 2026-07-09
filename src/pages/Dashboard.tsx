@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PermissionRoute } from "@/components/auth/PermissionRoute";
+import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
 import { PageLoader, SuspenseFallback } from "@/components/ui/page-loader";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
@@ -78,6 +79,9 @@ const ConfigAdmin = lazyWithRetry(() => import("./admin/site/ConfigAdmin"));
 const AboutAdmin = lazyWithRetry(() => import("./admin/site/AboutAdmin"));
 const MessagesAdmin = lazyWithRetry(() => import("./admin/site/MessagesAdmin"));
 const ImagesAdmin = lazyWithRetry(() => import("./admin/site/ImagesAdmin"));
+
+// Admin Pages - Platform (super_admin only)
+const AssociationsPlatformAdmin = lazyWithRetry(() => import("./admin/platform/AssociationsPlatformAdmin"));
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -174,6 +178,9 @@ const Dashboard = () => {
           <Route path="/admin/site/about" element={<PermissionRoute resource="site" permission="write"><ErrorBoundary fallbackTitle="Erreur - À propos"><AboutAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/site/messages" element={<PermissionRoute resource="site" permission="write"><ErrorBoundary fallbackTitle="Erreur - Messages"><MessagesAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/site/images" element={<PermissionRoute resource="site" permission="write"><ErrorBoundary fallbackTitle="Erreur - Images"><ImagesAdmin /></ErrorBoundary></PermissionRoute>} />
+
+          {/* ==================== ROUTES PLATEFORME (super_admin) ==================== */}
+          <Route path="/admin/platform/associations" element={<SuperAdminRoute><ErrorBoundary fallbackTitle="Erreur - Associations"><AssociationsPlatformAdmin /></ErrorBoundary></SuperAdminRoute>} />
         </Routes>
       </Suspense>
     </DashboardLayout>
