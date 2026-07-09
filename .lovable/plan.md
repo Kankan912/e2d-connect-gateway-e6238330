@@ -1,89 +1,84 @@
-# Lot 1.4 — LoadingButton + centralisation formatFCFA + audit liens
+# Revue Lot 1.2 — Régression détectée
 
-## Constat de l'audit préalable
+## Contexte
 
-| Item | État | Décision |
-|---|---|---|
-| Liens internes `<a href="/…">` (au lieu de `<Link>` react-router) | **0 occurrence** dans `src/` | Rien à corriger ⇒ hors périmètre |
-| Composant `LoadingButton` mutualisé | **N'existe pas**. ~40 fichiers répètent `<Button disabled={mutation.isPending}>{isPending ? "…" : "…"}</Button>` | À créer + migration ciblée |
-| Formatage `FCFA` manuel (`toLocaleString() + " FCFA"`, `${n} FCFA`, etc.) | **>30 fichiers** avec formatage inline alors que `formatFCFA` existe déjà dans `src/lib/utils.ts` | Migration ciblée |
+Lot 1.2 a refactoré `supabase/functions/create-user-account` avec :
+- Schéma Zod strict : `{ email, nom, prenom, telephone, password, roleIds, membreId }`
+- Réponse standardisée : `{ success, code, message, ... }` via `_shared/errors.ts`
+- Provision atomique via RPC `provision_user_account` (SECURITY DEFINER, service_role)
 
-## Livrables
+**Deux appelants front** invoquent cette fonction :
 
-### 1. Nouveau composant `src/components/ui/loading-button.tsx`
+| Fichier | État |
+|---|---|
+| `src/components/admin/CreateUserDialog.tsx` | ✅ Migré (payload + gestion `ApiResponse`) |
+| `src/components/UserMemberLinkManager.tsx` | ❌ **Oublié** — payload legacy, incompatible |
 
-Wrapper autour du `Button` shadcn existant :
+## Bug
 
-```tsx
-<LoadingButton
-  loading={mutation.isPending}
-  loadingText="Enregistrement..."
-  // ...props Button standard
->
-  Enregistrer
-</LoadingButton>
+`UserMemberLinkManager.tsx` (l.191-209) envoie encore l'ancien payload :
+
+```ts
+body: {
+  email: newAccountEmail,
+  memberId: selectedMember.id,          // ❌ rejeté (schema attend membreId)
+  memberNom: selectedMember.nom,        // ❌ inconnu (schema attend nom au top-level)
+  memberPrenom: selectedMember.prenom,  // ❌ inconnu (schema attend prenom)
+  memberTelephone: selectedMember.telephone, // ❌ inconnu (schema attend telephone)
+  tempPassword: tempPassword || undefined,   // ❌ inconnu (schema attend password)
+}
 ```
 
-- Affiche `Loader2` animé (`animate-spin`) + `loadingText` (facultatif, sinon garde le children).
-- Force `disabled` si `loading || props.disabled`.
-- Forwarding complet de `ButtonProps` via `React.forwardRef` (pour `asChild`, `variant`, `size`).
-- **Zéro classe hardcodée** : hérite du design system via `Button`.
+Conséquence : **toute création de compte depuis l'écran "Membres → Créer un compte" retourne 400 `VALIDATION_ERROR`** ("nom obligatoire", "prenom obligatoire").
 
-### 2. Migration ciblée `LoadingButton` (périmètre restreint)
+De plus la gestion d'erreur lit `data.error` (ancienne forme), alors que la nouvelle réponse expose `data.message` / `data.code`. Le message d'erreur affiché à l'utilisateur est donc `undefined` → fallback générique inutile.
 
-Uniquement les formulaires admin/actions critiques déjà repérés :
+## Correction
 
-- `src/components/forms/CompteRenduForm.tsx`
-- `src/components/forms/CotisationSaisieForm.tsx`
-- `src/components/forms/E2DMatchForm.tsx`
-- `src/components/forms/E2DMatchEditForm.tsx`
-- `src/components/forms/ReunionForm.tsx`
-- `src/components/forms/MemberForm.tsx` (bouton submit final)
-- `src/components/admin/CreateUserDialog.tsx` (les 2 boutons : créer + envoyer identifiants, cohérence avec Lot 1.3)
+### Fichier : `src/components/UserMemberLinkManager.tsx`
 
-Pas de migration en masse sur les 40+ occurrences — on privilégie les surfaces à forte fréquence de clic. Les autres suivront au fil des touches ultérieures.
+1. **Remapper le payload** au contrat Zod actuel :
+   ```ts
+   body: {
+     email: newAccountEmail.trim().toLowerCase(),
+     nom: selectedMember.nom,
+     prenom: selectedMember.prenom,
+     telephone: selectedMember.telephone ?? null,
+     password: tempPassword || undefined,   // laisse l'edge générer si vide
+     membreId: selectedMember.id,           // liaison membre ↔ compte
+   }
+   ```
 
-### 3. Centralisation `formatFCFA`
+2. **Gérer la nouvelle réponse** `ApiResponse` via l'utilitaire commun :
+   - Utiliser `showError(resp, "…", error)` de `@/lib/errors` (déjà employé dans `CreateUserDialog`), ou à défaut lire `resp?.message` / `resp?.code` puis passer par `translateErrorCode`.
+   - Traiter le cas `error && !resp` (erreur réseau pure) séparément.
+   - Ne conserver un `toast success` que si `resp.success === true`.
 
-Remplacer les patterns inline dans les fichiers à plus forte densité :
+3. **Invalider les caches concernés** après succès :
+   - `['members-with-accounts']` (déjà présent)
+   - Ajouter `['utilisateurs']` et `['membres']` pour cohérence avec `CreateUserDialog`.
 
-- `src/pages/admin/_components/RapportsTabsContent.tsx` (17 occ.)
-- `src/lib/compte-rendu-pdf.ts` (10)
-- `src/components/CompteRenduViewer.tsx` (10)
-- `src/lib/rapports-export.ts` (6)
-- `src/components/CotisationsCumulAnnuel.tsx` (6)
-- `src/pages/admin/AidesAdmin.tsx` (5)
-- `src/components/ClotureReunionModal.tsx` (5)
+4. **(Nice-to-have)** Extraire le mot de passe retourné (`resp.tempPassword`) et l'afficher/copier pour l'admin, comme le fait déjà `CreateUserDialog`. Sinon garder le comportement actuel (email d'identifiants envoyé séparément).
 
-Import : `import { formatFCFA } from "@/lib/utils"`.
+### Hors périmètre
 
-Règle appliquée (déjà dans `formatFCFA` — memory Core : *FCFA n'admet aucune décimale*) : `Math.floor(n)` + espace insécable géré par `toLocaleString("fr-FR")`.
+- Pas de changement à l'edge function ni à la migration RPC (déjà corrects).
+- Pas de refactor visuel de `UserMemberLinkManager` — uniquement le handler `handleCreateAccount`.
+- Pas de migration DB.
 
-### 4. Rien à modifier pour les liens internes
+## Vérification
 
-L'audit ne remonte aucune ancre `<a href="/route">` interne. Les composants utilisent déjà `useNavigate()` / `<Link>` de `react-router-dom`. On documente l'audit dans le CHANGELOG mais on ne touche pas au code.
+- `tsgo` (typecheck) propre.
+- Test manuel : depuis l'admin, sur un membre sans compte, cliquer "Créer un compte" → succès + membre lié dans `membres.user_id`.
+- Vérifier dans `audit_logs` la présence de l'entrée `user_provisioned`.
 
 ## Fichiers touchés
 
 | Fichier | Action |
 |---|---|
-| `src/components/ui/loading-button.tsx` | **création** |
-| 7 fichiers de formulaires listés ci-dessus | migration `<Button>` → `<LoadingButton>` |
-| 7 fichiers listés ci-dessus | migration inline → `formatFCFA()` |
-| `docs/CHANGELOG.md` | entrée Lot 1.4 |
-
-## Hors périmètre
-
-- Migration exhaustive des ~40 `<Button disabled={isPending}>` restants (pattern OK tant qu'il fonctionne, on migre à la demande).
-- Refactor des composants `PDF` non listés ci-dessus (`pret-pdf-export.ts`, `membre-pdf.ts` : formats déjà normalisés).
-- Support d'autres devises (EUR/USD déjà géré par `formatCurrency`).
-
-## Validation
-
-- `tsgo` (typecheck) propre.
-- `bunx vitest run src/lib/utils.test.ts` (déjà couvert : formatFCFA + décimales).
-- Test visuel : ouvrir un formulaire migré, cliquer Submit → loader + texte "…", bouton disabled.
+| `src/components/UserMemberLinkManager.tsx` | correction du handler `handleCreateAccount` |
+| `docs/CHANGELOG.md` | ajout d'une entrée "Lot 1.2 — correctif régression" |
 
 ## Rollback
 
-`git restore` sur les 14 fichiers + `rm src/components/ui/loading-button.tsx`. Aucune migration DB, aucune edge function touchée.
+`git restore` sur les 2 fichiers. Aucun changement DB.
