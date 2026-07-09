@@ -797,13 +797,20 @@ export function EmailConfigManager() {
             <Label htmlFor="app-url">URL de l'application</Label>
             <Input
               id="app-url"
+              type="url"
               placeholder="https://votre-domaine.com"
               value={appUrl}
               onChange={(e) => setAppUrl(e.target.value)}
+              aria-invalid={!!fieldErrors.appUrl}
+              className={cn(fieldErrors.appUrl && "border-destructive focus-visible:ring-destructive")}
             />
-            <p className="text-xs text-muted-foreground">
-              Utilisée dans les emails pour les liens de connexion (variable {"{{app_url}}"})
-            </p>
+            {fieldErrors.appUrl ? (
+              <p className="text-xs text-destructive">{fieldErrors.appUrl}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Utilisée dans les emails pour les liens de connexion (variable {"{{app_url}}"})
+              </p>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -812,20 +819,33 @@ export function EmailConfigManager() {
               <Input
                 id="from-name"
                 placeholder="E2D"
+                maxLength={100}
                 value={emailExpediteurNom}
                 onChange={(e) => setEmailExpediteurNom(e.target.value)}
+                aria-invalid={!!fieldErrors.emailExpediteurNom}
+                className={cn(fieldErrors.emailExpediteurNom && "border-destructive focus-visible:ring-destructive")}
               />
+              {fieldErrors.emailExpediteurNom && (
+                <p className="text-xs text-destructive">{fieldErrors.emailExpediteurNom}</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="from-email">Email expéditeur</Label>
               <Input
                 id="from-email"
+                type="email"
                 placeholder="contact@e2d.org"
                 value={emailExpediteur}
                 onChange={(e) => setEmailExpediteur(e.target.value)}
+                aria-invalid={!!fieldErrors.emailExpediteur}
+                className={cn(fieldErrors.emailExpediteur && "border-destructive focus-visible:ring-destructive")}
               />
+              {fieldErrors.emailExpediteur && (
+                <p className="text-xs text-destructive">{fieldErrors.emailExpediteur}</p>
+              )}
             </div>
           </div>
+
         </CardContent>
       </Card>
 
