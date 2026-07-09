@@ -24,6 +24,18 @@
 | 3.5 | Filtre association dans `PermissionsAdmin` | ✅ Terminée |
 | 3.6 | Documentation (plan, changelog, mémoire) | ✅ Terminée |
 
+## Phase 4 — Sous-phases
+
+| # | Sous-phase | État |
+|---|---|---|
+| 4.1 | Cartographie du domaine finance (`docs/FINANCE_DOMAIN_MAP.md`) | ✅ Terminée |
+| 4.2 | FinancialEngine SQL : `record_caisse_movement()` + `get_solde_empruntable()` | ✅ Terminée |
+| 4.3 | Services TypeScript `src/domain/finance/` (LoanService, CotisationService, AideService, EpargneService, SanctionService, BeneficiaireService) | ⏳ À faire |
+| 4.4 | Migration progressive des hooks + réécriture interne des triggers pour appeler la RPC | ⏳ À faire |
+| 4.5 | Vue matérialisée `caisse_soldes_snapshot` | ⏳ À faire |
+| 4.6 | Tests Vitest domaine finance + `docs/FINANCIAL_ENGINE.md` + `mem://` | ⏳ À faire |
+
 ## Prochaine action
 
-Démarrer la **Phase 4** : Domain Services & FinancialEngine (extraction des règles métier finance dans des services testables, orchestration centralisée des mouvements de caisse, matérialisation des soldes).
+Démarrer la **sous-phase 4.3** : création des services TypeScript sous `src/domain/finance/`, en commençant par `LoanService` (règles d'intérêts, statuts, seuil empruntable via la nouvelle RPC).
+
