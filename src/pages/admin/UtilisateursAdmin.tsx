@@ -411,15 +411,22 @@ export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdmi
                           Forcer changement MDP
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleResendCredentials(user.id)}
-                          disabled={resendingId === user.id}
+                          onClick={() => handleSendCredentials(user)}
+                          disabled={isSendPending(user.id) || user.password_changed === true}
                         >
-                          {resendingId === user.id ? (
+                          {isSendPending(user.id) ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           ) : (
                             <Mail className="h-4 w-4 mr-2" />
                           )}
                           Renvoyer les identifiants
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setResetTarget(user)}
+                          disabled={isSendPending(user.id)}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Réinitialiser mot de passe
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {user.status === "actif" ? (
