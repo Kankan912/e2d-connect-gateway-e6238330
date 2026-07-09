@@ -1,24 +1,22 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendEmailAuto } from "../_shared/email-utils.ts";
+import {
+  AppError,
+  ExternalServiceError,
+  ForbiddenError,
+  InternalError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
+  errorResponse,
+  successResponse,
+} from "../_shared/errors.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-type Code = "EMAIL_SEND_FAILED" | "INVALID_DATA" | "SERVER_ERROR" | "FORBIDDEN" | "UNAUTHENTICATED" | "USER_NOT_FOUND";
-
-function ok(d: Record<string, unknown> = {}) {
-  return new Response(JSON.stringify({ success: true, ...d }), {
-    status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-function fail(code: Code, message: string, status: number) {
-  return new Response(JSON.stringify({ success: false, code, message }), {
-    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
 
 function generatePassword(): string {
   const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -42,24 +40,23 @@ serve(async (req) => {
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return fail("UNAUTHENTICATED", "Authentification requise", 401);
+    if (!authHeader) throw new UnauthorizedError();
 
     const supaCaller = createClient(SUPABASE_URL, ANON, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user: caller } } = await supaCaller.auth.getUser();
-    if (!caller) return fail("UNAUTHENTICATED", "Session invalide", 401);
+    if (!caller) throw new UnauthorizedError("Session invalide");
 
     const { data: isAdmin } = await supaCaller.rpc("is_admin");
-    if (!isAdmin) return fail("FORBIDDEN", "Accès réservé aux administrateurs", 403);
-
+    if (!isAdmin) throw new ForbiddenError("Accès réservé aux administrateurs");
 
     let body: Body;
     try { body = await req.json(); }
-    catch { return fail("INVALID_DATA", "Corps de requête invalide", 400); }
+    catch { throw new ValidationError("Corps de requête invalide"); }
 
     const userId = body.userId?.trim();
-    if (!userId) return fail("INVALID_DATA", "userId requis", 400);
+    if (!userId) throw new ValidationError("userId requis");
 
     const supaAdmin = createClient(SUPABASE_URL, SERVICE, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -68,8 +65,8 @@ serve(async (req) => {
     const { data: profile, error: pErr } = await supaAdmin
       .from("profiles").select("id, email, nom, prenom").eq("id", userId).maybeSingle();
     if (pErr || !profile?.email) {
-      console.error("[send-user-credentials] profile not found:", pErr);
-      return fail("USER_NOT_FOUND", "Utilisateur introuvable", 404);
+      console.warn("[send-user-credentials] profile not found:", pErr);
+      throw new NotFoundError("Utilisateur introuvable");
     }
 
     let password = body.password;
@@ -79,18 +76,19 @@ serve(async (req) => {
       const { error: updErr } = await supaAdmin.auth.admin.updateUserById(userId, { password });
       if (updErr) {
         console.error("[send-user-credentials] reset password failed:", updErr);
-        return fail("SERVER_ERROR", "Impossible de réinitialiser le mot de passe", 500);
+        throw new InternalError("Impossible de réinitialiser le mot de passe");
       }
       await supaAdmin.from("profiles").update({
         must_change_password: true, password_changed: false,
       }).eq("id", userId);
     }
 
-    if (!password) return fail("INVALID_DATA", "Aucun mot de passe à transmettre", 400);
+    if (!password) throw new ValidationError("Aucun mot de passe à transmettre");
 
     const { data: appUrlCfg } = await supaAdmin
       .from("configurations").select("valeur").eq("cle", "app_url").maybeSingle();
-    const APP_URL = (appUrlCfg as any)?.valeur || Deno.env.get("APP_URL") || "https://e2d-connect.lovable.app";
+    const APP_URL = (appUrlCfg as { valeur?: string } | null)?.valeur
+      || Deno.env.get("APP_URL") || "https://e2d-connect.lovable.app";
 
     const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#222;">
 <h1 style="color:#0B6B7C;margin:0 0 16px;">Vos identifiants E2D Connect</h1>
@@ -110,24 +108,23 @@ serve(async (req) => {
 <p style="color:#888;font-size:12px;text-align:center;">Association E2D — Ensemble pour le Développement Durable</p>
 </body></html>`;
 
-    try {
-      const result = await sendEmailAuto({
-        to: profile.email,
-        subject: "Vos identifiants E2D Connect",
-        html,
-      });
-      if (!result.success) {
-        console.error("[send-user-credentials] send failed:", result.error);
-        return fail("EMAIL_SEND_FAILED", result.error || "L'email n'a pas pu être envoyé", 502);
-      }
-      console.log("[send-user-credentials] ✅ sent to", profile.email);
-      return ok({ email: profile.email, passwordReset: shouldReset });
-    } catch (e) {
-      console.error("[send-user-credentials] send threw:", e);
-      return fail("EMAIL_SEND_FAILED", "L'email n'a pas pu être envoyé", 502);
+    const result = await sendEmailAuto({
+      to: profile.email,
+      subject: "Vos identifiants E2D Connect",
+      html,
+    });
+    if (!result.success) {
+      throw new ExternalServiceError(
+        result.error || "L'email n'a pas pu être envoyé",
+        "EMAIL_SEND_FAILED",
+      );
     }
-  } catch (e) {
-    console.error("[send-user-credentials] FATAL:", e);
-    return fail("SERVER_ERROR", "Erreur serveur", 500);
+    console.log("[send-user-credentials] ✅ sent to", profile.email);
+    return successResponse({ email: profile.email, passwordReset: shouldReset }, corsHeaders);
+  } catch (error: unknown) {
+    if (!(error instanceof AppError)) {
+      console.error("[send-user-credentials] FATAL:", error);
+    }
+    return errorResponse(error, corsHeaders, "send-user-credentials");
   }
 });
