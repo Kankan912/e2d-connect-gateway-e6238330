@@ -117,11 +117,12 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
     });
   };
 
-  const showError = (resp: ApiResponse | null, fallback: string) => {
-    const code = resp?.code;
-    const msg = (code && ERROR_MESSAGES[code]) || resp?.message || fallback;
-    toast.error(msg);
+  const showError = (resp: ApiResponse | null, fallback: string, invokeError?: unknown) => {
+    const payload = extractEdgeError(invokeError, resp);
+    toast.error(translateErrorCode(payload.code, fallback));
   };
+
+  const { sendExisting, isPending: isSendPending } = useSendUserCredentials();
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,7 +167,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         return;
       }
       if (!resp?.success) {
-        showError(resp, "Erreur lors de la création du compte");
+        showError(resp, "Erreur lors de la création du compte", error);
         return;
       }
 
@@ -189,29 +190,16 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
   };
 
   const handleSendCredentials = async () => {
-    if (!created || isSending) return;
+    if (!created) return;
     setIsSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke<ApiResponse>("send-user-credentials", {
-        body: { userId: created.userId, password: created.password, resetPassword: false },
-      });
-      const resp = (data as ApiResponse) || null;
-      if (error && !resp) {
-        toast.error("Erreur réseau lors de l'envoi");
-        return;
-      }
-      if (!resp?.success) {
-        showError(resp, "Échec de l'envoi de l'email");
-        return;
-      }
-      toast.success(`Identifiants envoyés à ${created.email}`);
-    } catch (err: unknown) {
-      logger.error("[CreateUserDialog] send error:", err);
-      toast.error("Erreur réseau lors de l'envoi");
+      await sendExisting(created.userId, { password: created.password });
     } finally {
       setIsSending(false);
     }
   };
+
+
 
   const copyToClipboard = async (text: string, label: string) => {
     try {
