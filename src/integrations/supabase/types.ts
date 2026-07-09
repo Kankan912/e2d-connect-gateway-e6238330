@@ -6641,6 +6641,26 @@ export type Database = {
       }
     }
     Views: {
+      caisse_soldes_snapshot: {
+        Row: {
+          association_id: string | null
+          derniere_operation: string | null
+          nb_operations: number | null
+          refreshed_at: string | null
+          solde_net: number | null
+          total_entrees: number | null
+          total_sorties: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fond_caisse_operations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configurations_v_compat: {
         Row: {
           association_id: string | null
@@ -6748,6 +6768,18 @@ export type Database = {
       }
       disburse_loan: { Args: { p_pret_id: string }; Returns: boolean }
       get_active_payment_config_public: { Args: never; Returns: Json }
+      get_caisse_solde_snapshot: {
+        Args: { p_association_id?: string }
+        Returns: {
+          association_id: string
+          derniere_operation: string
+          nb_operations: number
+          refreshed_at: string
+          solde_net: number
+          total_entrees: number
+          total_sorties: number
+        }[]
+      }
       get_caisse_stats: { Args: never; Returns: Json }
       get_caisse_synthese: { Args: never; Returns: Json }
       get_cotisation_mensuelle_membre: {
@@ -6877,6 +6909,7 @@ export type Database = {
         }
         Returns: string
       }
+      refresh_caisse_soldes_snapshot: { Args: never; Returns: undefined }
       reject_loan_step: {
         Args: { _motif: string; _request_id: string }
         Returns: Json
