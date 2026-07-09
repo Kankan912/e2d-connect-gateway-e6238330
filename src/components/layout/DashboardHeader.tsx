@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, User, Home, Menu } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { AssociationSwitcher } from "@/components/AssociationSwitcher";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export const DashboardHeader = () => {
@@ -41,7 +42,8 @@ export const DashboardHeader = () => {
         <h1 className="hidden sm:block text-xl font-semibold text-foreground">Tableau de bord</h1>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
+        <AssociationSwitcher />
         <NotificationCenter />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
