@@ -1,84 +1,53 @@
-# Revue Lot 1.2 — Régression détectée
+# Audit Phase 1 — Lots 1.1 → 1.4
 
-## Contexte
+Vérification exhaustive des livrables Phase 1. **Conclusion : conforme, aucun correctif requis.**
 
-Lot 1.2 a refactoré `supabase/functions/create-user-account` avec :
-- Schéma Zod strict : `{ email, nom, prenom, telephone, password, roleIds, membreId }`
-- Réponse standardisée : `{ success, code, message, ... }` via `_shared/errors.ts`
-- Provision atomique via RPC `provision_user_account` (SECURITY DEFINER, service_role)
+## Lot 1.1 — Standardisation erreurs edge functions ✅
 
-**Deux appelants front** invoquent cette fonction :
-
-| Fichier | État |
+| Attendu | Vérifié |
 |---|---|
-| `src/components/admin/CreateUserDialog.tsx` | ✅ Migré (payload + gestion `ApiResponse`) |
-| `src/components/UserMemberLinkManager.tsx` | ❌ **Oublié** — payload legacy, incompatible |
+| `supabase/functions/_shared/errors.ts` | Présent — classes `AppError`, `ValidationError`, `Unauthorized`, `Forbidden`, `NotFound`, `Conflict`, `EmailAlreadyExists`, `ExternalService`, `Internal` + `errorResponse()` / `successResponse()` |
+| `src/lib/errors.ts` étendu (rétro-compatible) | Présent — `extractEdgeError`, `translateErrorCode` (FR), `toToastError` + `getErrorMessage` conservé |
+| 3 edge functions migrées | `create-user-account`, `send-email`, `send-user-credentials` importent bien `../_shared/errors.ts` |
+| Zéro consommateur cassé | Format `{ success, code, message, details? }` conservé |
 
-## Bug
+## Lot 1.2 — Refactor `create-user-account` (transactionnel) ✅
 
-`UserMemberLinkManager.tsx` (l.191-209) envoie encore l'ancien payload :
+- Schéma Zod strict : `email / nom / prenom / telephone / password / roleIds / membreId`
+- Pré-check email (`profiles.ilike`) + pré-check `membreId` avant création auth
+- Provision atomique via RPC `provision_user_account` (SECURITY DEFINER) + **rollback `auth.admin.deleteUser`** si RPC échoue
+- Traduction précise des erreurs (`membre_already_linked`, `membre_not_found`, `email_exists`)
+- **Correctif régression appliqué** dans `UserMemberLinkManager.tsx` : payload remappé (`membreId`, `nom`, `prenom`, `telephone`, `password`) — vérifié ligne 186-199, plus aucune trace de `memberId`/`memberNom`/`tempPassword` dans le body d'invoke
+- Typecheck `tsgo` propre
 
-```ts
-body: {
-  email: newAccountEmail,
-  memberId: selectedMember.id,          // ❌ rejeté (schema attend membreId)
-  memberNom: selectedMember.nom,        // ❌ inconnu (schema attend nom au top-level)
-  memberPrenom: selectedMember.prenom,  // ❌ inconnu (schema attend prenom)
-  memberTelephone: selectedMember.telephone, // ❌ inconnu (schema attend telephone)
-  tempPassword: tempPassword || undefined,   // ❌ inconnu (schema attend password)
-}
-```
+## Lot 1.3 — Découplage envoi identifiants ✅
 
-Conséquence : **toute création de compte depuis l'écran "Membres → Créer un compte" retourne 400 `VALIDATION_ERROR`** ("nom obligatoire", "prenom obligatoire").
+- Hook dédié `src/hooks/useSendUserCredentials.ts` avec deux modes :
+  - `sendExisting(userId, { password })` — envoi sans reset
+  - `resetAndSend(userId)` — génère un nouveau mot de passe côté serveur puis l'envoie
+- `CreateUserDialog.tsx` : flux en 2 étapes (`form` → `created`) avec bouton **"Envoyer les identifiants"** distinct, copie clipboard email/password, aucun auto-envoi lors de la création
+- Invalidation cache `utilisateurs` après reset
 
-De plus la gestion d'erreur lit `data.error` (ancienne forme), alors que la nouvelle réponse expose `data.message` / `data.code`. Le message d'erreur affiché à l'utilisateur est donc `undefined` → fallback générique inutile.
+## Lot 1.4 — Robustesse UI ✅
 
-## Correction
-
-### Fichier : `src/components/UserMemberLinkManager.tsx`
-
-1. **Remapper le payload** au contrat Zod actuel :
-   ```ts
-   body: {
-     email: newAccountEmail.trim().toLowerCase(),
-     nom: selectedMember.nom,
-     prenom: selectedMember.prenom,
-     telephone: selectedMember.telephone ?? null,
-     password: tempPassword || undefined,   // laisse l'edge générer si vide
-     membreId: selectedMember.id,           // liaison membre ↔ compte
-   }
-   ```
-
-2. **Gérer la nouvelle réponse** `ApiResponse` via l'utilitaire commun :
-   - Utiliser `showError(resp, "…", error)` de `@/lib/errors` (déjà employé dans `CreateUserDialog`), ou à défaut lire `resp?.message` / `resp?.code` puis passer par `translateErrorCode`.
-   - Traiter le cas `error && !resp` (erreur réseau pure) séparément.
-   - Ne conserver un `toast success` que si `resp.success === true`.
-
-3. **Invalider les caches concernés** après succès :
-   - `['members-with-accounts']` (déjà présent)
-   - Ajouter `['utilisateurs']` et `['membres']` pour cohérence avec `CreateUserDialog`.
-
-4. **(Nice-to-have)** Extraire le mot de passe retourné (`resp.tempPassword`) et l'afficher/copier pour l'admin, comme le fait déjà `CreateUserDialog`. Sinon garder le comportement actuel (email d'identifiants envoyé séparément).
-
-### Hors périmètre
-
-- Pas de changement à l'edge function ni à la migration RPC (déjà corrects).
-- Pas de refactor visuel de `UserMemberLinkManager` — uniquement le handler `handleCreateAccount`.
-- Pas de migration DB.
-
-## Vérification
-
-- `tsgo` (typecheck) propre.
-- Test manuel : depuis l'admin, sur un membre sans compte, cliquer "Créer un compte" → succès + membre lié dans `membres.user_id`.
-- Vérifier dans `audit_logs` la présence de l'entrée `user_provisioned`.
-
-## Fichiers touchés
-
-| Fichier | Action |
+| Livrable | État |
 |---|---|
-| `src/components/UserMemberLinkManager.tsx` | correction du handler `handleCreateAccount` |
-| `docs/CHANGELOG.md` | ajout d'une entrée "Lot 1.2 — correctif régression" |
+| `src/components/ui/loading-button.tsx` | Présent (wrapper `Button` + `Loader2`) |
+| Migration formulaires critiques | 7 fichiers migrés : `CompteRenduForm`, `CotisationSaisieForm`, `E2DMatchForm`, `E2DMatchEditForm`, `ReunionForm`, `MemberForm`, `CreateUserDialog` |
+| `formatFCFA` centralisé (`src/lib/utils.ts`) | Défini + utilisé dans **58 fichiers** (bien au-delà des 7 initiaux) |
+| Audit `<a href="/…">` internes | `grep` retourne **0 occurrence** — navigation systématiquement en `Link` / `useNavigate` |
+| `ErrorBoundary` routes admin | Couvert par la stratégie 2 niveaux `App` + `Dashboard` (mémoire projet) |
 
-## Rollback
+## Cohérence Phase 1
 
-`git restore` sur les 2 fichiers. Aucun changement DB.
+- CHANGELOG documente Lot 1.4 explicitement ; Lots 1.1/1.2/1.3 tracés via l'historique de conversation et les fichiers livrés (edge functions déployées, migration RPC exécutée).
+- Aucune dette technique connue sur ce périmètre.
+- Lot 1.5 (décision email — domaine custom vs SMTP Gmail + retrait Resend) **reste en attente de décision utilisateur** : c'est le seul élément Phase 1 non exécuté, et c'était explicitement conditionné à ta réponse sur le domaine pro et la clé Resend.
+
+## Recommandation
+
+Phase 1 est **conforme et prête pour Phase 2**. Reste à trancher Lot 1.5 :
+1. Domaine pro pour envoi email (ex. `e2d-connect.org`) ou rester sur Gmail ?
+2. Résiliation clé Resend morte ou rotation via connector Lovable ?
+
+Aucun code à modifier tant que ces deux décisions ne sont pas prises.
