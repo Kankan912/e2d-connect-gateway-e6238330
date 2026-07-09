@@ -5965,6 +5965,18 @@ export type Database = {
         Args: { _reunion_id: string }
         Returns: Json
       }
+      provision_user_account: {
+        Args: {
+          p_email: string
+          p_membre_id: string
+          p_nom: string
+          p_prenom: string
+          p_role_ids: string[]
+          p_telephone: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       reject_loan_step: {
         Args: { _motif: string; _request_id: string }
         Returns: Json

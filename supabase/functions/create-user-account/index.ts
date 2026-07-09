@@ -1,10 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 import {
   AppError,
+  ConflictError,
   EmailAlreadyExistsError,
   ForbiddenError,
   InternalError,
+  NotFoundError,
   UnauthorizedError,
   ValidationError,
   errorResponse,
@@ -16,24 +19,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface CreateAccountBody {
-  email?: string;
-  nom?: string;
-  prenom?: string;
-  telephone?: string | null;
-  password?: string;
-  roleIds?: string[];
-  membreId?: string | null;
-}
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_MIN = 8;
-
-function validatePassword(p: string): string | null {
-  if (p.length < PASSWORD_MIN) return `Le mot de passe doit faire au moins ${PASSWORD_MIN} caractères`;
-  if (!/[A-Za-z]/.test(p) || !/[0-9]/.test(p)) return "Le mot de passe doit contenir lettres et chiffres";
-  return null;
-}
+const BodySchema = z.object({
+  email: z.string().trim().toLowerCase().email("Email invalide").max(255),
+  nom: z.string().trim().min(1, "Le nom est obligatoire").max(100),
+  prenom: z.string().trim().min(1, "Le prénom est obligatoire").max(100),
+  telephone: z
+    .union([z.string().trim().max(30), z.null()])
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : null)),
+  password: z
+    .string()
+    .min(8, "Le mot de passe doit faire au moins 8 caractères")
+    .max(128)
+    .refine((p) => /[A-Za-z]/.test(p) && /[0-9]/.test(p), {
+      message: "Le mot de passe doit contenir lettres et chiffres",
+    })
+    .optional(),
+  roleIds: z.array(z.string().uuid()).max(20).optional(),
+  membreId: z.union([z.string().uuid(), z.null()]).optional(),
+});
 
 function generatePassword(): string {
   const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -50,7 +54,7 @@ serve(async (req) => {
     const ANON = Deno.env.get("SUPABASE_ANON_KEY")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Auth caller
+    // ── 1. Auth caller ──
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new UnauthorizedError();
 
@@ -60,37 +64,35 @@ serve(async (req) => {
     const { data: { user: caller }, error: authErr } = await supaCaller.auth.getUser();
     if (authErr || !caller) throw new UnauthorizedError("Session invalide");
 
-    // Admin check
+    // ── 2. Admin check ──
     const { data: isAdmin, error: adminErr } = await supaCaller.rpc("is_admin");
     if (adminErr || !isAdmin) {
       console.warn("[create-user-account] Forbidden caller", caller.email, adminErr);
       throw new ForbiddenError("Accès réservé aux administrateurs");
     }
 
-    // Parse + validate
-    let body: CreateAccountBody;
-    try { body = await req.json(); }
+    // ── 3. Validation ──
+    let raw: unknown;
+    try { raw = await req.json(); }
     catch { throw new ValidationError("Corps de requête invalide"); }
 
-    const email = (body.email ?? "").trim().toLowerCase();
-    const nom = (body.nom ?? "").trim();
-    const prenom = (body.prenom ?? "").trim();
-    const telephone = body.telephone?.toString().trim() || null;
-    const password = body.password?.toString() || generatePassword();
-    const roleIds = Array.isArray(body.roleIds) ? body.roleIds.filter(Boolean) : [];
-    const membreId = body.membreId || null;
-
-    if (!email || !EMAIL_RE.test(email)) throw new ValidationError("Email invalide");
-    if (!nom) throw new ValidationError("Le nom est obligatoire");
-    if (!prenom) throw new ValidationError("Le prénom est obligatoire");
-    const pErr = validatePassword(password);
-    if (pErr) throw new ValidationError(pErr);
+    const parsed = BodySchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new ValidationError("Données invalides", parsed.error.flatten().fieldErrors);
+    }
+    const {
+      email, nom, prenom, telephone,
+      password: providedPassword,
+      roleIds = [],
+      membreId = null,
+    } = parsed.data;
+    const password = providedPassword ?? generatePassword();
 
     const supaAdmin = createClient(SUPABASE_URL, SERVICE, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // Pre-check: email exists?
+    // ── 4. Pre-checks (fast, before creating auth user) ──
     const { data: byEmail } = await supaAdmin
       .from("profiles")
       .select("id")
@@ -98,15 +100,14 @@ serve(async (req) => {
       .maybeSingle();
     if (byEmail?.id) throw new EmailAlreadyExistsError();
 
-    // Pre-check membre
     if (membreId) {
       const { data: m, error: mErr } = await supaAdmin
         .from("membres").select("id, user_id").eq("id", membreId).maybeSingle();
-      if (mErr || !m) throw new ValidationError("Membre introuvable");
-      if (m.user_id) throw new ValidationError("Ce membre a déjà un compte");
+      if (mErr || !m) throw new NotFoundError("Membre introuvable");
+      if (m.user_id) throw new ConflictError("Ce membre a déjà un compte");
     }
 
-    // Step A: create auth user
+    // ── 5. Create auth user ──
     const { data: created, error: createErr } = await supaAdmin.auth.admin.createUser({
       email, password, email_confirm: true,
       user_metadata: { nom, prenom, telephone },
@@ -122,61 +123,33 @@ serve(async (req) => {
 
     const userId = created.user.id;
 
-    // Helper: rollback
-    const rollback = async (reason: string, err: unknown) => {
-      console.error(`[create-user-account] ROLLBACK (${reason}):`, err);
-      try { await supaAdmin.from("user_roles").delete().eq("user_id", userId); } catch (e) { console.error("rb user_roles:", e); }
-      if (membreId) {
-        try { await supaAdmin.from("membres_roles").delete().eq("membre_id", membreId); } catch (e) { console.error("rb membres_roles:", e); }
-        try { await supaAdmin.from("membres").update({ user_id: null }).eq("id", membreId); } catch (e) { console.error("rb membres link:", e); }
-      }
-      try { await supaAdmin.auth.admin.deleteUser(userId); } catch (e) { console.error("rb deleteUser:", e); }
-    };
+    // ── 6. Transactional provisioning (profile + roles + membre + audit) ──
+    const { error: rpcErr } = await supaAdmin.rpc("provision_user_account", {
+      p_user_id: userId,
+      p_email: email,
+      p_nom: nom,
+      p_prenom: prenom,
+      p_telephone: telephone,
+      p_role_ids: roleIds.length > 0 ? roleIds : null,
+      p_membre_id: membreId,
+    });
 
-    // Step B: profile
-    const { error: profErr } = await supaAdmin.from("profiles").update({
-      nom, prenom, email, telephone,
-      must_change_password: true, password_changed: false,
-    }).eq("id", userId);
-    if (profErr) {
-      await rollback("profile update", profErr);
-      throw new InternalError("Erreur lors de la création du profil");
+    if (rpcErr) {
+      console.error("[create-user-account] provision RPC failed, rolling back auth user:", rpcErr);
+      try { await supaAdmin.auth.admin.deleteUser(userId); }
+      catch (delErr) { console.error("[create-user-account] rollback deleteUser failed:", delErr); }
+
+      const msg = rpcErr.message || "";
+      if (msg.includes("membre_already_linked")) {
+        throw new ConflictError("Ce membre est déjà lié à un autre compte");
+      }
+      if (msg.includes("membre_not_found") || msg.includes("profile_not_found")) {
+        throw new NotFoundError("Ressource introuvable");
+      }
+      throw new InternalError("Erreur lors de la provision du compte");
     }
 
-    // Step C: roles
-    let finalRoleIds = roleIds;
-    if (finalRoleIds.length === 0) {
-      const { data: defRole } = await supaAdmin
-        .from("roles").select("id").ilike("name", "membre").maybeSingle();
-      if (defRole?.id) finalRoleIds = [defRole.id];
-    }
-    if (finalRoleIds.length > 0) {
-      const { error: urErr } = await supaAdmin.from("user_roles").insert(
-        finalRoleIds.map((rid) => ({ user_id: userId, role_id: rid }))
-      );
-      if (urErr) {
-        await rollback("user_roles insert", urErr);
-        throw new InternalError("Erreur lors de l'attribution des rôles");
-      }
-    }
-
-    // Step D: link membre
-    if (membreId) {
-      const { error: linkErr } = await supaAdmin.from("membres")
-        .update({ user_id: userId }).eq("id", membreId);
-      if (linkErr) {
-        await rollback("membre link", linkErr);
-        throw new InternalError("Erreur lors de la liaison au membre");
-      }
-      if (finalRoleIds.length > 0) {
-        const { error: mrErr } = await supaAdmin.from("membres_roles").insert(
-          finalRoleIds.map((rid) => ({ membre_id: membreId, role_id: rid }))
-        );
-        if (mrErr) console.error("[create-user-account] membres_roles warn:", mrErr);
-      }
-    }
-
-    console.log("[create-user-account] ✅ created", { userId, email, membreId });
+    console.log("[create-user-account] ✅ provisioned", { userId, email, membreId });
     return successResponse({ userId, email, tempPassword: password }, corsHeaders);
   } catch (error: unknown) {
     if (!(error instanceof AppError)) {
