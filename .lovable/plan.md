@@ -1,53 +1,34 @@
-# Audit Phase 1 — Lots 1.1 → 1.4
+# Fix RLS — `cotisations_mensuelles_exercice`
 
-Vérification exhaustive des livrables Phase 1. **Conclusion : conforme, aucun correctif requis.**
+## Diagnostic
 
-## Lot 1.1 — Standardisation erreurs edge functions ✅
+L'UI affiche `new row violates row-level security policy for table "cotisations_mensuelles_exercice"` lors de la sauvegarde de montants verrouillés.
 
-| Attendu | Vérifié |
-|---|---|
-| `supabase/functions/_shared/errors.ts` | Présent — classes `AppError`, `ValidationError`, `Unauthorized`, `Forbidden`, `NotFound`, `Conflict`, `EmailAlreadyExists`, `ExternalService`, `Internal` + `errorResponse()` / `successResponse()` |
-| `src/lib/errors.ts` étendu (rétro-compatible) | Présent — `extractEdgeError`, `translateErrorCode` (FR), `toToastError` + `getErrorMessage` conservé |
-| 3 edge functions migrées | `create-user-account`, `send-email`, `send-user-credentials` importent bien `../_shared/errors.ts` |
-| Zéro consommateur cassé | Format `{ success, code, message, details? }` conservé |
+Vérification base : `pg_policies` retourne **0 politique** pour `cotisations_mensuelles_exercice` (et 0 pour `cotisations_mensuelles_audit`), alors que RLS est **activé**. Résultat : tout INSERT/UPDATE/DELETE est refusé, même pour un admin.
 
-## Lot 1.2 — Refactor `create-user-account` (transactionnel) ✅
+La migration `20260615170818` avait pourtant créé les politiques `cme_insert_authorized` / `cme_update_authorized` / `cme_delete_authorized` + `cma_select_authorized` / `cma_insert_authorized`. Elles ont été supprimées côté base (probablement via SQL editor). Il faut les recréer.
 
-- Schéma Zod strict : `email / nom / prenom / telephone / password / roleIds / membreId`
-- Pré-check email (`profiles.ilike`) + pré-check `membreId` avant création auth
-- Provision atomique via RPC `provision_user_account` (SECURITY DEFINER) + **rollback `auth.admin.deleteUser`** si RPC échoue
-- Traduction précise des erreurs (`membre_already_linked`, `membre_not_found`, `email_exists`)
-- **Correctif régression appliqué** dans `UserMemberLinkManager.tsx` : payload remappé (`membreId`, `nom`, `prenom`, `telephone`, `password`) — vérifié ligne 186-199, plus aucune trace de `memberId`/`memberNom`/`tempPassword` dans le body d'invoke
-- Typecheck `tsgo` propre
+## Correction
 
-## Lot 1.3 — Découplage envoi identifiants ✅
+Nouvelle migration qui **recrée à l'identique** les politiques de `20260615170818` :
 
-- Hook dédié `src/hooks/useSendUserCredentials.ts` avec deux modes :
-  - `sendExisting(userId, { password })` — envoi sans reset
-  - `resetAndSend(userId)` — génère un nouveau mot de passe côté serveur puis l'envoie
-- `CreateUserDialog.tsx` : flux en 2 étapes (`form` → `created`) avec bouton **"Envoyer les identifiants"** distinct, copie clipboard email/password, aucun auto-envoi lors de la création
-- Invalidation cache `utilisateurs` après reset
+- `cotisations_mensuelles_exercice`
+  - `SELECT` : admin OU propre membre (déjà normalement en place — on la recrée par sécurité avec `DROP IF EXISTS`)
+  - `INSERT` : admin OU `has_permission('cotisations','update')`
+  - `UPDATE` : idem
+  - `DELETE` : admin OU `has_permission('cotisations','delete')`
+- `cotisations_mensuelles_audit`
+  - `SELECT` / `INSERT` : admin OU `has_permission('cotisations','update')`
+  - Trigger `cma_force_modifie_par` conservé (déjà en base normalement, recréé si absent)
 
-## Lot 1.4 — Robustesse UI ✅
+GRANTs déjà en place (`SELECT/INSERT/UPDATE/DELETE` pour `authenticated`, `ALL` pour `service_role`) — pas de modification nécessaire côté GRANT.
 
-| Livrable | État |
-|---|---|
-| `src/components/ui/loading-button.tsx` | Présent (wrapper `Button` + `Loader2`) |
-| Migration formulaires critiques | 7 fichiers migrés : `CompteRenduForm`, `CotisationSaisieForm`, `E2DMatchForm`, `E2DMatchEditForm`, `ReunionForm`, `MemberForm`, `CreateUserDialog` |
-| `formatFCFA` centralisé (`src/lib/utils.ts`) | Défini + utilisé dans **58 fichiers** (bien au-delà des 7 initiaux) |
-| Audit `<a href="/…">` internes | `grep` retourne **0 occurrence** — navigation systématiquement en `Link` / `useNavigate` |
-| `ErrorBoundary` routes admin | Couvert par la stratégie 2 niveaux `App` + `Dashboard` (mémoire projet) |
+## Hors périmètre
 
-## Cohérence Phase 1
+- Pas de changement UI ni de code applicatif.
+- Pas de modification des fonctions `is_admin()` / `has_permission()`.
 
-- CHANGELOG documente Lot 1.4 explicitement ; Lots 1.1/1.2/1.3 tracés via l'historique de conversation et les fichiers livrés (edge functions déployées, migration RPC exécutée).
-- Aucune dette technique connue sur ce périmètre.
-- Lot 1.5 (décision email — domaine custom vs SMTP Gmail + retrait Resend) **reste en attente de décision utilisateur** : c'est le seul élément Phase 1 non exécuté, et c'était explicitement conditionné à ta réponse sur le domaine pro et la clé Resend.
+## Vérification
 
-## Recommandation
-
-Phase 1 est **conforme et prête pour Phase 2**. Reste à trancher Lot 1.5 :
-1. Domaine pro pour envoi email (ex. `e2d-connect.org`) ou rester sur Gmail ?
-2. Résiliation clé Resend morte ou rotation via connector Lovable ?
-
-Aucun code à modifier tant que ces deux décisions ne sont pas prises.
+- Après migration : `SELECT count(*) FROM pg_policies WHERE tablename='cotisations_mensuelles_exercice'` retourne 4.
+- Test manuel : rouvrir la modale "Modification de montants verrouillés" → confirmer → sauvegarde OK, entrée créée dans `cotisations_mensuelles_audit`.
