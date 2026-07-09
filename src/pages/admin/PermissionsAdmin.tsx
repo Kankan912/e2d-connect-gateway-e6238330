@@ -192,6 +192,30 @@ const PermissionsAdmin = () => {
         </Card>
       </div>
 
+      {/* Filtre par association (visible si >1 tenant accessible) */}
+      {availableAssociations.length > 1 && (
+        <Card>
+          <CardContent className="pt-6 flex flex-col sm:flex-row sm:items-center gap-3">
+            <span className="text-sm font-medium">Rôles de l'association :</span>
+            <Select value={tenantFilter} onValueChange={setTenantFilter}>
+              <SelectTrigger className="max-w-xs">
+                <SelectValue placeholder="Sélectionner une association" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableAssociations.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.nom}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">
+              Les rôles plateforme sont toujours affichés.
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs */}
       <Tabs defaultValue="matrix" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
