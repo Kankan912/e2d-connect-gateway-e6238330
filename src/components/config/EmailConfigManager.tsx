@@ -591,7 +591,7 @@ export function EmailConfigManager() {
               </Button>
               {emailService !== "smtp" && (
                 <Button
-                  onClick={() => handleSwitchProvider("smtp")}
+                  onClick={() => requestSwitchProvider("smtp")}
                   disabled={!smtpReady}
                   className="flex-1"
                 >
