@@ -67,26 +67,21 @@ const PermissionsAdmin = () => {
     ) ?? false;
   };
 
-  // Exporter la matrice en Excel
+  // Exporter la matrice en Excel (rôles visibles uniquement)
   const handleExport = () => {
-    if (!roles || !allPermissions) return;
+    if (!allPermissions) return;
 
     const data: any[] = [];
-    
-    // En-tête
-    const header = ['Ressource', ...roles.map(r => r.name)];
+    const header = ['Ressource', ...visibleRoles.map(r => r.name)];
     data.push(header);
 
-    // Pour chaque ressource
     RESOURCES.forEach(resource => {
       PERMISSIONS.forEach(perm => {
         const row = [`${resource.label} - ${perm.label}`];
-        
-        roles.forEach(role => {
+        visibleRoles.forEach(role => {
           const hasPerm = hasRolePermission(role.id, resource.id, perm.id);
           row.push(hasPerm ? '✓' : '✗');
         });
-        
         data.push(row);
       });
     });
