@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import type { PretWithJoins } from "@/types/supabase-joins";
+import { formatFCFA } from "@/lib/utils";
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -74,19 +75,19 @@ export default function RapportsTabsContent(props: Stats) {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Total attendu</CardDescription>
-                <CardTitle className="text-2xl">{cotisationsStats.total.toLocaleString("fr-FR")} FCFA</CardTitle>
+                <CardTitle className="text-2xl">{formatFCFA(cotisationsStats.total)}</CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Payé</CardDescription>
-                <CardTitle className="text-2xl text-green-600">{cotisationsStats.paye.toLocaleString("fr-FR")} FCFA</CardTitle>
+                <CardTitle className="text-2xl text-green-600">{formatFCFA(cotisationsStats.paye)}</CardTitle>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Impayé</CardDescription>
-                <CardTitle className="text-2xl text-red-600">{cotisationsStats.impaye.toLocaleString("fr-FR")} FCFA</CardTitle>
+                <CardTitle className="text-2xl text-red-600">{formatFCFA(cotisationsStats.impaye)}</CardTitle>
               </CardHeader>
             </Card>
             <Card>
@@ -127,7 +128,7 @@ export default function RapportsTabsContent(props: Stats) {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => `${value.toLocaleString("fr-FR")} FCFA`} />
+                      <Tooltip formatter={(value: number) => `${formatFCFA(value)}`} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -159,7 +160,7 @@ export default function RapportsTabsContent(props: Stats) {
               <CardTitle className="text-2xl">
                 {pretsStats.encours}
                 <span className="text-sm font-normal text-muted-foreground ml-2">
-                  ({pretsStats.totalEncours.toLocaleString("fr-FR")} FCFA)
+                  ({formatFCFA(pretsStats.totalEncours)})
                 </span>
               </CardTitle>
             </CardHeader>
@@ -174,7 +175,7 @@ export default function RapportsTabsContent(props: Stats) {
             <CardHeader className="pb-2">
               <CardDescription>Intérêts perçus</CardDescription>
               <CardTitle className="text-2xl text-green-600">
-                {pretsStats.interetsPercus.toLocaleString("fr-FR")} FCFA
+                {formatFCFA(pretsStats.interetsPercus)}
               </CardTitle>
             </CardHeader>
           </Card>
@@ -203,9 +204,9 @@ export default function RapportsTabsContent(props: Stats) {
                     <TableCell>
                       {formatMembre(p.membres)}
                     </TableCell>
-                    <TableCell>{(p.montant || 0).toLocaleString("fr-FR")} FCFA</TableCell>
+                    <TableCell>{formatFCFA((p.montant || 0))}</TableCell>
                     <TableCell>
-                      {((p.montant_total_du || p.montant) - (p.montant_paye || 0)).toLocaleString("fr-FR")} FCFA
+                      {formatFCFA(((p.montant_total_du || p.montant) - (p.montant_paye || 0)))}
                     </TableCell>
                     <TableCell>{format(parseISO(p.echeance), "dd/MM/yyyy")}</TableCell>
                     <TableCell>
@@ -246,19 +247,19 @@ export default function RapportsTabsContent(props: Stats) {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Montant total</CardDescription>
-              <CardTitle className="text-2xl">{sanctionsStats.total.toLocaleString("fr-FR")} FCFA</CardTitle>
+              <CardTitle className="text-2xl">{formatFCFA(sanctionsStats.total)}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Payé</CardDescription>
-              <CardTitle className="text-2xl text-green-600">{sanctionsStats.paye.toLocaleString("fr-FR")} FCFA</CardTitle>
+              <CardTitle className="text-2xl text-green-600">{formatFCFA(sanctionsStats.paye)}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Impayé</CardDescription>
-              <CardTitle className="text-2xl text-red-600">{sanctionsStats.impaye.toLocaleString("fr-FR")} FCFA</CardTitle>
+              <CardTitle className="text-2xl text-red-600">{formatFCFA(sanctionsStats.impaye)}</CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -285,7 +286,7 @@ export default function RapportsTabsContent(props: Stats) {
               <CardHeader className="pb-2">
                 <CardDescription>Total épargné</CardDescription>
                 <CardTitle className="text-2xl text-green-600">
-                  {epargnesStats.total.toLocaleString("fr-FR")} FCFA
+                  {formatFCFA(epargnesStats.total)}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -309,7 +310,7 @@ export default function RapportsTabsContent(props: Stats) {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis type="number" tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
                       <YAxis dataKey="name" type="category" width={120} />
-                      <Tooltip formatter={(value: number) => `${value.toLocaleString("fr-FR")} FCFA`} />
+                      <Tooltip formatter={(value: number) => `${formatFCFA(value)}`} />
                       <Bar dataKey="value" fill="#22c55e" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -330,7 +331,7 @@ export default function RapportsTabsContent(props: Stats) {
               <CardHeader className="pb-2">
                 <CardDescription>Total entrées</CardDescription>
                 <CardTitle className="text-2xl text-green-600">
-                  +{caisseStats.entrees.toLocaleString("fr-FR")} FCFA
+                  +{formatFCFA(caisseStats.entrees)}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -338,7 +339,7 @@ export default function RapportsTabsContent(props: Stats) {
               <CardHeader className="pb-2">
                 <CardDescription>Total sorties</CardDescription>
                 <CardTitle className="text-2xl text-red-600">
-                  -{caisseStats.sorties.toLocaleString("fr-FR")} FCFA
+                  -{formatFCFA(caisseStats.sorties)}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -346,7 +347,7 @@ export default function RapportsTabsContent(props: Stats) {
               <CardHeader className="pb-2">
                 <CardDescription>Solde période</CardDescription>
                 <CardTitle className={`text-2xl ${caisseStats.solde >= 0 ? "text-green-600" : "text-red-600"}`}>
-                  {caisseStats.solde >= 0 ? "+" : ""}{caisseStats.solde.toLocaleString("fr-FR")} FCFA
+                  {caisseStats.solde >= 0 ? "+" : ""}{formatFCFA(caisseStats.solde)}
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -364,7 +365,7 @@ export default function RapportsTabsContent(props: Stats) {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(value: number) => `${value.toLocaleString("fr-FR")} FCFA`} />
+                      <Tooltip formatter={(value: number) => `${formatFCFA(value)}`} />
                       <Legend />
                       <Bar dataKey="entrees" fill="#22c55e" name="Entrées" />
                       <Bar dataKey="sorties" fill="#ef4444" name="Sorties" />

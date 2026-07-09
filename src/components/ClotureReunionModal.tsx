@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { logger } from "@/lib/logger";
+import { formatFCFA } from "@/lib/utils";
 interface ClotureReunionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -522,7 +523,7 @@ export default function ClotureReunionModal({
                   <span className="text-sm">Cotisations collectées</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-bold text-green-600">{totalCotisations.toLocaleString()} FCFA</span>
+                  <span className="font-bold text-green-600">{formatFCFA(totalCotisations)}</span>
                   <span className="text-xs text-muted-foreground ml-1">({nbCotisations} paiement{nbCotisations > 1 ? 's' : ''})</span>
                 </div>
               </div>
@@ -534,7 +535,7 @@ export default function ClotureReunionModal({
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-orange-600">
-                      {(membresNonMarques.length * sanctionConfig.montant).toLocaleString()} FCFA
+                      {formatFCFA((membresNonMarques.length * sanctionConfig.montant))}
                     </span>
                     <span className="text-xs text-muted-foreground ml-1">({membresNonMarques.length} × {sanctionConfig.montant.toLocaleString()})</span>
                   </div>
@@ -548,7 +549,7 @@ export default function ClotureReunionModal({
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-amber-600">
-                      {(membresSansHuileSavon.length * sanctionHuileSavonConfig.montant).toLocaleString()} FCFA
+                      {formatFCFA((membresSansHuileSavon.length * sanctionHuileSavonConfig.montant))}
                     </span>
                     <span className="text-xs text-muted-foreground ml-1">({membresSansHuileSavon.length} × {sanctionHuileSavonConfig.montant.toLocaleString()})</span>
                   </div>
@@ -562,7 +563,7 @@ export default function ClotureReunionModal({
                   </div>
                   <div className="text-right">
                     <span className="font-bold text-primary">
-                      {beneficiairesReunion.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0).toLocaleString()} FCFA
+                      {formatFCFA(beneficiairesReunion.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0))}
                     </span>
                     <span className="text-xs text-muted-foreground ml-1">
                       ({beneficiairesReunion.filter((b: any) => b.statut === 'paye').length}/{beneficiairesReunion.length} payé)
@@ -608,7 +609,7 @@ export default function ClotureReunionModal({
                   <div className="text-sm">
                     <p className="font-medium mb-1">{beneficiairesImpayes.length} bénéficiaire(s) non payé(s)</p>
                     <p className="text-muted-foreground">
-                      Montant total impayé: <strong>{totalBeneficiairesImpayes.toLocaleString()} FCFA</strong>
+                      Montant total impayé: <strong>{formatFCFA(totalBeneficiairesImpayes)}</strong>
                     </p>
                     <div className="mt-2 text-xs text-muted-foreground">
                       {beneficiairesImpayes.map((b: any) => 
