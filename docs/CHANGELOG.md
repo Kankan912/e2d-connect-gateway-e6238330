@@ -65,3 +65,12 @@ Récapitulatif des 8 lots livrés lors de la refonte d'avril 2026.
 - Centralisation du formatage FCFA via `formatFCFA()` (`src/lib/utils.ts`) dans 7 fichiers à forte densité : `RapportsTabsContent`, `compte-rendu-pdf`, `CompteRenduViewer`, `rapports-export`, `CotisationsCumulAnnuel`, `AidesAdmin`, `ClotureReunionModal`.
 - Audit liens internes `<a href="/…">` : 0 occurrence détectée, aucun correctif nécessaire (usage systématique de `useNavigate` / `<Link>`).
 
+
+## Refonte Juillet 2026 — Lot 1.5 — Multi-provider email (SMTP / Resend) — validation
+- Audit de l'infrastructure email existante : le double provider est **déjà en place** et opérationnel, aucun code applicatif n'a été modifié.
+- Provider actif en production : **SMTP Gmail** (`smtp.gmail.com:587`, TLS, expéditeur `zpekinho@gmail.com`) — `configurations.email_service = 'smtp'`.
+- Provider Resend : conservé en réserve, sélectionnable depuis l'UI admin. Clé `resend_api_key` maintenue en base par décision utilisateur (non testée dans ce lot).
+- Fallback automatique bidirectionnel disponible dans `sendEmail()` (`email-utils.ts`) : si le provider principal échoue, l'autre est tenté avec les mêmes paramètres.
+- UI admin (`EmailConfigManager.tsx`) : radio de sélection provider + 3 boutons de test (`Tester SMTP`, `Tester Resend`, `Tester auto + fallback`).
+- Passage à un domaine pro (futur) : purement configuration, aucun code à toucher — mettre à jour `email_expediteur` avec l'adresse du domaine vérifié dans Resend, remplacer la clé `resend_api_key`, basculer l'`email_service` sur `resend` et lancer le test.
+- Note : ce projet est branché sur un Supabase externe ; les emails managés Lovable (scaffold `auth-email-hook`, DNS auto) ne sont pas disponibles ici. Le chemin Resend + domaine reste la voie officielle.
