@@ -7,7 +7,7 @@
 | 1 | Stabilisation & correctifs bloquants | 3-5 j | ✅ Terminée |
 | 2 | Fondations Multi-Tenant | 8-12 j | ✅ Terminée |
 | **3** | **RBAC granulaire & audit complet** | **4-6 j** | ✅ **Terminée** |
-| 4 | Domain Services & FinancialEngine | 10-15 j | ⏳ À faire |
+| 4 | Domain Services & FinancialEngine | 10-15 j | 🚧 En cours (4.1 & 4.2 ✅) |
 | 5 | Prêts, Aides & Bénéficiaires — cohérence métier | 6-8 j | ⏳ À faire |
 | 6 | i18n, thèmes & personnalisation par association | 5-7 j | ⏳ À faire |
 | 7 | Observabilité, sauvegardes, tests | 4-6 j | ⏳ À faire |
