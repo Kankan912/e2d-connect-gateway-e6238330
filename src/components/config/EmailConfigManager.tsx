@@ -691,8 +691,11 @@ export function EmailConfigManager() {
                   id="resend-api-key"
                   type={showResendKey ? "text" : "password"}
                   placeholder="re_xxxxxxxx..."
+                  autoComplete="new-password"
                   value={resendApiKey}
                   onChange={(e) => setResendApiKey(e.target.value)}
+                  aria-invalid={!!fieldErrors.resendApiKey}
+                  className={cn(fieldErrors.resendApiKey && "border-destructive focus-visible:ring-destructive")}
                 />
                 <Button
                   type="button"
@@ -704,6 +707,9 @@ export function EmailConfigManager() {
                   {showResendKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
+              {fieldErrors.resendApiKey && (
+                <p className="text-xs text-destructive">{fieldErrors.resendApiKey}</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Obtenez votre clé sur{" "}
                 <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">
@@ -716,10 +722,8 @@ export function EmailConfigManager() {
               variant="secondary"
               className="w-full"
               onClick={async () => {
-                if (!resendApiKey || !resendApiKey.startsWith("re_")) {
-                  toast.error("Clé API invalide. Elle doit commencer par 're_'");
-                  return;
-                }
+                if (!validate("resend-key")) return;
+
                 setSavingResendKey(true);
                 try {
                   const { error } = await supabase.functions.invoke("update-email-config", {
