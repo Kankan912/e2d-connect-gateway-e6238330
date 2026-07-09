@@ -1,26 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  AppError,
+  EmailAlreadyExistsError,
+  ForbiddenError,
+  InternalError,
+  UnauthorizedError,
+  ValidationError,
+  errorResponse,
+  successResponse,
+} from "../_shared/errors.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-type ErrorCode = "EMAIL_EXISTS" | "INVALID_DATA" | "SERVER_ERROR" | "FORBIDDEN" | "UNAUTHENTICATED";
-
-function ok(data: Record<string, unknown> = {}) {
-  return new Response(JSON.stringify({ success: true, ...data }), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
-function fail(code: ErrorCode, message: string, status: number) {
-  return new Response(JSON.stringify({ success: false, code, message }), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
 
 interface CreateAccountBody {
   email?: string;
@@ -58,25 +52,25 @@ serve(async (req) => {
 
     // Auth caller
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return fail("UNAUTHENTICATED", "Authentification requise", 401);
+    if (!authHeader) throw new UnauthorizedError();
 
     const supaCaller = createClient(SUPABASE_URL, ANON, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user: caller }, error: authErr } = await supaCaller.auth.getUser();
-    if (authErr || !caller) return fail("UNAUTHENTICATED", "Session invalide", 401);
+    if (authErr || !caller) throw new UnauthorizedError("Session invalide");
 
     // Admin check
     const { data: isAdmin, error: adminErr } = await supaCaller.rpc("is_admin");
     if (adminErr || !isAdmin) {
-      console.error("[create-user-account] Forbidden caller", caller.email, adminErr);
-      return fail("FORBIDDEN", "Accès réservé aux administrateurs", 403);
+      console.warn("[create-user-account] Forbidden caller", caller.email, adminErr);
+      throw new ForbiddenError("Accès réservé aux administrateurs");
     }
 
     // Parse + validate
     let body: CreateAccountBody;
     try { body = await req.json(); }
-    catch { return fail("INVALID_DATA", "Corps de requête invalide", 400); }
+    catch { throw new ValidationError("Corps de requête invalide"); }
 
     const email = (body.email ?? "").trim().toLowerCase();
     const nom = (body.nom ?? "").trim();
@@ -86,38 +80,30 @@ serve(async (req) => {
     const roleIds = Array.isArray(body.roleIds) ? body.roleIds.filter(Boolean) : [];
     const membreId = body.membreId || null;
 
-    if (!email || !EMAIL_RE.test(email)) return fail("INVALID_DATA", "Email invalide", 400);
-    if (!nom) return fail("INVALID_DATA", "Le nom est obligatoire", 400);
-    if (!prenom) return fail("INVALID_DATA", "Le prénom est obligatoire", 400);
+    if (!email || !EMAIL_RE.test(email)) throw new ValidationError("Email invalide");
+    if (!nom) throw new ValidationError("Le nom est obligatoire");
+    if (!prenom) throw new ValidationError("Le prénom est obligatoire");
     const pErr = validatePassword(password);
-    if (pErr) return fail("INVALID_DATA", pErr, 400);
+    if (pErr) throw new ValidationError(pErr);
 
     const supaAdmin = createClient(SUPABASE_URL, SERVICE, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
     // Pre-check: email exists?
-    const { data: existing, error: listErr } = await supaAdmin.auth.admin.listUsers({
-      page: 1, perPage: 1,
-    } as any);
-    // Use a more reliable check via filter
     const { data: byEmail } = await supaAdmin
       .from("profiles")
       .select("id")
       .ilike("email", email)
       .maybeSingle();
-    if (byEmail?.id) {
-      return fail("EMAIL_EXISTS", "Cet email est déjà utilisé", 400);
-    }
-    if (listErr) console.error("[create-user-account] listUsers warn:", listErr);
-    void existing;
+    if (byEmail?.id) throw new EmailAlreadyExistsError();
 
     // Pre-check membre
     if (membreId) {
       const { data: m, error: mErr } = await supaAdmin
         .from("membres").select("id, user_id").eq("id", membreId).maybeSingle();
-      if (mErr || !m) return fail("INVALID_DATA", "Membre introuvable", 400);
-      if (m.user_id) return fail("INVALID_DATA", "Ce membre a déjà un compte", 400);
+      if (mErr || !m) throw new ValidationError("Membre introuvable");
+      if (m.user_id) throw new ValidationError("Ce membre a déjà un compte");
     }
 
     // Step A: create auth user
@@ -126,12 +112,12 @@ serve(async (req) => {
       user_metadata: { nom, prenom, telephone },
     });
     if (createErr || !created.user) {
-      const code = (createErr as any)?.code;
+      const code = (createErr as { code?: string } | null)?.code;
       if (code === "email_exists" || /already/i.test(createErr?.message || "")) {
-        return fail("EMAIL_EXISTS", "Cet email est déjà utilisé", 400);
+        throw new EmailAlreadyExistsError();
       }
       console.error("[create-user-account] createUser failed:", createErr);
-      return fail("SERVER_ERROR", "Impossible de créer le compte", 500);
+      throw new InternalError("Impossible de créer le compte");
     }
 
     const userId = created.user.id;
@@ -154,7 +140,7 @@ serve(async (req) => {
     }).eq("id", userId);
     if (profErr) {
       await rollback("profile update", profErr);
-      return fail("SERVER_ERROR", "Erreur lors de la création du profil", 500);
+      throw new InternalError("Erreur lors de la création du profil");
     }
 
     // Step C: roles
@@ -170,7 +156,7 @@ serve(async (req) => {
       );
       if (urErr) {
         await rollback("user_roles insert", urErr);
-        return fail("SERVER_ERROR", "Erreur lors de l'attribution des rôles", 500);
+        throw new InternalError("Erreur lors de l'attribution des rôles");
       }
     }
 
@@ -180,7 +166,7 @@ serve(async (req) => {
         .update({ user_id: userId }).eq("id", membreId);
       if (linkErr) {
         await rollback("membre link", linkErr);
-        return fail("SERVER_ERROR", "Erreur lors de la liaison au membre", 500);
+        throw new InternalError("Erreur lors de la liaison au membre");
       }
       if (finalRoleIds.length > 0) {
         const { error: mrErr } = await supaAdmin.from("membres_roles").insert(
@@ -191,9 +177,11 @@ serve(async (req) => {
     }
 
     console.log("[create-user-account] ✅ created", { userId, email, membreId });
-    return ok({ userId, email, tempPassword: password });
+    return successResponse({ userId, email, tempPassword: password }, corsHeaders);
   } catch (error: unknown) {
-    console.error("[create-user-account] FATAL:", error);
-    return fail("SERVER_ERROR", "Erreur serveur, veuillez réessayer", 500);
+    if (!(error instanceof AppError)) {
+      console.error("[create-user-account] FATAL:", error);
+    }
+    return errorResponse(error, corsHeaders, "create-user-account");
   }
 });
