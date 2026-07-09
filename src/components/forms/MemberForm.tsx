@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/ui/loading-button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -545,9 +546,9 @@ export default function MemberForm({ open, onOpenChange, member, onSubmit, isLoa
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Annuler
               </Button>
-              <Button type="submit" disabled={isLoading || uploading}>
-                {isLoading ? "Enregistrement..." : member ? "Mettre à jour" : "Créer"}
-              </Button>
+              <LoadingButton type="submit" loading={isLoading || uploading} loadingText="Enregistrement...">
+                {member ? "Mettre à jour" : "Créer"}
+              </LoadingButton>
             </div>
           </form>
         </Form>

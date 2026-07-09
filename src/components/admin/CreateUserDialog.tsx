@@ -13,6 +13,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/ui/loading-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -322,11 +323,9 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                 <Button type="button" variant="outline" onClick={handleClose} disabled={isCreating}>
                   Annuler
                 </Button>
-                <Button type="submit" disabled={isCreating} aria-busy={isCreating}>
-                  {isCreating ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Création...</>
-                  ) : "Créer le compte"}
-                </Button>
+                <LoadingButton type="submit" loading={isCreating} loadingText="Création...">
+                  Créer le compte
+                </LoadingButton>
               </DialogFooter>
             </form>
           </>
@@ -374,13 +373,10 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
               <Button variant="outline" onClick={handleClose} disabled={isSending}>
                 Fermer
               </Button>
-              <Button onClick={handleSendCredentials} disabled={isSending} aria-busy={isSending}>
-                {isSending ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Envoi...</>
-                ) : (
-                  <><Mail className="h-4 w-4 mr-2" />Envoyer les identifiants</>
-                )}
-              </Button>
+              <LoadingButton onClick={handleSendCredentials} loading={isSending} loadingText="Envoi...">
+                <Mail className="h-4 w-4 mr-2" />
+                Envoyer les identifiants
+              </LoadingButton>
             </DialogFooter>
           </>
         )}

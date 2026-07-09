@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/ui/loading-button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -225,10 +226,14 @@ export default function E2DMatchEditForm({ open, onOpenChange, match, onSuccess 
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Annuler</Button>
-              <Button type="submit" disabled={updateMatch.isPending || uploading}>
+              <LoadingButton
+                type="submit"
+                loading={updateMatch.isPending || uploading}
+                loadingText={uploading ? "Upload en cours..." : "Enregistrement..."}
+              >
                 <Save className="h-4 w-4 mr-1" />
-                {uploading ? "Upload en cours..." : updateMatch.isPending ? "Enregistrement..." : "Enregistrer"}
-              </Button>
+                Enregistrer
+              </LoadingButton>
             </div>
           </form>
         </Form>

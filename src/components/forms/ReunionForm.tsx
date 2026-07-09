@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -180,7 +181,7 @@ export default function ReunionForm({ initialData, onSuccess }: ReunionFormProps
           </FormItem>
         )} />
         <div className="flex justify-end gap-2">
-          <Button type="submit" disabled={isLoading}>{isLoading ? 'Enregistrement...' : initialData ? 'Mettre à jour' : 'Créer'}</Button>
+          <LoadingButton type="submit" loading={isLoading} loadingText="Enregistrement...">{initialData ? 'Mettre à jour' : 'Créer'}</LoadingButton>
         </div>
       </form>
     </Form>

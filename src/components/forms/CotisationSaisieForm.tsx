@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LoadingButton } from "@/components/ui/loading-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -342,21 +343,17 @@ export default function CotisationSaisieForm({ reunionId, exerciceId, onSuccess 
             />
           </div>
 
-          <Button 
-            onClick={handleSubmit} 
-            disabled={createCotisation.isPending || isSubmitBlocked}
+          <LoadingButton
+            onClick={handleSubmit}
+            loading={createCotisation.isPending}
+            disabled={isSubmitBlocked}
             size="sm"
             className="h-9"
+            loadingText={<span className="sr-only">Enregistrement...</span>}
           >
-            {createCotisation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <Coins className="h-4 w-4 mr-1" />
-                Enregistrer
-              </>
-            )}
-          </Button>
+            <Coins className="h-4 w-4 mr-1" />
+            Enregistrer
+          </LoadingButton>
         </div>
 
         {/* Avertissement: aucun type configuré pour cet exercice */}
