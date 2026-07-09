@@ -508,17 +508,29 @@ export function EmailConfigManager() {
                   placeholder="smtp.gmail.com"
                   value={smtpHost}
                   onChange={(e) => setSmtpHost(e.target.value)}
+                  aria-invalid={!!fieldErrors.smtpHost}
+                  className={cn(fieldErrors.smtpHost && "border-destructive focus-visible:ring-destructive")}
                 />
+                {fieldErrors.smtpHost && (
+                  <p className="text-xs text-destructive">{fieldErrors.smtpHost}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="smtp-port">Port</Label>
                 <Input
                   id="smtp-port"
                   type="number"
+                  min={1}
+                  max={65535}
                   placeholder="587"
                   value={smtpPort}
                   onChange={(e) => setSmtpPort(e.target.value)}
+                  aria-invalid={!!fieldErrors.smtpPort}
+                  className={cn(fieldErrors.smtpPort && "border-destructive focus-visible:ring-destructive")}
                 />
+                {fieldErrors.smtpPort && (
+                  <p className="text-xs text-destructive">{fieldErrors.smtpPort}</p>
+                )}
               </div>
             </div>
 
@@ -526,28 +538,56 @@ export function EmailConfigManager() {
               <Label htmlFor="smtp-user">Utilisateur</Label>
               <Input
                 id="smtp-user"
+                type="email"
                 placeholder="votre@email.com"
                 value={smtpUser}
                 onChange={(e) => setSmtpUser(e.target.value)}
+                aria-invalid={!!fieldErrors.smtpUser}
+                className={cn(fieldErrors.smtpUser && "border-destructive focus-visible:ring-destructive")}
               />
+              {fieldErrors.smtpUser && (
+                <p className="text-xs text-destructive">{fieldErrors.smtpUser}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="smtp-password">
-                Mot de passe
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="smtp-password" className="flex items-center gap-2">
+                  Mot de passe
+                  {smtpConfigId && !smtpPassword && (
+                    <Badge variant="outline" className="text-xs font-normal">Défini</Badge>
+                  )}
+                </Label>
                 {smtpConfigId && (
-                  <span className="ml-2 text-xs text-muted-foreground font-normal">
-                    (laisser vide pour conserver l'existant)
-                  </span>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => {
+                      document.getElementById("smtp-password")?.focus();
+                      toast.info("Saisissez le nouveau mot de passe puis Sauvegarder");
+                    }}
+                  >
+                    Réinitialiser
+                  </Button>
                 )}
-              </Label>
+              </div>
+              {smtpConfigId && (
+                <p className="text-xs text-muted-foreground">
+                  Laisser vide pour conserver le mot de passe existant.
+                </p>
+              )}
               <div className="relative">
                 <Input
                   id="smtp-password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
+                  autoComplete="new-password"
                   value={smtpPassword}
                   onChange={(e) => setSmtpPassword(e.target.value)}
+                  aria-invalid={!!fieldErrors.smtpPassword}
+                  className={cn(fieldErrors.smtpPassword && "border-destructive focus-visible:ring-destructive")}
                 />
                 <Button
                   type="button"
@@ -559,7 +599,11 @@ export function EmailConfigManager() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
+              {fieldErrors.smtpPassword && (
+                <p className="text-xs text-destructive">{fieldErrors.smtpPassword}</p>
+              )}
             </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="smtp-encryption">Chiffrement</Label>
