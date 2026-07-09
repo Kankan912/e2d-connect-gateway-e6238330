@@ -22,8 +22,8 @@
 | 2.3 | (fusionnée avec 2.2 : helpers RLS créés en Migration 7) | ✅ Terminée |
 | 2.4 | Refonte policies RLS tenant-aware (8 migrations, 7 lots) | ✅ Terminée |
 | 2.5 | Frontend : `AssociationContext` + `AssociationSwitcher` + `tenantQuery` | ✅ Terminée |
-| 2.6 | Edge function `provision-association` + page admin plateforme | 🎯 **Prochaine** |
+| 2.6 | Edge function `provision-association` + page admin plateforme | ✅ Terminée |
 
 ## Prochaine action
 
-Démarrer la **Phase 2.6** : edge function `provision-association` (création d'un tenant complet avec settings et rôles par défaut) et page admin plateforme réservée aux super-administrateurs pour créer/gérer les associations.
+Démarrer la **Phase 3** : RBAC granulaire par tenant, journal d'audit unifié et matrice de permissions par association (rôles clonés en Phase 2.6 à connecter à `role_permissions`).
