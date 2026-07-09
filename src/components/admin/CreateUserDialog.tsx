@@ -122,7 +122,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
     toast.error(translateErrorCode(payload.code, fallback));
   };
 
-  const { sendExisting, isPending: isSendPending } = useSendUserCredentials();
+  const { sendExisting } = useSendUserCredentials();
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
