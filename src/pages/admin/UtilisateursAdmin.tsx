@@ -104,39 +104,19 @@ export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdmi
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [selectedMembreId, setSelectedMembreId] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<Utilisateur | null>(null);
 
-  const handleResendCredentials = async (userId: string) => {
-    if (resendingId) return;
-    setResendingId(userId);
-    try {
-      const { data, error } = await supabase.functions.invoke<{
-        success: boolean; code?: string; message?: string; email?: string;
-      }>("send-user-credentials", {
-        body: { userId, resetPassword: true },
-      });
-      const resp = data || null;
-      if (error && !resp) {
-        toast.error("Erreur réseau lors de l'envoi");
-        return;
-      }
-      if (!resp?.success) {
-        const codes: Record<string, string> = {
-          EMAIL_SEND_FAILED: "L'email n'a pas pu être envoyé",
-          USER_NOT_FOUND: "Utilisateur introuvable",
-          FORBIDDEN: "Accès réservé aux administrateurs",
-          SERVER_ERROR: "Erreur serveur, veuillez réessayer",
-        };
-        toast.error((resp?.code && codes[resp.code]) || resp?.message || "Échec de l'envoi");
-        return;
-      }
-      toast.success(`Nouveaux identifiants envoyés à ${resp.email}`);
-    } catch (err: unknown) {
-      logger.error("[UtilisateursAdmin] resend error:", err);
-      toast.error("Erreur réseau lors de l'envoi");
-    } finally {
-      setResendingId(null);
-    }
+  const { sendExisting, resetAndSend, isPending: isSendPending } = useSendUserCredentials();
+
+  const handleSendCredentials = (user: Utilisateur) => {
+    void sendExisting(user.id);
+  };
+
+  const confirmResetPassword = async () => {
+    if (!resetTarget) return;
+    const target = resetTarget;
+    setResetTarget(null);
+    await resetAndSend(target.id);
   };
 
   const { data: userConnections } = useUserConnections(selectedUser?.id || null);
