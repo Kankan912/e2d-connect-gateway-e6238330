@@ -374,6 +374,44 @@ export type Database = {
           },
         ]
       }
+      association_settings: {
+        Row: {
+          association_id: string
+          cle: string
+          created_at: string
+          description: string | null
+          id: string
+          updated_at: string
+          valeur: Json | null
+        }
+        Insert: {
+          association_id?: string
+          cle: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+          valeur?: Json | null
+        }
+        Update: {
+          association_id?: string
+          cle?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+          valeur?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "association_settings_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       associations: {
         Row: {
           caisse_config: Json
@@ -1072,7 +1110,7 @@ export type Database = {
           },
         ]
       }
-      configurations: {
+      configurations_deprecated: {
         Row: {
           cle: string
           created_at: string
@@ -4027,6 +4065,33 @@ export type Database = {
           },
         ]
       }
+      platform_settings: {
+        Row: {
+          cle: string
+          created_at: string
+          description: string | null
+          id: string
+          updated_at: string
+          valeur: Json | null
+        }
+        Insert: {
+          cle: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+          valeur?: Json | null
+        }
+        Update: {
+          cle?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          updated_at?: string
+          valeur?: Json | null
+        }
+        Relationships: []
+      }
       pret_reconduction_validation_config: {
         Row: {
           actif: boolean
@@ -6576,6 +6641,18 @@ export type Database = {
       }
     }
     Views: {
+      configurations_v_compat: {
+        Row: {
+          association_id: string | null
+          cle: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          updated_at: string | null
+          valeur: Json | null
+        }
+        Relationships: []
+      }
       e2d_player_stats_view: {
         Row: {
           equipe_e2d: string | null
