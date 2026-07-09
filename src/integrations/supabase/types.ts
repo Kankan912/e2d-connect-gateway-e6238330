@@ -6641,6 +6641,26 @@ export type Database = {
       }
     }
     Views: {
+      caisse_soldes_snapshot: {
+        Row: {
+          association_id: string | null
+          derniere_operation: string | null
+          nb_operations: number | null
+          refreshed_at: string | null
+          solde_net: number | null
+          total_entrees: number | null
+          total_sorties: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fond_caisse_operations_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configurations_v_compat: {
         Row: {
           association_id: string | null
@@ -6877,6 +6897,7 @@ export type Database = {
         }
         Returns: string
       }
+      refresh_caisse_soldes_snapshot: { Args: never; Returns: undefined }
       reject_loan_step: {
         Args: { _motif: string; _request_id: string }
         Returns: Json
