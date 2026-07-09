@@ -365,22 +365,49 @@ export type Database = {
       }
       associations: {
         Row: {
+          caisse_config: Json
           created_at: string | null
           description: string | null
+          email_config: Json
+          feature_flags: Json
           id: string
+          locale: string
+          logo_url: string | null
           nom: string
+          slug: string
+          statut: string
+          theme_tokens: Json
+          updated_at: string
         }
         Insert: {
+          caisse_config?: Json
           created_at?: string | null
           description?: string | null
+          email_config?: Json
+          feature_flags?: Json
           id?: string
+          locale?: string
+          logo_url?: string | null
           nom: string
+          slug: string
+          statut?: string
+          theme_tokens?: Json
+          updated_at?: string
         }
         Update: {
+          caisse_config?: Json
           created_at?: string | null
           description?: string | null
+          email_config?: Json
+          feature_flags?: Json
           id?: string
+          locale?: string
+          logo_url?: string | null
           nom?: string
+          slug?: string
+          statut?: string
+          theme_tokens?: Json
+          updated_at?: string
         }
         Relationships: []
       }
