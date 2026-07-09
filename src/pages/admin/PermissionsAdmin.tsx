@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAssociation } from "@/contexts/AssociationContext";
 import { useRoles } from "@/hooks/useRoles";
 import { useRefreshPermissions, usePermissionsAudit } from "@/hooks/usePermissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PermissionsMatrix } from "@/components/admin/PermissionsMatrix";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, RefreshCw, Shield, History, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -37,13 +39,26 @@ const PERMISSIONS = [
 
 const PermissionsAdmin = () => {
   const { userRole } = useAuth();
+  const { currentAssociation, availableAssociations } = useAssociation();
   const { roles, useRolePermissions, useAllRolesPermissions } = useRoles();
   const { data: allPermissions, isLoading: permissionsLoading } = useAllRolesPermissions();
   const refreshPermissions = useRefreshPermissions();
   const { toast } = useToast();
   const [selectedRole, setSelectedRole] = useState<string>("");
+  const [tenantFilter, setTenantFilter] = useState<string>(currentAssociation?.id ?? "");
 
-  const isAdmin = userRole === "administrateur";
+  const isAdmin = userRole === "administrateur" || userRole === "super_admin";
+
+  // Filtre : rôles plateforme (toujours visibles) + rôles du tenant sélectionné
+  const visibleRoles = useMemo(() => {
+    if (!roles) return [];
+    const effectiveTenant = tenantFilter || currentAssociation?.id || null;
+    return roles.filter((r: any) => {
+      if (r.scope === 'platform') return true;
+      if (r.scope === 'association') return effectiveTenant ? r.association_id === effectiveTenant : true;
+      return true;
+    });
+  }, [roles, tenantFilter, currentAssociation?.id]);
 
   // Helper pour vérifier si un rôle a une permission
   const hasRolePermission = (roleId: string, resource: string, permission: string): boolean => {
@@ -52,26 +67,21 @@ const PermissionsAdmin = () => {
     ) ?? false;
   };
 
-  // Exporter la matrice en Excel
+  // Exporter la matrice en Excel (rôles visibles uniquement)
   const handleExport = () => {
-    if (!roles || !allPermissions) return;
+    if (!allPermissions) return;
 
     const data: any[] = [];
-    
-    // En-tête
-    const header = ['Ressource', ...roles.map(r => r.name)];
+    const header = ['Ressource', ...visibleRoles.map(r => r.name)];
     data.push(header);
 
-    // Pour chaque ressource
     RESOURCES.forEach(resource => {
       PERMISSIONS.forEach(perm => {
         const row = [`${resource.label} - ${perm.label}`];
-        
-        roles.forEach(role => {
+        visibleRoles.forEach(role => {
           const hasPerm = hasRolePermission(role.id, resource.id, perm.id);
           row.push(hasPerm ? '✓' : '✗');
         });
-        
         data.push(row);
       });
     });
@@ -139,7 +149,7 @@ const PermissionsAdmin = () => {
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{roles?.length || 0}</div>
+            <div className="text-2xl font-bold">{visibleRoles.length || 0}</div>
             <p className="text-xs text-muted-foreground">rôles configurés</p>
           </CardContent>
         </Card>
@@ -182,6 +192,30 @@ const PermissionsAdmin = () => {
         </Card>
       </div>
 
+      {/* Filtre par association (visible si >1 tenant accessible) */}
+      {availableAssociations.length > 1 && (
+        <Card>
+          <CardContent className="pt-6 flex flex-col sm:flex-row sm:items-center gap-3">
+            <span className="text-sm font-medium">Rôles de l'association :</span>
+            <Select value={tenantFilter} onValueChange={setTenantFilter}>
+              <SelectTrigger className="max-w-xs">
+                <SelectValue placeholder="Sélectionner une association" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableAssociations.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.nom}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">
+              Les rôles plateforme sont toujours affichés.
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs */}
       <Tabs defaultValue="matrix" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -213,7 +247,7 @@ const PermissionsAdmin = () => {
                           Ressource
                         </TableHead>
                         <TableHead className="text-center">Permission</TableHead>
-                        {roles?.map(role => (
+                        {visibleRoles.map(role => (
                           <TableHead key={role.id} className="text-center min-w-[100px]">
                             {role.name}
                           </TableHead>
@@ -240,7 +274,7 @@ const PermissionsAdmin = () => {
                                 {perm.label}
                               </Badge>
                             </TableCell>
-                            {roles?.map(role => {
+                            {visibleRoles.map(role => {
                               const hasPerm = hasRolePermission(role.id, resource.id, perm.id);
                               return (
                                 <TableCell key={role.id} className="text-center">
@@ -276,7 +310,7 @@ const PermissionsAdmin = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {roles?.map(role => (
+                    {visibleRoles.map(role => (
                       <Button
                         key={role.id}
                         variant={selectedRole === role.id ? "default" : "outline"}
@@ -294,7 +328,7 @@ const PermissionsAdmin = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle>
-                      Permissions du rôle : {roles?.find(r => r.id === selectedRole)?.name}
+                      Permissions du rôle : {visibleRoles.find(r => r.id === selectedRole)?.name}
                     </CardTitle>
                     <CardDescription>
                       Cochez les permissions que vous souhaitez accorder

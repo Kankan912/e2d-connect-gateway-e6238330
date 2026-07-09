@@ -13,13 +13,13 @@ export const useRoles = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Récupérer tous les rôles
+  // Récupérer tous les rôles (avec scope + tenant pour le filtre multi-association)
   const { data: roles, isLoading } = useQuery({
     queryKey: ['roles'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('roles')
-        .select('id, name, description')
+        .select('id, name, description, scope, association_id')
         .order('name');
       if (error) throw error;
       return data;

@@ -128,6 +128,21 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [user, authLoading, isSuperAdmin, applyTheme]);
 
+  const syncTenantOnDb = useCallback(async (id: string | null) => {
+    try {
+      await supabase.rpc('set_current_association', { _association_id: id });
+    } catch (error) {
+      logger.warn('[AssociationContext] set_current_association RPC échouée:', error);
+    }
+  }, []);
+
+  // Synchronise le tenant côté DB à chaque changement (utile après reload/login)
+  useEffect(() => {
+    if (currentAssociation?.id) {
+      void syncTenantOnDb(currentAssociation.id);
+    }
+  }, [currentAssociation?.id, syncTenantOnDb]);
+
   const switchAssociation = useCallback(
     (id: string) => {
       const next = availableAssociations.find((a) => a.id === id);
@@ -138,10 +153,12 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
       if (typeof window !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, id);
       }
-      // Recharger tout le cache : les données sont scopées par tenant
-      queryClient.invalidateQueries();
+      // Pose la GUC côté Postgres puis invalide le cache React Query
+      void syncTenantOnDb(id).then(() => {
+        queryClient.invalidateQueries();
+      });
     },
-    [availableAssociations, applyTheme, queryClient]
+    [availableAssociations, applyTheme, queryClient, syncTenantOnDb]
   );
 
   const value = useMemo<AssociationContextType>(

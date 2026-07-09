@@ -100,30 +100,63 @@ serve(async (req) => {
     }
     const associationId = assoc.id as string;
 
-    // ---- 5. Cloner les rôles système (administrateur, membre) au niveau association ----
-    // On ne clone QUE les rôles applicatifs standards, pas super_admin.
+    // ---- 5. Cloner les rôles système + leurs permissions au niveau association ----
     const { data: templateRoles } = await admin
       .from("roles")
-      .select("name, description")
+      .select("id, name, description")
       .eq("scope", "platform")
       .in("name", ["administrateur", "membre", "tresorier", "secretaire_general"]);
 
-    const rolesToCreate = (templateRoles ?? []).map((r) => ({
-      name: r.name,
-      description: r.description,
-      scope: "association",
-      is_system: false,
-      association_id: associationId,
-    }));
-
+    const templates = templateRoles ?? [];
     let adminRoleId: string | null = null;
-    if (rolesToCreate.length) {
+
+    if (templates.length) {
+      const rolesToCreate = templates.map((r) => ({
+        name: r.name,
+        description: r.description,
+        scope: "association",
+        is_system: false,
+        association_id: associationId,
+      }));
+
       const { data: createdRoles, error: rolesErr } = await admin
         .from("roles")
         .insert(rolesToCreate)
         .select("id, name");
       if (rolesErr) throw new InternalError("Création rôles association échouée", rolesErr.message);
+
       adminRoleId = createdRoles?.find((r) => r.name === "administrateur")?.id ?? null;
+
+      // Phase 3.2 — cloner role_permissions depuis les templates
+      const templateIds = templates.map((t) => t.id);
+      const { data: templatePerms } = await admin
+        .from("role_permissions")
+        .select("role_id, resource, permission, granted")
+        .in("role_id", templateIds);
+
+      const byTemplateId = new Map(templates.map((t) => [t.id, t.name]));
+      const createdByName = new Map((createdRoles ?? []).map((r) => [r.name, r.id]));
+
+      const permsToInsert = (templatePerms ?? [])
+        .map((p) => {
+          const templateName = byTemplateId.get(p.role_id);
+          const newRoleId = templateName ? createdByName.get(templateName) : null;
+          if (!newRoleId) return null;
+          return {
+            role_id: newRoleId,
+            resource: p.resource,
+            permission: p.permission,
+            granted: p.granted,
+          };
+        })
+        .filter(Boolean);
+
+      if (permsToInsert.length) {
+        const { error: permsErr } = await admin.from("role_permissions").insert(permsToInsert);
+        if (permsErr) {
+          console.warn("[provision-association] Clone permissions échoué:", permsErr.message);
+        }
+      }
     }
 
     // ---- 6. Créer l'utilisateur admin ----

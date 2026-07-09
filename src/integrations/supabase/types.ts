@@ -6739,6 +6739,7 @@ export type Database = {
       }
       current_association_id: { Args: never; Returns: string }
       current_membre_id: { Args: never; Returns: string }
+      current_tenant_id: { Args: never; Returns: string }
       default_association_id: { Args: never; Returns: string }
       delete_loan_validation_step: { Args: { _id: string }; Returns: boolean }
       delete_pret_reconduction_validation_step: {
@@ -6802,6 +6803,14 @@ export type Database = {
         Args: { perm: string; resource_name: string }
         Returns: boolean
       }
+      has_permission_in: {
+        Args: {
+          _association_id: string
+          _permission: string
+          _resource: string
+        }
+        Returns: boolean
+      }
       has_role:
         | { Args: { _role: string; _user_id: string }; Returns: boolean }
         | { Args: { role_name: string }; Returns: boolean }
@@ -6811,6 +6820,15 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id?: string }; Returns: boolean }
+      log_audit: {
+        Args: {
+          _action: string
+          _details?: Json
+          _row_id?: string
+          _table_name: string
+        }
+        Returns: string
+      }
       log_audit_event: {
         Args: {
           p_action: string
@@ -6853,6 +6871,10 @@ export type Database = {
       reorder_pret_reconduction_validation_steps: {
         Args: { _ids: string[] }
         Returns: boolean
+      }
+      set_current_association: {
+        Args: { _association_id: string }
+        Returns: string
       }
       strip_secrets: { Args: { p_data: Json }; Returns: Json }
       upsert_loan_validation_step: {

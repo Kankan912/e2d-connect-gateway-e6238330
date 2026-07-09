@@ -5,25 +5,25 @@
 | # | Phase | Effort | État |
 |---|---|---|---|
 | 1 | Stabilisation & correctifs bloquants | 3-5 j | ✅ Terminée |
-| **2** | **Fondations Multi-Tenant** | **8-12 j** | 🚧 **En cours** |
-| 3 | RBAC granulaire & audit complet | 4-6 j | ⏳ À faire |
+| 2 | Fondations Multi-Tenant | 8-12 j | ✅ Terminée |
+| **3** | **RBAC granulaire & audit complet** | **4-6 j** | ✅ **Terminée** |
 | 4 | Domain Services & FinancialEngine | 10-15 j | ⏳ À faire |
 | 5 | Prêts, Aides & Bénéficiaires — cohérence métier | 6-8 j | ⏳ À faire |
 | 6 | i18n, thèmes & personnalisation par association | 5-7 j | ⏳ À faire |
 | 7 | Observabilité, sauvegardes, tests | 4-6 j | ⏳ À faire |
 | 8 | Industrialisation & documentation | 3-4 j | ⏳ À faire |
 
-## Phase 2 — Sous-phases
+## Phase 3 — Sous-phases
 
 | # | Sous-phase | État |
 |---|---|---|
-| 2.1 | Audit préparatoire (`docs/PHASE2_TENANT_AUDIT.md`) | ✅ Terminée |
-| 2.2 | Migrations schéma (7 migrations + correctifs) | ✅ Terminée |
-| 2.3 | (fusionnée avec 2.2 : helpers RLS créés en Migration 7) | ✅ Terminée |
-| 2.4 | Refonte policies RLS tenant-aware (8 migrations, 7 lots) | ✅ Terminée |
-| 2.5 | Frontend : `AssociationContext` + `AssociationSwitcher` + `tenantQuery` | ✅ Terminée |
-| 2.6 | Edge function `provision-association` + page admin plateforme | ✅ Terminée |
+| 3.1 | `current_tenant_id()` + `has_permission()` tenant-aware + `has_permission_in()` | ✅ Terminée |
+| 3.2 | Backfill `role_permissions` scope=association + clonage dans `provision-association` | ✅ Terminée |
+| 3.3 | Trigger `audit_logs.association_id` fallback + helper `log_audit()` | ✅ Terminée |
+| 3.4 | RPC `set_current_association()` + intégration `AssociationContext` | ✅ Terminée |
+| 3.5 | Filtre association dans `PermissionsAdmin` | ✅ Terminée |
+| 3.6 | Documentation (plan, changelog, mémoire) | ✅ Terminée |
 
 ## Prochaine action
 
-Démarrer la **Phase 3** : RBAC granulaire par tenant, journal d'audit unifié et matrice de permissions par association (rôles clonés en Phase 2.6 à connecter à `role_permissions`).
+Démarrer la **Phase 4** : Domain Services & FinancialEngine (extraction des règles métier finance dans des services testables, orchestration centralisée des mouvements de caisse, matérialisation des soldes).
