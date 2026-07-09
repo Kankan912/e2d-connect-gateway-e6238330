@@ -11,13 +11,19 @@ export type CaisseCategorie =
   | "cotisation"
   | "epargne"
   | "pret_emis"
+  | "pret_decaissement"
   | "pret_remboursement"
   | "aide"
   | "sanction"
   | "don"
   | "beneficiaire"
+  | "distribution_beneficiaire"
   | "adhesion"
-  | "autre";
+  | "interet"
+  | "sport"
+  | "autre"
+  // Toute autre valeur libre acceptée côté RPC serveur
+  | (string & {});
 
 export interface CaisseMovementInput {
   type: CaisseMovementType;
