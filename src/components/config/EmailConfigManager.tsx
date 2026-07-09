@@ -237,7 +237,40 @@ export function EmailConfigManager() {
     duration_ms?: number;
   } | null>(null);
 
+  // ============================================================
+  // Validation client (zod)
+  // ============================================================
+  /** Valide les champs demandés. Renvoie true si OK, sinon met à jour fieldErrors + toast. */
+  const validate = (scope: "common" | "smtp" | "resend-key" | "all"): boolean => {
+    const errors: Record<string, string> = {};
+    const commonPayload = { emailExpediteur, emailExpediteurNom, appUrl };
+    const smtpPayload = { smtpHost, smtpPort, smtpUser, smtpEncryption };
+
+    if (scope === "common" || scope === "smtp" || scope === "all") {
+      const r = commonSchema.safeParse(commonPayload);
+      if (!r.success) for (const iss of r.error.issues) errors[String(iss.path[0])] = iss.message;
+    }
+    if (scope === "smtp" || (scope === "all" && emailService === "smtp")) {
+      const r = smtpFieldsSchema.safeParse(smtpPayload);
+      if (!r.success) for (const iss of r.error.issues) errors[String(iss.path[0])] = iss.message;
+      // Mot de passe requis si aucune config n'existe encore en base
+      if (!smtpConfigId && !smtpPassword) errors.smtpPassword = "Mot de passe requis (première configuration)";
+    }
+    if (scope === "resend-key") {
+      const r = resendKeySchema.safeParse(resendApiKey);
+      if (!r.success) errors.resendApiKey = r.error.issues[0]?.message || "Clé Resend invalide";
+    }
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      toast.error(Object.values(errors)[0]);
+      return false;
+    }
+    return true;
+  };
+
   const runConfigurationTest = async (provider: "auto" | "resend" | "smtp", enableFallback = false) => {
+
     if (provider === "resend" || provider === "auto") setTestingResend(true);
     if (provider === "smtp") setTestingSmtp(true);
 
