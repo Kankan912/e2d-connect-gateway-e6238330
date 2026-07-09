@@ -313,7 +313,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     cotisationsReunion.forEach((c) => {
       checkNewPage(10);
       doc.text(
-        `• ${c.membre?.prenom} ${c.membre?.nom} - ${c.type?.nom || "Type inconnu"}: ${formatFCFA(c.montant?)}`,
+        `• ${c.membre?.prenom} ${c.membre?.nom} - ${c.type?.nom || "Type inconnu"}: ${formatFCFA(c.montant)}`,
         margin + 5,
         yPosition,
       );
@@ -340,7 +340,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     epargnesReunion.forEach((e) => {
       checkNewPage(10);
       doc.text(
-        `• ${e.membre?.prenom} ${e.membre?.nom}: ${formatFCFA(e.montant?)}`,
+        `• ${e.membre?.prenom} ${e.membre?.nom}: ${formatFCFA(e.montant)}`,
         margin + 5,
         yPosition,
       );
@@ -371,7 +371,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
       checkNewPage(10);
       const statut = s.statut === "paye" ? "✓" : "○";
       doc.text(
-        `${statut} ${s.membre?.prenom} ${s.membre?.nom} - ${s.motif || "Sanction"}: ${formatFCFA(s.montant_amende?)}`,
+        `${statut} ${s.membre?.prenom} ${s.membre?.nom} - ${s.motif || "Sanction"}: ${formatFCFA(s.montant_amende)}`,
         margin + 5,
         yPosition,
       );
@@ -398,7 +398,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     aidesReunion.forEach((a) => {
       checkNewPage(10);
       doc.text(
-        `• ${a.beneficiaire?.prenom} ${a.beneficiaire?.nom} - ${a.type?.nom || "Aide"}: ${formatFCFA(a.montant?)}`,
+        `• ${a.beneficiaire?.prenom} ${a.beneficiaire?.nom} - ${a.type?.nom || "Aide"}: ${formatFCFA(a.montant)}`,
         margin + 5,
         yPosition,
       );

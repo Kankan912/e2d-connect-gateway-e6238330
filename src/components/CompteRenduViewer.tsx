@@ -408,7 +408,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                         <span>{c.membre?.prenom} {c.membre?.nom}</span>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{c.type?.nom || 'Type inconnu'}</Badge>
-                          <span className="font-medium">{formatFCFA(c.montant?)}</span>
+                          <span className="font-medium">{formatFCFA(c.montant)}</span>
                         </div>
                       </div>
                     ))}
@@ -432,7 +432,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                     {epargnesReunion?.map((e: EpargneRow) => (
                       <div key={e.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
                         <span>{e.membre?.prenom} {e.membre?.nom}</span>
-                        <span className="font-medium">{formatFCFA(e.montant?)}</span>
+                        <span className="font-medium">{formatFCFA(e.montant)}</span>
                       </div>
                     ))}
                   </div>
@@ -462,7 +462,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                           <Badge variant={s.statut === 'paye' ? 'default' : 'outline'}>
                             {s.statut === 'paye' ? 'Payé' : 'Impayé'}
                           </Badge>
-                          <span className="font-medium">{formatFCFA(s.montant_amende?)}</span>
+                          <span className="font-medium">{formatFCFA(s.montant_amende)}</span>
                         </div>
                       </div>
                     ))}
@@ -490,7 +490,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{a.type?.nom || 'Aide'}</Badge>
-                          <span className="font-medium">{formatFCFA(a.montant?)}</span>
+                          <span className="font-medium">{formatFCFA(a.montant)}</span>
                         </div>
                       </div>
                     ))}
