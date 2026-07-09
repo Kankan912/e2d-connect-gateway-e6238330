@@ -6790,6 +6790,10 @@ export type Database = {
         Returns: string
       }
       get_solde_caisse: { Args: never; Returns: number }
+      get_solde_empruntable: {
+        Args: { p_association_id?: string; p_pourcentage?: number }
+        Returns: number
+      }
       get_user_associations: { Args: { _user_id?: string }; Returns: string[] }
       get_user_role: {
         Args: { _user_id: string }
@@ -6855,6 +6859,23 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      record_caisse_movement: {
+        Args: {
+          p_beneficiaire_id?: string
+          p_categorie: string
+          p_date_operation?: string
+          p_exercice_id?: string
+          p_justificatif_url?: string
+          p_libelle: string
+          p_montant: number
+          p_notes?: string
+          p_reunion_id?: string
+          p_source_id?: string
+          p_source_table?: string
+          p_type: string
+        }
+        Returns: string
       }
       reject_loan_step: {
         Args: { _motif: string; _request_id: string }
