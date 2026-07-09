@@ -130,7 +130,6 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
 
   const syncTenantOnDb = useCallback(async (id: string | null) => {
     try {
-      // @ts-expect-error - RPC générée après migration Phase 3
       await supabase.rpc('set_current_association', { _association_id: id });
     } catch (error) {
       logger.warn('[AssociationContext] set_current_association RPC échouée:', error);
