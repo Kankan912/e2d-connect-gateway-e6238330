@@ -1561,6 +1561,7 @@ export type Database = {
       }
       email_logs: {
         Row: {
+          association_id: string | null
           attempts: number
           created_at: string
           error_message: string | null
@@ -1572,6 +1573,7 @@ export type Database = {
           to_email: string
         }
         Insert: {
+          association_id?: string | null
           attempts?: number
           created_at?: string
           error_message?: string | null
@@ -1583,6 +1585,7 @@ export type Database = {
           to_email: string
         }
         Update: {
+          association_id?: string | null
           attempts?: number
           created_at?: string
           error_message?: string | null
@@ -1593,7 +1596,15 @@ export type Database = {
           subject?: string
           to_email?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       epargnes: {
         Row: {
@@ -2865,6 +2876,7 @@ export type Database = {
       }
       notifications_campagnes: {
         Row: {
+          association_id: string | null
           created_at: string
           created_by: string
           date_envoi_prevue: string | null
@@ -2883,6 +2895,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          association_id?: string | null
           created_at?: string
           created_by: string
           date_envoi_prevue?: string | null
@@ -2901,6 +2914,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          association_id?: string | null
           created_at?: string
           created_by?: string
           date_envoi_prevue?: string | null
@@ -2933,11 +2947,19 @@ export type Database = {
             referencedRelation: "membres"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notifications_campagnes_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notifications_config: {
         Row: {
           actif: boolean
+          association_id: string | null
           created_at: string
           delai_jours: number
           id: string
@@ -2948,6 +2970,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean
+          association_id?: string | null
           created_at?: string
           delai_jours?: number
           id?: string
@@ -2958,6 +2981,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean
+          association_id?: string | null
           created_at?: string
           delai_jours?: number
           id?: string
@@ -2966,10 +2990,19 @@ export type Database = {
           type_notification?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_config_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications_envois: {
         Row: {
+          association_id: string | null
           campagne_id: string
           canal: string
           created_at: string
@@ -2982,6 +3015,7 @@ export type Database = {
           statut: string
         }
         Insert: {
+          association_id?: string | null
           campagne_id: string
           canal: string
           created_at?: string
@@ -2994,6 +3028,7 @@ export type Database = {
           statut?: string
         }
         Update: {
+          association_id?: string | null
           campagne_id?: string
           canal?: string
           created_at?: string
@@ -3021,6 +3056,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notifications_envois_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notifications_envois_campagne_id_fkey"
             columns: ["campagne_id"]
             isOneToOne: false
@@ -3031,6 +3073,7 @@ export type Database = {
       }
       notifications_historique: {
         Row: {
+          association_id: string | null
           contenu: string
           created_at: string
           date_envoi: string
@@ -3044,6 +3087,7 @@ export type Database = {
           variables_utilisees: Json | null
         }
         Insert: {
+          association_id?: string | null
           contenu: string
           created_at?: string
           date_envoi?: string
@@ -3057,6 +3101,7 @@ export type Database = {
           variables_utilisees?: Json | null
         }
         Update: {
+          association_id?: string | null
           contenu?: string
           created_at?: string
           date_envoi?: string
@@ -3069,10 +3114,19 @@ export type Database = {
           updated_at?: string
           variables_utilisees?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_historique_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications_logs: {
         Row: {
+          association_id: string | null
           campagne_id: string | null
           created_at: string | null
           destinataire_email: string
@@ -3086,6 +3140,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          association_id?: string | null
           campagne_id?: string | null
           created_at?: string | null
           destinataire_email: string
@@ -3099,6 +3154,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          association_id?: string | null
           campagne_id?: string | null
           created_at?: string | null
           destinataire_email?: string
@@ -3112,6 +3168,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_logs_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_logs_destinataire_id_fkey"
             columns: ["destinataire_id"]
@@ -3138,6 +3201,7 @@ export type Database = {
       notifications_templates: {
         Row: {
           actif: boolean | null
+          association_id: string | null
           categorie: string
           code: string
           created_at: string | null
@@ -3152,6 +3216,7 @@ export type Database = {
         }
         Insert: {
           actif?: boolean | null
+          association_id?: string | null
           categorie: string
           code: string
           created_at?: string | null
@@ -3166,6 +3231,7 @@ export type Database = {
         }
         Update: {
           actif?: boolean | null
+          association_id?: string | null
           categorie?: string
           code?: string
           created_at?: string | null
@@ -3178,7 +3244,15 @@ export type Database = {
           updated_at?: string | null
           variables_disponibles?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_templates_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_configs: {
         Row: {
