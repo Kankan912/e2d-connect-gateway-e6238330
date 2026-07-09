@@ -1,75 +1,29 @@
+# Suivi du plan directeur — E2D → Plateforme SaaS Multi-Associations
 
-# Phase 2.5 — Frontend Multi-Tenant
+## Tableau récapitulatif
 
-Objectif : rendre le frontend conscient du tenant (association) sans casser l'expérience E2D actuelle. Trois briques :
+| # | Phase | Effort | État |
+|---|---|---|---|
+| 1 | Stabilisation & correctifs bloquants | 3-5 j | ✅ Terminée |
+| **2** | **Fondations Multi-Tenant** | **8-12 j** | 🚧 **En cours** |
+| 3 | RBAC granulaire & audit complet | 4-6 j | ⏳ À faire |
+| 4 | Domain Services & FinancialEngine | 10-15 j | ⏳ À faire |
+| 5 | Prêts, Aides & Bénéficiaires — cohérence métier | 6-8 j | ⏳ À faire |
+| 6 | i18n, thèmes & personnalisation par association | 5-7 j | ⏳ À faire |
+| 7 | Observabilité, sauvegardes, tests | 4-6 j | ⏳ À faire |
+| 8 | Industrialisation & documentation | 3-4 j | ⏳ À faire |
 
-## 1. `AssociationContext` (nouveau)
+## Phase 2 — Sous-phases
 
-- **Fichier** : `src/contexts/AssociationContext.tsx`
-- **État exposé** :
-  - `currentAssociation` (`{ id, slug, nom, logo_url, theme_tokens, ... }`)
-  - `availableAssociations` (liste)
-  - `isSuperAdmin` (bool)
-  - `switchAssociation(id)` (super_admin uniquement)
-  - `loading`
-- **Logique** :
-  - Au montage, si `user` connecté :
-    - super_admin → charge toutes les `associations` actives
-    - sinon → charge les associations liées via `membres.association_id` (via `get_user_associations()`)
-  - `currentAssociation` = valeur persistée dans `localStorage` (`lovable_current_association`), fallback = première dispo, fallback = E2D via `default_association_id()`.
-  - Émis après `AuthProvider`, dépend de `useAuth`.
+| # | Sous-phase | État |
+|---|---|---|
+| 2.1 | Audit préparatoire (`docs/PHASE2_TENANT_AUDIT.md`) | ✅ Terminée |
+| 2.2 | Migrations schéma (7 migrations + correctifs) | ✅ Terminée |
+| 2.3 | (fusionnée avec 2.2 : helpers RLS créés en Migration 7) | ✅ Terminée |
+| 2.4 | Refonte policies RLS tenant-aware (8 migrations, 7 lots) | ✅ Terminée |
+| 2.5 | Frontend : `AssociationContext` + `AssociationSwitcher` + `tenantQuery` | ✅ Terminée |
+| 2.6 | Edge function `provision-association` + page admin plateforme | 🎯 **Prochaine** |
 
-## 2. Sélecteur d'association (UI)
+## Prochaine action
 
-- **Fichier** : `src/components/AssociationSwitcher.tsx`
-- Affiché uniquement pour :
-  - super_admin (toujours)
-  - utilisateur multi-tenant (>1 association)
-- Placé dans le header du dashboard (`src/components/Layout.tsx` ou équivalent) à côté du menu utilisateur.
-- Composant : `Select` shadcn avec logo + nom association.
-- Sur change → appelle `switchAssociation()` puis `queryClient.invalidateQueries()`.
-
-## 3. Helper `tenantQuery` + injection `association_id`
-
-- **Fichier** : `src/lib/tenantQuery.ts`
-- Expose :
-  - `withCurrentAssociation<T>(payload: T): T & { association_id: string }` : ajoute automatiquement `association_id` sur INSERT.
-  - `getCurrentAssociationId(): string` : lecture synchrone depuis un singleton mis à jour par `AssociationContext`.
-- Sync via petit event bus / `zustand` store léger (`src/stores/associationStore.ts`) pour permettre l'usage hors composant React.
-- Aucun refactor massif : on **n'oblige pas** encore les hooks à utiliser le helper (RLS `default_association_id()` couvre les inserts existants). Seuls les nouveaux inserts + module Phoenix devront l'employer.
-
-## 4. Intégration dans `AuthContext`
-
-- Après `fetchUserProfile`, exposer aussi `userAssociationId` (première `membres.association_id` du user) — utile pour hooks legacy.
-- Ajouter `isSuperAdmin` calculé à partir de `userRole === 'super_admin'` OU présence dans `user_roles` avec role plateforme super_admin.
-
-## 5. Provider hierarchy (`src/App.tsx`)
-
-```
-<QueryClientProvider>
-  <AuthProvider>
-    <AssociationProvider>
-      <RouterProvider ...>
-    </AssociationProvider>
-  </AuthProvider>
-</QueryClientProvider>
-```
-
-## 6. Style & thème
-
-- `AssociationProvider` applique les `theme_tokens` de l'association courante en injectant des variables CSS sur `<html>` (`--tenant-primary`, `--tenant-accent`, etc.).
-- Fallback : tokens actuels E2D si aucune valeur.
-- La refonte visuelle par tenant (Phase 6) réutilisera ce mécanisme.
-
-## 7. Livrables
-
-- 4 nouveaux fichiers : `AssociationContext.tsx`, `AssociationSwitcher.tsx`, `tenantQuery.ts`, `associationStore.ts`.
-- Modifications légères : `App.tsx`, `AuthContext.tsx` (expose `isSuperAdmin`), header du dashboard (intégration switcher).
-- Aucune modification de hook métier existant (compatibilité garantie par `default_association_id()`).
-- Test manuel : login E2D → dashboard doit rester identique (aucun sélecteur visible car 1 seule asso).
-
-## Hors périmètre
-
-- Refactor des ~50 hooks pour utiliser `tenantQuery` (fait progressivement en Phase 5/6).
-- Provisioning d'une nouvelle association (Phase 2.6).
-- Thème réel par tenant (Phase 6 — cette phase pose juste la mécanique).
+Démarrer la **Phase 2.6** : edge function `provision-association` (création d'un tenant complet avec settings et rôles par défaut) et page admin plateforme réservée aux super-administrateurs pour créer/gérer les associations.
