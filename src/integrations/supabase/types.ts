@@ -6768,6 +6768,18 @@ export type Database = {
       }
       disburse_loan: { Args: { p_pret_id: string }; Returns: boolean }
       get_active_payment_config_public: { Args: never; Returns: Json }
+      get_caisse_solde_snapshot: {
+        Args: { p_association_id?: string }
+        Returns: {
+          association_id: string
+          derniere_operation: string
+          nb_operations: number
+          refreshed_at: string
+          solde_net: number
+          total_entrees: number
+          total_sorties: number
+        }[]
+      }
       get_caisse_stats: { Args: never; Returns: Json }
       get_caisse_synthese: { Args: never; Returns: Json }
       get_cotisation_mensuelle_membre: {
