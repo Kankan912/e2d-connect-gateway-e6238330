@@ -1110,7 +1110,7 @@ export type Database = {
           },
         ]
       }
-      configurations_deprecated: {
+      configurations: {
         Row: {
           cle: string
           created_at: string
