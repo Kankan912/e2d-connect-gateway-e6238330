@@ -6775,9 +6775,14 @@ export type Database = {
         Returns: string
       }
       get_solde_caisse: { Args: never; Returns: number }
+      get_user_associations: { Args: { _user_id?: string }; Returns: string[] }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_association_access: {
+        Args: { _association_id: string; _user_id?: string }
+        Returns: boolean
       }
       has_permission: {
         Args: { perm: string; resource_name: string }
@@ -6787,6 +6792,11 @@ export type Database = {
         | { Args: { _role: string; _user_id: string }; Returns: boolean }
         | { Args: { role_name: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_admin_of: {
+        Args: { _association_id: string; _user_id?: string }
+        Returns: boolean
+      }
+      is_super_admin: { Args: { _user_id?: string }; Returns: boolean }
       log_audit_event: {
         Args: {
           p_action: string
