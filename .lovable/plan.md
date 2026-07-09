@@ -1,74 +1,48 @@
-# Confirmation de bascule + validations client email
+# Suivi du plan directeur — État des phases
 
-## 1. Dialog de confirmation avant bascule SMTP ↔ Resend
+## Réponse directe
 
-Le bouton « Basculer sur SMTP / Resend » ne persiste plus le changement immédiatement. Il ouvre d'abord un `AlertDialog` (shadcn) qui explique l'impact :
+**7 phases restantes** sur 8 au total. La Phase 1 est terminée ; nous sommes à l'entrée de la **Phase 2**.
 
-- Le titre nomme le provider cible (`Basculer les envois d'emails sur Resend ?`).
-- La description liste concrètement :
-  - **Tous les emails applicatifs** (invitations, réinitialisations, notifications, compte-rendus, rappels de cotisation) partiront désormais via ce provider.
-  - Les envois en cours de traitement (non encore consommés dans la file) utiliseront le nouveau provider.
-  - Le provider précédent reste configuré et sert de **fallback automatique** en cas d'échec.
-  - Pour Resend sans domaine vérifié : rappel que seuls les envois vers l'email du propriétaire du compte aboutiront.
-  - Pour SMTP : rappel qu'il faut avoir testé la connexion au moins une fois.
-- Deux actions : `Annuler` / `Confirmer la bascule`. Confirmation exécute l'`handleSwitchProvider` actuel.
+## Tableau récapitulatif
 
-Toast succès inchangé (« Provider actif : … »).
+| # | Phase | Effort | État |
+|---|---|---|---|
+| 1 | Stabilisation & correctifs bloquants | 3-5 j | ✅ Terminée |
+| 2 | Fondations Multi-Tenant (association_id, RLS tenant, provisioning) | 8-12 j | 🎯 **À démarrer (prochaine)** |
+| 3 | RBAC granulaire & audit complet | 4-6 j | ⏳ À faire |
+| 4 | Domain Services & FinancialEngine | 10-15 j | ⏳ À faire |
+| 5 | Prêts, Aides & Bénéficiaires — cohérence métier | 6-8 j | ⏳ À faire |
+| 6 | i18n, thèmes & personnalisation par association | 5-7 j | ⏳ À faire |
+| 7 | Observabilité, sauvegardes, tests | 4-6 j | ⏳ À faire |
+| 8 | Industrialisation & documentation | 3-4 j | ⏳ À faire |
 
-## 2. Validation client des champs
+## Phase en cours
 
-Introduction d'un schéma `zod` local (`emailConfigSchema`) validé au moment de :
-- clic sur **Sauvegarder les modifications** (bouton global)
-- clic sur **Tester …** (SMTP ou Resend) — validation partielle du provider concerné
-- clic sur **Basculer sur …** (avant d'ouvrir le dialog)
+**Phase 2 — Fondations Multi-Tenant.** À livrer :
 
-Règles :
+- Migration `association_id uuid` sur toutes les tables métier (nullable → backfill vers `associations.e2d` → NOT NULL).
+- Enrichissement de la table `associations` (logo, thème, config email, config caisse, locale, feature flags).
+- Refonte RLS avec `has_association_access(association_id)` en remplacement / complément de `is_admin()`.
+- `AuthContext` : exposition de `currentAssociationId` + sélecteur si l'utilisateur appartient à plusieurs associations.
+- Helper `tenantQuery()` injectant automatiquement le filtre tenant.
+- Edge function `provision-association` (super_admin uniquement).
 
-| Champ | Règle |
-|---|---|
-| `emailExpediteur` | requis, email valide (`z.string().trim().email()`), ≤ 255 car. |
-| `emailExpediteurNom` | requis, non vide, ≤ 100 car. |
-| `appUrl` | requis, URL valide http/https (`z.string().url().regex(/^https?:\/\//)`), ≤ 500 car. |
-| `smtpHost` (si SMTP actif ou test SMTP) | requis, non vide, ≤ 255 car., pas d'espaces |
-| `smtpPort` | entier `1..65535` (`z.coerce.number().int().min(1).max(65535)`) |
-| `smtpUser` | requis, email valide, ≤ 255 car. |
-| `smtpPassword` | requis uniquement si **nouvelle** config (pas de `smtpConfigId`) ; sinon optionnel (garde l'existant) |
-| `smtpEncryption` | `tls` \| `ssl` \| `none` |
-| `resendApiKey` (bouton Enregistrer la clé) | doit commencer par `re_`, ≥ 20 car. |
+Risque régression : **élevé** (backfill + réécriture RLS). Snapshot DB + tests RLS obligatoires avant merge.
 
-En cas d'échec :
-- Toast erreur avec le premier message d'erreur explicite.
-- Le champ fautif reçoit une bordure `border-destructive` et un texte d'aide `<p className="text-xs text-destructive">…</p>` sous l'input.
-- État local `fieldErrors: Record<string, string>` remis à zéro à chaque nouvelle tentative de sauvegarde/test.
+## Phases restantes après la 2
 
-## 3. Masquage & rechargement du mot de passe SMTP
+- **Phase 3** — RBAC granulaire (`role_permissions.scope`, `super_admin` vs `administrateur`), triggers d'audit sur tables sensibles, page « Journal d'audit », tests RLS cross-tenant.
+- **Phase 4** — Réorganisation `src/domains/**`, `FinancialEngine` RPC unique (solde, intérêts, reste à payer, bénéficiaires), `NotificationProvider` unifié.
+- **Phase 5** — Workflows prêts/aides/bénéficiaires complets, reconductions, avaliste multi-niveaux, PDF de décision, prorata intérêt.
+- **Phase 6** — `react-i18next` (fr/en), thème par association via CSS variables HSL injectées, éditeur admin avec preview.
+- **Phase 7** — Logger shipping vers `audit_logs` + Sentry optionnel, dashboard monitoring, sauvegarde SQL quotidienne (30j retention), Vitest ≥60% sur services.
+- **Phase 8** — Landing SaaS multi-associations, onboarding self-service, doc opérateur/association, runbook incidents, CI (lint + typecheck + vitest + RLS).
 
-Actuellement le mot de passe SMTP :
-- n'est jamais préchargé depuis la base (ok, déjà en place).
-- reste en mémoire après sauvegarde et le champ garde la valeur en clair (masquée seulement par `type=password`).
+## Convention de suivi
 
-Modifications :
-- **Après succès** de `saveConfigMutation` ou de `runConfigurationTest('smtp'|'auto')` avec mot de passe fraîchement saisi : `setSmtpPassword("")` + `setShowPassword(false)` pour re-masquer visuellement.
-- Le label du champ affiche déjà « laisser vide pour conserver l'existant » ; renforcer avec un petit indicateur `<Badge variant="outline">Défini</Badge>` à droite du label lorsque `smtpConfigId` existe et que `smtpPassword === ""`, pour indiquer qu'un mot de passe est en base sans le divulguer.
-- Ajout d'un lien « Réinitialiser le mot de passe SMTP » à côté du champ : simple `<Button variant="link" size="sm">` qui met le focus dans le champ et affiche un toast d'aide (« Saisissez le nouveau mot de passe puis Sauvegarder ») — pas d'appel API.
+À chaque fin de phase je mettrai ce tableau à jour dans `.lovable/plan.md` et `docs/CHANGELOG.md`, avec la phase suivante marquée « 🎯 » et la phase courante passée à « ✅ ».
 
-## Fichier touché
+## Prochaine action attendue
 
-- `src/components/config/EmailConfigManager.tsx` (unique).
-- Ajout imports : `AlertDialog`, `AlertDialogAction`, `AlertDialogCancel`, `AlertDialogContent`, `AlertDialogDescription`, `AlertDialogFooter`, `AlertDialogHeader`, `AlertDialogTitle`, `AlertDialogTrigger` depuis `@/components/ui/alert-dialog` ; `z` depuis `zod` (déjà dans les deps).
-
-## Vérification
-
-- Typecheck OK.
-- Clic sur `Basculer sur Resend` avec provider = SMTP → dialog s'affiche avec impact ; `Annuler` ne change rien ; `Confirmer` bascule et affiche le toast.
-- Saisir un port `70000` puis Tester SMTP → erreur inline + toast.
-- Saisir `email_expediteur = "pas un email"` puis Sauvegarder → erreur inline + toast, aucune requête envoyée.
-- Après Sauvegarder avec nouveau mot de passe SMTP → champ mot de passe revient à vide + `type=password`.
-- Le mot de passe existant en base n'est jamais renvoyé au client (déjà le cas).
-
-## Hors périmètre
-
-- Pas de changement des edge functions / RLS / schéma.
-- Pas de modification de la logique de fallback ni des tests.
-- Pas de renommage des champs base.
-- Pas de rotation ni de touche à la clé Resend actuelle en base.
+Valider que la **Phase 2** est bien la prochaine à traiter. Sur ton feu vert, je produis le plan d'implémentation détaillé de la Phase 2 (fichiers touchés, migrations SQL, stratégie de backfill, tests RLS) — pas de code avant ce sous-plan.
