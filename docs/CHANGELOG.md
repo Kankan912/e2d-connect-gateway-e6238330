@@ -212,4 +212,22 @@ Première étape de migration des producteurs frontend vers le FinancialEngine.
 
 **Impact utilisateur E2D** : aucun changement fonctionnel visible ; les opérations manuelles de caisse sont désormais idempotentes et tenant-safe.
 
+## Refonte Juillet 2026 — Phase 4.5 — Instantané matérialisé `caisse_soldes_snapshot`
+
+**Objectif** : éviter les agrégations lourdes sur `fond_caisse_operations` (déjà 5 000+ lignes et croissant) à chaque affichage de tableau de bord.
+
+**Livrables** :
+- Vue matérialisée `public.caisse_soldes_snapshot` (agrégats par `association_id` : total entrées, total sorties, solde net, nb opérations, dernière opération, `refreshed_at`).
+- Index unique sur `association_id` (permet le `REFRESH CONCURRENTLY` non bloquant).
+- RPC `refresh_caisse_soldes_snapshot()` (fallback `REFRESH` classique à la première exécution).
+- RPC lecture `get_caisse_solde_snapshot(p_association_id)` — sécurisée (auth requise), résout automatiquement le tenant courant si aucun paramètre.
+- Accès direct API révoqué pour `authenticated` (recommandation linter Supabase : les MV ne doivent pas fuiter via PostgREST).
+- Adaptateur TS : `CaisseService.getSoldeSnapshot()` + `CaisseService.refreshSnapshot()`.
+
+**Rétro-compatibilité** :
+- Aucun trigger ni RPC existant modifié. `get_solde_caisse()` reste la source temps-réel pour les vues critiques (dépôt/retrait immédiat) ; l'instantané est destiné aux dashboards et rapports où une latence de rafraîchissement est acceptable.
+
+**Impact utilisateur E2D** : aucun changement visible pour l'instant. Le service est disponible côté frontend ; les dashboards seront bascullés dans la sous-étape 4.4 restante.
+
+
 
