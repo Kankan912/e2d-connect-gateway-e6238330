@@ -344,12 +344,13 @@ export const useDeleteCaisseOperation = () => {
 };
 
 // Fonction utilitaire pour créer une opération de caisse depuis un autre module
+// Phase 4.4 — délègue à CaisseService (RPC idempotente record_caisse_movement)
 export const createCaisseOperationFromModule = async (
   type_operation: 'entree' | 'sortie',
   montant: number,
   libelle: string,
   categorie: CaisseCategorie,
-  operateur_id: string,
+  _operateur_id: string, // conservé pour compat ; l'operateur est déduit côté serveur (auth.uid)
   options?: {
     reunion_id?: string;
     exercice_id?: string;
@@ -359,19 +360,21 @@ export const createCaisseOperationFromModule = async (
     notes?: string;
   }
 ) => {
-  const { error } = await supabase
-    .from("fond_caisse_operations")
-    .insert([{
-      type_operation,
+  try {
+    const { CaisseService } = await import("@/domain/finance");
+    await CaisseService.recordMovement({
+      type: type_operation,
       montant,
       libelle,
-      categorie,
-      operateur_id,
-      date_operation: new Date().toISOString().split('T')[0],
-      ...options
-    }]);
-  
-  if (error) {
+      categorie: categorie as CaisseCategorie,
+      reunionId: options?.reunion_id,
+      exerciceId: options?.exercice_id,
+      sourceTable: options?.source_table,
+      sourceId: options?.source_id,
+      beneficiaireId: options?.beneficiaire_id,
+      notes: options?.notes,
+    });
+  } catch (error) {
     logger.error("Erreur création opération caisse:", error);
     throw error;
   }
