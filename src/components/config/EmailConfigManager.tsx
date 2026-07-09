@@ -11,6 +11,9 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Mail, Server, Key, Globe, Send, Eye, EyeOff, Loader2, CheckCircle, XCircle, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
 
 import { logger } from "@/lib/logger";
 export function EmailConfigManager() {
