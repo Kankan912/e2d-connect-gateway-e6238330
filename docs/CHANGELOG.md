@@ -115,3 +115,21 @@ Livraison de 8 migrations SQL branchant l'isolation stricte par association sur 
 
 **Reste avant Phase 2.5 (frontend)** : les tables `session_config`, `configurations` legacy et quelques audits restent en accès "authenticated large" pour compatibilité — elles seront affinées au moment du switch d'association côté client.
 
+
+## Refonte Juillet 2026 — Phase 2.5 — Frontend Multi-Tenant
+
+Le frontend devient conscient du tenant sans changer l'expérience E2D actuelle.
+
+**Nouveaux fichiers :**
+- `src/stores/associationStore.ts` — singleton hors React exposant l'association courante (`get/set/subscribe`).
+- `src/lib/tenantQuery.ts` — helpers `getCurrentAssociationId()`, `withCurrentAssociation(payload)`, `withCurrentAssociationMany([])` pour injecter `association_id` sur les nouveaux inserts.
+- `src/contexts/AssociationContext.tsx` — provider React qui charge la liste des associations accessibles (toutes pour `super_admin`, celles liées via `membres` sinon), gère la sélection persistée dans `localStorage`, applique les `theme_tokens` en variables CSS `--tenant-*`, et invalide le cache React Query lors d'un switch.
+- `src/components/AssociationSwitcher.tsx` — sélecteur affiché uniquement quand l'utilisateur a accès à ≥ 2 associations.
+
+**Modifications :**
+- `src/App.tsx` : `AssociationProvider` monté à l'intérieur de `AuthProvider`, autour des routes.
+- `src/components/layout/DashboardHeader.tsx` : intégration du switcher à côté du centre de notifications.
+
+**Impact utilisateur E2D** : aucun (une seule association visible → switcher masqué, `default_association_id()` continue de couvrir les inserts existants).
+
+**Reste avant Phase 2.6** : bouton "Créer une association" côté super-admin + edge function `provision-association` qui initialise `associations` + `association_settings` + rôles par défaut.
