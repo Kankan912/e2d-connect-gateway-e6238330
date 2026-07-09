@@ -26,6 +26,9 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, X, Copy, Mail, CheckCircle2 } from "lucide-react";
 
 import { logger } from "@/lib/logger";
+import { translateErrorCode, extractEdgeError } from "@/lib/errors";
+import { useSendUserCredentials } from "@/hooks/useSendUserCredentials";
+
 interface CreateUserDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,16 +43,6 @@ interface ApiResponse<T = Record<string, unknown>> {
   email?: string;
   tempPassword?: string;
 }
-
-const ERROR_MESSAGES: Record<string, string> = {
-  EMAIL_EXISTS: "Cet email est déjà utilisé",
-  INVALID_DATA: "Données invalides",
-  SERVER_ERROR: "Erreur serveur, veuillez réessayer",
-  EMAIL_SEND_FAILED: "L'email n'a pas pu être envoyé",
-  FORBIDDEN: "Accès réservé aux administrateurs",
-  UNAUTHENTICATED: "Session expirée, veuillez vous reconnecter",
-  USER_NOT_FOUND: "Utilisateur introuvable",
-};
 
 function generatePassword(length = 12): string {
   const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -124,11 +117,12 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
     });
   };
 
-  const showError = (resp: ApiResponse | null, fallback: string) => {
-    const code = resp?.code;
-    const msg = (code && ERROR_MESSAGES[code]) || resp?.message || fallback;
-    toast.error(msg);
+  const showError = (resp: ApiResponse | null, fallback: string, invokeError?: unknown) => {
+    const payload = extractEdgeError(invokeError, resp);
+    toast.error(translateErrorCode(payload.code, fallback));
   };
+
+  const { sendExisting } = useSendUserCredentials();
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,7 +167,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
         return;
       }
       if (!resp?.success) {
-        showError(resp, "Erreur lors de la création du compte");
+        showError(resp, "Erreur lors de la création du compte", error);
         return;
       }
 
@@ -196,29 +190,16 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
   };
 
   const handleSendCredentials = async () => {
-    if (!created || isSending) return;
+    if (!created) return;
     setIsSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke<ApiResponse>("send-user-credentials", {
-        body: { userId: created.userId, password: created.password, resetPassword: false },
-      });
-      const resp = (data as ApiResponse) || null;
-      if (error && !resp) {
-        toast.error("Erreur réseau lors de l'envoi");
-        return;
-      }
-      if (!resp?.success) {
-        showError(resp, "Échec de l'envoi de l'email");
-        return;
-      }
-      toast.success(`Identifiants envoyés à ${created.email}`);
-    } catch (err: unknown) {
-      logger.error("[CreateUserDialog] send error:", err);
-      toast.error("Erreur réseau lors de l'envoi");
+      await sendExisting(created.userId, { password: created.password });
     } finally {
       setIsSending(false);
     }
   };
+
+
 
   const copyToClipboard = async (text: string, label: string) => {
     try {

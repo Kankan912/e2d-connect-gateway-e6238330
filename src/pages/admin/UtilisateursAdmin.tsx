@@ -43,6 +43,16 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -68,10 +78,8 @@ import {
   RefreshCw,
   Mail,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useSendUserCredentials } from "@/hooks/useSendUserCredentials";
 
-import { logger } from "@/lib/logger";
 interface UtilisateursAdminProps {
   embedded?: boolean;
 }
@@ -93,39 +101,19 @@ export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdmi
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [selectedMembreId, setSelectedMembreId] = useState<string>("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resetTarget, setResetTarget] = useState<Utilisateur | null>(null);
 
-  const handleResendCredentials = async (userId: string) => {
-    if (resendingId) return;
-    setResendingId(userId);
-    try {
-      const { data, error } = await supabase.functions.invoke<{
-        success: boolean; code?: string; message?: string; email?: string;
-      }>("send-user-credentials", {
-        body: { userId, resetPassword: true },
-      });
-      const resp = data || null;
-      if (error && !resp) {
-        toast.error("Erreur réseau lors de l'envoi");
-        return;
-      }
-      if (!resp?.success) {
-        const codes: Record<string, string> = {
-          EMAIL_SEND_FAILED: "L'email n'a pas pu être envoyé",
-          USER_NOT_FOUND: "Utilisateur introuvable",
-          FORBIDDEN: "Accès réservé aux administrateurs",
-          SERVER_ERROR: "Erreur serveur, veuillez réessayer",
-        };
-        toast.error((resp?.code && codes[resp.code]) || resp?.message || "Échec de l'envoi");
-        return;
-      }
-      toast.success(`Nouveaux identifiants envoyés à ${resp.email}`);
-    } catch (err: unknown) {
-      logger.error("[UtilisateursAdmin] resend error:", err);
-      toast.error("Erreur réseau lors de l'envoi");
-    } finally {
-      setResendingId(null);
-    }
+  const { sendExisting, resetAndSend, isPending: isSendPending } = useSendUserCredentials();
+
+  const handleSendCredentials = (user: Utilisateur) => {
+    void sendExisting(user.id);
+  };
+
+  const confirmResetPassword = async () => {
+    if (!resetTarget) return;
+    const target = resetTarget;
+    setResetTarget(null);
+    await resetAndSend(target.id);
   };
 
   const { data: userConnections } = useUserConnections(selectedUser?.id || null);
@@ -420,15 +408,22 @@ export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdmi
                           Forcer changement MDP
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleResendCredentials(user.id)}
-                          disabled={resendingId === user.id}
+                          onClick={() => handleSendCredentials(user)}
+                          disabled={isSendPending(user.id) || user.password_changed === true}
                         >
-                          {resendingId === user.id ? (
+                          {isSendPending(user.id) ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           ) : (
                             <Mail className="h-4 w-4 mr-2" />
                           )}
                           Renvoyer les identifiants
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setResetTarget(user)}
+                          disabled={isSendPending(user.id)}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Réinitialiser mot de passe
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {user.status === "actif" ? (
@@ -640,6 +635,27 @@ export default function UtilisateursAdmin({ embedded = false }: UtilisateursAdmi
 
       {/* Create User Dialog */}
       <CreateUserDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
+
+      {/* Reset password confirmation */}
+      <AlertDialog open={!!resetTarget} onOpenChange={(o) => !o && setResetTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Réinitialiser le mot de passe ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Un nouveau mot de passe temporaire va être généré et envoyé à{" "}
+              <strong>{resetTarget?.email}</strong>. L'utilisateur devra le
+              changer à sa prochaine connexion. L'ancien mot de passe sera
+              immédiatement invalidé.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmResetPassword}>
+              Réinitialiser et envoyer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
