@@ -5064,21 +5064,27 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          is_system: boolean
           name: string
+          scope: string
         }
         Insert: {
           association_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
+          is_system?: boolean
           name: string
+          scope?: string
         }
         Update: {
           association_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
+          is_system?: boolean
           name?: string
+          scope?: string
         }
         Relationships: [
           {
