@@ -274,23 +274,28 @@ export const useUpdateCaisseConfig = () => {
   });
 };
 
-// Hook pour créer une opération manuelle
+// Hook pour créer une opération manuelle (Phase 4.4 — via CaisseService)
 export const useCreateCaisseOperation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (operation: Omit<CaisseOperation, 'id' | 'created_at' | 'operateur' | 'beneficiaire' | 'reunion'>) => {
-      const { data, error } = await supabase
-        .from("fond_caisse_operations")
-        .insert([{
-          ...operation,
-          categorie: operation.categorie || 'autre'
-        }])
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data;
+      const { CaisseService } = await import("@/domain/finance");
+      const id = await CaisseService.recordMovement({
+        type: operation.type_operation,
+        montant: Number(operation.montant),
+        categorie: (operation.categorie || 'autre') as CaisseCategorie,
+        libelle: operation.libelle,
+        sourceTable: operation.source_table ?? undefined,
+        sourceId: operation.source_id ?? undefined,
+        beneficiaireId: operation.beneficiaire_id ?? undefined,
+        reunionId: operation.reunion_id ?? undefined,
+        exerciceId: operation.exercice_id ?? undefined,
+        dateOperation: operation.date_operation,
+        notes: operation.notes ?? undefined,
+        justificatifUrl: operation.justificatif_url ?? undefined,
+      });
+      return { id };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["caisse-operations"] });
