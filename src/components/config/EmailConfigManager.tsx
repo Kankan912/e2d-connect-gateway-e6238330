@@ -27,6 +27,43 @@ import { z } from "zod";
 
 import { logger } from "@/lib/logger";
 
+// Validation ciblée — utilisée avant sauvegarde / test / bascule
+const nonEmpty = (label: string) =>
+  z.string().trim().min(1, { message: `${label} est requis` });
+
+const commonSchema = z.object({
+  emailExpediteur: nonEmpty("Email expéditeur")
+    .email({ message: "Email expéditeur invalide" })
+    .max(255, "Email expéditeur trop long (255 max)"),
+  emailExpediteurNom: nonEmpty("Nom expéditeur").max(100, "Nom expéditeur trop long (100 max)"),
+  appUrl: nonEmpty("URL de l'application")
+    .max(500, "URL trop longue (500 max)")
+    .regex(/^https?:\/\/[^\s]+$/i, "URL invalide (http:// ou https://)"),
+});
+
+const smtpFieldsSchema = z.object({
+  smtpHost: nonEmpty("Serveur SMTP")
+    .max(255, "Serveur trop long")
+    .regex(/^\S+$/, "Le serveur ne doit pas contenir d'espaces"),
+  smtpPort: z.coerce
+    .number({ invalid_type_error: "Port invalide" })
+    .int("Port doit être un entier")
+    .min(1, "Port ≥ 1")
+    .max(65535, "Port ≤ 65535"),
+  smtpUser: nonEmpty("Utilisateur SMTP")
+    .email({ message: "Utilisateur SMTP doit être un email" })
+    .max(255, "Utilisateur trop long"),
+  smtpEncryption: z.enum(["tls", "ssl", "none"]),
+});
+
+const resendKeySchema = z
+  .string()
+  .trim()
+  .min(20, "Clé API Resend trop courte")
+  .regex(/^re_/, "La clé doit commencer par 're_'");
+
+
+
 export function EmailConfigManager() {
   const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
