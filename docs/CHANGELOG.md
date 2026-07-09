@@ -133,3 +133,21 @@ Le frontend devient conscient du tenant sans changer l'expérience E2D actuelle.
 **Impact utilisateur E2D** : aucun (une seule association visible → switcher masqué, `default_association_id()` continue de couvrir les inserts existants).
 
 **Reste avant Phase 2.6** : bouton "Créer une association" côté super-admin + edge function `provision-association` qui initialise `associations` + `association_settings` + rôles par défaut.
+
+
+## Refonte Juillet 2026 — Phase 2.6 — Provisioning multi-tenant
+
+Console super-admin permettant de créer un tenant complet en une seule action.
+
+**Nouveaux fichiers :**
+- `supabase/functions/provision-association/index.ts` — edge function gardée par `is_super_admin()` : valide le payload (Zod, slug `^[a-z][a-z0-9-]{1,30}[a-z0-9]$`), crée l'association, clone les rôles système (`administrateur`, `membre`, `tresorier`, `secretaire_general`) au scope association, provisionne l'utilisateur admin (ou réutilise s'il existe), crée le `membre` lié et assigne le rôle `administrateur`, puis insère les settings par défaut. Renvoie le mot de passe généré une seule fois.
+- `src/components/auth/SuperAdminRoute.tsx` — garde de route réservée à `userRole === 'super_admin'`.
+- `src/pages/admin/platform/AssociationsPlatformAdmin.tsx` — liste des associations + dialog "Nouvelle association" avec affichage sécurisé du mot de passe temporaire (copie clipboard, disparaît à la fermeture).
+
+**Modifications :**
+- `src/pages/Dashboard.tsx` : route `/admin/platform/associations` derrière `SuperAdminRoute`.
+- `src/components/layout/DashboardSidebar.tsx` : groupe « Plateforme » affiché uniquement aux super-admins.
+- `supabase/config.toml` : enregistrement de `provision-association` avec `verify_jwt = true`.
+
+**Impact utilisateur E2D** : aucun changement fonctionnel. Le groupe « Plateforme » est invisible pour les utilisateurs standards. La Phase 2 est désormais complète : le noyau multi-tenant (schéma + RLS + frontend + provisioning) est en place.
+
