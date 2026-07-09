@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TrendingUp, Users, Coins, Loader2, Search, FileDown, FileText } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { formatFCFA } from "@/lib/utils";
 
 interface CotisationsCumulAnnuelProps {
   exerciceId?: string;
@@ -277,7 +278,7 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
     doc.text(`Édité le : ${new Date().toLocaleDateString("fr-FR")}`, pageWidth - 14, 23, { align: "right" });
 
     doc.setFontSize(9);
-    const statsLine = `Total attendu : ${Math.round(totalAttendu).toLocaleString("fr-FR")} FCFA  |  Total payé : ${Math.round(totalPaye).toLocaleString("fr-FR")} FCFA  |  Progression : ${progressionGlobale.toFixed(1)}%  |  Membres : ${filteredStats.length}`;
+    const statsLine = `Total attendu : ${formatFCFA(Math.round(totalAttendu))}  |  Total payé : ${formatFCFA(Math.round(totalPaye))}  |  Progression : ${progressionGlobale.toFixed(1)}%  |  Membres : ${filteredStats.length}`;
     doc.text(statsLine, 14, 30);
 
     autoTable(doc, {
@@ -350,7 +351,7 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
               <Coins className="h-8 w-8 text-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Attendu</p>
-                <p className="text-xl font-bold">{totalAttendu.toLocaleString("fr-FR")} FCFA</p>
+                <p className="text-xl font-bold">{formatFCFA(totalAttendu)}</p>
               </div>
             </div>
           </CardContent>
@@ -361,7 +362,7 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
               <TrendingUp className="h-8 w-8 text-green-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Payé</p>
-                <p className="text-xl font-bold text-green-600">{totalPaye.toLocaleString("fr-FR")} FCFA</p>
+                <p className="text-xl font-bold text-green-600">{formatFCFA(totalPaye)}</p>
               </div>
             </div>
           </CardContent>
@@ -472,13 +473,13 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
                       {!eq && <span className="text-muted-foreground text-sm">—</span>}
                     </TableCell>
                     <TableCell className="text-right">
-                      {membre.attendu.toLocaleString("fr-FR")} FCFA
+                      {formatFCFA(membre.attendu)}
                     </TableCell>
                     <TableCell className="text-right text-green-600 font-medium">
-                      {membre.paye.toLocaleString("fr-FR")} FCFA
+                      {formatFCFA(membre.paye)}
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">
-                      {Math.max(0, membre.attendu - membre.paye).toLocaleString("fr-FR")} FCFA
+                      {formatFCFA(Math.max(0, membre.attendu - membre.paye))}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">

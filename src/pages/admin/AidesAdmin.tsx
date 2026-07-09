@@ -40,6 +40,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { formatFCFA } from "@/lib/utils";
 
 export default function AidesAdmin() {
   const [formOpen, setFormOpen] = useState(false);
@@ -182,13 +183,13 @@ export default function AidesAdmin() {
     const montantTotalAlloue = filteredAides.filter(a => a.statut === "alloue").reduce((s, a) => s + a.montant, 0);
     doc.setFontSize(11);
     doc.setTextColor(0);
-    doc.text(`Total alloué: ${montantTotalAlloue.toLocaleString()} FCFA | ${filteredAides.length} aide(s)`, 14, 40);
+    doc.text(`Total alloué: ${formatFCFA(montantTotalAlloue)} | ${filteredAides.length} aide(s)`, 14, 40);
 
     const tableData = filteredAides.map(a => [
       new Date(a.date_allocation).toLocaleDateString("fr-FR"),
       `${a.beneficiaire?.nom || ""} ${a.beneficiaire?.prenom || ""}`,
       a.type_aide?.nom || "-",
-      `${a.montant.toLocaleString()} FCFA`,
+      `${formatFCFA(a.montant)}`,
       a.exercice?.nom || "-",
       a.reunion ? new Date(a.reunion.date_reunion).toLocaleDateString("fr-FR") : "-",
       a.statut,
@@ -289,7 +290,7 @@ export default function AidesAdmin() {
             <CardTitle className="text-sm text-muted-foreground">Montant Total Alloué</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl sm:text-3xl font-bold">{montantTotal.toLocaleString()} FCFA</p>
+            <p className="text-2xl sm:text-3xl font-bold">{formatFCFA(montantTotal)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -399,7 +400,7 @@ export default function AidesAdmin() {
                         <TableCell>
                           <Badge variant="outline">{aide.type_aide?.nom}</Badge>
                         </TableCell>
-                        <TableCell>{aide.montant.toLocaleString()} FCFA</TableCell>
+                        <TableCell>{formatFCFA(aide.montant)}</TableCell>
                         <TableCell>
                           {aide.exercice ? (
                             <Badge variant="secondary">{aide.exercice.nom}</Badge>
@@ -485,7 +486,7 @@ export default function AidesAdmin() {
                       <TableCell className="font-medium">{type.nom}</TableCell>
                       <TableCell>{type.description || "-"}</TableCell>
                       <TableCell>
-                        {type.montant_defaut ? `${type.montant_defaut.toLocaleString()} FCFA` : "-"}
+                        {type.montant_defaut ? `${formatFCFA(type.montant_defaut)}` : "-"}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{type.mode_repartition}</Badge>

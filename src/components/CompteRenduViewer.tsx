@@ -22,6 +22,7 @@ import {
 } from '@/lib/compte-rendu-pdf';
 
 import { logger } from "@/lib/logger";
+import { formatFCFA } from "@/lib/utils";
 interface Reunion {
   id: string;
   sujet?: string;
@@ -397,7 +398,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                   <CardTitle className="text-base flex items-center gap-2">
                     <Coins className="h-4 w-4" />
                     Cotisations Collectées ({cotisationsCount})
-                    <Badge variant="secondary" className="ml-auto">{totalCotisations.toLocaleString()} FCFA</Badge>
+                    <Badge variant="secondary" className="ml-auto">{formatFCFA(totalCotisations)}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -407,7 +408,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                         <span>{c.membre?.prenom} {c.membre?.nom}</span>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{c.type?.nom || 'Type inconnu'}</Badge>
-                          <span className="font-medium">{c.montant?.toLocaleString()} FCFA</span>
+                          <span className="font-medium">{formatFCFA(c.montant)}</span>
                         </div>
                       </div>
                     ))}
@@ -423,7 +424,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                   <CardTitle className="text-base flex items-center gap-2">
                     <PiggyBank className="h-4 w-4" />
                     Épargnes Déposées ({epargnesCount})
-                    <Badge variant="secondary" className="ml-auto">{totalEpargnes.toLocaleString()} FCFA</Badge>
+                    <Badge variant="secondary" className="ml-auto">{formatFCFA(totalEpargnes)}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -431,7 +432,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                     {epargnesReunion?.map((e: EpargneRow) => (
                       <div key={e.id} className="flex items-center justify-between p-2 rounded-lg bg-muted text-sm">
                         <span>{e.membre?.prenom} {e.membre?.nom}</span>
-                        <span className="font-medium">{e.montant?.toLocaleString()} FCFA</span>
+                        <span className="font-medium">{formatFCFA(e.montant)}</span>
                       </div>
                     ))}
                   </div>
@@ -446,7 +447,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                   <CardTitle className="text-base flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-orange-500" />
                     Sanctions ({sanctionsCount})
-                    <Badge variant="destructive" className="ml-auto">{totalSanctions.toLocaleString()} FCFA</Badge>
+                    <Badge variant="destructive" className="ml-auto">{formatFCFA(totalSanctions)}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -461,7 +462,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                           <Badge variant={s.statut === 'paye' ? 'default' : 'outline'}>
                             {s.statut === 'paye' ? 'Payé' : 'Impayé'}
                           </Badge>
-                          <span className="font-medium">{s.montant_amende?.toLocaleString()} FCFA</span>
+                          <span className="font-medium">{formatFCFA(s.montant_amende)}</span>
                         </div>
                       </div>
                     ))}
@@ -477,7 +478,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                   <CardTitle className="text-base flex items-center gap-2">
                     <HandHeart className="h-4 w-4 text-green-500" />
                     Aides Distribuées ({aidesCount})
-                    <Badge className="ml-auto bg-green-600">{totalAides.toLocaleString()} FCFA</Badge>
+                    <Badge className="ml-auto bg-green-600">{formatFCFA(totalAides)}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -489,7 +490,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{a.type?.nom || 'Aide'}</Badge>
-                          <span className="font-medium">{a.montant?.toLocaleString()} FCFA</span>
+                          <span className="font-medium">{formatFCFA(a.montant)}</span>
                         </div>
                       </div>
                     ))}
@@ -505,7 +506,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                   <CardTitle className="text-base flex items-center gap-2">
                     <Gift className="h-4 w-4 text-primary" />
                     Bénéficiaires du Mois ({beneficiairesCount})
-                    <Badge className="ml-auto bg-primary">{totalBeneficiaires.toLocaleString()} FCFA</Badge>
+                    <Badge className="ml-auto bg-primary">{formatFCFA(totalBeneficiaires)}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -524,7 +525,7 @@ export default function CompteRenduViewer({ open, onOpenChange, reunion, onEdit 
                           <Badge variant={b.statut === 'paye' ? 'default' : 'outline'}>
                             {b.statut === 'paye' ? 'Payé' : 'Impayé'}
                           </Badge>
-                          <span className="font-medium">{(b.montant_final || 0).toLocaleString()} FCFA</span>
+                          <span className="font-medium">{formatFCFA((b.montant_final || 0))}</span>
                         </div>
                       </div>
                     ))}

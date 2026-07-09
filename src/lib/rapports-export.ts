@@ -4,6 +4,7 @@ import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { addE2DHeader, addE2DFooter } from "@/lib/pdf-utils";
 import type { CotisationWithJoins, PretWithJoins, SanctionWithJoins, EpargneWithJoins } from "@/types/supabase-joins";
+import { formatFCFA } from "@/lib/utils";
 
 const formatMembre = (membres: { prenom: string; nom: string } | null): string =>
   membres ? `${membres.prenom} ${membres.nom}` : "-";
@@ -29,7 +30,7 @@ export async function exportRapportPDF(type: string, ctx: ExportContext) {
     tableData = ctx.cotisations.map(c => [
       formatMembre(c.membres),
       c.cotisations_types?.nom || "-",
-      `${(c.montant || 0).toLocaleString("fr-FR")} FCFA`,
+      `${formatFCFA((c.montant || 0))}`,
       c.statut || "-",
       c.date_paiement ? format(parseISO(c.date_paiement), "dd/MM/yyyy") : "-"
     ]);
@@ -37,9 +38,9 @@ export async function exportRapportPDF(type: string, ctx: ExportContext) {
     columns = ["Membre", "Montant", "Payé", "Reste", "Statut", "Échéance"];
     tableData = ctx.prets.map(p => [
       formatMembre(p.membres),
-      `${(p.montant || 0).toLocaleString("fr-FR")} FCFA`,
-      `${(p.montant_paye || 0).toLocaleString("fr-FR")} FCFA`,
-      `${((p.montant_total_du || p.montant) - (p.montant_paye || 0)).toLocaleString("fr-FR")} FCFA`,
+      `${formatFCFA((p.montant || 0))}`,
+      `${formatFCFA((p.montant_paye || 0))}`,
+      `${formatFCFA(((p.montant_total_du || p.montant) - (p.montant_paye || 0)))}`,
       p.statut,
       format(parseISO(p.echeance), "dd/MM/yyyy")
     ]);
@@ -48,14 +49,14 @@ export async function exportRapportPDF(type: string, ctx: ExportContext) {
     tableData = ctx.sanctions.map(s => [
       formatMembre(s.membres),
       s.motif || "-",
-      `${(s.montant_amende || 0).toLocaleString("fr-FR")} FCFA`,
+      `${formatFCFA((s.montant_amende || 0))}`,
       s.statut
     ]);
   } else if (type === "epargnes" && ctx.epargnes) {
     columns = ["Membre", "Montant", "Date", "Statut"];
     tableData = ctx.epargnes.map(e => [
       formatMembre(e.membres),
-      `${(e.montant || 0).toLocaleString("fr-FR")} FCFA`,
+      `${formatFCFA((e.montant || 0))}`,
       format(parseISO(e.date_depot), "dd/MM/yyyy"),
       e.statut
     ]);

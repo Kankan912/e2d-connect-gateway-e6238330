@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -170,7 +171,7 @@ export default function CompteRenduForm({
               <FormField control={form.control} name="resolution" render={({ field }) => (<FormItem><FormLabel>Résolution</FormLabel><FormControl><Textarea placeholder="Décision prise sur ce point..." className="min-h-[80px]" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="decisions" render={({ field }) => (<FormItem><FormLabel>Décisions / Actions</FormLabel><FormControl><Textarea placeholder="Actions à entreprendre suite à ce point..." className="min-h-[80px]" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <div className="flex gap-2">
-                <Button type="submit" disabled={loading} className="flex-1">{loading ? 'Enregistrement...' : editingPoint ? <><Save className="w-4 h-4 mr-2" />Mettre à jour</> : <><Plus className="w-4 h-4 mr-2" />Ajouter le Point</>}</Button>
+                <LoadingButton type="submit" loading={loading} loadingText="Enregistrement..." className="flex-1">{editingPoint ? <><Save className="w-4 h-4 mr-2" />Mettre à jour</> : <><Plus className="w-4 h-4 mr-2" />Ajouter le Point</>}</LoadingButton>
                 {editingPoint && <Button type="button" variant="outline" onClick={() => { setEditingPoint(null); form.reset({ numero_ordre: points.length + 1, sujet: '', description: '', resolution: '', decisions: '' }); }}>Annuler</Button>}
               </div>
             </form>

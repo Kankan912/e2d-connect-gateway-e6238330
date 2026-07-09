@@ -7,6 +7,7 @@ import jsPDF from "jspdf";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { addE2DLogo, addE2DFooter } from "@/lib/pdf-utils";
+import { formatFCFA } from "@/lib/utils";
 
 export type PresenceRow = {
   id?: string;
@@ -301,7 +302,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text(
-      `COTISATIONS COLLECTÉES (${cotisationsReunion.length}) - Total: ${totalCotisations.toLocaleString()} FCFA`,
+      `COTISATIONS COLLECTÉES (${cotisationsReunion.length}) - Total: ${formatFCFA(totalCotisations)}`,
       margin,
       yPosition,
     );
@@ -312,7 +313,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     cotisationsReunion.forEach((c) => {
       checkNewPage(10);
       doc.text(
-        `• ${c.membre?.prenom} ${c.membre?.nom} - ${c.type?.nom || "Type inconnu"}: ${c.montant?.toLocaleString()} FCFA`,
+        `• ${c.membre?.prenom} ${c.membre?.nom} - ${c.type?.nom || "Type inconnu"}: ${formatFCFA(c.montant)}`,
         margin + 5,
         yPosition,
       );
@@ -328,7 +329,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text(
-      `ÉPARGNES DÉPOSÉES (${epargnesReunion.length}) - Total: ${totalEpargnes.toLocaleString()} FCFA`,
+      `ÉPARGNES DÉPOSÉES (${epargnesReunion.length}) - Total: ${formatFCFA(totalEpargnes)}`,
       margin,
       yPosition,
     );
@@ -339,7 +340,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     epargnesReunion.forEach((e) => {
       checkNewPage(10);
       doc.text(
-        `• ${e.membre?.prenom} ${e.membre?.nom}: ${e.montant?.toLocaleString()} FCFA`,
+        `• ${e.membre?.prenom} ${e.membre?.nom}: ${formatFCFA(e.montant)}`,
         margin + 5,
         yPosition,
       );
@@ -358,7 +359,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text(
-      `SANCTIONS (${sanctionsReunion.length}) - Total: ${totalSanctions.toLocaleString()} FCFA`,
+      `SANCTIONS (${sanctionsReunion.length}) - Total: ${formatFCFA(totalSanctions)}`,
       margin,
       yPosition,
     );
@@ -370,7 +371,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
       checkNewPage(10);
       const statut = s.statut === "paye" ? "✓" : "○";
       doc.text(
-        `${statut} ${s.membre?.prenom} ${s.membre?.nom} - ${s.motif || "Sanction"}: ${s.montant_amende?.toLocaleString()} FCFA`,
+        `${statut} ${s.membre?.prenom} ${s.membre?.nom} - ${s.motif || "Sanction"}: ${formatFCFA(s.montant_amende)}`,
         margin + 5,
         yPosition,
       );
@@ -386,7 +387,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text(
-      `AIDES DISTRIBUÉES (${aidesReunion.length}) - Total: ${totalAides.toLocaleString()} FCFA`,
+      `AIDES DISTRIBUÉES (${aidesReunion.length}) - Total: ${formatFCFA(totalAides)}`,
       margin,
       yPosition,
     );
@@ -397,7 +398,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     aidesReunion.forEach((a) => {
       checkNewPage(10);
       doc.text(
-        `• ${a.beneficiaire?.prenom} ${a.beneficiaire?.nom} - ${a.type?.nom || "Aide"}: ${a.montant?.toLocaleString()} FCFA`,
+        `• ${a.beneficiaire?.prenom} ${a.beneficiaire?.nom} - ${a.type?.nom || "Aide"}: ${formatFCFA(a.montant)}`,
         margin + 5,
         yPosition,
       );
@@ -416,7 +417,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text(
-      `BÉNÉFICIAIRES DU MOIS (${beneficiairesReunion.length}) - Total: ${totalBeneficiaires.toLocaleString()} FCFA`,
+      `BÉNÉFICIAIRES DU MOIS (${beneficiairesReunion.length}) - Total: ${formatFCFA(totalBeneficiaires)}`,
       margin,
       yPosition,
     );
@@ -440,7 +441,7 @@ export async function generateCompteRenduPDF(input: CompteRenduPDFInput): Promis
               .toLocaleString()})`
           : "";
       doc.text(
-        `${statut} ${b.membres?.prenom} ${b.membres?.nom}: ${(b.montant_final || 0).toLocaleString()} FCFA${details}`,
+        `${statut} ${b.membres?.prenom} ${b.membres?.nom}: ${formatFCFA((b.montant_final || 0))}${details}`,
         margin + 5,
         yPosition,
       );
