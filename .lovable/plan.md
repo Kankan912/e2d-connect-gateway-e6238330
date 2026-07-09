@@ -1,34 +1,66 @@
-# Fix RLS — `cotisations_mensuelles_exercice`
+# Lot 1.5 — Choix SMTP / Resend + config domaine pro (report) ✅ LIVRÉ
 
-## Diagnostic
+Statut : livré. CHANGELOG + Guide utilisateur mis à jour ; état runtime vérifié
+(`email_service=smtp`, `smtp_config` actif sur Gmail). Aucune modif code/schéma.
 
-L'UI affiche `new row violates row-level security policy for table "cotisations_mensuelles_exercice"` lors de la sauvegarde de montants verrouillés.
+---
 
-Vérification base : `pg_policies` retourne **0 politique** pour `cotisations_mensuelles_exercice` (et 0 pour `cotisations_mensuelles_audit`), alors que RLS est **activé**. Résultat : tout INSERT/UPDATE/DELETE est refusé, même pour un admin.
 
-La migration `20260615170818` avait pourtant créé les politiques `cme_insert_authorized` / `cme_update_authorized` / `cme_delete_authorized` + `cma_select_authorized` / `cma_insert_authorized`. Elles ont été supprimées côté base (probablement via SQL editor). Il faut les recréer.
+## Constat après audit
 
-## Correction
+L'infrastructure multi-provider existe déjà et couvre 100 % du besoin exprimé :
 
-Nouvelle migration qui **recrée à l'identique** les politiques de `20260615170818` :
+| Élément | État |
+|---|---|
+| Toggle `email_service` (`resend` \| `smtp`) | ✅ Table `configurations` + UI radio dans `EmailConfigManager.tsx` |
+| Envoi SMTP Gmail | ✅ `sendViaSMTP` + table `smtp_config` (34/34 OK en prod) |
+| Envoi Resend | ✅ `sendViaResend` — clé lue via `configurations.resend_api_key` puis fallback env `RESEND_API_KEY` |
+| Fallback automatique | ✅ `sendEmail()` bascule sur l'autre provider si le principal échoue |
+| Test admin | ✅ `test-email-configuration` avec 3 modes (`auto` / `resend` / `smtp`) et `enableFallback` |
+| Domaine expéditeur configurable | ✅ Champs `email_expediteur` / `email_expediteur_nom` dans l'UI |
+| App URL configurable | ✅ Champ `app_url` idem |
 
-- `cotisations_mensuelles_exercice`
-  - `SELECT` : admin OU propre membre (déjà normalement en place — on la recrée par sécurité avec `DROP IF EXISTS`)
-  - `INSERT` : admin OU `has_permission('cotisations','update')`
-  - `UPDATE` : idem
-  - `DELETE` : admin OU `has_permission('cotisations','delete')`
-- `cotisations_mensuelles_audit`
-  - `SELECT` / `INSERT` : admin OU `has_permission('cotisations','update')`
-  - Trigger `cma_force_modifie_par` conservé (déjà en base normalement, recréé si absent)
+Ce projet est branché sur un Supabase externe : les emails managés Lovable ne sont pas disponibles ici (voir garde-fou `email-managed-cloud-required`). La voie "domaine pro" reste donc Resend + domaine vérifié dans Resend, activable plus tard par simple mise à jour de `email_expediteur` + clé Resend valide — sans code additionnel.
 
-GRANTs déjà en place (`SELECT/INSERT/UPDATE/DELETE` pour `authenticated`, `ALL` pour `service_role`) — pas de modification nécessaire côté GRANT.
+## Périmètre du Lot 1.5
 
-## Hors périmètre
+Aucune modification de code ni de schéma requise. Le Lot 1.5 devient un **lot documentaire + validation** :
 
-- Pas de changement UI ni de code applicatif.
-- Pas de modification des fonctions `is_admin()` / `has_permission()`.
+1. **`docs/CHANGELOG.md`** : entrée "Lot 1.5 — Multi-provider email (SMTP/Resend) — validation & documentation" listant :
+   - Provider actif (SMTP Gmail), toggle disponible, fallback en place
+   - Clé Resend conservée en l'état (décision utilisateur) — non testée
+   - Chemin de bascule "domaine pro" documenté pour plus tard
+
+2. **`docs/GUIDE_UTILISATEUR.md`** (ou section existante) : ajout d'un court paragraphe "Configuration email" expliquant à l'admin :
+   - Où changer de provider (`Admin → Configuration → Emails`)
+   - Comment tester chaque provider avec les boutons "Tester SMTP" / "Tester Resend" / "Tester auto+fallback"
+   - Procédure future pour passer à un domaine pro (créer le domaine dans Resend, coller la nouvelle clé, mettre à jour `email_expediteur`, tester Resend)
+
+3. **Vérification runtime** (lecture seule, aucun envoi) :
+   - Confirmer que `email_service` est bien positionné à `smtp` en base
+   - Confirmer que `smtp_config` contient les identifiants Gmail actifs
+   - Signaler à l'utilisateur si un des deux est incohérent
+
+## Hors périmètre (explicitement)
+
+- Aucune modification de la clé `RESEND_API_KEY` (décision utilisateur).
+- Aucun test d'envoi Resend automatisé (nécessiterait une clé valide).
+- Pas de connecteur Lovable Resend activé ici — le code utilise déjà la clé stockée en base, changer cela casserait l'existant.
+- Pas de scaffold `auth-email-hook` (indisponible sur Supabase externe).
 
 ## Vérification
 
-- Après migration : `SELECT count(*) FROM pg_policies WHERE tablename='cotisations_mensuelles_exercice'` retourne 4.
-- Test manuel : rouvrir la modale "Modification de montants verrouillés" → confirmer → sauvegarde OK, entrée créée dans `cotisations_mensuelles_audit`.
+- CHANGELOG mis à jour, guide utilisateur enrichi.
+- Requête SQL retournant `email_service = 'smtp'` et un `smtp_config` actif.
+- Aucun changement fonctionnel visible côté app (envois continuent via SMTP Gmail).
+
+## Fichiers touchés
+
+| Fichier | Action |
+|---|---|
+| `docs/CHANGELOG.md` | ajout entrée Lot 1.5 |
+| `docs/GUIDE_UTILISATEUR.md` | ajout section "Configuration email" |
+
+## Après Lot 1.5
+
+Phase 1 est complètement livrée. Le passage à un domaine pro pourra être fait à tout moment sans code : nouvelle clé Resend + `email_expediteur=noreply@ton-domaine.tld` + toggle `Resend` dans l'UI.

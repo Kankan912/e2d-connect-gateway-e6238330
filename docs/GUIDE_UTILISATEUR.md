@@ -189,3 +189,24 @@ Un seul exercice cotisations peut être actif à la fois (contrainte serveur).
 
 ### Fiabilité des emails
 Les envois d'emails sont automatiquement retentés en cas d'erreur réseau temporaire (3 tentatives). Tous les envois (succès ou échec) sont consultables dans **Admin → Notifications → Historique**.
+
+### Configuration email (multi-provider)
+La plateforme peut envoyer les emails via deux moteurs interchangeables :
+- **SMTP** (par défaut, actuellement Gmail).
+- **Resend** (service transactionnel externe, activable avec une clé API et un domaine vérifié).
+
+**Menu** : Administration → Configuration → Emails.
+
+Chaque provider dispose d'un bouton de test individuel : `Tester SMTP`, `Tester Resend`, ou `Tester auto + fallback` (envoie via le provider actif et bascule automatiquement sur l'autre en cas d'échec). L'email de test arrive à l'adresse saisie et journalise le résultat dans **Admin → Notifications → Historique**.
+
+**Basculer d'un provider à l'autre :**
+1. Renseigner la configuration du provider cible (identifiants SMTP ou clé Resend).
+2. Cliquer sur `Tester …` correspondant pour valider les identifiants.
+3. Sélectionner le provider dans le radio « Service d'envoi » puis `Enregistrer`.
+
+**Passer à un domaine pro (Resend + domaine vérifié) :**
+1. Vérifier votre domaine dans Resend (ex. `noreply@votredomaine.org`).
+2. Générer une nouvelle clé API Resend et la coller dans le champ `Clé API Resend`.
+3. Mettre à jour le champ `Expéditeur` avec l'adresse du domaine vérifié.
+4. Tester avec `Tester Resend`.
+5. Basculer `Service d'envoi` sur **Resend** et enregistrer.
