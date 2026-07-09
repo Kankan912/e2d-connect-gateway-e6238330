@@ -154,7 +154,7 @@ const PermissionsAdmin = () => {
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{roles?.length || 0}</div>
+            <div className="text-2xl font-bold">{visibleRoles.length || 0}</div>
             <p className="text-xs text-muted-foreground">rôles configurés</p>
           </CardContent>
         </Card>
@@ -228,7 +228,7 @@ const PermissionsAdmin = () => {
                           Ressource
                         </TableHead>
                         <TableHead className="text-center">Permission</TableHead>
-                        {roles?.map(role => (
+                        {visibleRoles.map(role => (
                           <TableHead key={role.id} className="text-center min-w-[100px]">
                             {role.name}
                           </TableHead>
@@ -255,7 +255,7 @@ const PermissionsAdmin = () => {
                                 {perm.label}
                               </Badge>
                             </TableCell>
-                            {roles?.map(role => {
+                            {visibleRoles.map(role => {
                               const hasPerm = hasRolePermission(role.id, resource.id, perm.id);
                               return (
                                 <TableCell key={role.id} className="text-center">
@@ -291,7 +291,7 @@ const PermissionsAdmin = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {roles?.map(role => (
+                    {visibleRoles.map(role => (
                       <Button
                         key={role.id}
                         variant={selectedRole === role.id ? "default" : "outline"}
@@ -309,7 +309,7 @@ const PermissionsAdmin = () => {
                 <Card>
                   <CardHeader>
                     <CardTitle>
-                      Permissions du rôle : {roles?.find(r => r.id === selectedRole)?.name}
+                      Permissions du rôle : {visibleRoles.find(r => r.id === selectedRole)?.name}
                     </CardTitle>
                     <CardDescription>
                       Cochez les permissions que vous souhaitez accorder
