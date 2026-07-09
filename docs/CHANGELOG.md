@@ -74,3 +74,21 @@ Récapitulatif des 8 lots livrés lors de la refonte d'avril 2026.
 - UI admin (`EmailConfigManager.tsx`) : radio de sélection provider + 3 boutons de test (`Tester SMTP`, `Tester Resend`, `Tester auto + fallback`).
 - Passage à un domaine pro (futur) : purement configuration, aucun code à toucher — mettre à jour `email_expediteur` avec l'adresse du domaine vérifié dans Resend, remplacer la clé `resend_api_key`, basculer l'`email_service` sur `resend` et lancer le test.
 - Note : ce projet est branché sur un Supabase externe ; les emails managés Lovable (scaffold `auth-email-hook`, DNS auto) ne sont pas disponibles ici. Le chemin Resend + domaine reste la voie officielle.
+
+
+## Refonte Juillet 2026 — Phase 2.2 — Fondations Multi-Tenant (schéma DB)
+
+Livraison de 7 migrations SQL préparant l'isolation stricte par association. Aucune règle d'accès (RLS) n'a encore été refondue — c'est l'objet de la Phase 2.4. Le frontend continue de fonctionner à l'identique (contexte tenant implicite via fonction `default_association_id()`).
+
+**Modifications de schéma :**
+- **`associations` enrichie** : `slug` (unique), `logo_url`, `theme_tokens`, `email_config`, `caisse_config`, `locale`, `feature_flags`, `statut`, `updated_at`.
+- **2ème tenant créé** : association `Phoenix` (slug `phoenix`) pour préparer l'isolation des données de la section sportive Phoenix.
+- **60 tables** reçoivent une colonne `association_id NOT NULL` (backfill vers E2D ou Phoenix, index créé, valeur par défaut = association de l'utilisateur courant).
+- **26 tables déjà porteuses** passent en `NOT NULL` avec DEFAULT sur `public.default_association_id()`.
+- **Historique / notifications / audit** (`email_logs`, `notifications_*`, `audit_logs`) : `association_id` **nullable** (NULL = envoi ou action plateforme).
+- **Rôles hybrides** : ajout de `roles.scope` (`platform` | `association`) et `roles.is_system`. Les rôles socles (`super_admin`, `administrateur`, `membre`) sont classés `platform` + `is_system`. Nouveau rôle `super_admin` créé. `user_roles.association_id` peut être NULL uniquement pour un rôle plateforme (garanti par trigger `validate_user_role_scope`).
+- **Scission `configurations`** : nouvelles tables `platform_settings` (globale) et `association_settings` (par asso). Les 39 clés existantes ont été copiées dans `association_settings` pour E2D. La table `configurations` d'origine est conservée en lecture/écriture jusqu'à la Phase 4 (bascule du code). Vue de compatibilité `configurations_v_compat` créée.
+- **4 fonctions helpers RLS créées** (non branchées cette phase) : `is_super_admin()`, `get_user_associations()`, `has_association_access()`, `is_admin_of()`.
+
+**Fichier de suivi** : `docs/PHASE2_TENANT_AUDIT.md`.
+
