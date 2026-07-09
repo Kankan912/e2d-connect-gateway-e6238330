@@ -196,3 +196,20 @@ Démarrage du chantier Domain Services. Deux livrables : la carte du domaine fin
 
 **Impact utilisateur E2D** : aucun changement fonctionnel. Deux nouvelles fonctions serveur disponibles, aucune modification de table, aucun trigger touché.
 
+## Refonte Juillet 2026 — Phase 4.4 (partiel) — Bascule `useCaisse` vers `CaisseService`
+
+Première étape de migration des producteurs frontend vers le FinancialEngine.
+
+**Frontend :**
+- `useCreateCaisseOperation` : l'INSERT direct dans `fond_caisse_operations` est remplacé par un appel à `CaisseService.recordMovement()` (RPC `record_caisse_movement`). Bénéfices : idempotence serveur, `association_id` forcé par `current_tenant_id()`, validation stricte du type et du montant.
+- `createCaisseOperationFromModule` (utilitaire cross-module) : idem — délègue à `CaisseService`. Le paramètre `operateur_id` devient inutilisé (l'operateur est déduit de `auth.uid()` côté serveur) mais reste dans la signature pour compat.
+- `src/domain/finance/types.ts` : `CaisseCategorie` élargi (`pret_decaissement`, `distribution_beneficiaire`, `interet`, `sport`, plus tolérance string libre) pour couvrir les libellés déjà en base sans mapping forcé.
+
+**Compatibilité :**
+- Aucun trigger SQL modifié.
+- Les lectures (`useCaisseOperations`, `useCaisseStats`, `useCaisseDetails`, `useCaisseSynthese`, `useDeleteCaisseOperation`) restent inchangées — Phase 4.4 se limite pour l'instant aux **écritures**.
+- Les hooks `useDonations`, `useAides`, `useEpargnes`, `usePrets`, `useCotisations` continuent de reposer sur les triggers SQL existants (bascule progressive au fil des sous-étapes 4.4.x).
+
+**Impact utilisateur E2D** : aucun changement fonctionnel visible ; les opérations manuelles de caisse sont désormais idempotentes et tenant-safe.
+
+
