@@ -6892,23 +6892,42 @@ export type Database = {
         }
         Returns: Json
       }
-      record_caisse_movement: {
-        Args: {
-          p_beneficiaire_id?: string
-          p_categorie: string
-          p_date_operation?: string
-          p_exercice_id?: string
-          p_justificatif_url?: string
-          p_libelle: string
-          p_montant: number
-          p_notes?: string
-          p_reunion_id?: string
-          p_source_id?: string
-          p_source_table?: string
-          p_type: string
-        }
-        Returns: string
-      }
+      record_caisse_movement:
+        | {
+            Args: {
+              p_beneficiaire_id?: string
+              p_categorie: string
+              p_date_operation?: string
+              p_exercice_id?: string
+              p_justificatif_url?: string
+              p_libelle: string
+              p_montant: number
+              p_notes?: string
+              p_reunion_id?: string
+              p_source_id?: string
+              p_source_table?: string
+              p_type: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_beneficiaire_id?: string
+              p_categorie: string
+              p_date_operation?: string
+              p_exercice_id?: string
+              p_justificatif_url?: string
+              p_libelle: string
+              p_montant: number
+              p_notes?: string
+              p_operateur_id?: string
+              p_reunion_id?: string
+              p_source_id?: string
+              p_source_table?: string
+              p_type: string
+            }
+            Returns: string
+          }
       refresh_caisse_soldes_snapshot: { Args: never; Returns: undefined }
       reject_loan_step: {
         Args: { _motif: string; _request_id: string }

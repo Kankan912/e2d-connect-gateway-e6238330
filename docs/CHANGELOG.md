@@ -229,5 +229,32 @@ Première étape de migration des producteurs frontend vers le FinancialEngine.
 
 **Impact utilisateur E2D** : aucun changement visible pour l'instant. Le service est disponible côté frontend ; les dashboards seront bascullés dans la sous-étape 4.4 restante.
 
+---
+
+## Refonte Juillet 2026 — Phase 4.4 & 4.6 — Finalisation FinancialEngine
+
+**Objectif** : faire de `record_caisse_movement` l'unique voie d'écriture dans `fond_caisse_operations`, côté frontend comme côté triggers SQL, et livrer la documentation associée.
+
+**Livrables 4.4** :
+- `record_caisse_movement` étendue d'un paramètre `p_operateur_id` (opérateur explicite prioritaire sur `auth.uid()`), et rendue utilisable par les triggers `SECURITY DEFINER` (auth optionnelle, fallback historique sur le premier membre).
+- Triggers SQL réécrits pour déléguer à la RPC (comportement observable identique, idempotence garantie sur `(source_table, source_id, type, categorie, association)`) :
+  - `create_caisse_operation_from_source` (cotisations, épargnes, prêts, remboursements, aides)
+  - `sync_sanction_to_caisse`
+  - `sync_reunion_beneficiaire_to_caisse`
+- Nouveau hook `useCaisseSoldeSnapshot()` (lecture rapide de la MV `caisse_soldes_snapshot`).
+- `useCreateCaisseOperation` déclenche un `CaisseService.refreshSnapshot()` best-effort après chaque écriture réussie et invalide la query `caisse-solde-snapshot`.
+
+**Livrables 4.6** :
+- Tests Vitest `src/domain/finance/CaisseService.test.ts` : validations, mapping des paramètres RPC, gestion snapshot vide, propagation des erreurs.
+- Documentation `docs/FINANCIAL_ENGINE.md` : architecture cible, contrats des RPC, matrice producteurs → catégorie, guide de migration pour nouveaux modules.
+- Mémoire projet `mem://architecture/finance/financial-engine` (règle : toute écriture caisse passe par `CaisseService.recordMovement`).
+
+**Rétro-compatibilité** :
+- Aucun changement de schéma de table.
+- Signature de `record_caisse_movement` étendue (nouveau paramètre optionnel en fin) ; tous les appels existants continuent de fonctionner.
+- `get_solde_caisse()`, `get_caisse_stats()`, `get_caisse_synthese()` inchangés.
+- Aucun changement UI / UX pour les utilisateurs E2D.
+
+
 
 
