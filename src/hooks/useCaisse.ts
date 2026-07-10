@@ -295,16 +295,40 @@ export const useCreateCaisseOperation = () => {
         notes: operation.notes ?? undefined,
         justificatifUrl: operation.justificatif_url ?? undefined,
       });
+      // Phase 4.5 — rafraîchit l'instantané des soldes (best-effort)
+      try {
+        await CaisseService.refreshSnapshot();
+      } catch (err) {
+        logger.debug("refresh snapshot caisse : échec silencieux", err);
+      }
       return { id };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["caisse-operations"] });
       queryClient.invalidateQueries({ queryKey: ["caisse-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-solde-snapshot"] });
       toast({ title: "Succès", description: "Opération enregistrée" });
     },
     onError: (error: Error) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     },
+  });
+};
+
+/**
+ * Hook lecture-rapide : instantané précalculé (`caisse_soldes_snapshot`).
+ * À utiliser dans les dashboards ; les vues temps-réel critiques restent
+ * sur `useCaisseStats` / `get_solde_caisse()`.
+ */
+export const useCaisseSoldeSnapshot = (associationId?: string) => {
+  return useQuery({
+    queryKey: ["caisse-solde-snapshot", associationId ?? "current"],
+    queryFn: async () => {
+      const { CaisseService } = await import("@/domain/finance");
+      return CaisseService.getSoldeSnapshot(associationId);
+    },
+    staleTime: 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 };
 
