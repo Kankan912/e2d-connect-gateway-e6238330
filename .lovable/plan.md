@@ -1,43 +1,55 @@
-# Suivi du plan directeur — E2D → Plateforme SaaS Multi-Associations
+# Finalisation Phase 4 — FinancialEngine
 
-## Tableau récapitulatif
+Objectif : clôturer les sous-phases **4.4** (migration des producteurs vers `record_caisse_movement`) et **4.6** (tests + documentation + mémoire), pour marquer la Phase 4 comme terminée dans `.lovable/plan.md`.
 
-| # | Phase | Effort | État |
-|---|---|---|---|
-| 1 | Stabilisation & correctifs bloquants | 3-5 j | ✅ Terminée |
-| 2 | Fondations Multi-Tenant | 8-12 j | ✅ Terminée |
-| **3** | **RBAC granulaire & audit complet** | **4-6 j** | ✅ **Terminée** |
-| 4 | Domain Services & FinancialEngine | 10-15 j | 🚧 En cours (4.1 & 4.2 ✅) |
-| 5 | Prêts, Aides & Bénéficiaires — cohérence métier | 6-8 j | ⏳ À faire |
-| 6 | i18n, thèmes & personnalisation par association | 5-7 j | ⏳ À faire |
-| 7 | Observabilité, sauvegardes, tests | 4-6 j | ⏳ À faire |
-| 8 | Industrialisation & documentation | 3-4 j | ⏳ À faire |
+## 1. Sous-phase 4.4 — Migration des producteurs restants
 
-## Phase 3 — Sous-phases
+### 1.1 Réécriture interne des triggers SQL
+Migration unique qui remplace les `INSERT` directs dans `fond_caisse_operations` par des appels à `record_caisse_movement(...)` dans :
+- `create_caisse_operation_from_source` (cotisations, épargnes, prêts, aides, paiements de prêts)
+- `update_caisse_operation_on_status_change`
+- `sync_sanction_to_caisse`
+- `sync_reunion_beneficiaire_to_caisse`
+- `trg_create_caisse_on_aide_payee` (workflow aides)
 
-| # | Sous-phase | État |
-|---|---|---|
-| 3.1 | `current_tenant_id()` + `has_permission()` tenant-aware + `has_permission_in()` | ✅ Terminée |
-| 3.2 | Backfill `role_permissions` scope=association + clonage dans `provision-association` | ✅ Terminée |
-| 3.3 | Trigger `audit_logs.association_id` fallback + helper `log_audit()` | ✅ Terminée |
-| 3.4 | RPC `set_current_association()` + intégration `AssociationContext` | ✅ Terminée |
-| 3.5 | Filtre association dans `PermissionsAdmin` | ✅ Terminée |
-| 3.6 | Documentation (plan, changelog, mémoire) | ✅ Terminée |
+Conservation stricte du comportement observable (mêmes catégories, `source_table`/`source_id`, `association_id` désormais résolu via `current_tenant_id()` avec fallback `default_association_id()`). L'idempotence de la RPC neutralise les doublons éventuels sur `UPDATE` répétés.
 
-## Phase 4 — Sous-phases
+### 1.2 Migration des écritures frontend restantes
+Bascule vers `CaisseService.recordMovement()` (aucun changement UI) :
+- `useDonations` — insertion post-validation de don (catégorie `don`)
+- `supabase/functions/process-adhesion/index.ts` — écriture post-paiement adhésion (catégorie `adhesion`)
 
-| # | Sous-phase | État |
-|---|---|---|
-| 4.1 | Cartographie du domaine finance (`docs/FINANCE_DOMAIN_MAP.md`) | ✅ Terminée |
-| 4.2 | FinancialEngine SQL : `record_caisse_movement()` + `get_solde_empruntable()` | ✅ Terminée |
-| 4.3 | Services TypeScript `src/domain/finance/` (Caisse, Loan, Cotisation, Aide, Epargne, Sanction, Beneficiaire) | ✅ Terminée |
-| 4.4 | Migration progressive des hooks + réécriture interne des triggers pour appeler la RPC | 🚧 En cours (`useCaisse` migré) |
-| 4.5 | Vue matérialisée `caisse_soldes_snapshot` + RPC `get_caisse_solde_snapshot` / `refresh_caisse_soldes_snapshot` | ✅ Terminée |
-| 4.6 | Tests Vitest domaine finance + `docs/FINANCIAL_ENGINE.md` + `mem://` | 🚧 Partiel (tests 4.3 livrés) |
+Les hooks purement lecteurs (`useAides`, `useEpargnes`, `usePrets`, `useCotisations`) restent inchangés : leurs écritures caisse transitent déjà via les triggers réécrits en 1.1.
 
-## Prochaine action
+### 1.3 Branchement des dashboards sur le snapshot
+Ajout d'un hook `useCaisseSoldeSnapshot()` (wrapping `CaisseService.getSoldeSnapshot()`) et consommation dans :
+- `CaisseAdmin` (bloc synthèse)
+- `DashboardHome` (KPI caisse)
 
-Poursuivre la **sous-phase 4.4** : réécrire les triggers SQL (`create_caisse_operation_from_source`, `sync_sanction_to_caisse`, `sync_reunion_beneficiaire_to_caisse`) pour déléguer à `record_caisse_movement`, et brancher les dashboards sur `CaisseService.getSoldeSnapshot()`.
+`get_solde_caisse()` reste utilisée pour les vues temps-réel critiques (formulaires de dépôt/retrait). Rafraîchissement de la MV déclenché après chaque `recordMovement` réussi via `CaisseService.refreshSnapshot()` (best-effort, silencieux en cas d'échec de concurrence).
 
+## 2. Sous-phase 4.6 — Tests et documentation
 
+### 2.1 Tests
+- Tests Vitest supplémentaires ciblés sur `CaisseService` (mock Supabase) : validation des erreurs `DomainError`, mapping des paramètres RPC, gestion du snapshot vide.
+- Test d'intégration léger sur `useCaisse` (validation que l'écriture passe bien par la RPC).
 
+### 2.2 Documentation
+- **Nouveau** : `docs/FINANCIAL_ENGINE.md` — architecture cible, signatures RPC, contrats d'idempotence, matrice producteurs → catégorie, guide de migration pour futurs modules.
+- **Mise à jour** : `docs/CHANGELOG.md`, `.lovable/plan.md` (marquer 4.4 ✅, 4.6 ✅, Phase 4 ✅).
+- **Mémoire projet** : nouvelle entrée `mem://architecture/finance/financial-engine` référencée dans `mem://index.md` (règle : toute nouvelle écriture caisse passe par `CaisseService.recordMovement`).
+
+## Détails techniques
+
+```text
+Producteurs → record_caisse_movement(...) → fond_caisse_operations
+                                          ↘ (async) refresh MV
+Dashboards ← get_caisse_solde_snapshot ← caisse_soldes_snapshot
+Formulaires temps-réel ← get_solde_caisse()
+```
+
+Contraintes respectées :
+- Aucun changement de schéma sur `fond_caisse_operations`.
+- Aucune modification UI/UX.
+- Rétro-compatibilité totale des signatures de hooks existants.
+- GRANTs déjà en place (RPC créées en 4.2).
