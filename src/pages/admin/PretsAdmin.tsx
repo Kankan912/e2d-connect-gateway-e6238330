@@ -22,6 +22,9 @@ import type { PretAdminWithJoins } from "@/types/supabase-joins";
 import { ReconductionsAttenteList, type ReconductionAttente } from "./_components/ReconductionsAttenteList";
 import PretsStatsCards from "./_components/PretsStatsCards";
 import PretRow from "./_components/PretRow";
+import { StatutBadge } from "@/components/prets/StatutBadge";
+import { LoanService } from "@/domain/finance";
+import type { LoanStatut } from "@/domain/finance/types";
 
 
 import {
@@ -334,17 +337,16 @@ export default function PretsAdmin() {
     }
   };
 
-  // Statut effectif — priorité: remboursé > en_retard > reconduit > partiel > en_cours
-  const getEffectiveStatus = (pret: PretAdminWithJoins) => {
+  // Statut effectif — délégué à LoanService (source unique — Phase 5.2)
+  const getEffectiveStatus = (pret: PretAdminWithJoins): LoanStatut => {
     const calculs = getCalculsPret(pret);
-    const echeance = new Date(pret.echeance);
-    const now = new Date();
-
-    if (calculs.totalPaye >= calculs.totalDu && calculs.totalDu > 0) return 'rembourse';
-    if (echeance < now) return 'en_retard';
-    if (pret.reconductions > 0) return 'reconduit';
-    if (calculs.totalPaye > 0) return 'partiel';
-    return 'en_cours';
+    return LoanService.resolveStatus({
+      montant: calculs.totalDu,
+      montantPaye: calculs.totalPaye,
+      echeance: pret.echeance,
+      reconductions: pret.reconductions ?? 0,
+      annule: (pret.statut as string) === "annule",
+    });
   };
 
   const getRowClass = (pret: PretAdminWithJoins) => {
@@ -363,23 +365,9 @@ export default function PretsAdmin() {
     }
   };
 
-  const getStatutBadge = (pret: PretAdminWithJoins) => {
-    const status = getEffectiveStatus(pret);
-    switch (status) {
-      case 'en_cours':
-        return <Badge variant="secondary" className="bg-blue-100 text-blue-800"><Clock className="h-3 w-3 mr-1" />En cours</Badge>;
-      case 'rembourse':
-        return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Remboursé</Badge>;
-      case 'partiel':
-        return <Badge className="bg-orange-500"><AlertTriangle className="h-3 w-3 mr-1" />Partiel</Badge>;
-      case 'en_retard':
-        return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />En retard</Badge>;
-      case 'reconduit':
-        return <Badge className="bg-blue-500"><RefreshCw className="h-3 w-3 mr-1" />Reconduit</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
+  const getStatutBadge = (pret: PretAdminWithJoins) => (
+    <StatutBadge statut={getEffectiveStatus(pret)} />
+  );
 
   // Filtrage et tri
   const filteredPrets = useMemo(() => {

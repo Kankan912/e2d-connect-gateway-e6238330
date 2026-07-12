@@ -8,6 +8,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AideService } from "@/domain/finance/AideService";
+import { DomainError, type AideStatut } from "@/domain/finance/types";
 
 export interface Aide {
   id: string;
@@ -229,3 +231,31 @@ export function useDeleteAideType() {
     },
   });
 }
+
+/**
+ * Phase 5.3 — Transition de statut d'une aide via AideService.advanceWorkflow.
+ * Refuse les transitions interdites côté client avec un toast explicite.
+ */
+export function useAdvanceAideWorkflow() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (input: { aideId: string; from: string; to: AideStatut; notes?: string }) => {
+      await AideService.advanceWorkflow(input);
+    },
+    onSuccess: (_d, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["aides"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-operations"] });
+      queryClient.invalidateQueries({ queryKey: ["caisse-synthese"] });
+      toast({ title: `Aide → ${vars.to}` });
+    },
+    onError: (error: unknown) => {
+      const msg = error instanceof DomainError
+        ? error.message
+        : error instanceof Error ? error.message : String(error);
+      toast({ title: "Transition refusée", description: msg, variant: "destructive" });
+    },
+  });
+}
+
