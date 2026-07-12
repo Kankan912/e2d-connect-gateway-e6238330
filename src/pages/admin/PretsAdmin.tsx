@@ -22,6 +22,9 @@ import type { PretAdminWithJoins } from "@/types/supabase-joins";
 import { ReconductionsAttenteList, type ReconductionAttente } from "./_components/ReconductionsAttenteList";
 import PretsStatsCards from "./_components/PretsStatsCards";
 import PretRow from "./_components/PretRow";
+import { StatutBadge } from "@/components/prets/StatutBadge";
+import { LoanService } from "@/domain/finance";
+import type { LoanStatut } from "@/domain/finance/types";
 
 
 import {
