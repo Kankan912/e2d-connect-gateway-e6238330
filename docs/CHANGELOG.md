@@ -2,6 +2,21 @@
 
 Récapitulatif des 8 lots livrés lors de la refonte d'avril 2026.
 
+## Phase 5 — Cohérence métier Prêts / Aides / Bénéficiaires (Juillet 2026)
+- **Statuts prêts unifiés** : `LoanService.resolveStatus` + `<StatutBadge>` + `useLoanStatus`.
+  `PretsAdmin` délègue au service domaine (plus de switch dupliqué).
+- **Workflow Aides verrouillé** : `AideService.advanceWorkflow` valide les
+  transitions (`demandee → validee → allouee → payee`) et remonte les
+  `DomainError` en toast via `useAdvanceAideWorkflow`.
+- **Reconductions** : `ReconductionsAttenteList` affiche capital + intérêt
+  prorata et confirme via `AlertDialog` (jamais `window.confirm`).
+- **Bénéficiaires** : source unique confirmée (`BeneficiaireService.computeMontantAnnuelNet`).
+- **Solde empruntable** : plus aucun recompute client, source RPC uniquement.
+- **Tests** : 6 tests Vitest sur `AideService`.
+- **Docs** : `docs/AUDIT_PHASE5_METIER.md`, `mem://modules/phase5-coherence-metier`.
+
+
+
 ## Lot 1 — Prêts & Caisse
 - Service `pretCalculsService` unifié (intérêt direct, reconduction, prorata).
 - Hook `useCaisse` + RPC `get_solde_caisse()` comme source unique de vérité.
