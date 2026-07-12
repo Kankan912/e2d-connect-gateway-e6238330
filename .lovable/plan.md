@@ -1,65 +1,41 @@
-# Phase 5 — Prêts, Aides & Bénéficiaires : cohérence métier
+# Suivi du plan directeur — E2D → Plateforme SaaS Multi-Associations
 
-Objectif : unifier les workflows, éliminer les incohérences entre modules financiers et améliorer l'ergonomie des reconductions de prêts. Aucun changement de schéma majeur — on s'appuie sur le `FinancialEngine` livré en Phase 4.
+## Tableau récapitulatif
 
-## 5.1 — Audit croisé (1 j)
+| # | Phase | Effort | État |
+|---|---|---|---|
+| 1 | Stabilisation & correctifs bloquants | 3-5 j | ✅ Terminée |
+| 2 | Fondations Multi-Tenant | 8-12 j | ✅ Terminée |
+| 3 | RBAC granulaire & audit complet | 4-6 j | ✅ Terminée |
+| 4 | Domain Services & FinancialEngine | 10-15 j | ✅ Terminée |
+| **5** | **Prêts, Aides & Bénéficiaires — cohérence métier** | **6-8 j** | ✅ **Terminée** |
+| 6 | i18n, thèmes & personnalisation par association | 5-7 j | ⏳ À faire |
+| 7 | Observabilité, sauvegardes, tests | 4-6 j | ⏳ À faire |
+| 8 | Industrialisation & documentation | 3-4 j | ⏳ À faire |
 
-Produire `docs/AUDIT_PHASE5_METIER.md` recensant :
-- Divergences entre `LoanService.resolveStatus` (domaine) et les statuts calculés ad-hoc dans `PretRow`, `PretsAdmin`, `MyPrets`, `DemandesPretAdmin`.
-- Points où `AideService` workflow (`demandee → validee → allouee → payee`) est court-circuité (mises à jour directes de `statut` dans les hooks/pages).
-- Écarts sur `BeneficiaireService` (calcul net annuel vs. affichage `CalendrierBeneficiaires`).
-- Duplication du calcul « solde empruntable » côté client (usages restants de `calcSoldeEmpruntable`).
+## Phase 5 — Sous-phases
 
-## 5.2 — Unification statuts Prêts (2 j)
+| # | Sous-phase | État |
+|---|---|---|
+| 5.1 | Audit croisé (`docs/AUDIT_PHASE5_METIER.md`) | ✅ Terminée |
+| 5.2 | Statuts prêts unifiés via `LoanService.resolveStatus` + `<StatutBadge>` + `useLoanStatus` | ✅ Terminée |
+| 5.3 | Workflow Aides verrouillé (`AideService.advanceWorkflow` + `useAdvanceAideWorkflow`) | ✅ Terminée |
+| 5.4 | Bénéficiaires — source unique confirmée (`BeneficiaireService.computeMontantAnnuelNet`) | ✅ Terminée |
+| 5.5 | Reconductions — preview + `AlertDialog` de confirmation | ✅ Terminée |
+| 5.6 | Nettoyage `calcSoldeEmpruntable` client (déjà éliminé, documenté) | ✅ Terminée |
+| 5.7 | Tests Vitest + `mem://modules/phase5-coherence-metier` + changelog | ✅ Terminée |
 
-- Remplacer chaque calcul local de statut par `LoanService.resolveStatus(...)` dans :
-  `src/pages/admin/_components/PretRow.tsx`, `PretsAdmin.tsx`, `MyPrets.tsx`, `DemandesPretAdmin.tsx`, `ReconductionsAttenteList.tsx`.
-- Ajouter un helper `useLoanStatus(pret, paiements, reconductions)` mémoïsé.
-- Aligner les badges de statut (label + variante) via un mapping unique dans `src/components/prets/StatutBadge.tsx`.
+## Livrables Phase 5
 
-## 5.3 — Workflow Aides verrouillé (2 j)
+- `docs/AUDIT_PHASE5_METIER.md` — cartographie des divergences résolues.
+- `src/components/prets/StatutBadge.tsx` — badge de statut unifié.
+- `src/hooks/useLoanStatus.ts` — résolution mémoïsée.
+- `src/domain/finance/AideService.ts` — méthode `advanceWorkflow` + garde-fous.
+- `src/domain/finance/AideService.test.ts` — 6 tests transitions.
+- `src/hooks/useAides.ts` — hook `useAdvanceAideWorkflow`.
+- `src/pages/admin/_components/ReconductionsAttenteList.tsx` — UX enrichie.
+- `src/pages/admin/PretsAdmin.tsx` — délégation à `LoanService`.
 
-- Centraliser toutes les transitions dans `AideService.advanceWorkflow(aide, nextStatut, meta)` (déjà partiellement présent).
-- Faire passer `useAides` et `AidesAdmin` par ce service — plus aucun `.update({ statut })` direct.
-- Ajouter garde-fous : refus des transitions non autorisées, message utilisateur clair (`DomainError` remontée en toast).
-- Vérifier que la cascade caisse `allouee → fond_caisse_operations` reste unique (déjà idempotente via `record_caisse_movement`).
+## Prochaine action
 
-## 5.4 — Bénéficiaires : source unique (1,5 j)
-
-- Extraire `BeneficiaireService.computeNetAnnuel(membre, sanctionsImpayees, mensuel)` et l'utiliser à la fois dans `CalendrierBeneficiaires`, `Beneficiaires.tsx` (admin) et `MesAvalisations`.
-- Supprimer les recomputes locaux qui divergeaient sur l'arrondi FCFA.
-- Prorata intérêts : réutilisation directe de la règle mémoire (`interest-calculation-comprehensive`).
-
-## 5.5 — Reconductions de prêts : UX (2 j)
-
-- Simplifier `ReconductionsAttenteList` : un seul écran validation/refus avec récap intérêts (via `LoanService.computeSummary`).
-- Ajouter un aperçu « avant/après » (capital restant, nouvelle échéance, intérêts prorata) avant confirmation.
-- Notification email de reconduction validée (réutilise `send-loan-notification`).
-- `AlertDialog` de confirmation (jamais `window.confirm`, conforme à la mémoire).
-
-## 5.6 — Nettoyage `calcSoldeEmpruntable` client (0,5 j)
-
-- Remplacer les usages restants par `CaisseService.getSoldeEmpruntable()` (RPC serveur).
-- Conserver la fonction pure comme fallback documenté uniquement.
-
-## 5.7 — Tests + documentation (1 j)
-
-- Tests Vitest : transitions Aides interdites, statut prêt en retard/reconduit, net annuel bénéficiaire avec sanctions impayées.
-- Mise à jour de `docs/CHANGELOG.md`, `.lovable/plan.md`, et création de `mem://modules/phase5-coherence-metier`.
-
-## Livrables
-
-- 1 doc d'audit, 1 service consolidé (`AideService.advanceWorkflow`), 1 composant badge partagé, 1 hook `useLoanStatus`, écran reconductions revu, batterie de tests, changelog + mémoire.
-
-## Détails techniques
-
-- Aucun changement de schéma SQL prévu. Toute écriture caisse continue via `record_caisse_movement`.
-- Les transitions de statut Aides s'appuient sur la RPC existante `avancer_workflow_aide` — le service TS l'enveloppe et normalise les erreurs.
-- Le hook `useLoanStatus` est pur côté client, ne fait aucun appel réseau (les données proviennent déjà des queries React Query en amont).
-- Effort total estimé : **6-8 jours** (conforme au plan directeur).
-
-## Hors périmètre
-
-- i18n / thèmes (Phase 6).
-- Observabilité, sauvegardes (Phase 7).
-- Refonte visuelle des pages prêts/aides — on garde l'UI existante, on n'unifie que les données et les workflows.
+Démarrer la **Phase 6** — i18n, thèmes et personnalisation par association.
