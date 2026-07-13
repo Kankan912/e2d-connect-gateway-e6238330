@@ -1,0 +1,20 @@
+{
+  "branding": {
+    "title": "Identité de l'association",
+    "subtitle": "Personnalisez le logo, les couleurs et la typographie affichés aux membres et visiteurs.",
+    "logo": "Logo",
+    "logo_upload": "Téléverser un logo",
+    "colors": "Couleurs",
+    "primary": "Couleur primaire",
+    "secondary": "Couleur secondaire",
+    "accent": "Couleur d'accentuation",
+    "hsl_hint": "Format HSL attendu (ex: 220 90% 56%)",
+    "typography": "Typographie",
+    "font_heading": "Police des titres",
+    "font_body": "Police du corps",
+    "radius": "Arrondi des composants",
+    "preview": "Aperçu",
+    "saved": "Identité enregistrée",
+    "reset": "Réinitialiser aux valeurs par défaut"
+  }
+}

@@ -82,6 +82,7 @@ const ImagesAdmin = lazyWithRetry(() => import("./admin/site/ImagesAdmin"));
 
 // Admin Pages - Platform (super_admin only)
 const AssociationsPlatformAdmin = lazyWithRetry(() => import("./admin/platform/AssociationsPlatformAdmin"));
+const AssociationBrandingAdmin = lazyWithRetry(() => import("./admin/AssociationBrandingAdmin"));
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -181,6 +182,7 @@ const Dashboard = () => {
 
           {/* ==================== ROUTES PLATEFORME (super_admin) ==================== */}
           <Route path="/admin/platform/associations" element={<SuperAdminRoute><ErrorBoundary fallbackTitle="Erreur - Associations"><AssociationsPlatformAdmin /></ErrorBoundary></SuperAdminRoute>} />
+          <Route path="/admin/branding" element={<PermissionRoute resource="config" permission="write"><ErrorBoundary fallbackTitle="Erreur - Branding"><AssociationBrandingAdmin /></ErrorBoundary></PermissionRoute>} />
         </Routes>
       </Suspense>
     </DashboardLayout>

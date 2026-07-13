@@ -1,0 +1,31 @@
+{
+  "loan": {
+    "status": {
+      "en_cours": "Active",
+      "rembourse": "Repaid",
+      "partiel": "Partial",
+      "en_retard": "Overdue",
+      "reconduit": "Renewed",
+      "annule": "Cancelled"
+    },
+    "amount": "Amount",
+    "interest": "Interest",
+    "due": "Due date",
+    "remaining": "Remaining"
+  },
+  "aide": {
+    "status": {
+      "demandee": "Requested",
+      "validee": "Approved",
+      "allouee": "Allocated",
+      "payee": "Paid",
+      "rejetee": "Rejected"
+    }
+  },
+  "caisse": {
+    "balance": "Cash balance",
+    "loanable": "Loanable balance",
+    "income": "Income",
+    "expense": "Expenses"
+  }
+}
