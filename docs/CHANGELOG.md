@@ -2,6 +2,21 @@
 
 Récapitulatif des 8 lots livrés lors de la refonte d'avril 2026.
 
+## Phase 6 — i18n & Thèmes par association (Juillet 2026)
+- **Infrastructure i18n** : `i18next` + `react-i18next` + détection navigateur/localStorage.
+  Namespaces : `common`, `finance`, `admin`, `site`. Langues : FR (défaut), EN.
+- **`<LanguageSwitcher />`** ajouté dans le header dashboard.
+- **Thème par association** : nouvelle page `/dashboard/admin/branding`
+  (`AssociationBrandingAdmin`) éditant `associations.theme_tokens` (couleurs
+  HSL, radius, devise, locale) et `logo_url`. Aucune nouvelle table SQL —
+  réutilisation du contexte tenant existant qui applique déjà `--tenant-*`.
+- **Devise dynamique** : helper `formatCurrencyForAssociation()` lit
+  `currency_code` depuis les tokens (fallback FCFA, XOF traité comme FCFA).
+- **Docs** : `docs/I18N_THEMING.md`, mémoire `mem://architecture/i18n-theming`.
+- **Tests Vitest** : `src/i18n/i18n.test.ts`, `src/lib/formatCurrencyDynamic.test.ts`.
+
+
+
 ## Phase 5 — Cohérence métier Prêts / Aides / Bénéficiaires (Juillet 2026)
 - **Statuts prêts unifiés** : `LoanService.resolveStatus` + `<StatutBadge>` + `useLoanStatus`.
   `PretsAdmin` délègue au service domaine (plus de switch dupliqué).
