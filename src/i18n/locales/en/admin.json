@@ -1,0 +1,20 @@
+{
+  "branding": {
+    "title": "Association branding",
+    "subtitle": "Customize the logo, colors and typography shown to members and visitors.",
+    "logo": "Logo",
+    "logo_upload": "Upload logo",
+    "colors": "Colors",
+    "primary": "Primary color",
+    "secondary": "Secondary color",
+    "accent": "Accent color",
+    "hsl_hint": "HSL format expected (e.g. 220 90% 56%)",
+    "typography": "Typography",
+    "font_heading": "Heading font",
+    "font_body": "Body font",
+    "radius": "Component radius",
+    "preview": "Preview",
+    "saved": "Branding saved",
+    "reset": "Reset to defaults"
+  }
+}

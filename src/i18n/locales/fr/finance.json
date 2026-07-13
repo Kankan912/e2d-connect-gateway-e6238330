@@ -1,0 +1,31 @@
+{
+  "loan": {
+    "status": {
+      "en_cours": "En cours",
+      "rembourse": "Remboursé",
+      "partiel": "Partiel",
+      "en_retard": "En retard",
+      "reconduit": "Reconduit",
+      "annule": "Annulé"
+    },
+    "amount": "Montant",
+    "interest": "Intérêts",
+    "due": "Échéance",
+    "remaining": "Reste à payer"
+  },
+  "aide": {
+    "status": {
+      "demandee": "Demandée",
+      "validee": "Validée",
+      "allouee": "Allouée",
+      "payee": "Payée",
+      "rejetee": "Rejetée"
+    }
+  },
+  "caisse": {
+    "balance": "Solde caisse",
+    "loanable": "Solde empruntable",
+    "income": "Entrées",
+    "expense": "Sorties"
+  }
+}
