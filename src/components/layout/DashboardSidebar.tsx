@@ -98,6 +98,7 @@ const adminPublicItems = [
   { title: "Réconciliation MoMo", url: "/dashboard/admin/donations/mobile-money", icon: Smartphone, resource: "donations" },
   { title: "Gestion des Adhésions", url: "/dashboard/admin/adhesions", icon: UserPlus, resource: "adhesions" },
   { title: "Configuration Paiements", url: "/dashboard/admin/payment-config", icon: Settings, resource: "config" },
+  { title: "Identité & Thème", url: "/dashboard/admin/branding", icon: Palette, resource: "config" },
 ];
 
 // Section Sport
