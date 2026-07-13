@@ -82,6 +82,7 @@ const ImagesAdmin = lazyWithRetry(() => import("./admin/site/ImagesAdmin"));
 
 // Admin Pages - Platform (super_admin only)
 const AssociationsPlatformAdmin = lazyWithRetry(() => import("./admin/platform/AssociationsPlatformAdmin"));
+const AssociationBrandingAdmin = lazyWithRetry(() => import("./admin/AssociationBrandingAdmin"));
 
 const Dashboard = () => {
   const navigate = useNavigate();
