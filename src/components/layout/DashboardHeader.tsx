@@ -15,6 +15,7 @@ import { toast } from "@/hooks/use-toast";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { AssociationSwitcher } from "@/components/AssociationSwitcher";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export const DashboardHeader = () => {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ export const DashboardHeader = () => {
 
       <div className="flex items-center gap-2 sm:gap-4">
         <AssociationSwitcher />
+        <LanguageSwitcher />
         <NotificationCenter />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
