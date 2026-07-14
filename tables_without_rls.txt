@@ -1,0 +1,15 @@
+supabase/migrations/20251031170843_387b5b07-ec81-4655-bf5c-ab9636e98e00.sql:IF
+supabase/migrations/20251103231143_c15abfea-a7d5-45d6-9d8f-acaa002d64b3.sql:IF
+supabase/migrations/20251108183355_8a26d918-e122-4218-b484-3f1a4d4daee4.sql:IF
+supabase/migrations/20251126102120_7ff6b530-6db5-41ac-b6a5-8eb4b27439bb.sql:IF
+supabase/migrations/20251215140559_326306d2-04cb-4062-838f-ccb0ad35e6ea.sql:IF
+supabase/migrations/20251215180813_6d113814-67be-4f2c-bb6e-4ab47f196168.sql:IF
+supabase/migrations/20260102192758_06c396e1-9143-4df7-a022-ce0d87bc8ebb.sql:IF
+supabase/migrations/20260109165807_111c7378-8b44-402a-86cf-6428b1ea8ef0.sql:IF
+supabase/migrations/20260112195530_97f43d60-2758-4adf-b9b4-5e7d40a06d2e.sql:IF
+supabase/migrations/20260120192845_007e55f4-efd9-4a7a-b40b-4f7f91886766.sql:IF
+supabase/migrations/20260123200205_bf804999-cbae-41c5-9d3d-72c0249e08d1.sql:IF
+supabase/migrations/20260330193505_b55f83ba-a91a-47dd-9f44-3e460cc2d583.sql:IF
+supabase/migrations/20260430160933_46e2fb2f-9f2e-4bea-9d6f-898ff56f7a0f.sql:IF
+supabase/migrations/20260430184550_3edd3770-fa7b-49a6-a22d-0ad327f636f0.sql:IF
+supabase/migrations/20260601124428_d1006d3d-fc80-4e03-826c-09d569f47c94.sql:IF
