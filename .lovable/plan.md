@@ -1,71 +1,71 @@
-# Phase 6 — i18n, thèmes & personnalisation par association
+## Audit technique et fonctionnel complet — Livrable unique
 
-Objectif : permettre à chaque association d'avoir sa propre identité (nom, logo, couleurs, devise, langue) et préparer le multilingue (FR / EN, extensible).
+Production d'un rapport d'audit exhaustif consolidé dans un seul document : **`docs/AUDIT_COMPLET_2026_07.md`** (analyse statique uniquement, aucun test Playwright, aucune modification de code applicatif).
 
-## Périmètre
+### Méthodologie
 
-### 6.1 — Infrastructure i18n (FR / EN)
-- Ajout de `i18next` + `react-i18next` + `i18next-browser-languagedetector`.
-- Structure `src/i18n/` :
-  - `index.ts` (init, détection langue, fallback FR)
-  - `locales/fr/common.json`, `locales/fr/finance.json`, `locales/fr/admin.json`, `locales/fr/site.json`
-  - `locales/en/` (mêmes namespaces, traduits)
-- Composant `<LanguageSwitcher />` (header dashboard + site public).
-- Persistance langue : `localStorage` + colonne `preferred_language` dans `profiles`.
-- Migration progressive : `useTranslation()` posé sur `App.tsx`, layouts, pages critiques (Auth, Dashboard, PretsAdmin, AidesAdmin, DonationsAdmin, site public Index).
-- Les libellés métier (statuts prêts, catégories caisse) passent par des clés i18n dans `StatutBadge` et badges équivalents.
+1. **Cartographie exhaustive** via `list_dir` récursif + `rg` pour indexer 100% des fichiers (src/, supabase/, docs/, config racine).
+2. **Analyse ciblée en parallèle** grâce à `acp_subagent--explore` — un sous-agent par domaine pour paralléliser la lecture sans saturer le contexte principal :
+   - Sous-agent A : Architecture, structure, SOLID, Clean Code, DRY/KISS, code mort
+   - Sous-agent B : Composants React, hooks, pages, routes, boutons, formulaires (analyse statique)
+   - Sous-agent C : Supabase (RLS, policies, migrations, triggers, RPC, Edge Functions, buckets)
+   - Sous-agent D : Sécurité OWASP, JWT, CORS, secrets, upload, escalade privilèges, multi-tenant
+   - Sous-agent E : Calculs métier (cotisations, prêts, intérêts, reconductions, bénéficiaires, aides, caisse)
+   - Sous-agent F : Dépendances (`package.json` + `bun.lock`), obsolescence, doublons, `dependency_scan`
+   - Sous-agent G : Performance (bundle, lazy, memo, N+1), UX/UI/a11y, DevOps (CI, `.github/workflows`, vercel.json)
+3. **Consolidation** : synthèse dans un rapport unique structuré selon les 20 étapes demandées.
+4. **Aucune modification** du code applicatif, des migrations, ni de la base. Uniquement création du fichier de rapport (+ mise à jour `docs/CHANGELOG.md` et `mem://index.md` en fin).
 
-### 6.2 — Thèmes par association (branding)
-- Nouvelle table `association_theme` (une ligne par association) :
-  - `primary_color`, `secondary_color`, `accent_color` (HSL text)
-  - `logo_url`, `favicon_url`
-  - `font_heading`, `font_body` (presets)
-  - `radius` (sm/md/lg)
-- Chargement au boot via `AssociationContext` : injection de CSS vars sur `<html>` (`--primary`, `--secondary`, `--accent`, `--radius`) — respect strict des tokens sémantiques existants dans `index.css`.
-- Page admin `src/pages/admin/AssociationBrandingAdmin.tsx` :
-  - Sélecteur couleurs (color picker HSL)
-  - Upload logo/favicon dans bucket Storage `association-branding`
-  - Choix presets typo (liste blanche : Inter, DM Sans, Space Grotesk, Manrope, Sora)
-  - Aperçu en direct
-- Le site public (`Index.tsx`, `Header`, `Footer`) lit le thème et affiche le logo/couleurs de l'association courante.
+### Structure du rapport `docs/AUDIT_COMPLET_2026_07.md`
 
-### 6.3 — Personnalisation par association
-- Extension `association_settings` (déjà existante) :
-  - `default_language` (fr / en)
-  - `currency_code` (FCFA par défaut, extensible XOF/EUR/USD pour affichage)
-  - `date_format` (dd/MM/yyyy, MM/dd/yyyy)
-- Helper `formatCurrency(amount, association)` remplace `formatFCFA` progressivement (fallback FCFA garanti — respect mémoire projet).
-- Helper `formatDate(date, association)`.
+```text
+1. Résumé exécutif (verdict, top 10 risques, note globale /100)
+2. Étape 1 — Cartographie complète (arbo, modules, tables, RPC, Edge Fns)
+3. Étape 2 — Code review (duplication, hooks, useEffect, code mort)
+4. Étape 3 — Dépendances (versions, CVE, inutilisées, doublons)
+5. Étape 4 — Boutons (statique : handlers, disabled, confirm, loading)
+6. Étape 5 — Pages & routes (routes mortes, guards, deep-link)
+7. Étape 6 — Formulaires (validation, upload, cas limites)
+8. Étape 7 — Fonctionnalités (incomplètes, cassées, orphelines)
+9. Étape 8 — Interactions inter-modules (flux Réunion→Cotis→Prêt→Caisse…)
+10. Étape 9 — RBAC & droits d'accès (matrice rôles × ressources)
+11. Étape 10 — Sécurité OWASP Top 10
+12. Étape 11 — Supabase (RLS, policies, buckets, Edge Fns, triggers)
+13. Étape 12 — Base de données (relations, index, contraintes, N+1)
+14. Étape 13 — Performance (bundle, lazy, memo, pagination)
+15. Étape 14 — UX/UI/Accessibilité (responsive, contrastes, feedback)
+16. Étape 15 — DevOps (CI/CD, env, rollback, monitoring)
+17. Étape 16 — Multi-tenant (isolation association_id, branding, i18n)
+18. Étape 17 — Calculs métier (cotisations, prêts, intérêts, reconductions)
+19. Étape 18 — Tests fonctionnels (checklist scénarios end-to-end)
+20. Étape 19 — TABLEAU CONSOLIDÉ (Module | Fonctionnalité | Fichiers |
+     Manquement | Cause | Risque | Résultat attendu | Action détaillée |
+     Priorité | Criticité | Effort | Statut)
+21. Étape 20 — Statistiques + notes /10 par axe + note globale /100
+22. Annexes : glossaire, liens dashboard Supabase, plan de remédiation phasé
+```
 
-### 6.4 — Tests & documentation
-- Vitest : `src/i18n/i18n.test.ts` (chargement namespaces, fallback), `src/lib/formatCurrency.test.ts`.
-- `docs/I18N_THEMING.md` — guide contributeur : ajouter une clé, une langue, un thème.
-- Mise à jour `docs/CHANGELOG.md`, `.lovable/plan.md`, mémoire `mem://architecture/i18n-theming`.
+### Contraintes et limites annoncées dans le rapport
 
-## Hors périmètre (renvoyé en Phase 7/8)
-- Traduction complète EN de toutes les pages métier (on livre l'infra + FR/EN sur pages clés).
-- Éditeur de traductions in-app.
-- Thèmes dark/light multiples par association (une seule variante par asso pour l'instant, dark mode global conservé).
+- **Analyse statique** : les bugs runtime dépendant d'état spécifique (données prod, race conditions Realtime, comportements navigateur) sont signalés comme « à confirmer en runtime » mais non testés.
+- **Boutons/pages/formulaires** : audit basé sur la lecture des handlers, `onClick`, `onSubmit`, schémas Zod, mutations. Pas de clic réel.
+- **RLS** : lecture des définitions SQL uniquement + réutilisation de `supabase--linter` pour vérifications automatisées.
+- **Dépendances** : croisement `package.json` ↔ imports réels via `rg`, plus `code--dependency_scan` pour CVE.
+- **Livrable unique** : rédaction condensée mais exploitable ; le tableau consolidé (étape 19) est la référence actionnable pour les correctifs.
 
-## Détails techniques
+### Fichiers produits
 
-- **CSS variables** : aucun `text-white` / `bg-[#hex]` ajouté. Les surcharges de thème vont dans `--primary`, `--secondary`, `--accent`, `--radius` sur `:root` via un `<style>` injecté par `AssociationThemeProvider`.
-- **FCFA** : reste devise par défaut ; `currency_code = 'XOF'` mappe sur `formatFCFA` existant. Aucun changement pour l'utilisateur actuel.
-- **Rôles** : la page branding est réservée à `has_permission('association_settings','update')` (RBAC Phase 3).
-- **Migration SQL** : une seule migration ajoute `association_theme` (avec GRANTs authenticated + service_role, RLS `has_permission`) et étend `association_settings` (colonnes nullables avec défauts).
-- **Storage** : bucket `association-branding` public en lecture, écriture restreinte via policy `has_permission`.
+- **Créé** : `docs/AUDIT_COMPLET_2026_07.md` (le rapport)
+- **Modifié** : `docs/CHANGELOG.md` (entrée « Audit complet juillet 2026 »)
+- **Modifié** : `mem://index.md` + `mem://audits/complete-2026-07` (référence au rapport)
 
-## Livrables
+Aucun autre fichier ne sera touché. Aucune migration SQL, aucun changement de code applicatif, aucune modification de configuration.
 
-- `src/i18n/**` (setup + 8 fichiers de traduction FR/EN)
-- `src/components/LanguageSwitcher.tsx`
-- `src/contexts/AssociationThemeProvider.tsx`
-- `src/pages/admin/AssociationBrandingAdmin.tsx`
-- `src/lib/formatCurrency.ts` + `src/lib/formatDate.ts`
-- Migration `association_theme` + extensions `association_settings`
-- Route `/admin/branding` + entrée sidebar admin
-- Docs + tests
+### Ordre d'exécution (build mode)
 
-## Question design
-
-Une question visuelle sera posée en début d'implémentation pour valider la **palette par défaut** proposée aux nouvelles associations (les associations existantes conservent leurs couleurs actuelles).
+1. Cartographie racine (`list_dir` + `rg --files | wc -l`, comptage tables/hooks/pages).
+2. Lancement en parallèle des 7 sous-agents `explore` avec périmètres disjoints.
+3. Lancement `dependency_scan` + `supabase--linter` en parallèle.
+4. Consolidation manuelle des retours, rédaction du rapport en un seul `code--write`.
+5. Mise à jour `CHANGELOG.md` + mémoire.
+6. Message final court avec verdict + note /100 + lien vers le rapport.

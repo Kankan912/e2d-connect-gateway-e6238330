@@ -2,6 +2,12 @@
 
 Récapitulatif des 8 lots livrés lors de la refonte d'avril 2026.
 
+## Audit complet — Juillet 2026
+- Rapport consolidé : **`docs/AUDIT_COMPLET_2026_07.md`** (20 étapes, 30 correctifs priorisés).
+- Note globale : **72/100**. 3 correctifs P0 (Edge Functions publiques + DELETE caisse hors service).
+- Aucun code applicatif modifié.
+
+
 ## Phase 6 — i18n & Thèmes par association (Juillet 2026)
 - **Infrastructure i18n** : `i18next` + `react-i18next` + détection navigateur/localStorage.
   Namespaces : `common`, `finance`, `admin`, `site`. Langues : FR (défaut), EN.
