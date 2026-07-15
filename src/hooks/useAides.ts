@@ -119,15 +119,45 @@ export function useCreateAide() {
   });
 }
 
+/**
+ * P0 audit item #4 — Whitelist stricte des colonnes modifiables.
+ * Les transitions de statut passent EXCLUSIVEMENT par `useAdvanceAideWorkflow`
+ * (AideService.advanceWorkflow). Toute tentative de modifier statut / montants
+ * validés / validateur via ce hook est ignorée.
+ */
+type AideEditableFields = Pick<
+  Aide,
+  "type_aide_id" | "beneficiaire_id" | "reunion_id" | "exercice_id" | "montant" | "date_allocation" | "contexte_aide" | "justificatif_url" | "notes"
+>;
+
+const AIDE_EDITABLE_KEYS: (keyof AideEditableFields)[] = [
+  "type_aide_id",
+  "beneficiaire_id",
+  "reunion_id",
+  "exercice_id",
+  "montant",
+  "date_allocation",
+  "contexte_aide",
+  "justificatif_url",
+  "notes",
+];
+
 export function useUpdateAide() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({ id, ...aide }: Partial<Aide> & { id: string }) => {
+      const safePayload = AIDE_EDITABLE_KEYS.reduce<Partial<AideEditableFields>>((acc, key) => {
+        if (key in aide) {
+          (acc as Record<string, unknown>)[key] = (aide as Record<string, unknown>)[key];
+        }
+        return acc;
+      }, {});
+
       const { data, error } = await supabase
         .from("aides")
-        .update(aide)
+        .update(safePayload)
         .eq("id", id)
         .select()
         .single();
@@ -149,6 +179,7 @@ export function useUpdateAide() {
     },
   });
 }
+
 
 export function useDeleteAide() {
   const queryClient = useQueryClient();
