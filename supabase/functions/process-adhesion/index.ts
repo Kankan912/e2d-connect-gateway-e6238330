@@ -122,14 +122,37 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // P0 audit item #2 — Authentification obligatoire :
+  //  soit JWT utilisateur (Authorization: Bearer ...),
+  //  soit secret webhook partagé (x-webhook-secret == ADHESION_WEBHOOK_SECRET).
+  const webhookSecret = Deno.env.get('ADHESION_WEBHOOK_SECRET') ?? '';
+  const providedSecret = req.headers.get('x-webhook-secret') ?? '';
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const hasValidWebhook = webhookSecret.length > 0 && providedSecret === webhookSecret;
+  const hasBearer = authHeader.startsWith('Bearer ');
+
+  if (!hasValidWebhook && !hasBearer) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
+
   try {
     const { adhesion_id } = await req.json();
+    if (typeof adhesion_id !== 'string' || adhesion_id.length < 10) {
+      return new Response(
+        JSON.stringify({ error: 'adhesion_id invalide' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
     console.log('Processing adhesion:', adhesion_id);
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
 
     // Récupérer l'adhésion
     const { data: adhesion, error: adhesionError } = await supabaseClient
