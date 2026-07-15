@@ -332,13 +332,13 @@ export const useCaisseSoldeSnapshot = (associationId?: string) => {
   });
 };
 
-// Hook pour supprimer une opération (uniquement manuelles)
+// Hook pour annuler une opération (P0 audit item #3 — passage exclusif par CaisseService.reverseMovement)
+// Aucune suppression directe : on enregistre une contre-opération tracée.
 export const useDeleteCaisseOperation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (operationId: string) => {
-      // Vérifier si c'est une opération manuelle
       const { data: operation } = await supabase
         .from("fond_caisse_operations")
         .select("source_table")
@@ -346,26 +346,29 @@ export const useDeleteCaisseOperation = () => {
         .single();
 
       if (operation?.source_table) {
-        throw new Error("Impossible de supprimer une opération automatique. Supprimez l'enregistrement source.");
+        throw new Error("Impossible d'annuler une opération automatique. Modifiez l'enregistrement source.");
       }
 
-      const { error } = await supabase
-        .from("fond_caisse_operations")
-        .delete()
-        .eq("id", operationId);
-      
-      if (error) throw error;
+      const { CaisseService } = await import("@/domain/finance");
+      await CaisseService.reverseMovement(operationId, "Annulation manuelle via dashboard caisse");
+      try {
+        await CaisseService.refreshSnapshot();
+      } catch (err) {
+        logger.debug("refresh snapshot caisse : échec silencieux", err);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["caisse-operations"] });
       queryClient.invalidateQueries({ queryKey: ["caisse-stats"] });
-      toast({ title: "Succès", description: "Opération supprimée" });
+      queryClient.invalidateQueries({ queryKey: ["caisse-solde-snapshot"] });
+      toast({ title: "Succès", description: "Opération annulée (contre-opération créée)" });
     },
     onError: (error: Error) => {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     },
   });
 };
+
 
 // Fonction utilitaire pour créer une opération de caisse depuis un autre module
 // Phase 4.4 — délègue à CaisseService (RPC idempotente record_caisse_movement)
