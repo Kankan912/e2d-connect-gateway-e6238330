@@ -96,5 +96,24 @@ export const CaisseService = {
     const { error } = await supabase.rpc("refresh_caisse_soldes_snapshot");
     if (error) throw new DomainError(error.message);
   },
+
+  /**
+   * Annule un mouvement caisse en enregistrant une opération inverse tracée.
+   * Remplace TOUT `.delete()` direct sur `fond_caisse_operations` (audit item #3).
+   * Idempotent : rappel = renvoi de l'ID de la contre-opération existante.
+   */
+  async reverseMovement(operationId: string, reason?: string): Promise<string> {
+    if (!operationId) {
+      throw new DomainError("operationId requis pour l'annulation");
+    }
+    const { data, error } = await supabase.rpc("reverse_caisse_movement", {
+      _operation_id: operationId,
+      _reason: reason ?? null,
+    });
+    if (error) throw new DomainError(error.message);
+    return data as unknown as string;
+  },
 };
+
+
 

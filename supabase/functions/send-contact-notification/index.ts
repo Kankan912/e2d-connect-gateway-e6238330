@@ -21,13 +21,69 @@ interface NotificationRequest {
   replyContent?: string;
 }
 
+// P0 audit item #1 — rate-limit mémoire par IP (protection anti-spam/relay).
+// Limite : 5 requêtes / 60s / IP. Reset automatique par TTL.
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const rateBuckets = new Map<string, number[]>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const bucket = (rateBuckets.get(ip) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  if (bucket.length >= RATE_LIMIT_MAX) {
+    rateBuckets.set(ip, bucket);
+    return false;
+  }
+  bucket.push(now);
+  rateBuckets.set(ip, bucket);
+  return true;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validatePayload(body: unknown): { ok: true; data: NotificationRequest } | { ok: false; error: string } {
+  if (!body || typeof body !== "object") return { ok: false, error: "Payload invalide" };
+  const b = body as Record<string, unknown>;
+  const type = b.type;
+  const to = b.to;
+  const contactData = b.contactData as Record<string, unknown> | undefined;
+  if (type !== "admin_notification" && type !== "visitor_confirmation" && type !== "admin_reply") {
+    return { ok: false, error: "type invalide" };
+  }
+  if (typeof to !== "string" || !EMAIL_RE.test(to) || to.length > 254) {
+    return { ok: false, error: "to invalide" };
+  }
+  if (!contactData) return { ok: false, error: "contactData manquant" };
+  const nom = String(contactData.nom ?? "").trim();
+  const email = String(contactData.email ?? "").trim();
+  const objet = String(contactData.objet ?? "").trim();
+  const message = contactData.message ? String(contactData.message).trim() : "";
+  if (nom.length === 0 || nom.length > 100) return { ok: false, error: "nom invalide" };
+  if (!EMAIL_RE.test(email) || email.length > 254) return { ok: false, error: "email invalide" };
+  if (objet.length === 0 || objet.length > 200) return { ok: false, error: "objet invalide" };
+  if (message.length > 5000) return { ok: false, error: "message trop long" };
+  return { ok: true, data: body as NotificationRequest };
+}
+
 serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Rate limit par IP (première IP du X-Forwarded-For, fallback CF-Connecting-IP)
+  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim()
+    || req.headers.get("cf-connecting-ip")
+    || "unknown";
+  if (!checkRateLimit(ip)) {
+    return new Response(
+      JSON.stringify({ error: "Trop de requêtes. Réessayez dans une minute." }),
+      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   try {
+
     // Charger la configuration email complète
     const emailConfig = await getFullEmailConfig();
     
@@ -41,9 +97,18 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const { type, to, contactData, replyContent }: NotificationRequest = await req.json();
+    const rawBody = await req.json();
+    const parsed = validatePayload(rawBody);
+    if (!parsed.ok) {
+      return new Response(
+        JSON.stringify({ error: parsed.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const { type, to, contactData, replyContent } = parsed.data;
 
     console.log(`Sending ${type} email to ${to} via ${emailConfig.service}`);
+
 
     let subject: string;
     let html: string;
