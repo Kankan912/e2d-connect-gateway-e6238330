@@ -6945,6 +6945,10 @@ export type Database = {
         Args: { _ids: string[] }
         Returns: boolean
       }
+      reverse_caisse_movement: {
+        Args: { _operation_id: string; _reason?: string }
+        Returns: string
+      }
       set_current_association: {
         Args: { _association_id: string }
         Returns: string
