@@ -70,7 +70,7 @@ export default function ReouvrirReunionModal({
               `Réouverture réunion ${new Date(reunionData.date_reunion).toLocaleDateString('fr-FR')}`,
             );
           } catch (err) {
-            logger.warn("Échec annulation opération caisse", op.id, err);
+            logger.warn(`Échec annulation opération caisse ${op.id}:`, err);
           }
         }
       }
