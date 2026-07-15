@@ -97,9 +97,18 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const { type, to, contactData, replyContent }: NotificationRequest = await req.json();
+    const rawBody = await req.json();
+    const parsed = validatePayload(rawBody);
+    if (!parsed.ok) {
+      return new Response(
+        JSON.stringify({ error: parsed.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const { type, to, contactData, replyContent } = parsed.data;
 
     console.log(`Sending ${type} email to ${to} via ${emailConfig.service}`);
+
 
     let subject: string;
     let html: string;
