@@ -1,71 +1,135 @@
-## Audit technique et fonctionnel complet — Livrable unique
 
-Production d'un rapport d'audit exhaustif consolidé dans un seul document : **`docs/AUDIT_COMPLET_2026_07.md`** (analyse statique uniquement, aucun test Playwright, aucune modification de code applicatif).
+# Plan de remédiation — Audit complet 2026-07
 
-### Méthodologie
+Référence : `docs/AUDIT_COMPLET_2026_07.md` (30 correctifs, note 72/100 → objectif ≥ 90/100).
 
-1. **Cartographie exhaustive** via `list_dir` récursif + `rg` pour indexer 100% des fichiers (src/, supabase/, docs/, config racine).
-2. **Analyse ciblée en parallèle** grâce à `acp_subagent--explore` — un sous-agent par domaine pour paralléliser la lecture sans saturer le contexte principal :
-   - Sous-agent A : Architecture, structure, SOLID, Clean Code, DRY/KISS, code mort
-   - Sous-agent B : Composants React, hooks, pages, routes, boutons, formulaires (analyse statique)
-   - Sous-agent C : Supabase (RLS, policies, migrations, triggers, RPC, Edge Functions, buckets)
-   - Sous-agent D : Sécurité OWASP, JWT, CORS, secrets, upload, escalade privilèges, multi-tenant
-   - Sous-agent E : Calculs métier (cotisations, prêts, intérêts, reconductions, bénéficiaires, aides, caisse)
-   - Sous-agent F : Dépendances (`package.json` + `bun.lock`), obsolescence, doublons, `dependency_scan`
-   - Sous-agent G : Performance (bundle, lazy, memo, N+1), UX/UI/a11y, DevOps (CI, `.github/workflows`, vercel.json)
-3. **Consolidation** : synthèse dans un rapport unique structuré selon les 20 étapes demandées.
-4. **Aucune modification** du code applicatif, des migrations, ni de la base. Uniquement création du fichier de rapport (+ mise à jour `docs/CHANGELOG.md` et `mem://index.md` en fin).
+Livraison en **5 lots successifs** : chaque lot est autonome, testé, et validé avant le suivant pour éviter les régressions. Après chaque lot : `bun run build` + `vitest run` + `supabase--linter` + mise à jour `docs/CHANGELOG.md` et `mem://audits/complete-2026-07`.
 
-### Structure du rapport `docs/AUDIT_COMPLET_2026_07.md`
+---
 
-```text
-1. Résumé exécutif (verdict, top 10 risques, note globale /100)
-2. Étape 1 — Cartographie complète (arbo, modules, tables, RPC, Edge Fns)
-3. Étape 2 — Code review (duplication, hooks, useEffect, code mort)
-4. Étape 3 — Dépendances (versions, CVE, inutilisées, doublons)
-5. Étape 4 — Boutons (statique : handlers, disabled, confirm, loading)
-6. Étape 5 — Pages & routes (routes mortes, guards, deep-link)
-7. Étape 6 — Formulaires (validation, upload, cas limites)
-8. Étape 7 — Fonctionnalités (incomplètes, cassées, orphelines)
-9. Étape 8 — Interactions inter-modules (flux Réunion→Cotis→Prêt→Caisse…)
-10. Étape 9 — RBAC & droits d'accès (matrice rôles × ressources)
-11. Étape 10 — Sécurité OWASP Top 10
-12. Étape 11 — Supabase (RLS, policies, buckets, Edge Fns, triggers)
-13. Étape 12 — Base de données (relations, index, contraintes, N+1)
-14. Étape 13 — Performance (bundle, lazy, memo, pagination)
-15. Étape 14 — UX/UI/Accessibilité (responsive, contrastes, feedback)
-16. Étape 15 — DevOps (CI/CD, env, rollback, monitoring)
-17. Étape 16 — Multi-tenant (isolation association_id, branding, i18n)
-18. Étape 17 — Calculs métier (cotisations, prêts, intérêts, reconductions)
-19. Étape 18 — Tests fonctionnels (checklist scénarios end-to-end)
-20. Étape 19 — TABLEAU CONSOLIDÉ (Module | Fonctionnalité | Fichiers |
-     Manquement | Cause | Risque | Résultat attendu | Action détaillée |
-     Priorité | Criticité | Effort | Statut)
-21. Étape 20 — Statistiques + notes /10 par axe + note globale /100
-22. Annexes : glossaire, liens dashboard Supabase, plan de remédiation phasé
-```
+## Lot 1 — P0 Sécurité critique (immédiat, ~1 j)
 
-### Contraintes et limites annoncées dans le rapport
+**Objectif** : neutraliser les 3 risques rouges qui bloquent la mise en production.
 
-- **Analyse statique** : les bugs runtime dépendant d'état spécifique (données prod, race conditions Realtime, comportements navigateur) sont signalés comme « à confirmer en runtime » mais non testés.
-- **Boutons/pages/formulaires** : audit basé sur la lecture des handlers, `onClick`, `onSubmit`, schémas Zod, mutations. Pas de clic réel.
-- **RLS** : lecture des définitions SQL uniquement + réutilisation de `supabase--linter` pour vérifications automatisées.
-- **Dépendances** : croisement `package.json` ↔ imports réels via `rg`, plus `code--dependency_scan` pour CVE.
-- **Livrable unique** : rédaction condensée mais exploitable ; le tableau consolidé (étape 19) est la référence actionnable pour les correctifs.
+1. **`send-contact-notification`** (`supabase/functions/send-contact-notification/index.ts`)
+   - Ajout HMAC signature client + rate-limit mémoire (5/min/IP) + validation Zod du payload.
+   - Nouveau secret `CONTACT_HMAC_SECRET` (via `secrets--add_secret`).
+   - Nettoyage CORS via `_shared/cors.ts` (voir Lot 2).
+   - Impact : `src/pages/Index.tsx` (formulaire contact) → envoi de la signature HMAC calculée côté front avec clé publique dérivée.
 
-### Fichiers produits
+2. **`process-adhesion`** (`supabase/functions/process-adhesion/index.ts`)
+   - Exiger header `x-webhook-secret` = `ADHESION_WEBHOOK_SECRET` OU JWT authentifié via `_shared/auth-check.ts`.
+   - Validation Zod stricte du payload adhésion.
+   - Impact : `src/pages/Adhesion.tsx` (front public) → transmettre le secret partagé ou passer par un flow authentifié.
 
-- **Créé** : `docs/AUDIT_COMPLET_2026_07.md` (le rapport)
-- **Modifié** : `docs/CHANGELOG.md` (entrée « Audit complet juillet 2026 »)
-- **Modifié** : `mem://index.md` + `mem://audits/complete-2026-07` (référence au rapport)
+3. **Violations `CaisseService`** (audit item #3)
+   - Migration : nouvelle RPC `reverse_caisse_movement(_operation_id uuid, _reason text)` qui insère une opération inverse tracée (jamais de `DELETE`).
+   - `src/domain/finance/CaisseService.ts` : nouvelle méthode `reverseMovement()`.
+   - `src/hooks/useCaisse.ts:353` + `src/components/ReouvrirReunionModal.tsx:58` → remplacer les `.delete()` directs par `CaisseService.reverseMovement()`.
+   - Contrôle : audit trail conservé, solde recalculé identique.
 
-Aucun autre fichier ne sera touché. Aucune migration SQL, aucun changement de code applicatif, aucune modification de configuration.
+4. **Aide workflow bypass** (`src/hooks/useAides.ts:122`, audit item #4)
+   - Whitelist des colonnes modifiables dans `useUpdateAide` (exclure `statut`, `montant_alloue`, `date_validation`, `validateur_id`).
+   - Nouveau hook `useAideWorkflow` exposant uniquement `AideService.advanceWorkflow()`.
+   - Impact : `src/pages/admin/AidesAdmin.tsx` → migrer les appels de changement de statut.
 
-### Ordre d'exécution (build mode)
+**Tests** : `AideService.test.ts`, `CaisseService.test.ts` étendus. Nouveau `supabase/functions/send-contact-notification/index.test.ts` (rejet signature invalide). Vérifier RLS via `supabase--linter`.
 
-1. Cartographie racine (`list_dir` + `rg --files | wc -l`, comptage tables/hooks/pages).
-2. Lancement en parallèle des 7 sous-agents `explore` avec périmètres disjoints.
-3. Lancement `dependency_scan` + `supabase--linter` en parallèle.
-4. Consolidation manuelle des retours, rédaction du rapport en un seul `code--write`.
-5. Mise à jour `CHANGELOG.md` + mémoire.
-6. Message final court avec verdict + note /100 + lien vers le rapport.
+---
+
+## Lot 2 — P1 Sécurité web & CI (~1 j)
+
+5. **Headers Vercel** (`vercel.json`) — CSP (Supabase + Resend + self), HSTS 1 an, X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy caméra/micro OFF.
+6. **CORS restrictif** — nouveau `supabase/functions/_shared/cors.ts` lisant `ALLOWED_ORIGINS` (env). Appliqué aux 20 fonctions. Fallback 403 sur origine inconnue.
+7. **RLS audit** — exécuter `supabase--linter`, corriger toute table `public` sans RLS, documenter les exceptions publiques dans `docs/RLS_PERMISSIONS.md`.
+8. **CI workflow** — nouveau `.github/workflows/ci.yml` : jobs `lint`, `typecheck` (`tsgo`), `test` (`vitest run`) sur PR. Non bloquant en premier run, activer branch protection après stabilisation.
+9. **Deps mal placées** — déplacer `vitest`, `jsdom`, `@testing-library/*` dans `devDependencies`.
+
+**Tests** : build + typecheck + Playwright manuel sur formulaire contact / adhésion pour vérifier headers.
+
+---
+
+## Lot 3 — P1 Cohérence métier (~1.5 j)
+
+10. **Alertes prêts** (`useAlertesGlobales.ts:37,131`, item #5) — utiliser `LoanService.resolveStatus` + `calculerResumePret`. Vérifier impact sur `DashboardHome`, badges header, page `/admin/finances/prets`.
+11. **Bénéficiaires prorata temporis** (item #6) — refactoring `BeneficiaireService.calculerDistribution()` : formule `(montant × jours_placement) / Σ(montants × jours)`, utilisation `date_depot` réelle et `nb_mois` via `get_exercice_nb_mois`. Impact : `useEpargnantsBenefices`, page `/dashboard/admin/tontine/beneficiaires`, exports PDF, calculs interêts affichés dans `MyEpargnes`.
+12. **Formatage devise multi-tenant** (item #7) — codemod : remplacer chaque `toLocaleString + ' FCFA'` par `formatCurrencyForAssociation()` via `useAssociation()`. Créer helper `useCurrencyFormatter()` pour éviter la répétition. Impact : ~30 fichiers `src/pages/dashboard/*`, exports PDF (`pret-pdf-export.ts`, `rapports-export.ts`, `compte-rendu-pdf.ts`, `membre-pdf.ts`).
+13. **Perf `useUtilisateurs`** (item #8) — 3 `await` → `Promise.all`.
+14. **Filtre exercice types cotisations** (item #25) — jointure `exercices_cotisations_types` avec `actif=true` dans le SQL du hook.
+
+**Tests** : compléter `pretCalculsService.test.ts`, `BeneficiaireService.test.ts` (nouveau) sur cas prorata + exercice court. `formatCurrencyDynamic.test.ts` étendu multi-devise.
+
+---
+
+## Lot 4 — P2 Qualité / DX / Refactoring (~2 j)
+
+15. Fusion `useCaisseStats` + `useCaisseSoldeSnapshot` en `useCaisseFinance()` (item #9).
+16. Validation Zod sur 18 Edge Functions restantes via `_shared/schemas.ts` (item #12).
+17. TypeScript `strictNullChecks: true` → corriger le fallout (item #14, XL — traité en étapes).
+18. ESLint `no-unused-vars: warn` puis `error` (item #15).
+19. Sentry `@sentry/react` + `@sentry/vite-plugin` avec DSN via env (item #17).
+20. Refactor composants > 400 lignes (item #18) — priorité `EmailConfigManager` (928 l.), `ClotureReunionModal` (720 l.), `PretsAdmin` (673 l.). Extraction en `_components/` locaux + hooks dédiés. **Contrôle strict** : test manuel de chaque flow avant/après.
+21. Bypass admin frontend (`usePermissions.ts:18,21`, item #26) — retirer, remplacer par seed SQL garantissant que le rôle `administrateur` a toutes les permissions.
+22. A11y : `aria-label` sur boutons icon-only + `aria-hidden` sur icônes Lucide (item #21).
+23. Design tokens : remplacer `text-white`, `bg-black/50`, `bg-green-500`, hex hardcodés (item #22) — ajouter tokens `--overlay`, `--success` dans `src/index.css` si absents.
+24. Tests UI/hook (item #23) — ajouter tests Testing Library sur `useAuth`, `usePermissions`, `useSessionManager`, formulaires Zod critiques.
+
+---
+
+## Lot 5 — P3 Nettoyage / performance fine (~0.5 j)
+
+25. Suppression code mort après vérification imports dynamiques : `Breadcrumbs.tsx`, `MediaLibrary.tsx`, `PretsAlertes.tsx` (item #19).
+26. `useAdhesions`, `useLoanStatus` (item #20) — brancher ou supprimer après vérification consommateurs.
+27. `LoanRequestsRealtimeProvider` singleton (item #24).
+28. `<Route path="*">` local dans `Dashboard.tsx` avec `DashboardNotFound` (item #27).
+29. `vite.config.ts` `manualChunks` : `radix`, `recharts`, `jspdf` (item #29).
+30. Vérification finale : `supabase--linter`, `bun run build`, `vitest run`, checklist §18 audit (17 scénarios), génération rapport final `docs/AUDIT_CORRECTIONS_2026_07.md`.
+
+---
+
+## Détails techniques transverses
+
+### Nouveaux fichiers
+- `supabase/functions/_shared/cors.ts` — CORS whitelist
+- `supabase/functions/_shared/schemas.ts` — schémas Zod partagés
+- `src/hooks/useAideWorkflow.ts`
+- `src/hooks/useCaisseFinance.ts` (fusion)
+- `src/hooks/useCurrencyFormatter.ts`
+- `src/providers/LoanRequestsRealtimeProvider.tsx`
+- `src/pages/dashboard/DashboardNotFound.tsx`
+- `.github/workflows/ci.yml`
+- `docs/AUDIT_CORRECTIONS_2026_07.md` (rapport final)
+
+### Nouvelles migrations
+1. RPC `reverse_caisse_movement(_operation_id uuid, _reason text)`
+2. Seed permissions complètes rôle `administrateur` (bypass front supprimé)
+3. Corrections RLS des tables détectées par le linter
+
+### Nouveaux secrets
+- `CONTACT_HMAC_SECRET`
+- `ADHESION_WEBHOOK_SECRET`
+- `ALLOWED_ORIGINS` (CSV)
+- `SENTRY_DSN` (optionnel, lot 4)
+
+### Contrôles anti-régression après chaque lot
+- `bun run build` (types + bundle)
+- `vitest run` (tests unitaires)
+- `supabase--linter`
+- Checklist scénarios §18 audit (17 flows métier clés)
+- Vérification rôles : super_admin, administrateur, président, trésorier, commissaire, secrétaire, membre, invité
+- Vérification multi-tenant : switch `set_current_association` + isolation lecture
+
+### Anomalies volontairement non traitées
+- **React 19 / Vite 6 / RRD 7 / date-fns 4** (audit §3.2) — upgrades majeures hors périmètre correctif, à planifier en projet dédié.
+- **`useSessionManager` race conditions** (§2.4) — signal faible, à couvrir par tests dédiés en Lot 4.
+
+---
+
+## Livrables finaux
+
+- 30/30 correctifs marqués `Fait` dans `docs/AUDIT_COMPLET_2026_07.md` §19.
+- `docs/AUDIT_CORRECTIONS_2026_07.md` avec : anomalies corrigées, fichiers modifiés, modules impactés, refactorings, tests exécutés, améliorations d'architecture.
+- `docs/CHANGELOG.md` mis à jour.
+- `mem://audits/complete-2026-07` mémoire mise à jour (note cible ≥ 90/100 post-correction).
+
+**Durée estimée totale : ~6 jours de travail concentrés.**
