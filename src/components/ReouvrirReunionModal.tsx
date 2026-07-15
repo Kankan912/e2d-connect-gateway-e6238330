@@ -52,17 +52,29 @@ export default function ReouvrirReunionModal({
         .update({ verrouille: false } as Record<string, unknown>)
         .eq("reunion_id", reunionId);
 
-      // 3. Supprimer les opérations caisse auto-générées liées à cette réunion
-      // (elles seront recréées lors de la prochaine clôture)
-      const { error: caisseError } = await supabase
+      // 3. Annuler les opérations caisse liées à cette réunion via contre-opération (P0 audit item #3).
+      //    Aucune suppression directe : on préserve l'audit trail.
+      const { data: operationsALister, error: listError } = await supabase
         .from("fond_caisse_operations")
-        .delete()
+        .select("id")
         .eq("reunion_id", reunionId);
 
-      if (caisseError) {
-        logger.warn("Erreur suppression opérations caisse:", caisseError);
-        // On continue quand même car ce n'est pas bloquant
+      if (listError) {
+        logger.warn("Erreur listing opérations caisse:", listError);
+      } else if (operationsALister && operationsALister.length > 0) {
+        const { CaisseService } = await import("@/domain/finance");
+        for (const op of operationsALister) {
+          try {
+            await CaisseService.reverseMovement(
+              op.id,
+              `Réouverture réunion ${new Date(reunionData.date_reunion).toLocaleDateString('fr-FR')}`,
+            );
+          } catch (err) {
+            logger.warn("Échec annulation opération caisse", op.id, err);
+          }
+        }
       }
+
 
       // 3. Logger l'action dans audit_logs
       await supabase.from("audit_logs").insert({
