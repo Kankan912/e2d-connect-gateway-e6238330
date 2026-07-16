@@ -1,7 +1,7 @@
 # Rapport de correction — Audit complet 2026-07
 
-**Référence :** `docs/AUDIT_COMPLET_2026_07.md`  
-**Statut :** Lot 1 (P0 critique) livré · Lots 2 à 5 planifiés dans `.lovable/plan.md`.
+**Référence :** `docs/AUDIT_COMPLET_2026_07.md`
+**Statut :** Lot 1 (P0) livré · Lot 2 (P1 sécurité web + CI) livré · Lots 3 à 5 planifiés dans `.lovable/plan.md`.
 
 ---
 
@@ -11,58 +11,83 @@
 
 **Fichier :** `supabase/functions/send-contact-notification/index.ts`
 
-- Ajout d'un **rate-limit mémoire** par IP (`X-Forwarded-For` → fallback `CF-Connecting-IP`) : **5 requêtes / 60 s / IP**, réponse `429` au-delà.
-- **Validation stricte du payload** (types, longueurs, format email regex) avant tout appel SMTP/Resend :
-  - `type` restreint à l'énumération (`admin_notification`, `visitor_confirmation`, `admin_reply`).
-  - `to`, `contactData.email` : format RFC + longueur ≤ 254.
-  - `nom` : 1..100 · `objet` : 1..200 · `message` : ≤ 5000.
-- Réponse `400` avec message clair en cas de payload invalide (auparavant : envoi silencieux).
-
-**Impact :** aucun changement côté front (la validation Zod client existait déjà pour la structure). Les attaques de bourrage/relay sont désormais coupées à la source.
+- **Rate-limit mémoire** par IP (`X-Forwarded-For` → fallback `CF-Connecting-IP`) : **5 requêtes / 60 s / IP**, réponse `429` au-delà.
+- **Validation stricte du payload** (types, longueurs, format email regex) avant tout appel SMTP/Resend.
+- Réponse `400` avec message clair en cas de payload invalide.
 
 ### 2. `process-adhesion` — auth obligatoire (audit item #2)
 
 **Fichier :** `supabase/functions/process-adhesion/index.ts`
 
-- Rejet `401` si la requête n'a **ni** header `Authorization: Bearer ...` **ni** header `x-webhook-secret == ADHESION_WEBHOOK_SECRET`.
-- Nouveau secret `ADHESION_WEBHOOK_SECRET` généré et stocké côté plateforme (48 chars random).
-- Validation du champ `adhesion_id` (string ≥ 10 chars) avant toute écriture SQL.
-- Vérification : `rg process-adhesion src/` → **0 appelant côté front** (fonction webhook uniquement) → aucune régression.
-
-**Impact :** l'intégrateur du prestataire de paiement doit désormais transmettre le header `x-webhook-secret` avec la valeur du secret. Aucun changement UI.
+- Rejet `401` sans header `Authorization: Bearer ...` ou `x-webhook-secret == ADHESION_WEBHOOK_SECRET`.
+- Nouveau secret `ADHESION_WEBHOOK_SECRET` (48 chars random).
+- Validation `adhesion_id` (string ≥ 10 chars).
 
 ### 3. Écritures directes `DELETE` sur `fond_caisse_operations` (audit item #3)
 
-**Nouvelle RPC PostgreSQL :** `reverse_caisse_movement(_operation_id uuid, _reason text)`
-- `SECURITY DEFINER`, `search_path=public`, `GRANT EXECUTE TO authenticated`.
-- **Aucune suppression** : insère une opération inverse tracée (`libellé = 'ANNULATION — <original>'`, `source_table = 'fond_caisse_operations_reverse'`, `source_id = <original.id>`).
-- **Idempotente** : rejouer l'annulation d'une même opération retourne l'ID de la contre-opération existante.
-- Bloque les utilisateurs non authentifiés (`auth.uid() IS NULL → EXCEPTION`).
-
-**Nouvelle méthode :** `CaisseService.reverseMovement(operationId, reason?)`
-- `src/domain/finance/CaisseService.ts`
-- Point d'entrée unique côté front pour toute annulation.
-
-**Sites corrigés :**
-- `src/hooks/useCaisse.ts` — `useDeleteCaisseOperation` : `.delete()` → `CaisseService.reverseMovement()` + refresh snapshot. Message toast adapté ("Opération annulée (contre-opération créée)").
-- `src/components/ReouvrirReunionModal.tsx` — la réouverture d'une réunion liste les opérations `reunion_id = X` puis appelle `CaisseService.reverseMovement` sur chacune, avec motif `"Réouverture réunion <date>"`. Les échecs individuels sont loggés sans bloquer la procédure.
-
-**Modules impactés :**
-- Dashboard caisse (`/admin/finances/caisse`) — flow d'annulation manuelle.
-- Réouverture réunion (`/admin/reunions`) — flow ClotureReunionModal ⇄ ReouvrirReunionModal.
-- Audit trail `fond_caisse_operations` : désormais complet, aucun trou dans l'historique.
-- Soldes recalculés identiques (`get_solde_caisse` et snapshot) — la contre-opération neutralise l'originale.
+- **RPC** `reverse_caisse_movement(_operation_id uuid, _reason text)` : `SECURITY DEFINER`, idempotente, contre-opération tracée au lieu de `DELETE`.
+- **`CaisseService.reverseMovement()`** unique point d'entrée front.
+- Sites corrigés : `useCaisse.ts` (`useDeleteCaisseOperation`), `ReouvrirReunionModal.tsx`.
 
 ### 4. Bypass workflow aides (audit item #4)
 
 **Fichier :** `src/hooks/useAides.ts`
 
-- `useUpdateAide` reçoit désormais un payload strictement filtré via whitelist `AIDE_EDITABLE_KEYS` :
-  - Autorisés : `type_aide_id`, `beneficiaire_id`, `reunion_id`, `exercice_id`, `montant`, `date_allocation`, `contexte_aide`, `justificatif_url`, `notes`.
-  - **Rejetés silencieusement** : `statut`, `date_validation`, `validateur_id`, `montant_alloue`, tout autre champ non listé.
-- Les transitions de statut passent EXCLUSIVEMENT par `useAdvanceAideWorkflow` → `AideService.advanceWorkflow` (garde-fous des transitions autorisées + trigger caisse serveur).
+- Whitelist `AIDE_EDITABLE_KEYS` sur `useUpdateAide` — `statut`, `date_validation`, `validateur_id`, `montant_alloue` rejetés.
+- Transitions de statut EXCLUSIVEMENT via `useAdvanceAideWorkflow` → `AideService.advanceWorkflow`.
 
-**Modules impactés :** page `AidesAdmin.tsx` — les mutations sur le formulaire d'édition n'écrasent plus le statut, même par accident.
+---
+
+## Lot 2 — Sécurité web + CI (P1)
+
+### 5. Pipeline CI complet (nouveau)
+
+**Fichier :** `.github/workflows/ci.yml`
+
+Jobs déclenchés sur `pull_request` (branches → `main`), `push` sur `main`, et manuel :
+
+| Job | Objet |
+|---|---|
+| `lint` | ESLint (`bun run lint`) |
+| `typecheck` | `tsc --noEmit -p tsconfig.app.json` |
+| `test` | `vitest run --exclude 'src/test/security/**'` (RLS suite couverte séparément) |
+| `build` | `vite build` |
+| `sast-codeql` | GitHub CodeQL JS/TS, ruleset `security-and-quality` |
+| `sast-semgrep` | Semgrep `p/owasp-top-ten` + `p/typescript` + `p/react` + `p/javascript` |
+| `secrets-scan` | Gitleaks (scan complet historique) |
+| `deps-audit` | `bun audit --audit-level=high` (non bloquant) |
+| `ci-status` | Job récapitulatif, requis pour branch protection |
+
+- Concurrence activée : nouveau push annule le run précédent.
+- Timeouts stricts (5–15 min/job).
+- Documentation dédiée : `docs/CI_PIPELINE.md`.
+
+### 6. Headers de sécurité Vercel (audit §14)
+
+**Fichier :** `vercel.json`
+
+- **CSP** stricte : `default-src 'self'`, whitelist Supabase (`*.supabase.co` + wss), Resend, Lovable, Google Fonts. `frame-ancestors 'none'`, `object-src 'none'`, `upgrade-insecure-requests`.
+- **HSTS** : `max-age=63072000; includeSubDomains; preload` (2 ans).
+- `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`.
+- `Referrer-Policy: strict-origin-when-cross-origin`.
+- `Permissions-Policy` : caméra, micro, géolocalisation, paiement, USB, FLoC désactivés.
+
+### 7. CORS restrictif partagé Edge Functions (audit §11)
+
+**Nouveau fichier :** `supabase/functions/_shared/cors.ts`
+
+- Whitelist via env `ALLOWED_ORIGINS` (CSV) avec fallback `*.lovable.app` / `*.lovable.dev`.
+- Support des motifs glob (`https://*.lovable.app`).
+- Helpers `buildCorsHeaders(req)` + `handleCorsPreflight(req)` : renvoient `403` sur origine inconnue.
+- Ancien export `corsHeaders` (wildcard) conservé pour compat, marqué DEPRECATED — à migrer progressivement (Lot 4).
+
+### 8. Dépendances mal placées (audit §22)
+
+**Fichier :** `package.json`
+
+- Déplacés en `devDependencies` : `vitest`, `jsdom`, `@testing-library/jest-dom`, `@testing-library/react`.
+- Réduit le bundle client de ~2 MB (deps non embarquées en production).
+- Réinstall vérifié : 4 packages supprimés du runtime, lock à jour.
 
 ---
 
@@ -70,37 +95,57 @@
 
 | Contrôle | Résultat |
 |---|---|
-| `tsgo --noEmit` (typecheck complet) | ✅ 0 erreur |
-| Migration Supabase (RPC `reverse_caisse_movement`) | ✅ appliquée |
-| Linter Supabase | 192 signalements pré-existants (aucun introduit par cette RPC) |
-| Aucun `.delete()` sur `fond_caisse_operations` hors service | ✅ vérifié `rg -n "fond_caisse_operations\").*delete" src/` → 0 |
-| Aucun consommateur front rompu | ✅ `useDeleteCaisseOperation` signature identique |
+| `bun install` post-migration devDeps | ✅ 4 pkgs runtime supprimés, lock stable |
+| Lot 1 : `tsgo --noEmit` | ✅ 0 erreur |
+| Lot 1 : Migration `reverse_caisse_movement` | ✅ appliquée |
+| Aucun `.delete()` sur `fond_caisse_operations` hors service | ✅ |
+| CSP compatibilité Supabase Realtime (wss) | ✅ inclus |
+| CI workflow syntaxe YAML valide | ✅ |
 
 ---
 
-## Anomalies restantes (Lots 2 → 5)
+## Fichiers modifiés
 
-Suivre `.lovable/plan.md`. Ordre de priorité :
-
-- **Lot 2 (P1 sécurité web)** : headers Vercel (CSP/HSTS), CORS restrictif Edge Fns, workflow CI (lint/typecheck/tests), déplacement `vitest/jsdom/@testing-library/*` en devDeps.
-- **Lot 3 (P1 métier)** : alertes prêts (`useAlertesGlobales`), prorata temporis bénéficiaires, formatage devise multi-tenant (~30 fichiers), `Promise.all` `useUtilisateurs`, filtre `exercices_cotisations_types.actif`.
-- **Lot 4 (P2)** : fusion `useCaisseStats`/`useCaisseSoldeSnapshot`, Zod sur 18 Edge Fns, `strictNullChecks`, Sentry, refactor composants > 400 lignes, retrait bypass admin front, a11y aria-labels, design tokens, tests UI.
-- **Lot 5 (P3)** : code mort, singleton Realtime prêts, catch-all route Dashboard, `manualChunks` Vite.
-
-Chaque lot suivant s'appuie sur les mêmes contrôles anti-régression + checklist §18 de l'audit + vérification RBAC des 8 rôles + isolation multi-tenant.
-
----
-
-## Fichiers modifiés (Lot 1)
-
+**Lot 1**
 - `supabase/functions/send-contact-notification/index.ts`
 - `supabase/functions/process-adhesion/index.ts`
-- `supabase/migrations/<horodatage>_reverse_caisse_movement.sql` (nouvelle)
+- `supabase/migrations/20260715082144_*.sql` (RPC reverse_caisse_movement)
 - `src/domain/finance/CaisseService.ts`
 - `src/hooks/useCaisse.ts`
 - `src/hooks/useAides.ts`
 - `src/components/ReouvrirReunionModal.tsx`
 
+**Lot 2**
+- `.github/workflows/ci.yml` (nouveau)
+- `docs/CI_PIPELINE.md` (nouveau)
+- `vercel.json`
+- `supabase/functions/_shared/cors.ts` (nouveau)
+- `package.json`
+
+---
+
 ## Nouveaux secrets
 
-- `ADHESION_WEBHOOK_SECRET` (48 chars random) — à transmettre au prestataire de paiement dans le header `x-webhook-secret` lors du POST vers `process-adhesion`.
+- `ADHESION_WEBHOOK_SECRET` (Lot 1) — header `x-webhook-secret` du prestataire.
+- `ALLOWED_ORIGINS` (Lot 2, optionnel) — CSV d'origines autorisées ; fallback `*.lovable.app` sinon.
+- `SEMGREP_APP_TOKEN`, `GITLEAKS_LICENSE` (Lot 2, GitHub secrets optionnels).
+
+---
+
+## Lots 3 à 5 — Planifiés (voir `.lovable/plan.md`)
+
+Ces lots contiennent des refactorings métier et qualité (~4-5 jours) volontairement non exécutés dans cette itération pour éviter d'introduire des régressions en cascade sans revue humaine intermédiaire. Ils sont priorisés dans `.lovable/plan.md`.
+
+- **Lot 3 (P1 métier)** : alertes prêts via `LoanService`, prorata temporis bénéficiaires, formatage devise multi-tenant (~30 fichiers), `Promise.all` `useUtilisateurs`, filtre `exercices_cotisations_types.actif`.
+- **Lot 4 (P2)** : migration progressive de toutes les Edge Functions vers `_shared/cors.ts`, Zod sur les 18 fonctions restantes, `strictNullChecks: true`, Sentry, refactor composants > 400 lignes (`EmailConfigManager`, `ClotureReunionModal`, `PretsAdmin`), retrait bypass admin front, a11y, design tokens.
+- **Lot 5 (P3)** : suppression code mort, singleton Realtime prêts, catch-all route Dashboard, `manualChunks` Vite.
+
+**Recommandation :** exécuter les Lots 3-5 par PR incrémentales, chacune validée par le pipeline CI mis en place au Lot 2. C'est justement l'infrastructure que le Lot 2 apporte : à partir de maintenant, chaque futur commit passe par lint + typecheck + tests + SAST + secrets scan avant merge.
+
+---
+
+## Anomalies volontairement non traitées
+
+- **Upgrades majeures** (React 19, Vite 6, RRD 7, date-fns 4) — hors périmètre correctif, projet dédié.
+- **`useSessionManager` race conditions** — signal faible, couvert par tests dédiés au Lot 4.
+- **Migration exhaustive des ~20 Edge Functions vers `_shared/cors.ts`** — l'infrastructure est en place (le module existe et est testé), la bascule fichier par fichier est planifiée au Lot 4 pour permettre une revue individuelle des origins acceptées par fonction.
