@@ -4,8 +4,14 @@ Récapitulatif des 8 lots livrés lors de la refonte d'avril 2026.
 
 ## Audit complet — Juillet 2026
 - Rapport consolidé : **`docs/AUDIT_COMPLET_2026_07.md`** (20 étapes, 30 correctifs priorisés).
-- Note globale : **72/100**. 3 correctifs P0 (Edge Functions publiques + DELETE caisse hors service).
-- Aucun code applicatif modifié.
+- Note globale initiale : **72/100**. 3 correctifs P0 (Edge Functions publiques + DELETE caisse hors service).
+- **Lot 1 (P0)** : `send-contact-notification` (rate-limit + validation), `process-adhesion` (auth webhook), RPC `reverse_caisse_movement` remplace les DELETE directs, whitelist `useAides`.
+- **Lot 2 (CI + sécurité web)** : pipeline `.github/workflows/ci.yml` (lint, typecheck, tests, build, CodeQL, Semgrep, Gitleaks), `vercel.json` (CSP/HSTS/X-Frame-Options), `_shared/cors.ts` (CORS restrictif), dépendances de test déplacées en devDependencies.
+- **Lot 3 (métier P1 — livré partiellement)** : `useAlertesGlobales` utilise `LoanService.resolveStatus` + `calculerResumePret`. `BeneficiaireService.calculerDistribution()` prorata temporis (montant × jours) avec tests. Nouveau hook `useCurrencyFormatter` (fondation devise multi-tenant). `useUtilisateurs` parallélise 3 requêtes via `Promise.all`.
+- **Lot 4 (qualité — livré partiellement)** : nouveau `supabase/functions/_shared/schemas.ts` (Zod partagé + helper `parseBody`).
+- **Lot 5 (perf — livré partiellement)** : `vite.config.ts` `manualChunks` (react, radix, recharts, jspdf, supabase, react-query), route catch-all Dashboard avec `DashboardNotFound`.
+- Suite Lots 3-5 (codemod formatage devise ~30 fichiers, migration CORS 20 Edge Functions, `strictNullChecks`, Sentry, refactor gros composants, retrait bypass admin front) : planifiée par PR incrémentales validées par le nouveau pipeline CI.
+
 
 
 ## Phase 6 — i18n & Thèmes par association (Juillet 2026)

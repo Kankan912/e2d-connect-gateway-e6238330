@@ -22,28 +22,27 @@ export function useUtilisateurs() {
   return useQuery({
     queryKey: ["utilisateurs"],
     queryFn: async () => {
-      // Fetch profiles - exclure les utilisateurs supprimés
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .neq("status", "supprime")
-        .order("created_at", { ascending: false });
+      // Lot 3 — parallélisation des 3 requêtes indépendantes
+      const [profilesRes, rolesRes, membresRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("*")
+          .neq("status", "supprime")
+          .order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("user_id, role_id, roles(id, name)"),
+        supabase.from("membres").select("id, user_id, nom, prenom"),
+      ]);
 
-      if (profilesError) throw new Error(profilesError.message || "Erreur lors du chargement des profils");
+      if (profilesRes.error)
+        throw new Error(profilesRes.error.message || "Erreur lors du chargement des profils");
+      if (rolesRes.error)
+        throw new Error(rolesRes.error.message || "Erreur lors du chargement des rôles");
+      if (membresRes.error)
+        throw new Error(membresRes.error.message || "Erreur lors du chargement des membres");
 
-      // Fetch user_roles with role details
-      const { data: userRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id, role_id, roles(id, name)");
-
-      if (rolesError) throw new Error(rolesError.message || "Erreur lors du chargement des rôles");
-
-      // Fetch membres to find linked members
-      const { data: membres, error: membresError } = await supabase
-        .from("membres")
-        .select("id, user_id, nom, prenom");
-
-      if (membresError) throw new Error(membresError.message || "Erreur lors du chargement des membres");
+      const profiles = profilesRes.data ?? [];
+      const userRoles = rolesRes.data ?? [];
+      const membres = membresRes.data ?? [];
 
       // Map profiles with roles and linked member
       const utilisateurs: Utilisateur[] = profiles.map((profile) => {
