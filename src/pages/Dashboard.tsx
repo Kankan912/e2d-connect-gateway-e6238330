@@ -183,6 +183,9 @@ const Dashboard = () => {
           {/* ==================== ROUTES PLATEFORME (super_admin) ==================== */}
           <Route path="/admin/platform/associations" element={<SuperAdminRoute><ErrorBoundary fallbackTitle="Erreur - Associations"><AssociationsPlatformAdmin /></ErrorBoundary></SuperAdminRoute>} />
           <Route path="/admin/branding" element={<PermissionRoute resource="config" permission="write"><ErrorBoundary fallbackTitle="Erreur - Branding"><AssociationBrandingAdmin /></ErrorBoundary></PermissionRoute>} />
+
+          {/* Lot 5 — catch-all pour URLs Dashboard inconnues */}
+          <Route path="*" element={<DashboardNotFound />} />
         </Routes>
       </Suspense>
     </DashboardLayout>

@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatFCFA } from "@/lib/utils";
+import { LoanService } from "@/domain/finance";
+import { calculerResumePret } from "@/lib/pretCalculsService";
 
 export interface Alerte {
   id: string;
@@ -123,24 +125,37 @@ export function useAlertesGlobales() {
   // Construire la liste des alertes
   const alertes: Alerte[] = [];
 
-  // Alertes prêts en retard
+  // Alertes prêts en retard — via LoanService (Lot 3)
   pretsRetard.forEach((pret: any) => {
+    const resume = calculerResumePret({
+      montant: Number(pret.montant) || 0,
+      taux_interet: Number(pret.taux_interet) || 5,
+      interet_initial: pret.interet_initial ?? undefined,
+      reconductions: pret.reconductions ?? 0,
+      montant_paye: Number(pret.montant_paye) || 0,
+    });
+    const statut = LoanService.resolveStatus({
+      montant: resume.totalDu,
+      montantPaye: resume.totalPaye,
+      echeance: pret.echeance,
+      reconductions: pret.reconductions ?? 0,
+    });
+    if (statut !== "en_retard") return;
+
     const joursRetard = Math.floor(
-      (new Date().getTime() - new Date(pret.echeance).getTime()) / (1000 * 60 * 60 * 24)
+      (Date.now() - new Date(pret.echeance).getTime()) / (1000 * 60 * 60 * 24),
     );
-    const resteDu = (pret.montant_total_du || pret.montant) - (pret.montant_paye || 0);
-    
     alertes.push({
       id: `pret-${pret.id}`,
-      type: 'pret_retard',
-      niveau: joursRetard >= 30 ? 'danger' : 'warning',
+      type: "pret_retard",
+      niveau: joursRetard >= 30 ? "danger" : "warning",
       titre: `Prêt en retard (${joursRetard}j)`,
-      description: `${pret.membre?.prenom} ${pret.membre?.nom} - Reste ${formatFCFA(resteDu)}`,
-      lien: '/dashboard/admin/finances/prets',
+      description: `${pret.membre?.prenom} ${pret.membre?.nom} - Reste ${formatFCFA(resume.resteAPayer)}`,
+      lien: "/dashboard/admin/finances/prets",
       dateCreation: new Date(pret.echeance),
       membreId: pret.membre?.id,
       membreNom: `${pret.membre?.prenom} ${pret.membre?.nom}`,
-      montant: resteDu,
+      montant: resume.resteAPayer,
     });
   });
 
