@@ -7,6 +7,7 @@ import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
 import { PageLoader, SuspenseFallback } from "@/components/ui/page-loader";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import DashboardNotFound from "./dashboard/DashboardNotFound";
 
 // ============================================
 // ALL PAGES LAZY LOADED WITH AUTO-RETRY
