@@ -93,6 +93,30 @@ export const useCotisationsTypes = () => {
   });
 };
 
+/**
+ * Lot 3 — Variante filtrée par exercice : ne retourne que les types
+ * dont la ligne `exercices_cotisations_types.actif = true` pour l'exercice fourni.
+ * Utiliser cette variante partout où l'on saisit une cotisation liée à un exercice.
+ */
+export const useCotisationsTypesForExercice = (exerciceId?: string) => {
+  return useQuery({
+    queryKey: ['cotisations-types', 'exercice', exerciceId],
+    enabled: !!exerciceId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exercices_cotisations_types')
+        .select('type_cotisation_id, actif, cotisations_types!inner(id, nom, description, montant_defaut, actif)')
+        .eq('exercice_id', exerciceId!)
+        .eq('actif', true);
+      if (error) throw error;
+      return (data ?? [])
+        .map((row: any) => row.cotisations_types)
+        .filter((t: any) => t && t.actif !== false)
+        .sort((a: any, b: any) => String(a.nom).localeCompare(String(b.nom)));
+    },
+  });
+};
+
 export const useCreateCotisation = () => {
   const queryClient = useQueryClient();
 
