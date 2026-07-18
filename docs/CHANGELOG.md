@@ -10,7 +10,8 @@ Récapitulatif des 8 lots livrés lors de la refonte d'avril 2026.
 - **Lot 3 (métier P1 — livré partiellement)** : `useAlertesGlobales` utilise `LoanService.resolveStatus` + `calculerResumePret`. `BeneficiaireService.calculerDistribution()` prorata temporis (montant × jours) avec tests. Nouveau hook `useCurrencyFormatter` (fondation devise multi-tenant). `useUtilisateurs` parallélise 3 requêtes via `Promise.all`.
 - **Lot 4 (qualité — livré partiellement)** : nouveau `supabase/functions/_shared/schemas.ts` (Zod partagé + helper `parseBody`).
 - **Lot 5 (perf — livré partiellement)** : `vite.config.ts` `manualChunks` (react, radix, recharts, jspdf, supabase, react-query), route catch-all Dashboard avec `DashboardNotFound`.
-- Suite Lots 3-5 (codemod formatage devise ~30 fichiers, migration CORS 20 Edge Functions, `strictNullChecks`, Sentry, refactor gros composants, retrait bypass admin front) : planifiée par PR incrémentales validées par le nouveau pipeline CI.
+- **Lot 3-5 (compléments)** : Sentry initialisation conditionnelle (no-op sans `VITE_SENTRY_DSN`), hook `useCotisationsTypesForExercice` (filtre `exercices_cotisations_types.actif`), suppression code mort (`Breadcrumbs.tsx`, `MediaLibrary.tsx`, `PretsAlertes.tsx`), suppression `useCotisationsTypes` non utilisé remplacé par variante filtrée.
+- Suite Lots 3-5 (codemod formatage devise ~30 fichiers, migration CORS 20 Edge Functions, `strictNullChecks`, refactor gros composants, retrait bypass admin front) : planifiée par PR incrémentales validées par le nouveau pipeline CI.
 
 
 

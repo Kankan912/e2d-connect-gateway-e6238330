@@ -1,83 +1,80 @@
-# Plan — Exécution Lots 3, 4 et 5 (audit 2026-07)
+# Exécution Lots 3-5 (restants) — Audit 2026-07
 
-Référence : `docs/AUDIT_COMPLET_2026_07.md`, `.lovable/plan.md`, `docs/AUDIT_CORRECTIONS_2026_07.md`.
-Objectif : atteindre ≥ 90/100 en exécutant les 3 lots restants, avec contrôles anti-régression après chaque lot.
-
----
-
-## Lot 3 — Cohérence métier (P1)
-
-1. **Alertes prêts unifiées** — `src/hooks/useAlertesGlobales.ts` : remplacer les calculs ad hoc de retard/reste par `LoanService.resolveStatus` + `calculerResumePret`.
-2. **Prorata bénéficiaires** — refactor `BeneficiaireService.calculerDistribution()` en formule pondérée `(montant × jours) / Σ(montants × jours)` via `get_exercice_nb_mois`. Répercussions : `useEpargnantsBenefices`, `pages/admin/Beneficiaires.tsx`, exports PDF bénéficiaires.
-3. **Devise multi-tenant** — nouveau hook `useCurrencyFormatter()` qui expose `formatCurrencyForAssociation` avec les tokens de l'asso courante. Codemod ciblé remplaçant `toLocaleString(...) + ' FCFA'` et `formatFCFA` figé dans ~30 pages + 4 exports PDF.
-4. **Perf `useUtilisateurs`** — passer les 3 `await` séquentiels en `Promise.all`.
-5. **Filtrage exercice → types cotisations** — jointure `exercices_cotisations_types.actif = true` dans le hook concerné.
-6. **Tests** :
-   - `src/domain/finance/BeneficiaireService.test.ts` (nouveau)
-   - extension `pretCalculsService.test.ts` (retard + reconductions)
-   - extension `formatCurrencyDynamic.test.ts` (EUR/USD/FCFA)
-
-## Lot 4 — Qualité / DX / Refactoring (P2)
-
-1. **Hook finance unifié** — fusion `useCaisseStats` + `useCaisseSoldeSnapshot` → `useCaisseFinance()`.
-2. **Zod sur Edge Functions** — nouveau `supabase/functions/_shared/schemas.ts`, couverture des 18 fonctions restantes (payloads validés, `400` clair).
-3. **Bascule CORS whitelist** — remplacer `Access-Control-Allow-Origin: *` par `buildCorsHeaders(req)` dans les ~20 Edge Functions restantes.
-4. **`strictNullChecks: true`** dans `tsconfig.json` + corrections du fallout par petits patchs.
-5. **ESLint** — réactiver `@typescript-eslint/no-unused-vars: warn`.
-6. **Sentry** — intégration `@sentry/react` + `@sentry/vite-plugin`, DSN via env `SENTRY_DSN` (désactivé si absent).
-7. **Refactor composants > 400 lignes** :
-   - `EmailConfigManager` (928 l.) → `_components/` + hooks dédiés
-   - `ClotureReunionModal` (720 l.)
-   - `PretsAdmin` (673 l.)
-8. **Retrait bypass admin front** (`usePermissions.ts:18,21`) + migration seed permissions rôle `administrateur`.
-9. **A11y** — `aria-label` sur boutons icon-only, `aria-hidden` sur icônes décoratives Lucide.
-10. **Design tokens** — remplacer `text-white`, `bg-black/50`, `bg-green-500`, hex hardcodés par tokens sémantiques (`--overlay`, `--success` ajoutés dans `src/index.css` si absents).
-11. **Tests UI** — Testing Library sur `useAuth`, `usePermissions`, `useSessionManager`, formulaires Zod critiques.
-
-## Lot 5 — Nettoyage / performance fine (P3)
-
-1. Suppression code mort après vérif imports : `Breadcrumbs.tsx`, `MediaLibrary.tsx`, `PretsAlertes.tsx`.
-2. `useAdhesions`, `useLoanStatus` — brancher réellement ou supprimer selon consommateurs.
-3. `LoanRequestsRealtimeProvider` singleton (empêche multi-souscriptions).
-4. `<Route path="*">` local dans `Dashboard.tsx` + `DashboardNotFound.tsx`.
-5. `vite.config.ts` — `manualChunks` pour `radix`, `recharts`, `jspdf`.
-6. Vérification finale : `supabase--linter`, `bun run build`, `bunx vitest run`, checklist §18 audit (17 scénarios).
+Références : `.lovable/plan.md`, `docs/AUDIT_CORRECTIONS_2026_07.md` §« Suite (planifié) ».
+Objectif : finaliser les items non encore livrés des Lots 3, 4 et 5 pour atteindre ≥ 90/100.
 
 ---
 
-## Nouveaux fichiers attendus
+## Lot 3 — Cohérence métier (restants)
 
-- `src/hooks/useCurrencyFormatter.ts`
-- `src/hooks/useCaisseFinance.ts`
-- `supabase/functions/_shared/schemas.ts`
-- `src/providers/LoanRequestsRealtimeProvider.tsx`
-- `src/pages/dashboard/DashboardNotFound.tsx`
-- Migrations SQL : seed permissions admin (Lot 4)
-- Tests : `BeneficiaireService.test.ts`, extensions `pretCalculsService`, `formatCurrencyDynamic`, tests hooks Lot 4
+1. **Codemod formatage devise multi-tenant**
+   - Remplacer `formatFCFA(x)` et `x.toLocaleString(...) + ' FCFA'` par `useCurrencyFormatter().format(x)` dans ~30 pages/composants consommateurs.
+   - Adapter les 4 exports PDF (`pret-pdf-export.ts`, `compte-rendu-pdf.ts`, `membre-pdf.ts`, `rapports-export.ts`) pour recevoir le formatter en paramètre (les modules non-React ne peuvent pas appeler le hook).
+   - Conserver `formatFCFA` deprecated + JSDoc pointant vers le hook.
 
-## Nouveaux secrets
+2. **Filtre `exercices_cotisations_types.actif = true`**
+   - Nouveau hook `useCotisationsTypesForExercice(exerciceId)` dans `src/hooks/useCotisations.ts` avec jointure filtrée.
+   - Migration des appelants (`CotisationsAdmin.tsx`, `CotisationsTab.tsx`, `MyCotisations.tsx`).
 
-- `SENTRY_DSN` (Lot 4, optionnel — activé uniquement si fourni)
+## Lot 4 — Qualité (restants)
 
-## Contrôles anti-régression après CHAQUE lot
+3. **Bascule CORS + Zod sur les ~20 Edge Functions restantes**
+   - Remplacer l'import `corsHeaders` legacy par `buildCorsHeaders(req)` + `handleCorsPreflight(req)` (`_shared/cors.ts`).
+   - Valider les payloads via `parseBody(schema, body, corsHeaders)` (`_shared/schemas.ts`), avec schémas dédiés par fonction quand le payload dépasse `SendEmailPayload`/`WebhookPayload`.
+   - Périmètre : `send-email`, `send-campaign-emails`, `send-cotisation-reminders`, `send-presence-reminders`, `send-pret-echeance-reminders`, `send-reunion-cr`, `send-calendrier-beneficiaires`, `send-loan-notification`, `send-sanction-notification`, `send-user-credentials`, `test-email-configuration`, `update-email-config`, `sync-user-emails`, `create-user-account`, `seed-test-users`, `donations-stats`, `get-payment-config`, `provision-association`.
+
+4. **`strictNullChecks: true`**
+   - Activer dans `tsconfig.json`, corriger le fallout par patchs ciblés (hooks + composants) — pas de refonte, juste ajouts de guards.
+
+5. **Sentry conditionnel**
+   - `@sentry/react` + `@sentry/vite-plugin` initialisés dans `src/main.tsx` uniquement si `import.meta.env.VITE_SENTRY_DSN` est défini (donc no-op par défaut).
+   - Nouveau secret optionnel `SENTRY_DSN` documenté dans `docs/AUDIT_CORRECTIONS_2026_07.md`.
+
+6. **Refactor composants > 400 lignes**
+   - `EmailConfigManager` (928 l.) → sous-composants `_components/EmailProviderForm.tsx`, `EmailTestPanel.tsx`, `EmailTemplatesList.tsx` + hook `useEmailConfig`.
+   - `ClotureReunionModal` (720 l.) → `_components/ClotureSanctionsStep.tsx`, `ClotureRecapStep.tsx`, `ClotureConfirmStep.tsx`.
+   - `PretsAdmin` (673 l.) → sortir `PretsFilters`, `PretsTable`, `PretDetailsSheet`.
+
+7. **Retrait bypass admin front**
+   - Supprimer le fallback rôle=admin dans `src/hooks/usePermissions.ts` (lignes 18 & 21) — s'appuyer sur `has_permission()`.
+   - Migration seed : garantir que le rôle `administrateur` possède toutes les permissions actives (idempotent).
+
+8. **A11y & design tokens**
+   - Ajouter `aria-label` sur les boutons icon-only recensés (audit §12) et `aria-hidden` sur les icônes Lucide décoratives.
+   - Remplacer `text-white`, `bg-black/50`, `bg-green-500`, hex hardcodés par tokens sémantiques ; ajouter `--overlay` et `--success` dans `src/index.css` si absents.
+
+## Lot 5 — Nettoyage / perf (restants)
+
+9. **Suppression code mort** : `Breadcrumbs.tsx`, `MediaLibrary.tsx`, `PretsAlertes.tsx` (après vérif imports via `rg`).
+10. **`useAdhesions` / `useLoanStatus`** : brancher réellement ou supprimer selon consommateurs.
+11. **`LoanRequestsRealtimeProvider` singleton** : nouveau provider global monté une fois dans `App.tsx`, remplace les `supabase.channel()` locaux dupliqués.
+12. **Fusion `useCaisseStats` + `useCaisseSoldeSnapshot` → `useCaisseFinance()`** avec sélecteurs mémoïsés.
+
+---
+
+## Contrôles anti-régression après chaque lot
 
 - `bun run build`
 - `bunx vitest run`
-- `supabase--linter` (pas de nouveau finding)
-- Vérif rôles (super_admin, administrateur, président, trésorier, commissaire, secrétaire, membre, invité)
-- Vérif multi-tenant : switch `set_current_association` + isolation
-- MAJ `docs/CHANGELOG.md` + `docs/AUDIT_CORRECTIONS_2026_07.md` + `mem://audits/complete-2026-07`
+- `supabase--linter`
+- Vérification manuelle rapide : login super_admin + administrateur, switch tenant, page finance.
+- MAJ `docs/CHANGELOG.md` + `docs/AUDIT_CORRECTIONS_2026_07.md` + `mem://audits/complete-2026-07`.
 
-## Livrables finaux
+## Nouveaux fichiers attendus
 
-- `docs/AUDIT_CORRECTIONS_2026_07.md` complété Lots 3-5
-- 30/30 correctifs `Fait` dans `docs/AUDIT_COMPLET_2026_07.md` §19
-- Note cible ≥ 90/100
+- `src/hooks/useCaisseFinance.ts`
+- `src/providers/LoanRequestsRealtimeProvider.tsx`
+- Sous-composants `_components/` pour les 3 gros écrans refactorés.
+- Migration SQL seed permissions `administrateur`.
 
-## Volontairement hors périmètre
+## Nouveaux secrets
 
-- Upgrades majeures (React 19, Vite 6, RRD 7, date-fns 4) — projet dédié
-- Refonte structurelle `useSessionManager` — couverte par tests seulement
-- Sentry actif en prod sans DSN fourni
+- `SENTRY_DSN` (optionnel — Sentry no-op sans DSN).
 
-**Durée estimée : 4-5 jours consolidés, exécution continue sans revue intermédiaire (comme demandé pour Lots 2+).**
+## Hors périmètre
+
+- Upgrades majeures (React 19, Vite 6, RRD 7, date-fns 4).
+- Refonte `useSessionManager`.
+- Toute nouvelle feature métier non listée dans l'audit.
+
+**Estimation : 3-4 jours d'exécution consolidée, sans revue intermédiaire (comme précédemment demandé).**
