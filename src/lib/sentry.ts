@@ -10,7 +10,7 @@ export async function initSentry(): Promise<void> {
   const dsn = import.meta.env.VITE_SENTRY_DSN as string | undefined;
   if (!dsn) return;
   try {
-    const Sentry = await import(/* @vite-ignore */ "@sentry/react").catch(() => null);
+    const Sentry = await import(/* @vite-ignore */ "@sentry/react" as string).catch(() => null);
     if (!Sentry) {
       // Package non installé — silencieux (Sentry reste optionnel).
       return;
