@@ -381,6 +381,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          max_cotisations_mensuelles_par_membre: number
           updated_at: string
           valeur: Json | null
         }
@@ -390,6 +391,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          max_cotisations_mensuelles_par_membre?: number
           updated_at?: string
           valeur?: Json | null
         }
@@ -399,6 +401,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          max_cotisations_mensuelles_par_membre?: number
           updated_at?: string
           valeur?: Json | null
         }
@@ -1151,6 +1154,9 @@ export type Database = {
           reunion_id: string | null
           statut: string | null
           type_cotisation_id: string | null
+          verrouille: boolean
+          verrouille_le: string | null
+          verrouille_motif: string | null
         }
         Insert: {
           association_id?: string
@@ -1165,6 +1171,9 @@ export type Database = {
           reunion_id?: string | null
           statut?: string | null
           type_cotisation_id?: string | null
+          verrouille?: boolean
+          verrouille_le?: string | null
+          verrouille_motif?: string | null
         }
         Update: {
           association_id?: string
@@ -1179,6 +1188,9 @@ export type Database = {
           reunion_id?: string | null
           statut?: string | null
           type_cotisation_id?: string | null
+          verrouille?: boolean
+          verrouille_le?: string | null
+          verrouille_motif?: string | null
         }
         Relationships: [
           {
@@ -1810,6 +1822,102 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      exercise_contribution_settings: {
+        Row: {
+          actif: boolean
+          association_id: string
+          created_at: string
+          created_by: string | null
+          date_effet: string
+          exercice_id: string
+          id: string
+          montant: number
+          notes: string | null
+          type_cotisation: string
+          updated_at: string
+        }
+        Insert: {
+          actif?: boolean
+          association_id: string
+          created_at?: string
+          created_by?: string | null
+          date_effet?: string
+          exercice_id: string
+          id?: string
+          montant: number
+          notes?: string | null
+          type_cotisation: string
+          updated_at?: string
+        }
+        Update: {
+          actif?: boolean
+          association_id?: string
+          created_at?: string
+          created_by?: string | null
+          date_effet?: string
+          exercice_id?: string
+          id?: string
+          montant?: number
+          notes?: string | null
+          type_cotisation?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercise_contribution_settings_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exercise_contribution_settings_exercice_id_fkey"
+            columns: ["exercice_id"]
+            isOneToOne: false
+            referencedRelation: "exercices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercise_contribution_settings_history: {
+        Row: {
+          action: string
+          ancien_montant: number | null
+          association_id: string
+          exercice_id: string
+          id: string
+          modifie_le: string
+          modifie_par: string | null
+          nouveau_montant: number | null
+          setting_id: string
+          type_cotisation: string
+        }
+        Insert: {
+          action: string
+          ancien_montant?: number | null
+          association_id: string
+          exercice_id: string
+          id?: string
+          modifie_le?: string
+          modifie_par?: string | null
+          nouveau_montant?: number | null
+          setting_id: string
+          type_cotisation: string
+        }
+        Update: {
+          action?: string
+          ancien_montant?: number | null
+          association_id?: string
+          exercice_id?: string
+          id?: string
+          modifie_le?: string
+          modifie_par?: string | null
+          nouveau_montant?: number | null
+          setting_id?: string
+          type_cotisation?: string
+        }
+        Relationships: []
       }
       exports_programmes: {
         Row: {
@@ -2658,6 +2766,7 @@ export type Database = {
       membres: {
         Row: {
           association_id: string
+          autoriser_plusieurs_cotisations_mensuelles: boolean
           created_at: string | null
           date_inscription: string | null
           email: string | null
@@ -2679,6 +2788,7 @@ export type Database = {
         }
         Insert: {
           association_id?: string
+          autoriser_plusieurs_cotisations_mensuelles?: boolean
           created_at?: string | null
           date_inscription?: string | null
           email?: string | null
@@ -2700,6 +2810,7 @@ export type Database = {
         }
         Update: {
           association_id?: string
+          autoriser_plusieurs_cotisations_mensuelles?: boolean
           created_at?: string | null
           date_inscription?: string | null
           email?: string | null
@@ -6954,6 +7065,10 @@ export type Database = {
         Returns: string
       }
       strip_secrets: { Args: { p_data: Json }; Returns: Json }
+      unlock_cotisation: {
+        Args: { _cotisation_id: string; _motif: string }
+        Returns: boolean
+      }
       upsert_loan_validation_step: {
         Args: {
           _actif: boolean
