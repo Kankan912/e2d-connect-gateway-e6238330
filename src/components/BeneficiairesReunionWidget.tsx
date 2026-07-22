@@ -132,23 +132,47 @@ export default function BeneficiairesReunionWidget({
     setCalculatedData(null);
   };
 
-  // Marquer comme payé
+  // Valider le paiement via RPC
   const handlePay = async () => {
     if (!selectedBeneficiaireId) return;
-    
-    await marquerPaye.mutateAsync({
-      id: selectedBeneficiaireId,
-      payePar: user?.id,
-      notes: paymentNotes
-    });
-
-    setShowPayDialog(false);
-    setSelectedBeneficiaireId("");
-    setPaymentNotes("");
+    const montant = Number(paymentMontant);
+    if (!montant || montant <= 0) {
+      toast({ title: "Montant invalide", variant: "destructive" });
+      return;
+    }
+    setIsSubmittingPay(true);
+    try {
+      const { error } = await supabase.rpc('valider_paiement_beneficiaire' as any, {
+        p_id: selectedBeneficiaireId,
+        p_montant: montant,
+        p_date_paiement: new Date(paymentDate).toISOString(),
+        p_mode: paymentMode || null,
+        p_reference: paymentReference || null,
+        p_notes: paymentNotes || null,
+      });
+      if (error) throw error;
+      toast({ title: "Paiement enregistré" });
+      queryClient.invalidateQueries({ queryKey: ['beneficiaires-reunion', reunionId] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
+      setShowPayDialog(false);
+      setSelectedBeneficiaireId("");
+      setPaymentNotes("");
+      setPaymentReference("");
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setIsSubmittingPay(false);
+    }
   };
 
   const openPayDialog = (id: string) => {
+    const b = beneficiaires.find((x: any) => x.id === id);
     setSelectedBeneficiaireId(id);
+    setPaymentMontant(String(b?.montant_final ?? b?.montant_benefice ?? ''));
+    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setPaymentMode('especes');
+    setPaymentReference('');
+    setPaymentNotes('');
     setShowPayDialog(true);
   };
 
