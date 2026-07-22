@@ -7,11 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Gift, Check, AlertCircle, Calculator, Plus, Loader2, User } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useBeneficiairesReunion, useCalendrierBeneficiaires } from "@/hooks/useCalendrierBeneficiaires";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatFCFA } from "@/lib/utils";
 
 import { logger } from "@/lib/logger";
@@ -38,10 +41,17 @@ export default function BeneficiairesReunionWidget({
   const [selectedCalendrierId, setSelectedCalendrierId] = useState<string>("");
   const [selectedBeneficiaireId, setSelectedBeneficiaireId] = useState<string>("");
   const [paymentNotes, setPaymentNotes] = useState("");
+  const [paymentMontant, setPaymentMontant] = useState<string>("");
+  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [paymentMode, setPaymentMode] = useState<string>("especes");
+  const [paymentReference, setPaymentReference] = useState<string>("");
+  const [isSubmittingPay, setIsSubmittingPay] = useState(false);
   const [calculatedData, setCalculatedData] = useState<any>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { beneficiaires, isLoading, assignerBeneficiaire, marquerPaye } = useBeneficiairesReunion(reunionId);
 
   // Récupérer l'exercice de la réunion si non fourni
@@ -122,23 +132,47 @@ export default function BeneficiairesReunionWidget({
     setCalculatedData(null);
   };
 
-  // Marquer comme payé
+  // Valider le paiement via RPC
   const handlePay = async () => {
     if (!selectedBeneficiaireId) return;
-    
-    await marquerPaye.mutateAsync({
-      id: selectedBeneficiaireId,
-      payePar: user?.id,
-      notes: paymentNotes
-    });
-
-    setShowPayDialog(false);
-    setSelectedBeneficiaireId("");
-    setPaymentNotes("");
+    const montant = Number(paymentMontant);
+    if (!montant || montant <= 0) {
+      toast({ title: "Montant invalide", variant: "destructive" });
+      return;
+    }
+    setIsSubmittingPay(true);
+    try {
+      const { error } = await supabase.rpc('valider_paiement_beneficiaire' as any, {
+        p_id: selectedBeneficiaireId,
+        p_montant: montant,
+        p_date_paiement: new Date(paymentDate).toISOString(),
+        p_mode: paymentMode || null,
+        p_reference: paymentReference || null,
+        p_notes: paymentNotes || null,
+      });
+      if (error) throw error;
+      toast({ title: "Paiement enregistré" });
+      queryClient.invalidateQueries({ queryKey: ['beneficiaires-reunion', reunionId] });
+      queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
+      setShowPayDialog(false);
+      setSelectedBeneficiaireId("");
+      setPaymentNotes("");
+      setPaymentReference("");
+    } catch (e: any) {
+      toast({ title: "Erreur", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setIsSubmittingPay(false);
+    }
   };
 
   const openPayDialog = (id: string) => {
+    const b = beneficiaires.find((x: any) => x.id === id);
     setSelectedBeneficiaireId(id);
+    setPaymentMontant(String(b?.montant_final ?? b?.montant_benefice ?? ''));
+    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setPaymentMode('especes');
+    setPaymentReference('');
+    setPaymentNotes('');
     setShowPayDialog(true);
   };
 
@@ -373,27 +407,50 @@ export default function BeneficiairesReunionWidget({
       <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmer le paiement</DialogTitle>
+            <DialogTitle>Valider le paiement bénéficiaire</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Montant réel (FCFA)</Label>
+                <Input type="number" min={0} value={paymentMontant} onChange={(e) => setPaymentMontant(e.target.value)} />
+              </div>
+              <div>
+                <Label>Date de paiement</Label>
+                <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Mode</Label>
+                <Select value={paymentMode} onValueChange={setPaymentMode}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="especes">Espèces</SelectItem>
+                    <SelectItem value="virement">Virement</SelectItem>
+                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                    <SelectItem value="cheque">Chèque</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Référence</Label>
+                <Input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="N° transaction" />
+              </div>
+            </div>
             <div>
               <Label>Notes (optionnel)</Label>
-              <Textarea
-                value={paymentNotes}
-                onChange={(e) => setPaymentNotes(e.target.value)}
-                placeholder="Mode de paiement, référence, etc."
-              />
+              <Textarea value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPayDialog(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handlePay} disabled={marquerPaye.isPending}>
-              {marquerPaye.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmer le paiement
+            <Button variant="outline" onClick={() => setShowPayDialog(false)}>Annuler</Button>
+            <Button onClick={handlePay} disabled={isSubmittingPay}>
+              {isSubmittingPay && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Valider le paiement
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </>
