@@ -407,27 +407,50 @@ export default function BeneficiairesReunionWidget({
       <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmer le paiement</DialogTitle>
+            <DialogTitle>Valider le paiement bénéficiaire</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Montant réel (FCFA)</Label>
+                <Input type="number" min={0} value={paymentMontant} onChange={(e) => setPaymentMontant(e.target.value)} />
+              </div>
+              <div>
+                <Label>Date de paiement</Label>
+                <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Mode</Label>
+                <Select value={paymentMode} onValueChange={setPaymentMode}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="especes">Espèces</SelectItem>
+                    <SelectItem value="virement">Virement</SelectItem>
+                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                    <SelectItem value="cheque">Chèque</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Référence</Label>
+                <Input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="N° transaction" />
+              </div>
+            </div>
             <div>
               <Label>Notes (optionnel)</Label>
-              <Textarea
-                value={paymentNotes}
-                onChange={(e) => setPaymentNotes(e.target.value)}
-                placeholder="Mode de paiement, référence, etc."
-              />
+              <Textarea value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPayDialog(false)}>
-              Annuler
-            </Button>
-            <Button onClick={handlePay} disabled={marquerPaye.isPending}>
-              {marquerPaye.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmer le paiement
+            <Button variant="outline" onClick={() => setShowPayDialog(false)}>Annuler</Button>
+            <Button onClick={handlePay} disabled={isSubmittingPay}>
+              {isSubmittingPay && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Valider le paiement
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
     </>
