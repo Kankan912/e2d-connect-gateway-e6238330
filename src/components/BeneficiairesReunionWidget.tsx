@@ -41,10 +41,17 @@ export default function BeneficiairesReunionWidget({
   const [selectedCalendrierId, setSelectedCalendrierId] = useState<string>("");
   const [selectedBeneficiaireId, setSelectedBeneficiaireId] = useState<string>("");
   const [paymentNotes, setPaymentNotes] = useState("");
+  const [paymentMontant, setPaymentMontant] = useState<string>("");
+  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [paymentMode, setPaymentMode] = useState<string>("especes");
+  const [paymentReference, setPaymentReference] = useState<string>("");
+  const [isSubmittingPay, setIsSubmittingPay] = useState(false);
   const [calculatedData, setCalculatedData] = useState<any>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { beneficiaires, isLoading, assignerBeneficiaire, marquerPaye } = useBeneficiairesReunion(reunionId);
 
   // Récupérer l'exercice de la réunion si non fourni
