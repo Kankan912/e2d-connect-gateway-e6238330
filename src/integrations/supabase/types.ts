@@ -6822,6 +6822,10 @@ export type Database = {
           type: string
         }[]
       }
+      auto_fill_reunion_beneficiaires: {
+        Args: { p_reunion_id: string }
+        Returns: number
+      }
       avaliste_approve_loan_request: {
         Args: { _request_id: string }
         Returns: Json
@@ -7100,6 +7104,17 @@ export type Database = {
       validate_pret_reconduction_step: {
         Args: { _commentaire?: string; _recon_id: string }
         Returns: Json
+      }
+      valider_paiement_beneficiaire: {
+        Args: {
+          p_date_paiement?: string
+          p_id: string
+          p_mode?: string
+          p_montant: number
+          p_notes?: string
+          p_reference?: string
+        }
+        Returns: string
       }
     }
     Enums: {
