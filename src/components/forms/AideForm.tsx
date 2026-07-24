@@ -164,7 +164,13 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
     }
   }, [open, initialData, reset]);
 
+  const REQUIRES_JUSTIFICATIF = new Set(["alloue", "allouee", "payee"]);
+
   const handleFormSubmit = (data: AideFormData) => {
+    if (REQUIRES_JUSTIFICATIF.has(data.statut) && !justificatifUrl) {
+      alert("Un justificatif est obligatoire pour valider (allouer/payer) une aide.");
+      return;
+    }
     onSubmit({
       ...data,
       reunion_id: data.reunion_id || null,
@@ -332,10 +338,13 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
           </div>
 
           <FileUploadField
-            label="Justificatif (optionnel)"
+            label={REQUIRES_JUSTIFICATIF.has(statut) ? "Justificatif *" : "Justificatif (optionnel)"}
             value={justificatifUrl}
             onChange={setJustificatifUrl}
           />
+          {REQUIRES_JUSTIFICATIF.has(statut) && !justificatifUrl && (
+            <p className="text-xs text-destructive">Requis pour ce statut.</p>
+          )}
 
           <div>
             <Label>Notes</Label>
