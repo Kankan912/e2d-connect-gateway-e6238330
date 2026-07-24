@@ -6920,6 +6920,10 @@ export type Database = {
           role: string
         }[]
       }
+      get_membre_situation: {
+        Args: { p_exercice_id?: string; p_membre_id: string }
+        Returns: Json
+      }
       get_montant_cotisation_membre: {
         Args: {
           _exercice_id: string
