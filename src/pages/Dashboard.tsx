@@ -51,6 +51,7 @@ const PretsConfigAdmin = lazyWithRetry(() => import("./admin/PretsConfigAdmin"))
 const AidesAdmin = lazyWithRetry(() => import("./admin/AidesAdmin"));
 const RapportsAdmin = lazyWithRetry(() => import("./admin/RapportsAdmin"));
 const CotisationsAdmin = lazyWithRetry(() => import("./admin/CotisationsAdmin"));
+const ExerciseContributionSettingsAdmin = lazyWithRetry(() => import("./admin/ExerciseContributionSettingsAdmin"));
 
 // Admin Pages - Reunions
 const Reunions = lazyWithRetry(() => import("./reunions"));
