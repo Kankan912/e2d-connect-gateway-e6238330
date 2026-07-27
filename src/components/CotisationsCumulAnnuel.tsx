@@ -12,6 +12,7 @@ import { TrendingUp, Users, Coins, Loader2, Search, FileDown, FileText } from "l
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatFCFA } from "@/lib/utils";
+import PaymentStatusBadge from "@/components/cotisations/PaymentStatusBadge";
 
 interface CotisationsCumulAnnuelProps {
   exerciceId?: string;
@@ -222,11 +223,6 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
     return 'bg-red-500';
   };
 
-  const getBadgeVariant = (progression: number): "default" | "secondary" | "destructive" => {
-    if (progression >= 80) return 'default';
-    if (progression >= 50) return 'secondary';
-    return 'destructive';
-  };
 
   const equipeLabel = (eq?: string | null) => {
     if (eq === 'jaune') return 'Jaune';
@@ -493,9 +489,7 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={getBadgeVariant(membre.progression)}>
-                        {getStatutLabel(membre.progression)}
-                      </Badge>
+                      <PaymentStatusBadge montantDu={membre.attendu} montantPaye={membre.paye} />
                     </TableCell>
                   </TableRow>
                 );
