@@ -1,53 +1,53 @@
 
-# Lot B — Bénéficiaires cotisations mensuelles & Réunions
+# Reliquats à corriger — état vérifié et plan d'exécution
 
-Suite de Lot A. Objectif : passer du modèle 1 mois ↔ 1 bénéficiaire au modèle **1 mois ↔ N bénéficiaires**, auto-remplir la réunion à sa création, et fiabiliser la validation de paiement en clôture.
+## Ce qui est déjà clos (vérifié)
+- Lots 1 et 2 (P0 sécurité + CI + headers Vercel) : livrés.
+- CORS partagé : les 21 Edge Functions importent bien `_shared/cors.ts`.
+- Sentry : `initSentry()` appelé depuis `src/main.tsx`.
+- Code mort : `Breadcrumbs.tsx` / `MediaLibrary.tsx` supprimés.
+- Filtre types de cotisation par exercice : présent dans `useCotisations.ts`.
+- Lot B (RPC auto-fill + validation paiement, widget, onglet calendrier annuel) et Lot C (RPC `get_membre_situation`, page Ma Situation, trigger justificatif) : fonctionnels.
 
-## Périmètre (items #5, #6, #7, #9, #10 du classeur, page 1)
+## Ce qui reste ouvert (constaté dans le code)
+1. **Lot A non câblé** — `src/hooks/useExerciseContributionSettings.ts` et `src/domain/finance/CotisationPaymentEngine.ts` n'ont aucun consommateur hors tests : pas d'écran admin, pas de badge de statut, pas de contrôle du nombre max de cotisations mensuelles.
+2. **Lot B — livrables documentaires manquants** : `docs/LOT_B_BENEFICIAIRES.md` absent ; le modal de validation est inline dans le widget au lieu d'un composant dédié.
+3. **Lot 4 qualité** : `strictNullChecks: false` dans `tsconfig.json` ; bypass admin front (`usePermissions.ts`, `if (isAdministrateur) return true`) ; composants > 400 lignes (`EmailConfigManager`, `ClotureReunionModal`, `PretsAdmin`) ; a11y et tokens de design.
+4. **Lot 3/5 restes** : uniformisation du formatage devise vers `useCurrencyFormatter`, singleton realtime des demandes de prêt, fusion `useCaisseStats` + `useCaisseSoldeSnapshot`.
 
-1. **Modèle DB** — `calendrier_beneficiaires` supporte déjà `mois_benefice` mais l'UI et l'usage traitent implicitement 1↔1. On lève la contrainte, on formalise l'ordre par `(mois_benefice, rang)` et on garde la formule Lot A (`mensuel × nb_mois`).
-2. **Admin calendrier** — Refonte `CalendrierBeneficiairesManager` : liste groupée par mois, boutons Ajouter / Monter / Descendre / Retirer par ligne, multi-bénéficiaires par mois, montant recalculé via `CotisationPaymentEngine`.
-3. **Auto-remplissage à la création de réunion** — `useReunions.create` résout le mois de `date_reunion`, charge tous les bénéficiaires programmés, insère les lignes `reunion_beneficiaires` en `prevu` avec montant prévisionnel.
-4. **Clôture — validation paiement** — Nouveau modal `ValiderPaiementBeneficiaireModal` déclenché depuis `BeneficiairesReunionWidget` / `ClotureReunionModal` : trésorier saisit montant réel, date, mode, référence par bénéficiaire ; chaque validation appelle `CaisseService.recordMovement('sortie', 'beneficiaire')` + insère l'audit + notifie le bénéficiaire.
-5. **Onglet calendrier consultable** — `BeneficiairesTab` : ajout d'un sous-onglet lecture seule "Calendrier annuel" listant `(mois, membres, montants, statut)` pour tous les rôles autorisés.
-6. **Tests & doc** — Vitest sur auto-remplissage et calcul prévisionnel ; `docs/LOT_B_BENEFICIAIRES.md` récapitulant règles, workflow, tables impactées.
+---
 
-## Détails techniques
+## Lot A-bis — Câblage cotisations par exercice (priorité 1, valeur métier)
 
-### DB (migration SQL unique)
-- `ALTER TABLE calendrier_beneficiaires` : `mois_benefice INT NOT NULL CHECK (1..12)`, drop de tout unique `(exercice_id, mois_benefice)` existant, ajout `UNIQUE (exercice_id, mois_benefice, rang)`.
-- Backfill : lignes existantes sans mois → répartition mensuelle 1..12 selon `rang`.
-- `reunion_beneficiaires` : rien à changer côté colonnes ; nouveau trigger optionnel `set_association_id`.
-- RPC `auto_fill_reunion_beneficiaires(p_reunion_id UUID)` : SECURITY DEFINER, insère les prévisionnels si aucune ligne existe, sans doublonner. Idempotente.
-- RPC `valider_paiement_beneficiaire(...)` : met à jour la ligne, appelle `record_caisse_movement`, insère `beneficiaires_paiements_audit`. Transactionnel.
-- Colonne dérivée : conserver `reunions.beneficiaire_id` en legacy nullable, ne plus l'écrire depuis le front (dépréciée, à supprimer Lot C).
+- Nouvel écran `src/pages/admin/ExerciseContributionSettingsAdmin.tsx` : sélection d'exercice, formulaire (montant mensuel, nb mois, max cotisations/membre), historique des modifications, bouton de déverrouillage admin via RPC `unlock_cotisation` avec motif obligatoire.
+- Route + entrée de navigation dans l'espace configuration.
+- Branchement de `CotisationPaymentEngine.computeStatus` dans les listes de cotisations : badge Rouge / Orange / Vert (`PAYMENT_STATUS_COLOR`) dans `CotisationsAdmin`, `MyCotisations`, `CotisationsTab`.
+- Contrôle `max_cotisations_mensuelles_par_membre` à la saisie (blocage + message) dans le formulaire d'ajout de cotisation mensuelle.
+- Migration SQL : trigger qui passe `verrouille = TRUE` dès que `montant_paye >= montant_du` sur `cotisations_membres`.
 
-### Frontend
-- `src/hooks/useCalendrierBeneficiaires.ts` : ajouter helpers `getByMois`, `moveRang(id, direction)`, `addForMois(mois, membreId)`.
-- `src/components/config/CalendrierBeneficiairesManager.tsx` : refonte UI groupée par mois (Accordion), formulaire multi-select via `CotisationPaymentEngine.calculMontantAnnuelAttendu`.
-- `src/hooks/useReunions.ts` : après `insert` d'une réunion, appeler `supabase.rpc('auto_fill_reunion_beneficiaires', { p_reunion_id })`.
-- `src/components/BeneficiairesReunionWidget.tsx` : bouton "Valider paiement" par bénéficiaire prévu, ouvre `ValiderPaiementBeneficiaireModal`.
-- `src/components/ValiderPaiementBeneficiaireModal.tsx` (nouveau) : form (montant, date, mode, référence, notes) → RPC `valider_paiement_beneficiaire`.
-- `src/pages/reunions/components/BeneficiairesTab.tsx` : ajouter sous-onglet "Calendrier annuel" en lecture seule via `useCalendrierBeneficiaires(exerciceCourant)`.
+## Lot B-bis — Finition bénéficiaires
 
-### Fichiers créés
-- `supabase/migrations/<ts>_lot_b_beneficiaires_1_n.sql`
-- `src/components/ValiderPaiementBeneficiaireModal.tsx`
-- `src/domain/finance/BeneficiaireService.test.ts` (extension)
-- `docs/LOT_B_BENEFICIAIRES.md`
+- Extraction du modal inline en `src/components/ValiderPaiementBeneficiaireModal.tsx` (même comportement, réutilisable depuis le widget et la clôture).
+- Tests Vitest sur le calcul prévisionnel et l'idempotence de l'auto-remplissage.
+- `docs/LOT_B_BENEFICIAIRES.md` : règles, workflow, tables et RPC impactées.
 
-### Fichiers modifiés
-- `src/hooks/useCalendrierBeneficiaires.ts`, `src/hooks/useReunions.ts`
-- `src/components/config/CalendrierBeneficiairesManager.tsx`
-- `src/components/BeneficiairesReunionWidget.tsx`
-- `src/pages/reunions/components/BeneficiairesTab.tsx`
-- `docs/CHANGELOG.md`, mémoire `mem://modules/beneficiaries/calendar-management-logic-v2`
+## Lot Q — Qualité et sécurité front
 
-## Hors périmètre
-- Suppression définitive de `reunions.beneficiaire_id` (Lot C).
-- Refonte multi-tenant du calendrier (Lot D).
-- Notifications push / SMS (existant Resend suffit).
+- `usePermissions.ts` : retrait du court-circuit administrateur ; les droits viennent de `has_permission()` seule (avec vérification préalable que les rôles admin possèdent bien toutes les permissions en base, sinon migration de complétion).
+- Découpage de `EmailConfigManager`, `ClotureReunionModal`, `PretsAdmin` en sous-composants < 400 lignes, sans changement fonctionnel.
+- `strictNullChecks: true` puis correction du fallout, module par module (finance → hooks → pages).
+- Passe a11y (`aria-label` sur boutons icon-only) et remplacement des couleurs codées en dur par des tokens sémantiques.
+
+## Lot P — Performance et cohérence d'affichage
+
+- Codemod devise : remplacement des `toLocaleString + ' FCFA'` / `formatFCFA` par `useCurrencyFormatter().format()` sur les pages et exports PDF.
+- `LoanRequestsRealtimeProvider` en singleton (un seul canal Supabase).
+- Fusion `useCaisseStats` + `useCaisseSoldeSnapshot` en `useCaisseFinance()`.
+
+---
+
+## Ordre proposé
+A-bis → B-bis → Q → P. A-bis est le seul lot avec un impact utilisateur direct (les règles de cotisation par exercice restent inexploitables aujourd'hui) ; Q contient le point sécurité le plus sensible (bypass admin front).
 
 ## Vérification
-- `bunx vitest run` sur services finance.
-- Scénario manuel : créer réunion mars → widget affiche bénéficiaires prévus → valider paiement → `fond_caisse_operations` reçoit la sortie.
+`bunx vitest run`, typecheck, puis scénario manuel : créer un paramétrage d'exercice → vérifier badge de statut sur une cotisation partielle → tenter une 3e cotisation mensuelle au-delà du max → contrôler le refus.
