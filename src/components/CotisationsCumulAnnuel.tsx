@@ -12,6 +12,7 @@ import { TrendingUp, Users, Coins, Loader2, Search, FileDown, FileText } from "l
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatFCFA } from "@/lib/utils";
+import PaymentStatusBadge from "@/components/cotisations/PaymentStatusBadge";
 
 interface CotisationsCumulAnnuelProps {
   exerciceId?: string;
