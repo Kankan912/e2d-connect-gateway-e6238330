@@ -493,9 +493,7 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={getBadgeVariant(membre.progression)}>
-                        {getStatutLabel(membre.progression)}
-                      </Badge>
+                      <PaymentStatusBadge montantDu={membre.attendu} montantPaye={membre.paye} />
                     </TableCell>
                   </TableRow>
                 );
