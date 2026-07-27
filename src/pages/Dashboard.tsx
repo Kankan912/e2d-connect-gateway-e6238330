@@ -139,6 +139,7 @@ const Dashboard = () => {
           
           {/* ==================== ROUTES TONTINE ==================== */}
           <Route path="/admin/cotisations" element={<PermissionRoute resource="cotisations" permission="read"><ErrorBoundary fallbackTitle="Erreur - Cotisations"><CotisationsAdmin /></ErrorBoundary></PermissionRoute>} />
+          <Route path="/admin/cotisations/parametres-exercice" element={<PermissionRoute resource="config" permission="write"><ErrorBoundary fallbackTitle="Erreur - Paramètres cotisations"><ExerciseContributionSettingsAdmin /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/tontine/epargnes" element={<PermissionRoute resource="epargnes" permission="read"><ErrorBoundary fallbackTitle="Erreur - Épargnes"><Epargnes /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/tontine/beneficiaires" element={<PermissionRoute resource="epargnes" permission="read"><ErrorBoundary fallbackTitle="Erreur - Bénéficiaires"><Beneficiaires /></ErrorBoundary></PermissionRoute>} />
           <Route path="/admin/caisse" element={<PermissionRoute resource="caisse" permission="read"><ErrorBoundary fallbackTitle="Erreur - Caisse"><CaisseAdmin /></ErrorBoundary></PermissionRoute>} />
