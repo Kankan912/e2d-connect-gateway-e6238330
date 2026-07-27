@@ -223,11 +223,6 @@ export default function CotisationsCumulAnnuel({ exerciceId }: CotisationsCumulA
     return 'bg-red-500';
   };
 
-  const getBadgeVariant = (progression: number): "default" | "secondary" | "destructive" => {
-    if (progression >= 80) return 'default';
-    if (progression >= 50) return 'secondary';
-    return 'destructive';
-  };
 
   const equipeLabel = (eq?: string | null) => {
     if (eq === 'jaune') return 'Jaune';
