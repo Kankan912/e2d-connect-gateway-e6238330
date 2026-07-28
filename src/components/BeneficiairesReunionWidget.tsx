@@ -4,20 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Gift, Check, AlertCircle, Calculator, Plus, Loader2, User } from "lucide-react";
+import { Gift, Check, AlertCircle, Plus, Loader2, User } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useBeneficiairesReunion, useCalendrierBeneficiaires } from "@/hooks/useCalendrierBeneficiaires";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
 import { formatFCFA } from "@/lib/utils";
+import AssignerBeneficiaireModal from "@/components/beneficiaires/AssignerBeneficiaireModal";
+import ValiderPaiementBeneficiaireModal from "@/components/beneficiaires/ValiderPaiementBeneficiaireModal";
 
-import { logger } from "@/lib/logger";
 interface BeneficiairesReunionWidgetProps {
   reunionId: string;
   reunionDate: string;
@@ -38,35 +31,24 @@ export default function BeneficiairesReunionWidget({
 }: BeneficiairesReunionWidgetProps) {
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showPayDialog, setShowPayDialog] = useState(false);
-  const [selectedCalendrierId, setSelectedCalendrierId] = useState<string>("");
-  const [selectedBeneficiaireId, setSelectedBeneficiaireId] = useState<string>("");
-  const [paymentNotes, setPaymentNotes] = useState("");
-  const [paymentMontant, setPaymentMontant] = useState<string>("");
-  const [paymentDate, setPaymentDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [paymentMode, setPaymentMode] = useState<string>("especes");
-  const [paymentReference, setPaymentReference] = useState<string>("");
-  const [isSubmittingPay, setIsSubmittingPay] = useState(false);
-  const [calculatedData, setCalculatedData] = useState<any>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
-  
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { beneficiaires, isLoading, assignerBeneficiaire, marquerPaye } = useBeneficiairesReunion(reunionId);
+  const [selectedBeneficiaireId, setSelectedBeneficiaireId] = useState<string | null>(null);
+  const [montantParDefaut, setMontantParDefaut] = useState<number | null>(null);
+
+  const { beneficiaires, isLoading, assignerBeneficiaire } = useBeneficiairesReunion(reunionId);
 
   // Récupérer l'exercice de la réunion si non fourni
   const { data: exercice } = useQuery({
     queryKey: ['exercice-reunion', reunionDate],
     queryFn: async () => {
       if (exerciceId) return { id: exerciceId };
-      
+
       const { data, error } = await supabase
         .from('exercices')
         .select('id')
         .lte('date_debut', reunionDate)
         .gte('date_fin', reunionDate)
         .single();
-      
+
       if (error) return null;
       return data;
     },
@@ -90,89 +72,29 @@ export default function BeneficiairesReunionWidget({
   // Bénéficiaires disponibles pour assignation
   const disponibles = beneficiairesDuMois.filter(c => !dejaAssignes.includes(c.membre_id));
 
-  // Calculer le montant net
-  const handleCalculate = async (calendrierId: string) => {
-    const calendrierItem = calendrier.find(c => c.id === calendrierId);
-    if (!calendrierItem || !currentExerciceId) return;
-
-    setIsCalculating(true);
-    try {
-      const result = await calculerMontant(calendrierItem.membre_id, currentExerciceId);
-      setCalculatedData({
-        ...result,
-        calendrierId,
-        membreId: calendrierItem.membre_id,
-        membreNom: `${calendrierItem.membres?.prenom} ${calendrierItem.membres?.nom}`
-      });
-    } catch (error: unknown) {
-      logger.error('Erreur calcul:', error);
-    } finally {
-      setIsCalculating(false);
-    }
-  };
-
-  // Assigner le bénéficiaire
-  const handleAssign = async () => {
-    if (!calculatedData || !currentExerciceId) return;
-
+  const handleAssign = async (payload: {
+    calendrierId: string;
+    membreId: string;
+    montantBrut: number;
+    sanctionsImpayees: number;
+    montantNet: number;
+  }) => {
+    if (!currentExerciceId) return;
     await assignerBeneficiaire.mutateAsync({
       reunionId,
-      membreId: calculatedData.membreId,
-      calendrierId: calculatedData.calendrierId,
+      membreId: payload.membreId,
+      calendrierId: payload.calendrierId,
       exerciceId: currentExerciceId,
-      montantBrut: calculatedData.montant_brut,
-      deductions: {
-        sanctions_impayees: calculatedData.sanctions_impayees
-      },
-      montantFinal: calculatedData.montant_net
+      montantBrut: payload.montantBrut,
+      deductions: { sanctions_impayees: payload.sanctionsImpayees },
+      montantFinal: payload.montantNet
     });
-
-    setShowAssignDialog(false);
-    setSelectedCalendrierId("");
-    setCalculatedData(null);
-  };
-
-  // Valider le paiement via RPC
-  const handlePay = async () => {
-    if (!selectedBeneficiaireId) return;
-    const montant = Number(paymentMontant);
-    if (!montant || montant <= 0) {
-      toast({ title: "Montant invalide", variant: "destructive" });
-      return;
-    }
-    setIsSubmittingPay(true);
-    try {
-      const { error } = await supabase.rpc('valider_paiement_beneficiaire' as any, {
-        p_id: selectedBeneficiaireId,
-        p_montant: montant,
-        p_date_paiement: new Date(paymentDate).toISOString(),
-        p_mode: paymentMode || null,
-        p_reference: paymentReference || null,
-        p_notes: paymentNotes || null,
-      });
-      if (error) throw error;
-      toast({ title: "Paiement enregistré" });
-      queryClient.invalidateQueries({ queryKey: ['beneficiaires-reunion', reunionId] });
-      queryClient.invalidateQueries({ queryKey: ['caisse-solde'] });
-      setShowPayDialog(false);
-      setSelectedBeneficiaireId("");
-      setPaymentNotes("");
-      setPaymentReference("");
-    } catch (e: any) {
-      toast({ title: "Erreur", description: e?.message ?? String(e), variant: "destructive" });
-    } finally {
-      setIsSubmittingPay(false);
-    }
   };
 
   const openPayDialog = (id: string) => {
-    const b = beneficiaires.find((x: any) => x.id === id);
+    const b = beneficiaires.find((x: any) => x.id === id) as any;
     setSelectedBeneficiaireId(id);
-    setPaymentMontant(String(b?.montant_final ?? b?.montant_benefice ?? ''));
-    setPaymentDate(new Date().toISOString().slice(0, 10));
-    setPaymentMode('especes');
-    setPaymentReference('');
-    setPaymentNotes('');
+    setMontantParDefaut(b?.montant_final ?? b?.montant_benefice ?? null);
     setShowPayDialog(true);
   };
 
@@ -333,126 +255,23 @@ export default function BeneficiairesReunionWidget({
         </CardContent>
       </Card>
 
-      {/* Dialog d'assignation */}
-      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assigner un bénéficiaire</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Bénéficiaire prévu</Label>
-              <Select 
-                value={selectedCalendrierId} 
-                onValueChange={(v) => {
-                  setSelectedCalendrierId(v);
-                  handleCalculate(v);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sélectionner le bénéficiaire" />
-                </SelectTrigger>
-                <SelectContent>
-                  {disponibles.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.membres?.prenom} {c.membres?.nom} - {formatFCFA(c.montant_total)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <AssignerBeneficiaireModal
+        open={showAssignDialog}
+        onOpenChange={setShowAssignDialog}
+        disponibles={disponibles as any}
+        exerciceId={currentExerciceId}
+        isPending={assignerBeneficiaire.isPending}
+        calculerMontant={calculerMontant as any}
+        onConfirm={handleAssign}
+      />
 
-            {isCalculating && (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Calcul du montant en cours...
-              </div>
-            )}
-
-            {calculatedData && (
-              <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                <p className="font-semibold">{calculatedData.membreNom}</p>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-muted-foreground">Montant mensuel:</span>
-                  <span>{formatFCFA(calculatedData.montant_mensuel)}</span>
-                  
-                  <span className="text-muted-foreground">Montant brut (×12):</span>
-                  <span>{formatFCFA(calculatedData.montant_brut)}</span>
-                  
-                  <span className="text-muted-foreground">Sanctions impayées:</span>
-                  <span className="text-destructive">-{formatFCFA(calculatedData.sanctions_impayees)}</span>
-                  
-                  <span className="font-semibold">Montant net à payer:</span>
-                  <span className="font-bold text-primary">{formatFCFA(calculatedData.montant_net)}</span>
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
-              Annuler
-            </Button>
-            <Button 
-              onClick={handleAssign} 
-              disabled={!calculatedData || assignerBeneficiaire.isPending}
-            >
-              {assignerBeneficiaire.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Assigner
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog de paiement */}
-      <Dialog open={showPayDialog} onOpenChange={setShowPayDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Valider le paiement bénéficiaire</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Montant réel (FCFA)</Label>
-                <Input type="number" min={0} value={paymentMontant} onChange={(e) => setPaymentMontant(e.target.value)} />
-              </div>
-              <div>
-                <Label>Date de paiement</Label>
-                <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Mode</Label>
-                <Select value={paymentMode} onValueChange={setPaymentMode}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="especes">Espèces</SelectItem>
-                    <SelectItem value="virement">Virement</SelectItem>
-                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                    <SelectItem value="cheque">Chèque</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Référence</Label>
-                <Input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="N° transaction" />
-              </div>
-            </div>
-            <div>
-              <Label>Notes (optionnel)</Label>
-              <Textarea value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPayDialog(false)}>Annuler</Button>
-            <Button onClick={handlePay} disabled={isSubmittingPay}>
-              {isSubmittingPay && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Valider le paiement
-            </Button>
-          </DialogFooter>
-
-        </DialogContent>
-      </Dialog>
+      <ValiderPaiementBeneficiaireModal
+        open={showPayDialog}
+        onOpenChange={setShowPayDialog}
+        beneficiaireId={selectedBeneficiaireId}
+        montantParDefaut={montantParDefaut}
+        reunionId={reunionId}
+      />
     </>
   );
 }
