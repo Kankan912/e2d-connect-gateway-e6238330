@@ -1,53 +1,49 @@
+## État vérifié des lots
 
-# Reliquats à corriger — état vérifié et plan d'exécution
+Lots clos (vérifiés dans le code) : Lot 1 (P0 sécurité), Lot 2 (CI + CSP), Lots 3–5 (perf/nettoyage), Lot A + A-bis (moteur cotisations, écran `ExerciseContributionSettingsAdmin`, `PaymentStatusBadge`), Lot B (RPC + widget + onglet calendrier), Lot C (RPC `get_membre_situation` corrigée, page `MaSituation`).
 
-## Ce qui est déjà clos (vérifié)
-- Lots 1 et 2 (P0 sécurité + CI + headers Vercel) : livrés.
-- CORS partagé : les 21 Edge Functions importent bien `_shared/cors.ts`.
-- Sentry : `initSentry()` appelé depuis `src/main.tsx`.
-- Code mort : `Breadcrumbs.tsx` / `MediaLibrary.tsx` supprimés.
-- Filtre types de cotisation par exercice : présent dans `useCotisations.ts`.
-- Lot B (RPC auto-fill + validation paiement, widget, onglet calendrier annuel) et Lot C (RPC `get_membre_situation`, page Ma Situation, trigger justificatif) : fonctionnels.
+Reliquats constatés :
 
-## Ce qui reste ouvert (constaté dans le code)
-1. **Lot A non câblé** — `src/hooks/useExerciseContributionSettings.ts` et `src/domain/finance/CotisationPaymentEngine.ts` n'ont aucun consommateur hors tests : pas d'écran admin, pas de badge de statut, pas de contrôle du nombre max de cotisations mensuelles.
-2. **Lot B — livrables documentaires manquants** : `docs/LOT_B_BENEFICIAIRES.md` absent ; le modal de validation est inline dans le widget au lieu d'un composant dédié.
-3. **Lot 4 qualité** : `strictNullChecks: false` dans `tsconfig.json` ; bypass admin front (`usePermissions.ts`, `if (isAdministrateur) return true`) ; composants > 400 lignes (`EmailConfigManager`, `ClotureReunionModal`, `PretsAdmin`) ; a11y et tokens de design.
-4. **Lot 3/5 restes** : uniformisation du formatage devise vers `useCurrencyFormatter`, singleton realtime des demandes de prêt, fusion `useCaisseStats` + `useCaisseSoldeSnapshot`.
+| Lot | Constat vérifié |
+|---|---|
+| B-bis | `docs/LOT_B_BENEFICIAIRES.md` absent ; `BeneficiairesReunionWidget.tsx` = 458 lignes avec 2 dialogs inline (aucun dossier `src/components/beneficiaires/`) |
+| Q1 | `usePermissions.ts` ligne 21/32 : `if (isAdministrateur) return true` court-circuite les permissions granulaires |
+| Q2 | `tsconfig.json` : `strictNullChecks: false` ; `tsconfig.app.json` : `strict: false` |
+| Q3 | 7 fichiers > 590 lignes (EmailConfigManager 928, ClotureReunionModal 720, PretsAdmin 673, CalendrierBeneficiairesManager 668, UtilisateursAdmin 661, CaisseAdmin 636, MemberDetailSheet 625) |
+| P | 60 fichiers utilisent `formatFCFA` (devise codée en dur) vs 4 seulement `formatCurrencyForAssociation` — le multi-tenant/i18n du Lot 6 n'est pas propagé |
 
----
+## Plan d'exécution
 
-## Lot A-bis — Câblage cotisations par exercice (priorité 1, valeur métier)
+### Lot B-bis — Finition bénéficiaires (rapide)
+1. Extraire le dialog de paiement dans `src/components/beneficiaires/ValiderPaiementBeneficiaireModal.tsx` (props : `beneficiaireId`, `open`, `onOpenChange`, `onSuccess`), extraire aussi le dialog d'assignation dans `AssignerBeneficiaireModal.tsx`.
+2. Réduire `BeneficiairesReunionWidget.tsx` à la liste + l'orchestration des deux modales.
+3. Rédiger `docs/LOT_B_BENEFICIAIRES.md` (RPC `auto_fill_reunion_beneficiaires`, `valider_paiement_beneficiaire`, trigger, écrans, vérifs manuelles).
 
-- Nouvel écran `src/pages/admin/ExerciseContributionSettingsAdmin.tsx` : sélection d'exercice, formulaire (montant mensuel, nb mois, max cotisations/membre), historique des modifications, bouton de déverrouillage admin via RPC `unlock_cotisation` avec motif obligatoire.
-- Route + entrée de navigation dans l'espace configuration.
-- Branchement de `CotisationPaymentEngine.computeStatus` dans les listes de cotisations : badge Rouge / Orange / Vert (`PAYMENT_STATUS_COLOR`) dans `CotisationsAdmin`, `MyCotisations`, `CotisationsTab`.
-- Contrôle `max_cotisations_mensuelles_par_membre` à la saisie (blocage + message) dans le formulaire d'ajout de cotisation mensuelle.
-- Migration SQL : trigger qui passe `verrouille = TRUE` dès que `montant_paye >= montant_du` sur `cotisations_membres`.
+### Lot Q1 — Permissions granulaires (sécurité)
+1. Retirer le bypass `isAdministrateur` de `hasPermission` / `canAccessResource` ; conserver un `isAdmin` exposé pour les usages UI explicites.
+2. Vérifier par requête que le rôle `administrateur` possède bien toutes les lignes `role_permissions` nécessaires ; compléter par migration de données si des ressources manquent (sinon l'admin perdra des écrans).
+3. Étendre `src/test/security/rls.test.ts` / `docs/PERMISSIONS_TESTS.md` avec un cas « admin sans permission explicite ».
 
-## Lot B-bis — Finition bénéficiaires
+### Lot Q2 — strictNullChecks
+1. Activer `strictNullChecks: true` (puis `strict` côté app si le volume reste tenable), lancer `tsgo` et récupérer la liste d'erreurs.
+2. Corriger par vagues thématiques : `src/domain/finance/*`, puis hooks, puis pages — en privilégiant les gardes (`?.`, `??`) plutôt que les `!`.
+3. Aucune modification de logique métier ; la CI (typecheck déjà présent dans `ci.yml`) sert de garde-fou.
 
-- Extraction du modal inline en `src/components/ValiderPaiementBeneficiaireModal.tsx` (même comportement, réutilisable depuis le widget et la clôture).
-- Tests Vitest sur le calcul prévisionnel et l'idempotence de l'auto-remplissage.
-- `docs/LOT_B_BENEFICIAIRES.md` : règles, workflow, tables et RPC impactées.
+### Lot Q3 — Découpage des gros composants
+Ordre par risque décroissant, un composant par étape, avec extraction en sous-composants `_components/` + hook de données dédié :
+1. `EmailConfigManager.tsx` (928) → onglets provider / SMTP / test.
+2. `ClotureReunionModal.tsx` (720) → étapes de clôture (sanctions, cotisations, récapitulatif).
+3. `PretsAdmin.tsx` (673) et `CaisseAdmin.tsx` (636) → tableaux + filtres + modales séparés.
+4. `UtilisateursAdmin.tsx` (661), `CalendrierBeneficiairesManager.tsx` (668), `MemberDetailSheet.tsx` (625).
 
-## Lot Q — Qualité et sécurité front
+### Lot P — Unification devise & realtime
+1. Créer un hook unique `useMoney()` s'appuyant sur `formatCurrencyForAssociation` + `AssociationContext`, et migrer progressivement les 60 fichiers `formatFCFA` (garder `formatFCFA` comme alias déprécié pour les exports PDF hors React).
+2. Auditer les abonnements realtime (`useRealtimeUpdates`, `useSupabaseRealtime`) : un seul canal partagé par table, cleanup systématique.
+3. Mettre à jour `docs/CHANGELOG.md` et `docs/I18N_THEMING.md`.
 
-- `usePermissions.ts` : retrait du court-circuit administrateur ; les droits viennent de `has_permission()` seule (avec vérification préalable que les rôles admin possèdent bien toutes les permissions en base, sinon migration de complétion).
-- Découpage de `EmailConfigManager`, `ClotureReunionModal`, `PretsAdmin` en sous-composants < 400 lignes, sans changement fonctionnel.
-- `strictNullChecks: true` puis correction du fallout, module par module (finance → hooks → pages).
-- Passe a11y (`aria-label` sur boutons icon-only) et remplacement des couleurs codées en dur par des tokens sémantiques.
+## Ordre recommandé
+B-bis → Q1 → P → Q3 → Q2 (le passage en strict en dernier, une fois les fichiers découpés, pour limiter le volume d'erreurs à traiter).
 
-## Lot P — Performance et cohérence d'affichage
-
-- Codemod devise : remplacement des `toLocaleString + ' FCFA'` / `formatFCFA` par `useCurrencyFormatter().format()` sur les pages et exports PDF.
-- `LoanRequestsRealtimeProvider` en singleton (un seul canal Supabase).
-- Fusion `useCaisseStats` + `useCaisseSoldeSnapshot` en `useCaisseFinance()`.
-
----
-
-## Ordre proposé
-A-bis → B-bis → Q → P. A-bis est le seul lot avec un impact utilisateur direct (les règles de cotisation par exercice restent inexploitables aujourd'hui) ; Q contient le point sécurité le plus sensible (bypass admin front).
-
-## Vérification
-`bunx vitest run`, typecheck, puis scénario manuel : créer un paramétrage d'exercice → vérifier badge de statut sur une cotisation partielle → tenter une 3e cotisation mensuelle au-delà du max → contrôler le refus.
+## Détails techniques
+- Aucune migration SQL nouvelle n'est nécessaire, sauf éventuellement un `INSERT` de complétion dans `role_permissions` au Lot Q1 (via l'outil de données, pas une migration de schéma).
+- Les changements Q1 sont les seuls à impact fonctionnel visible immédiat : à valider en préview avec un compte administrateur avant publication.
