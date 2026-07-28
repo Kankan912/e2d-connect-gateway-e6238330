@@ -132,13 +132,14 @@ const MaSituation = () => {
         </TabsList>
         <TabsContent value="cotisations">
           <SimpleTable
-            columns={["Année", "Mois", "Montant", "Statut", "Date paiement"]}
+            columns={["Type", "Montant", "Statut", "Date paiement"]}
             rows={(situation?.cotisations ?? []).map((c: any) => [
-              c.annee, c.mois, formatFCFA(c.montant), <StatutBadge key="s" value={c.statut} />,
+              c.type_nom ?? "—", formatFCFA(c.montant), <StatutBadge key="s" value={c.statut} />,
               c.date_paiement ? new Date(c.date_paiement).toLocaleDateString("fr-FR") : "—",
             ])}
           />
         </TabsContent>
+
         <TabsContent value="prets">
           <SimpleTable
             columns={["Date", "Montant", "Payé", "Statut", "Échéance"]}
