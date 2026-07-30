@@ -62,6 +62,8 @@ export const usePermissions = () => {
     hasAnyPermission, 
     canAccessResource,
     enforcePermission,
+    /** Informatif uniquement — ne remplace pas hasPermission() */
+    isAdmin: isAdministrateur,
     isLoading: loading && !!user?.id 
   };
 };
