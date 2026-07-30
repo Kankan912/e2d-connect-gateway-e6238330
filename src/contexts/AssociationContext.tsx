@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { associationStore, CurrentAssociation } from '@/stores/associationStore';
 import { logger } from '@/lib/logger';
+import { setActiveCurrency } from '@/lib/utils';
+import { resolveCurrency } from '@/lib/formatCurrencyDynamic';
 
 const STORAGE_KEY = 'lovable_current_association';
 
