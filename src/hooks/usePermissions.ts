@@ -15,10 +15,14 @@ import { useToast } from "@/hooks/use-toast";
 export const usePermissions = () => {
   const { user, userRole, permissions, loading } = useAuth();
   const { toast } = useToast();
+  /**
+   * Indicateur purement informatif (badges, libellés).
+   * ⚠️ Ne JAMAIS l'utiliser pour court-circuiter un contrôle de permission :
+   * les droits du rôle `administrateur` sont matérialisés dans `role_permissions`.
+   */
   const isAdministrateur = userRole === 'administrateur';
 
   const hasPermission = (resource: string, permission: string) => {
-    if (isAdministrateur) return true;
     if (!permissions) return false;
     return permissions.some(
       p => p.resource === resource && p.permission === permission
@@ -30,7 +34,6 @@ export const usePermissions = () => {
   };
 
   const canAccessResource = (resource: string) => {
-    if (isAdministrateur) return true;
     if (!permissions) return false;
     return permissions.some(p => p.resource === resource);
   };
