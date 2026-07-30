@@ -42,3 +42,15 @@ Le format HSL est requis pour les couleurs : `220 90% 56%` (sans `hsl()` autour)
 - Aucun `text-white` / `bg-[#hex]` ajouté ; toutes les couleurs restent sémantiques.
 - Aucune nouvelle table SQL : réutilisation de `associations.theme_tokens` (jsonb) et `associations.logo_url` existants.
 - Le dark mode global reste inchangé.
+
+## Devise active du tenant (Lot P — juillet 2026)
+
+`AssociationContext.applyTheme()` appelle désormais `setActiveCurrency()`
+(`src/lib/utils.ts`) à chaque changement d'association. Conséquences :
+
+- `formatFCFA(montant)` — utilisé dans ~60 fichiers et dans les exports PDF
+  hors React — suit automatiquement `theme_tokens.currency_code` /
+  `theme_tokens.locale`, sans refactor de chaque appelant.
+- Dans un composant React, préférer `useMoney()` (alias de
+  `useCurrencyFormatter().format`), qui se re-rend au changement de tenant.
+- `formatCurrency(montant, devise, locale)` reste l'API bas niveau explicite.

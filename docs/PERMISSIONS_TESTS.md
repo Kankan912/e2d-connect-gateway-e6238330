@@ -407,3 +407,20 @@ En cas de problème :
 
 **Dernière mise à jour** : 2025-11-12
 **Version du système de permissions** : 1.0.0
+
+---
+
+## Lot Q1 — Suppression du bypass administrateur (juillet 2026)
+
+`usePermissions()` ne retourne plus `true` automatiquement pour le rôle
+`administrateur` : tous les contrôles passent par les lignes `role_permissions`
+chargées par `AuthContext`. Le rôle `administrateur` a été complété en base
+(20 ressources × 5 verbes + `prets_requests`), soit 105 permissions accordées.
+
+`isAdmin` reste exposé par le hook mais **à titre informatif uniquement**
+(badges, libellés) — jamais comme court-circuit d'autorisation.
+
+Tests : `src/hooks/usePermissions.test.ts`
+- administrateur sans permission explicite → accès refusé ;
+- administrateur avec permission en base → accès accordé ;
+- `hasAnyPermission` → vrai dès qu'une permission correspond.

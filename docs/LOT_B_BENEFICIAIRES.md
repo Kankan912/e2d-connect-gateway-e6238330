@@ -32,3 +32,8 @@ Après validation, les caches `['beneficiaires-reunion', reunionId]` et `['caiss
 3. Cliquer « Marquer payé », saisir un montant partiel → statut `partiel`, opération de caisse créée, solde mis à jour.
 4. Saisir le solde restant → statut `paye`.
 5. Onglet « Calendrier annuel » → lecture seule, cohérent avec les montants affichés.
+
+## Historique
+- Juillet 2026 (Lot B-bis) : extraction des modales `AssignerBeneficiaireModal`
+  et `ValiderPaiementBeneficiaireModal`, widget réduit à l'affichage et à
+  l'orchestration.
