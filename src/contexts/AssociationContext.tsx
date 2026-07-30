@@ -36,8 +36,16 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
 
   const isSuperAdmin = userRole === 'super_admin';
 
-  // Applique les theme_tokens comme variables CSS
+  // Applique les theme_tokens comme variables CSS + devise active
   const applyTheme = useCallback((assoc: AssociationRow | null) => {
+    // Devise active du tenant (utilisée par formatFCFA hors React / PDF)
+    setActiveCurrency(
+      resolveCurrency(assoc?.theme_tokens ?? null) === 'FCFA'
+        ? 'FCFA'
+        : (resolveCurrency(assoc?.theme_tokens ?? null) as 'EUR' | 'USD'),
+      assoc?.theme_tokens?.locale ?? 'fr-FR',
+    );
+
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     // Reset : on nettoie les vars tenant précédentes
