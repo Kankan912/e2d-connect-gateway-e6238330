@@ -21,3 +21,12 @@ export function useCurrencyFormatter() {
 
   return { format, tokens };
 }
+
+/**
+ * Alias court : `const money = useMoney();  money(1500)`
+ * À privilégier dans les nouveaux composants plutôt que `formatFCFA`.
+ */
+export function useMoney() {
+  const { format } = useCurrencyFormatter();
+  return format;
+}

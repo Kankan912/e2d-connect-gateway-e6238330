@@ -36,10 +36,34 @@ export function formatCurrency(
 }
 
 /**
- * Format a number as FCFA (shorthand)
+ * Devise active du tenant courant.
+ * Renseignée par `AssociationContext` à chaque changement d'association
+ * (`theme_tokens.currency_code` / `theme_tokens.locale`).
+ * Permet à `formatFCFA()` — utilisé dans une soixantaine de fichiers et
+ * dans les exports PDF hors React — de rester cohérent en multi-tenant
+ * sans refactor massif.
+ */
+let activeCurrency: 'FCFA' | 'EUR' | 'USD' = 'FCFA';
+let activeLocale = 'fr-FR';
+
+export function setActiveCurrency(
+  currency: 'FCFA' | 'EUR' | 'USD' | null | undefined,
+  locale?: string | null,
+): void {
+  activeCurrency = currency ?? 'FCFA';
+  activeLocale = locale ?? 'fr-FR';
+}
+
+export function getActiveCurrency(): { currency: 'FCFA' | 'EUR' | 'USD'; locale: string } {
+  return { currency: activeCurrency, locale: activeLocale };
+}
+
+/**
+ * Format d'un montant dans la devise active du tenant (FCFA par défaut).
+ * Dans un composant React, préférer `useCurrencyFormatter()` / `useMoney()`.
  */
 export function formatFCFA(amount: number): string {
-  return formatCurrency(amount, 'FCFA');
+  return formatCurrency(amount, activeCurrency, activeLocale);
 }
 
 /**

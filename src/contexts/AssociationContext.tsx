@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { associationStore, CurrentAssociation } from '@/stores/associationStore';
 import { logger } from '@/lib/logger';
+import { setActiveCurrency } from '@/lib/utils';
+import { resolveCurrency } from '@/lib/formatCurrencyDynamic';
 
 const STORAGE_KEY = 'lovable_current_association';
 
@@ -36,8 +38,15 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
 
   const isSuperAdmin = userRole === 'super_admin';
 
-  // Applique les theme_tokens comme variables CSS
+  // Applique les theme_tokens comme variables CSS + devise active
   const applyTheme = useCallback((assoc: AssociationRow | null) => {
+    // Devise active du tenant (utilisée par formatFCFA hors React / PDF)
+    const resolved = resolveCurrency(assoc?.theme_tokens ?? null);
+    setActiveCurrency(
+      resolved === 'EUR' || resolved === 'USD' ? resolved : 'FCFA',
+      assoc?.theme_tokens?.locale ?? 'fr-FR',
+    );
+
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     // Reset : on nettoie les vars tenant précédentes
