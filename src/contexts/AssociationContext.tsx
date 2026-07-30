@@ -41,10 +41,9 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
   // Applique les theme_tokens comme variables CSS + devise active
   const applyTheme = useCallback((assoc: AssociationRow | null) => {
     // Devise active du tenant (utilisée par formatFCFA hors React / PDF)
+    const resolved = resolveCurrency(assoc?.theme_tokens ?? null);
     setActiveCurrency(
-      resolveCurrency(assoc?.theme_tokens ?? null) === 'FCFA'
-        ? 'FCFA'
-        : (resolveCurrency(assoc?.theme_tokens ?? null) as 'EUR' | 'USD'),
+      resolved === 'EUR' || resolved === 'USD' ? resolved : 'FCFA',
       assoc?.theme_tokens?.locale ?? 'fr-FR',
     );
 
