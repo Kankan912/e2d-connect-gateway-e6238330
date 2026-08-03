@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Calendar, Plus, Users, FileText, CalendarDays, TrendingDown, BarChart3, UserCog, Mail, Coins } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useBackNavigation } from "@/hooks/useBackNavigation";
@@ -115,6 +116,17 @@ export default function Reunions() {
       </Tabs>
 
       {/* Modals */}
+      <ConfirmDialog
+        open={!!data.reunionToDelete}
+        onOpenChange={(open) => { if (!open) data.setReunionToDelete(null); }}
+        title="Supprimer cette réunion ?"
+        description="La réunion et les données associées ne seront plus accessibles. Cette action est définitive."
+        confirmLabel="Supprimer"
+        destructive
+        loading={data.deleting}
+        onConfirm={() => void data.confirmDelete()}
+      />
+
       <Dialog open={data.showForm} onOpenChange={data.setShowForm}>
         <DialogContent className="sm:max-w-[600px]">
           <ReunionForm initialData={data.editingReunion} onSuccess={data.handleFormSuccess} />
