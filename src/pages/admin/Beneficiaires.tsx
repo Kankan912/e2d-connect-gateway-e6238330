@@ -10,7 +10,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import BackButton from "@/components/BackButton";
 import { useEpargnantsBenefices } from "@/hooks/useEpargnantsBenefices";
-import { formatFCFA } from "@/lib/utils";
+
 import { useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -18,7 +18,9 @@ import { addE2DHeader, addE2DFooter } from "@/lib/pdf-utils";
 import { useToast } from "@/hooks/use-toast";
 
 import { logger } from "@/lib/logger";
+import { useMoney } from "@/hooks/useCurrencyFormatter";
 export default function Beneficiaires() {
+  const formatFCFA = useMoney();
   const {
     exercices,
     reunions,

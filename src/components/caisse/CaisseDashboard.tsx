@@ -4,9 +4,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Wallet, TrendingUp, TrendingDown, PiggyBank, AlertTriangle, AlertCircle } from "lucide-react";
 import { useCaisseStats, useCaisseConfig } from "@/hooks/useCaisse";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatFCFA } from "@/lib/utils";
+import { useMoney } from "@/hooks/useCurrencyFormatter";
 
 export const CaisseDashboard = () => {
+  const formatFCFA = useMoney();
   const { data: stats, isLoading } = useCaisseStats();
   const { data: config } = useCaisseConfig();
 

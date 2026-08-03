@@ -14,9 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { Plus, Trash2, RefreshCw, Info, Calendar, AlertTriangle, Lock } from "lucide-react";
-import { formatFCFA } from "@/lib/utils";
+
 import { calculerResumePret } from "@/lib/pretCalculsService";
 import { addMonths, format } from "date-fns";
+import { useMoney } from "@/hooks/useCurrencyFormatter";
 
 interface PretsPaiementsManagerProps {
   pretId: string;
@@ -25,6 +26,7 @@ interface PretsPaiementsManagerProps {
 }
 
 export default function PretsPaiementsManager({ pretId, open, onClose }: PretsPaiementsManagerProps) {
+  const formatFCFA = useMoney();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [montant, setMontant] = useState("");
