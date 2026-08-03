@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,12 +6,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AssociationProvider } from "@/contexts/AssociationContext";
-import { PublicAssociationProvider } from "@/contexts/PublicAssociationContext";
+import { PublicAssociationProvider, usePublicAssociation } from "@/contexts/PublicAssociationContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FullPageFallback } from "@/components/ui/page-loader";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { usePageviewTracker } from "@/hooks/usePageviewTracker";
 import { useConnectionTracker } from "@/hooks/useConnectionTracker";
+import AssociationIndisponible from "@/pages/AssociationIndisponible";
 
 // Lazy load des pages principales avec retry automatique après déploiement
 const Index = lazyWithRetry(() => import("./pages/Index"));
@@ -36,26 +37,72 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Garde du site public : une association non active n'expose ni contenu ni
+ * page interne, y compris via une URL saisie directement.
+ */
+const PublicSiteGuard = ({ children }: { children: ReactNode }) => {
+  const { association, unavailable } = usePublicAssociation();
+  if (unavailable) {
+    return (
+      <AssociationIndisponible
+        nom={association?.nom}
+        logoUrl={association?.logo_url}
+        emailContact={association?.email_contact}
+        telephone={association?.telephone}
+      />
+    );
+  }
+  return <>{children}</>;
+};
+
+const publicRoute = (element: ReactNode) => (
+  <ErrorBoundary insideRouter fallbackTitle="Une erreur est survenue sur cette page">
+    <PublicSiteGuard>{element}</PublicSiteGuard>
+  </ErrorBoundary>
+);
+
 const TrackedRoutes = () => {
   usePageviewTracker();
   useConnectionTracker();
   return (
     <Suspense fallback={<FullPageFallback />}>
       <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/dashboard/*" element={<Dashboard />} />
-        <Route path="/don" element={<Don />} />
-        <Route path="/adhesion" element={<Adhesion />} />
-        <Route path="/change-password" element={<FirstPasswordChange />} />
-        <Route path="/evenements/:id" element={<EventDetail />} />
-        <Route path="/albums/:albumId" element={<AlbumDetail />} />
+        <Route path="/" element={publicRoute(<Index />)} />
+        <Route
+          path="/auth"
+          element={
+            <ErrorBoundary insideRouter fallbackTitle="Erreur - Connexion">
+              <Auth />
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/dashboard/*"
+          element={
+            <ErrorBoundary insideRouter fallbackTitle="Erreur - Espace membre">
+              <Dashboard />
+            </ErrorBoundary>
+          }
+        />
+        <Route path="/don" element={publicRoute(<Don />)} />
+        <Route path="/adhesion" element={publicRoute(<Adhesion />)} />
+        <Route
+          path="/change-password"
+          element={
+            <ErrorBoundary insideRouter fallbackTitle="Erreur - Changement de mot de passe">
+              <FirstPasswordChange />
+            </ErrorBoundary>
+          }
+        />
+        <Route path="/evenements/:id" element={publicRoute(<EventDetail />)} />
+        <Route path="/albums/:albumId" element={publicRoute(<AlbumDetail />)} />
         {/* Site public d'une association ciblée par slug : /s/:slug */}
-        <Route path="/s/:slug" element={<Index />} />
-        <Route path="/s/:slug/don" element={<Don />} />
-        <Route path="/s/:slug/adhesion" element={<Adhesion />} />
-        <Route path="/s/:slug/evenements/:id" element={<EventDetail />} />
-        <Route path="/s/:slug/albums/:albumId" element={<AlbumDetail />} />
+        <Route path="/s/:slug" element={publicRoute(<Index />)} />
+        <Route path="/s/:slug/don" element={publicRoute(<Don />)} />
+        <Route path="/s/:slug/adhesion" element={publicRoute(<Adhesion />)} />
+        <Route path="/s/:slug/evenements/:id" element={publicRoute(<EventDetail />)} />
+        <Route path="/s/:slug/albums/:albumId" element={publicRoute(<AlbumDetail />)} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>

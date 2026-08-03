@@ -1,8 +1,9 @@
 import { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Loader2 } from "lucide-react";
+import { Navigate } from "react-router-dom";
+import AccesRefuse from "@/pages/AccesRefuse";
 
 interface PermissionRouteProps {
   children: ReactNode;
@@ -11,11 +12,10 @@ interface PermissionRouteProps {
   fallback?: string;
 }
 
-export const PermissionRoute = ({ 
-  children, 
-  resource, 
-  permission, 
-  fallback = "/dashboard" 
+export const PermissionRoute = ({
+  children,
+  resource,
+  permission,
 }: PermissionRouteProps) => {
   const { user, loading: authLoading } = useAuth();
   const { hasPermission, isLoading: permLoading } = usePermissions();
@@ -28,8 +28,16 @@ export const PermissionRoute = ({
     );
   }
 
-  if (!user || !hasPermission(resource, permission)) {
-    return <Navigate to={fallback} replace />;
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (!hasPermission(resource, permission)) {
+    return (
+      <AccesRefuse
+        message={`Vous ne disposez pas de l'autorisation « ${permission} » sur la ressource « ${resource} ».`}
+      />
+    );
   }
 
   return <>{children}</>;

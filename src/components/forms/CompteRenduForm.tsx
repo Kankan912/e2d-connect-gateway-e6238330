@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Trash2, Save } from 'lucide-react';
 
 import { logger } from "@/lib/logger";
+import { useConfirm } from "@/hooks/useConfirm";
 const pointSchema = z.object({
   numero_ordre: z.number().min(1),
   sujet: z.string().min(3, 'Sujet requis (min 3 caractères)'),
@@ -117,8 +118,16 @@ export default function CompteRenduForm({
     form.reset({ numero_ordre: point.numero_ordre, sujet: point.sujet, description: point.description || '', resolution: point.resolution || '', decisions: point.decisions || '' });
   };
 
+  const { confirm, confirmDialog } = useConfirm();
+
   const handleDeletePoint = async (pointId: string) => {
-    if (!confirm('Supprimer ce point ?')) return;
+    const ok = await confirm({
+      title: "Supprimer ce point ?",
+      description: "Ce point du compte-rendu sera définitivement supprimé.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const { error } = await supabase.from('rapports_seances').delete().eq('id', pointId);
       if (error) throw error;
@@ -150,8 +159,8 @@ export default function CompteRenduForm({
                       {point.resolution && <p className="text-sm text-muted-foreground line-clamp-2">{point.resolution}</p>}
                     </div>
                     <div className="flex gap-1 ml-2">
-                      <Button size="sm" variant="ghost" onClick={() => handleEditPoint(point)}>Éditer</Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDeletePoint(point.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => handleEditPoint(point)}>Éditer</Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => handleDeletePoint(point.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                   </div>
                 ))}
@@ -179,9 +188,10 @@ export default function CompteRenduForm({
         </CardContent>
       </Card>
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>Fermer</Button>
-        <Button onClick={onSuccess} disabled={points.length === 0}>Terminer le Compte-Rendu</Button>
+        <Button type="button" variant="outline" onClick={onCancel}>Fermer</Button>
+        <Button type="button" onClick={onSuccess} disabled={points.length === 0}>Terminer le Compte-Rendu</Button>
       </div>
+      {confirmDialog}
     </div>
   );
 }

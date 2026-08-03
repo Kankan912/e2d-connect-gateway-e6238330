@@ -19,10 +19,11 @@ import {
 import { DEFAULT_TEMPLATE_ID, SiteTemplateId } from "@/lib/siteTemplates";
 
 export interface PublicAssociation {
-  id: string;
+  id: string | null;
   slug: string;
   nom: string;
   sigle: string | null;
+  statut: string;
   description: string | null;
   logo_url: string | null;
   theme_tokens: Record<string, string> | null;
@@ -41,12 +42,15 @@ interface Ctx {
   association: PublicAssociation | null;
   template: SiteTemplateId;
   loading: boolean;
+  /** true lorsque l'association résolue existe mais n'est pas active. */
+  unavailable: boolean;
 }
 
 const PublicAssociationContext = createContext<Ctx>({
   association: null,
   template: DEFAULT_TEMPLATE_ID,
   loading: true,
+  unavailable: false,
 });
 
 export const PublicAssociationProvider = ({ children }: { children: ReactNode }) => {
@@ -65,12 +69,13 @@ export const PublicAssociationProvider = ({ children }: { children: ReactNode })
         const assoc = (data as unknown as PublicAssociation | null) ?? null;
         if (assoc) {
           setAssociation(assoc);
-          publicAssociationStore.set(assoc.id);
+          const active = assoc.statut === "actif";
+          publicAssociationStore.set(active ? assoc.id : null);
           applyThemeTokens(assoc.theme_tokens);
           if (assoc.langue_principale) {
             void i18n.changeLanguage(assoc.langue_principale);
           }
-          if (typeof window !== "undefined") {
+          if (typeof window !== "undefined" && active) {
             window.localStorage.setItem(PUBLIC_ASSOCIATION_STORAGE_KEY, assoc.slug);
           }
         }
@@ -86,12 +91,15 @@ export const PublicAssociationProvider = ({ children }: { children: ReactNode })
     };
   }, []);
 
+  const unavailable = !!association && association.statut !== "actif";
+
   return (
     <PublicAssociationContext.Provider
       value={{
         association,
         template: association?.site_template ?? DEFAULT_TEMPLATE_ID,
         loading,
+        unavailable,
       }}
     >
       {/* On attend la résolution du tenant avant de monter l'application :

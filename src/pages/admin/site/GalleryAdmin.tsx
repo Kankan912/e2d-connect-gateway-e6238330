@@ -17,6 +17,7 @@ import { uploadFile } from "@/lib/storage-utils";
 import { gallerySchema, galleryAlbumSchema, type GalleryFormValues, type GalleryAlbumFormValues } from "@/lib/validation/site-schemas";
 
 import { logger } from "@/lib/logger";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
@@ -127,16 +128,28 @@ export default function GalleryAdmin() {
     setAlbumOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet élément ?")) {
-      deleteItem.mutate(id);
-    }
+  const { confirm, confirmDialog } = useConfirm();
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Supprimer cet élément ?",
+      description: "Le média sera retiré de la galerie publique.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) deleteItem.mutate(id);
   };
 
-  const handleDeleteAlbum = (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet album ? Les médias associés ne seront pas supprimés.")) {
+  const handleDeleteAlbum = async (id: string) => {
+    const ok = await confirm({
+      title: "Supprimer cet album ?",
+      description: "Les médias associés ne seront pas supprimés.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) {
       deleteAlbum.mutate(id, {
-        onSuccess: () => toast.success("Album supprimé")
+        onSuccess: () => toast.success("Album supprimé"),
       });
     }
   };
@@ -227,7 +240,7 @@ export default function GalleryAdmin() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { reset(); setEditingItem(null); setSelectedAlbumId("none"); }}>
+            <Button type="button" onClick={() => { reset(); setEditingItem(null); setSelectedAlbumId("none"); }}>
               <Plus className="w-4 h-4 mr-2" />
               Ajouter un média
             </Button>
@@ -361,10 +374,10 @@ export default function GalleryAdmin() {
                           )}
                         </div>
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                          <Button size="sm" variant="secondary" aria-label="Modifier cet élément" onClick={() => handleEdit(item)}>
+                          <Button type="button" size="sm" variant="secondary" aria-label="Modifier cet élément" onClick={() => handleEdit(item)}>
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button size="sm" variant="secondary" aria-label="Supprimer cet élément" onClick={() => handleDelete(item.id)}>
+                          <Button type="button" size="sm" variant="secondary" aria-label="Supprimer cet élément" onClick={() => handleDelete(item.id)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -397,10 +410,10 @@ export default function GalleryAdmin() {
                       <Video className="w-12 h-12 text-muted-foreground" />
                     </div>
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-                      <Button size="sm" variant="secondary" aria-label="Modifier cet élément" onClick={() => handleEdit(item)}>
+                      <Button type="button" size="sm" variant="secondary" aria-label="Modifier cet élément" onClick={() => handleEdit(item)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button size="sm" variant="secondary" aria-label="Supprimer cet élément" onClick={() => handleDelete(item.id)}>
+                      <Button type="button" size="sm" variant="secondary" aria-label="Supprimer cet élément" onClick={() => handleDelete(item.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -430,7 +443,7 @@ export default function GalleryAdmin() {
                 </div>
                 <Dialog open={albumOpen} onOpenChange={setAlbumOpen}>
                   <DialogTrigger asChild>
-                    <Button onClick={() => { resetAlbum(); setEditingAlbum(null); }}>
+                    <Button type="button" onClick={() => { resetAlbum(); setEditingAlbum(null); }}>
                       <FolderPlus className="w-4 h-4 mr-2" />
                       Nouvel Album
                     </Button>
@@ -514,15 +527,15 @@ export default function GalleryAdmin() {
                           </p>
                         )}
                         <div className="flex flex-wrap gap-2 mt-4">
-                          <Button size="sm" variant="outline" onClick={() => openMultiUpload(album.id)}>
+                          <Button type="button" size="sm" variant="outline" onClick={() => openMultiUpload(album.id)}>
                             <Upload className="w-4 h-4 mr-1" />
                             Ajouter images
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleEditAlbum(album)}>
+                          <Button type="button" size="sm" variant="outline" onClick={() => handleEditAlbum(album)}>
                             <Pencil className="w-4 h-4 mr-1" />
                             Modifier
                           </Button>
-                          <Button 
+                          <Button type="button" 
                             size="sm" 
                             variant="outline" 
                             className="text-destructive"
@@ -585,6 +598,7 @@ export default function GalleryAdmin() {
           </div>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </div>
   );
 }

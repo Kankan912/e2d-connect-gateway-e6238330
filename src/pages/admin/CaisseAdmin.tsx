@@ -216,26 +216,26 @@ const CaisseAdmin = () => {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <Button type="button" variant="outline" size="sm" onClick={handleRefresh}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualiser
               </Button>
               {canConfig && (
-                <Button variant="outline" size="sm" onClick={() => setShowConfigForm(true)}>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowConfigForm(true)}>
                   <Settings className="h-4 w-4 mr-2" />
                   Configuration
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={handleExportPDF}>
+              <Button type="button" variant="outline" size="sm" onClick={handleExportPDF}>
                 <Download className="h-4 w-4 mr-2" />
                 PDF
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportExcel}>
+              <Button type="button" variant="outline" size="sm" onClick={handleExportExcel}>
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Excel
               </Button>
               {canCreate && (
-                <Button size="sm" onClick={() => {
+                <Button type="button" size="sm" onClick={() => {
                   if (!enforcePermission('caisse', 'create')) return;
                   setShowOperationForm(true);
                 }}>
@@ -266,7 +266,7 @@ const CaisseAdmin = () => {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">Historique des opérations</CardTitle>
-                  <Button
+                  <Button type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowFilters(!showFilters)}
@@ -367,7 +367,7 @@ const CaisseAdmin = () => {
                     </div>
                   </div>
                   <div className="flex justify-end mt-4">
-                    <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+                    <Button type="button" variant="ghost" size="sm" onClick={handleResetFilters}>
                       Réinitialiser les filtres
                     </Button>
                   </div>

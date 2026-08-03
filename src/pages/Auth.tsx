@@ -138,7 +138,7 @@ const Auth = () => {
         </div>
 
         <div className="text-center">
-          <Button
+          <Button type="button"
             variant="link"
             onClick={() => navigate("/")}
             className="text-muted-foreground hover:text-foreground"

@@ -37,6 +37,12 @@ import { PaletteEditor } from "@/components/branding/PaletteEditor";
 import { TemplatePicker } from "@/components/branding/TemplatePicker";
 import { DEFAULT_TEMPLATE_ID, SiteTemplateId, getTemplate } from "@/lib/siteTemplates";
 import { DEFAULT_PALETTE } from "@/lib/paletteFromLogo";
+import {
+  ASSOCIATION_STATUTS,
+  AssociationStatusBadge,
+} from "@/components/associations/AssociationStatusBadge";
+import { AssociationStatusActions } from "@/components/associations/AssociationStatusActions";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AssociationRow {
   id: string;
@@ -64,12 +70,16 @@ const SELECT_COLS =
 
 export default function AssociationsPlatformAdmin() {
   const qc = useQueryClient();
+  const { userRole } = useAuth();
+  const isSuperAdmin = userRole === "super_admin";
   const [open, setOpen] = useState(false);
   const [wizard, setWizard] = useState<AssociationWizardValues>(emptyWizardValues);
   const [lastPassword, setLastPassword] = useState<string | null>(null);
   const [editing, setEditing] = useState<AssociationRow | null>(null);
+  const [statutFilter, setStatutFilter] = useState<string>("tous");
+  const [search, setSearch] = useState("");
 
-  const { data: associations = [], isLoading } = useQuery({
+  const { data: associations = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["platform-associations"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -79,6 +89,17 @@ export default function AssociationsPlatformAdmin() {
       if (error) throw error;
       return (data ?? []) as unknown as AssociationRow[];
     },
+  });
+
+  const filtered = associations.filter((a) => {
+    const matchStatut = statutFilter === "tous" || a.statut === statutFilter;
+    const q = search.trim().toLowerCase();
+    const matchSearch =
+      !q ||
+      a.nom.toLowerCase().includes(q) ||
+      a.slug.toLowerCase().includes(q) ||
+      (a.sigle ?? "").toLowerCase().includes(q);
+    return matchStatut && matchSearch;
   });
 
   const provision = useMutation({
@@ -150,7 +171,6 @@ export default function AssociationsPlatformAdmin() {
           ville: row.ville,
           pays: row.pays,
           theme_tokens: row.theme_tokens,
-          statut: row.statut,
         })
         .eq("id", row.id)
         .select("id");
@@ -296,19 +316,13 @@ export default function AssociationsPlatformAdmin() {
                   </div>
                   <div>
                     <Label>Statut</Label>
-                    <Select
-                      value={editing.statut}
-                      onValueChange={(v) => setEditing({ ...editing, statut: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="actif">Actif</SelectItem>
-                        <SelectItem value="suspendu">Suspendu</SelectItem>
-                        <SelectItem value="archive">Archivé</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="pt-2">
+                      <AssociationStatusBadge statut={editing.statut} />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Le statut se modifie depuis le menu d'actions de la liste (opération tracée
+                        dans le journal d'audit).
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -433,10 +447,19 @@ export default function AssociationsPlatformAdmin() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)} disabled={update.isPending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditing(null)}
+              disabled={update.isPending}
+            >
               Annuler
             </Button>
-            <Button onClick={() => editing && update.mutate(editing)} disabled={update.isPending}>
+            <Button
+              type="button"
+              onClick={() => editing && update.mutate(editing)}
+              disabled={update.isPending}
+            >
               {update.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Enregistrer
             </Button>
@@ -448,11 +471,42 @@ export default function AssociationsPlatformAdmin() {
         <CardHeader>
           <CardTitle>Associations existantes</CardTitle>
           <CardDescription>{associations.length} association(s) sur la plateforme.</CardDescription>
+          <div className="flex flex-col sm:flex-row gap-3 pt-3">
+            <Input
+              placeholder="Rechercher (nom, sigle, slug)…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="sm:max-w-xs"
+            />
+            <Select value={statutFilter} onValueChange={setStatutFilter}>
+              <SelectTrigger className="sm:w-56">
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tous">Tous les statuts</SelectItem>
+                {ASSOCIATION_STATUTS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="py-12 flex justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : isError ? (
+            <div className="py-12 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Impossible de charger les associations :{" "}
+                {error instanceof Error ? error.message : "erreur inconnue"}
+              </p>
+              <Button type="button" variant="outline" onClick={() => void refetch()}>
+                Réessayer
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -468,7 +522,7 @@ export default function AssociationsPlatformAdmin() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {associations.map((a) => (
+                  {filtered.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -489,29 +543,45 @@ export default function AssociationsPlatformAdmin() {
                       <TableCell className="text-xs">{getTemplate(a.site_template).nom}</TableCell>
                       <TableCell className="text-xs">{a.langue_principale ?? a.locale}</TableCell>
                       <TableCell>
-                        <Badge variant={a.statut === "actif" ? "default" : "secondary"}>{a.statut}</Badge>
+                        <AssociationStatusBadge statut={a.statut} />
                       </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" asChild aria-label="Voir le site public">
-                          <a href={`/s/${a.slug}`} target="_blank" rel="noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Paramétrer"
-                          onClick={() => setEditing(a)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                            aria-label="Voir le site public"
+                          >
+                            <a href={`/s/${a.slug}`} target="_blank" rel="noreferrer">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Paramétrer"
+                            onClick={() => setEditing(a)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AssociationStatusActions
+                            association={a}
+                            canManage={isSuperAdmin}
+                            canHardDelete={isSuperAdmin}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!associations.length && (
+                  {!filtered.length && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                        Aucune association.
+                        {associations.length
+                          ? "Aucune association ne correspond aux filtres."
+                          : "Aucune association."}
                       </TableCell>
                     </TableRow>
                   )}

@@ -13,6 +13,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { partnerSchema, type PartnerFormValues } from "@/lib/validation/site-schemas";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
@@ -56,10 +57,16 @@ export default function PartnersAdmin() {
     setOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce partenaire ?")) {
-      deletePartner.mutate(id);
-    }
+  const { confirm, confirmDialog } = useConfirm();
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Supprimer ce partenaire ?",
+      description: "Le partenaire ne sera plus affiché sur le site public.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) deletePartner.mutate(id);
   };
 
   if (isLoading) {
@@ -81,7 +88,7 @@ export default function PartnersAdmin() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { reset(); setEditingPartner(null); }}>
+            <Button type="button" onClick={() => { reset(); setEditingPartner(null); }}>
               <Plus className="w-4 h-4 mr-2" />
               Nouveau Partenaire
             </Button>
@@ -187,7 +194,7 @@ export default function PartnersAdmin() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
+                      <Button type="button"
                         size="sm"
                         variant="ghost"
                         aria-label={`Modifier le partenaire ${partner.nom}`}
@@ -195,7 +202,7 @@ export default function PartnersAdmin() {
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button
+                      <Button type="button"
                         size="sm"
                         variant="ghost"
                         aria-label={`Supprimer le partenaire ${partner.nom}`}
@@ -211,6 +218,7 @@ export default function PartnersAdmin() {
           </Table>
         </CardContent>
       </Card>
+      {confirmDialog}
     </div>
   );
 }

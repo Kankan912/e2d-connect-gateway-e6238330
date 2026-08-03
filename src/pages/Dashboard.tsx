@@ -1,12 +1,14 @@
 import { useEffect, Suspense } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAssociation } from "@/contexts/AssociationContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { PermissionRoute } from "@/components/auth/PermissionRoute";
 import { SuperAdminRoute } from "@/components/auth/SuperAdminRoute";
 import { PageLoader, SuspenseFallback } from "@/components/ui/page-loader";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import AssociationIndisponible from "./AssociationIndisponible";
 import DashboardNotFound from "./dashboard/DashboardNotFound";
 
 // ============================================
@@ -91,6 +93,7 @@ const AssociationBrandingAdmin = lazyWithRetry(() => import("./admin/Association
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, loading, mustChangePassword } = useAuth();
+  const { currentAssociation, isSuperAdmin, loading: assocLoading } = useAssociation();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -100,12 +103,17 @@ const Dashboard = () => {
     }
   }, [user, loading, mustChangePassword, navigate]);
 
-  if (loading) {
+  if (loading || assocLoading) {
     return <PageLoader fullPage />;
   }
 
   if (!user) {
     return null;
+  }
+
+  // Association non active : aucun accès au portail/administration, même par URL directe.
+  if (!isSuperAdmin && currentAssociation && currentAssociation.statut !== "actif") {
+    return <AssociationIndisponible nom={currentAssociation.nom} logoUrl={currentAssociation.logo_url} />;
   }
 
   return (

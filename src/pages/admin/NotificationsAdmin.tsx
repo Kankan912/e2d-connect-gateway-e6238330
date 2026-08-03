@@ -53,7 +53,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
     enabled: !!user?.id
   });
 
-  const { data: campagnes, isLoading, isError, error: campagnesError } = useQuery({
+  const { data: campagnes, isLoading, isError, error: campagnesError, refetch: refetchCampagnes } = useQuery({
     queryKey: ["notifications-campagnes"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -209,7 +209,7 @@ export default function NotificationsAdmin({ embedded = false }: NotificationsAd
               {(campagnesError as Error).message}
             </p>
           )}
-          <Button variant="outline" onClick={() => window.location.reload()}>
+          <Button type="button" variant="outline" onClick={() => void refetchCampagnes()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Réessayer
           </Button>

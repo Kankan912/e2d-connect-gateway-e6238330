@@ -128,7 +128,7 @@ export default function SportSanctions() {
           <h1 className="text-2xl sm:text-3xl font-bold">Sanctions Sportives</h1>
         </div>
         {hasPermission('sanctions', 'create') && (
-          <Button onClick={() => setShowForm(true)}>
+          <Button type="button" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nouvelle Sanction
           </Button>

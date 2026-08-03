@@ -18,6 +18,7 @@ import { fr } from "date-fns/locale";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { toast } from "sonner";
 import { eventSchema, type EventFormValues } from "@/lib/validation/site-schemas";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
@@ -85,10 +86,16 @@ export default function EventsAdmin() {
     setOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet événement ?")) {
-      deleteEvent.mutate(id);
-    }
+  const { confirm, confirmDialog } = useConfirm();
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Supprimer cet événement ?",
+      description: "L'événement ne sera plus affiché sur le site public.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) deleteEvent.mutate(id);
   };
 
   const saveCarouselConfig = () => {
@@ -124,7 +131,7 @@ export default function EventsAdmin() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { reset(); setEditingEvent(null); }}>
+            <Button type="button" onClick={() => { reset(); setEditingEvent(null); }}>
               <Plus className="w-4 h-4 mr-2" />
               Nouvel Événement
             </Button>
@@ -287,7 +294,7 @@ export default function EventsAdmin() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
+                          <Button type="button"
                             size="sm"
                             variant="ghost"
                             aria-label={`Modifier l'événement ${event.titre}`}
@@ -295,7 +302,7 @@ export default function EventsAdmin() {
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button
+                          <Button type="button"
                             size="sm"
                             variant="ghost"
                             aria-label={`Supprimer l'événement ${event.titre}`}
@@ -395,7 +402,7 @@ export default function EventsAdmin() {
                   </div>
 
                   <div className="flex justify-end pt-4 border-t">
-                    <Button 
+                    <Button type="button" 
                       onClick={saveCarouselConfig}
                       disabled={updateCarouselConfig.isPending}
                     >
@@ -411,6 +418,7 @@ export default function EventsAdmin() {
           </Card>
         </TabsContent>
       </Tabs>
+      {confirmDialog}
     </div>
   );
 }

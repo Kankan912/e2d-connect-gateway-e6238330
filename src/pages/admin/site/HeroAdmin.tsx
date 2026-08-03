@@ -12,6 +12,7 @@ import { useSiteHero, useUpdateHero, useSiteHeroImages, useCreateHeroImage, useD
 import MediaUploader from "@/components/admin/MediaUploader";
 import { toast } from "sonner";
 import { heroSchema, type HeroFormValues } from "@/lib/validation/site-schemas";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
@@ -64,10 +65,18 @@ export default function HeroAdmin() {
     }
   };
 
-  const handleDeleteImage = (id: string) => {
-    if (confirm("Supprimer cette image du carousel ?")) {
+  const { confirm, confirmDialog } = useConfirm();
+
+  const handleDeleteImage = async (id: string) => {
+    const ok = await confirm({
+      title: "Supprimer cette image ?",
+      description: "L'image sera retirée du carousel de la page d'accueil.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) {
       deleteHeroImage.mutate(id, {
-        onSuccess: () => toast.success("Image supprimée")
+        onSuccess: () => toast.success("Image supprimée"),
       });
     }
   };
@@ -168,7 +177,7 @@ export default function HeroAdmin() {
                       />
                     </div>
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
-                      <Button 
+                      <Button type="button" 
                         size="icon" 
                         variant="secondary" 
                         aria-label={`Déplacer l'image ${index + 1} vers le haut`}
@@ -178,7 +187,7 @@ export default function HeroAdmin() {
                       >
                         <ChevronUp className="w-4 h-4" />
                       </Button>
-                      <Button 
+                      <Button type="button" 
                         size="icon" 
                         variant="secondary"
                         aria-label={`Déplacer l'image ${index + 1} vers le bas`}
@@ -188,7 +197,7 @@ export default function HeroAdmin() {
                       >
                         <ChevronDown className="w-4 h-4" />
                       </Button>
-                      <Button 
+                      <Button type="button" 
                         size="icon" 
                         variant="destructive"
                         aria-label={`Supprimer l'image ${index + 1}`}
@@ -382,6 +391,7 @@ export default function HeroAdmin() {
           </form>
         </CardContent>
       </Card>
+      {confirmDialog}
     </div>
   );
 }

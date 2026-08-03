@@ -12,6 +12,7 @@ import { useSiteActivities, useCreateActivity, useUpdateActivity, useDeleteActiv
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { activitySchema, type ActivityFormValues } from "@/lib/validation/site-schemas";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
@@ -56,10 +57,16 @@ export default function ActivitiesAdmin() {
     setOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cette activité ?")) {
-      deleteActivity.mutate(id);
-    }
+  const { confirm, confirmDialog } = useConfirm();
+
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Supprimer cette activité ?",
+      description: "L'activité ne sera plus affichée sur le site public.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) deleteActivity.mutate(id);
   };
 
   if (isLoading) {
@@ -81,7 +88,7 @@ export default function ActivitiesAdmin() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { reset(); setEditingActivity(null); }}>
+            <Button type="button" onClick={() => { reset(); setEditingActivity(null); }}>
               <Plus className="w-4 h-4 mr-2" />
               Nouvelle Activité
             </Button>
@@ -184,7 +191,7 @@ export default function ActivitiesAdmin() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
+                      <Button type="button"
                         size="sm"
                         variant="ghost"
                         aria-label={`Modifier l'activité ${activity.titre}`}
@@ -192,7 +199,7 @@ export default function ActivitiesAdmin() {
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button
+                      <Button type="button"
                         size="sm"
                         variant="ghost"
                         aria-label={`Supprimer l'activité ${activity.titre}`}
@@ -208,6 +215,7 @@ export default function ActivitiesAdmin() {
           </Table>
         </CardContent>
       </Card>
+      {confirmDialog}
     </div>
   );
 }

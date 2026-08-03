@@ -1,5 +1,6 @@
 import { DollarSign, Plus, FileText, RefreshCw, Search, LayoutDashboard, CheckCircle, AlertTriangle, Clock } from "lucide-react";
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usePermissions } from "@/hooks/usePermissions";
 import { supabase } from "@/integrations/supabase/client";
@@ -468,9 +469,11 @@ export default function PretsAdmin() {
               Nouveau Prêt
             </Button>
           )}
-          <Button variant="outline" onClick={() => window.location.href = '/dashboard/admin/finances/demandes-pret'}>
-            <FileText className="h-4 w-4 mr-2" />
-            Demandes de prêt
+          <Button type="button" variant="outline" asChild>
+            <Link to="/dashboard/admin/finances/demandes-pret">
+              <FileText className="h-4 w-4 mr-2" />
+              Demandes de prêt
+            </Link>
           </Button>
         </div>
       </div>

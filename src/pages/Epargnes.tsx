@@ -19,6 +19,7 @@ import EpargnesFilters from "./_components/EpargnesFilters";
 import EpargnesList from "./_components/EpargnesList";
 
 import { logger } from "@/lib/logger";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface Epargne {
   id: string;
@@ -218,8 +219,16 @@ export default function Epargnes() {
     setShowAddDialog(true);
   };
 
-  const handleDelete = (epargneId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette épargne ?')) return;
+  const { confirm, confirmDialog } = useConfirm();
+
+  const handleDelete = async (epargneId: string) => {
+    const ok = await confirm({
+      title: "Supprimer cette épargne ?",
+      description: "L'opération d'épargne sera définitivement supprimée.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
     deleteEpargne.mutate(epargneId);
   };
 
@@ -302,11 +311,11 @@ export default function Epargnes() {
           />
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => navigate('/dashboard/admin/tontine/beneficiaires')} variant="outline">
+          <Button type="button" onClick={() => navigate('/dashboard/admin/tontine/beneficiaires')} variant="outline">
             <Calculator className="w-4 h-4 mr-2" />
             Voir les Bénéficiaires
           </Button>
-          <Button variant="outline" onClick={async () => {
+          <Button type="button" variant="outline" onClick={async () => {
             await ExportService.export({
               type: 'epargnes',
               format: 'pdf',
@@ -338,7 +347,7 @@ export default function Epargnes() {
         <div className="flex justify-end">
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
-              <Button onClick={() => {
+              <Button type="button" onClick={() => {
                 setSelectedEpargne(null);
                 setFormData({ membre_id: "", montant: "", reunion_id: "", exercice_id: "", notes: "" });
               }}>
@@ -527,6 +536,7 @@ export default function Epargnes() {
           onDelete={handleDelete}
         />
       </div>
+      {confirmDialog}
     </div>
   );
 }

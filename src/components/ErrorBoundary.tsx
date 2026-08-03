@@ -1,5 +1,6 @@
 import React from "react";
 import { AlertTriangle, RefreshCw, Home, RotateCcw } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 import { logger } from "@/lib/logger";
@@ -7,6 +8,8 @@ interface ErrorBoundaryProps {
   children: React.ReactNode;
   fallbackTitle?: string;
   onReset?: () => void;
+  /** true si la frontière est montée à l'intérieur du Router : on navigue sans recharger. */
+  insideRouter?: boolean;
 }
 
 interface ErrorBoundaryState {
@@ -53,19 +56,35 @@ export class ErrorBoundary extends React.Component<
                 {this.state.error.message}
               </p>
             )}
-            <div className="flex gap-3 justify-center">
-              <Button variant="outline" size="sm" onClick={this.handleReset}>
+            <div className="flex flex-wrap gap-3 justify-center">
+              <Button type="button" variant="outline" size="sm" onClick={this.handleReset}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Réessayer
               </Button>
-              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.reload()}
+              >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Actualiser
               </Button>
-              <Button size="sm" onClick={() => window.location.href = "/dashboard"}>
-                <Home className="h-4 w-4 mr-2" />
-                Dashboard
-              </Button>
+              {this.props.insideRouter ? (
+                <Button type="button" size="sm" asChild onClick={this.handleReset}>
+                  <Link to="/dashboard">
+                    <Home className="h-4 w-4 mr-2" />
+                    Tableau de bord
+                  </Link>
+                </Button>
+              ) : (
+                <Button type="button" size="sm" asChild>
+                  <a href="/dashboard">
+                    <Home className="h-4 w-4 mr-2" />
+                    Tableau de bord
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
         </div>
