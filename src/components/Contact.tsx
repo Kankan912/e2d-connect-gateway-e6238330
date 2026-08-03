@@ -326,27 +326,32 @@ const Contact = () => {
             <div className="bg-card rounded-2xl p-8 shadow-soft border border-border">
               <h3 className="text-xl font-bold text-foreground mb-4">Liens Rapides</h3>
               <div className="space-y-3">
-                <Button 
+                <Button
+                  type="button"
                   variant="outline"
                   className="w-full justify-start hover:translate-x-1 transition-transform"
                   asChild
                 >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Accès Portail Membre E2D Connect
+                  <Link to="/auth">
+                    <Mail className="w-4 h-4 mr-2" />
+                    Accès Portail Membre E2D Connect
+                  </Link>
                 </Button>
-                <Button 
+                <Button
+                  type="button"
                   variant="outline"
                   className="w-full justify-start hover:translate-x-1 transition-transform"
                   asChild
                 >
-                  Formulaire d'Adhésion
+                  <Link to="/adhesion">Formulaire d'Adhésion</Link>
                 </Button>
-                <Button 
+                <Button
+                  type="button"
                   variant="outline"
                   className="w-full justify-start hover:translate-x-1 transition-transform"
                   asChild
                 >
-                  Faire un Don
+                  <Link to="/don">Faire un Don</Link>
                 </Button>
               </div>
             </div>
