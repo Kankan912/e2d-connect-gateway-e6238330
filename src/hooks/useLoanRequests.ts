@@ -74,7 +74,7 @@ export function useLoanRequests() {
 
   useEffect(() => {
     const ch = supabase
-      .channel("loan_requests_admin")
+      .channel(`loan_requests_admin-${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "loan_requests" }, () => {
         qc.invalidateQueries({ queryKey: ["loan-requests"] });
       })
@@ -106,7 +106,7 @@ export function useMyLoanRequests() {
 
   useEffect(() => {
     const ch = supabase
-      .channel("loan_requests_self")
+      .channel(`loan_requests_self-${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "loan_requests" }, () => {
         qc.invalidateQueries({ queryKey: ["my-loan-requests"] });
       })
@@ -314,7 +314,7 @@ export function useAvalistePendingRequests() {
   const qc = useQueryClient();
   useEffect(() => {
     const ch = supabase
-      .channel("loan_requests_avaliste")
+      .channel(`loan_requests_avaliste-${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "loan_requests" }, () => {
         qc.invalidateQueries({ queryKey: ["avaliste-pending-requests"] });
       })

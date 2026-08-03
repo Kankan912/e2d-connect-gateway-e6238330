@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Champ texte obligatoire avec libellé lisible dans le message d'erreur. */
+// Validation ciblée — utilisée avant sauvegarde / test / bascule
 const nonEmpty = (label: string) =>
   z.string().trim().min(1, { message: `${label} est requis` });
 
@@ -36,5 +36,7 @@ export const resendKeySchema = z
   .regex(/^re_/, "La clé doit commencer par 're_'");
 
 export type EmailProvider = "resend" | "smtp";
+/** Alias conservé pour la lisibilité côté composants. */
+export type EmailService = EmailProvider;
 export type SmtpEncryption = "tls" | "ssl" | "none";
 export type ValidationScope = "common" | "smtp" | "resend-key" | "all";

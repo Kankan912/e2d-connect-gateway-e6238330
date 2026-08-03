@@ -10,14 +10,16 @@ import { useUserPrets, useUserMemberId } from "@/hooks/usePersonalData";
 import { Wallet, CircleDollarSign, Clock, CheckCircle, CalendarClock, FileText } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { fr } from "date-fns/locale";
-import { formatFCFA } from "@/lib/utils";
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { buildMembrePDFHeader, buildMembreFileName, membrePDFFooter } from "@/lib/membre-pdf";
+import { useMoney } from "@/hooks/useCurrencyFormatter";
 
 type StatutFiltre = "tous" | "en_cours" | "rembourse" | "en_attente" | "refuse" | "approuve";
 
 const MyPrets = () => {
+  const formatFCFA = useMoney();
   const { data: prets, isLoading, error } = useUserPrets();
   const { data: membre } = useUserMemberId();
   const [filtreStatut, setFiltreStatut] = useState<StatutFiltre>("tous");

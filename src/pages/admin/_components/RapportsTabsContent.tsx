@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import type { PretWithJoins } from "@/types/supabase-joins";
-import { formatFCFA } from "@/lib/utils";
+import { useMoney } from "@/hooks/useCurrencyFormatter";
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
@@ -30,6 +30,7 @@ interface Stats {
 }
 
 export default function RapportsTabsContent(props: Stats) {
+  const formatFCFA = useMoney();
   const { cotisationsStats, pretsStats, sanctionsStats, epargnesStats, caisseStats, prets, formatMembre, exportPDF, exportExcel } = props;
   return (
   <Tabs defaultValue="cotisations" className="space-y-6">

@@ -13,14 +13,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Eye, Receipt, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { formatFCFA } from "@/lib/utils";
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { buildMembrePDFHeader, buildMembreFileName, membrePDFFooter } from "@/lib/membre-pdf";
+import { useMoney } from "@/hooks/useCurrencyFormatter";
 
 type StatutFiltre = "tous" | "paye" | "en_attente" | "annule";
 
 const MyCotisations = () => {
+  const formatFCFA = useMoney();
   const { data: cotisations, isLoading, error } = useUserCotisations();
   const { data: membre } = useUserMemberId();
   const [exerciceId, setExerciceId] = useState<string>("tous");

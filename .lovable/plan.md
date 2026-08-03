@@ -1,49 +1,59 @@
-## État vérifié des lots
+## État d'exécution — vérifié dans le code
 
-Lots clos (vérifiés dans le code) : Lot 1 (P0 sécurité), Lot 2 (CI + CSP), Lots 3–5 (perf/nettoyage), Lot A + A-bis (moteur cotisations, écran `ExerciseContributionSettingsAdmin`, `PaymentStatusBadge`), Lot B (RPC + widget + onglet calendrier), Lot C (RPC `get_membre_situation` corrigée, page `MaSituation`).
+### Phases (refonte plateforme)
+| Phase | Objet | État |
+|---|---|---|
+| 2.4 | RLS tenant-aware (`current_association_id`, `_apply_tenant_rls`) | Terminé |
+| 2.5 | Frontend multi-tenant (`AssociationContext`, `AssociationSwitcher`, `tenantQuery`) | Terminé |
+| 2.6 | Provisioning (`provision-association`, `SuperAdminRoute`, admin plateforme) | Terminé |
+| 3 | RBAC granulaire + audit (`current_tenant_id`, `has_permission`, `log_audit`) | Terminé |
+| 4 | FinancialEngine (`record_caisse_movement`, `reverse_caisse_movement`, services TS, snapshot soldes) | Terminé |
+| 5 | Prêts / Aides / Bénéficiaires (statuts unifiés, workflows) | Terminé |
+| 6 | i18n & thèmes (i18next FR/EN, theme_tokens, branding) | Terminé côté socle, **non propagé** (devise) |
 
-Reliquats constatés :
+### Lots (audit 2026-07)
+| Lot | Objet | État |
+|---|---|---|
+| 1 | P0 sécurité (Edge Functions, annulation caisse) | Terminé |
+| 2 | CI + CSP/HSTS + CORS partagés | Terminé |
+| 3–5 | Perf, chunks, 404, code mort, Sentry | Terminé |
+| A / A-bis | Moteur cotisations par exercice, verrouillage, écrans | Terminé |
+| B / B-bis | RPC bénéficiaires + modales extraites (`src/components/beneficiaires/`) + doc | Terminé |
+| C | `get_membre_situation`, page Ma Situation, justificatifs aides | Terminé |
+| Q1 | Permissions granulaires (bypass admin retiré, 105 permissions en base) | Terminé |
+| P | Unification devise / realtime | **Partiel** — `useMoney()` existe mais 63 fichiers utilisent encore `formatFCFA` (5 seulement la version tenant) |
+| Q3 | Découpage des gros composants | **Non fait** — 9 fichiers > 600 lignes |
+| Q2 | `strictNullChecks` / `strict` | **Non fait** — `strict:false`, `strictNullChecks:false` |
 
-| Lot | Constat vérifié |
-|---|---|
-| B-bis | `docs/LOT_B_BENEFICIAIRES.md` absent ; `BeneficiairesReunionWidget.tsx` = 458 lignes avec 2 dialogs inline (aucun dossier `src/components/beneficiaires/`) |
-| Q1 | `usePermissions.ts` ligne 21/32 : `if (isAdministrateur) return true` court-circuite les permissions granulaires |
-| Q2 | `tsconfig.json` : `strictNullChecks: false` ; `tsconfig.app.json` : `strict: false` |
-| Q3 | 7 fichiers > 590 lignes (EmailConfigManager 928, ClotureReunionModal 720, PretsAdmin 673, CalendrierBeneficiairesManager 668, UtilisateursAdmin 661, CaisseAdmin 636, MemberDetailSheet 625) |
-| P | 60 fichiers utilisent `formatFCFA` (devise codée en dur) vs 4 seulement `formatCurrencyForAssociation` — le multi-tenant/i18n du Lot 6 n'est pas propagé |
+Correctifs monitoring/sécurité (CSP vidéos, alertes prêts, statut aides, search_path, vue matérialisée, jsPDF) : appliqués.
 
-## Plan d'exécution
+---
 
-### Lot B-bis — Finition bénéficiaires (rapide)
-1. Extraire le dialog de paiement dans `src/components/beneficiaires/ValiderPaiementBeneficiaireModal.tsx` (props : `beneficiaireId`, `open`, `onOpenChange`, `onSuccess`), extraire aussi le dialog d'assignation dans `AssignerBeneficiaireModal.tsx`.
-2. Réduire `BeneficiairesReunionWidget.tsx` à la liste + l'orchestration des deux modales.
-3. Rédiger `docs/LOT_B_BENEFICIAIRES.md` (RPC `auto_fill_reunion_beneficiaires`, `valider_paiement_beneficiaire`, trigger, écrans, vérifs manuelles).
+## Plan de finalisation
 
-### Lot Q1 — Permissions granulaires (sécurité)
-1. Retirer le bypass `isAdministrateur` de `hasPermission` / `canAccessResource` ; conserver un `isAdmin` exposé pour les usages UI explicites.
-2. Vérifier par requête que le rôle `administrateur` possède bien toutes les lignes `role_permissions` nécessaires ; compléter par migration de données si des ressources manquent (sinon l'admin perdra des écrans).
-3. Étendre `src/test/security/rls.test.ts` / `docs/PERMISSIONS_TESTS.md` avec un cas « admin sans permission explicite ».
+### Étape 1 — Lot P : unification de la devise (impact utilisateur)
+1. Migrer les 63 fichiers `formatFCFA` vers `useMoney()` par domaine : finance (caisse, prêts, cotisations) → aides/bénéficiaires → pages publiques/dashboard.
+2. Conserver `formatFCFA` uniquement comme fonction non-React pour les exports PDF, alimentée par le registre de devise global.
+3. Audit realtime : un canal partagé par table, cleanup systématique dans `useRealtimeUpdates` / `useSupabaseRealtime`.
+4. Mise à jour `docs/I18N_THEMING.md` + `docs/CHANGELOG.md`.
 
-### Lot Q2 — strictNullChecks
-1. Activer `strictNullChecks: true` (puis `strict` côté app si le volume reste tenable), lancer `tsgo` et récupérer la liste d'erreurs.
-2. Corriger par vagues thématiques : `src/domain/finance/*`, puis hooks, puis pages — en privilégiant les gardes (`?.`, `??`) plutôt que les `!`.
-3. Aucune modification de logique métier ; la CI (typecheck déjà présent dans `ci.yml`) sert de garde-fou.
-
-### Lot Q3 — Découpage des gros composants
-Ordre par risque décroissant, un composant par étape, avec extraction en sous-composants `_components/` + hook de données dédié :
+### Étape 2 — Lot Q3 : découpage des composants > 600 lignes
+Un fichier par sous-étape, extraction en sous-composants + hook de données, sans changement fonctionnel :
 1. `EmailConfigManager.tsx` (928) → onglets provider / SMTP / test.
-2. `ClotureReunionModal.tsx` (720) → étapes de clôture (sanctions, cotisations, récapitulatif).
-3. `PretsAdmin.tsx` (673) et `CaisseAdmin.tsx` (636) → tableaux + filtres + modales séparés.
-4. `UtilisateursAdmin.tsx` (661), `CalendrierBeneficiairesManager.tsx` (668), `MemberDetailSheet.tsx` (625).
+2. `ClotureReunionModal.tsx` (720) → étapes sanctions / cotisations / récapitulatif.
+3. `useSiteContent.ts` (697) → hooks par section de contenu.
+4. `PretsAdmin.tsx` (673), `CaisseAdmin.tsx` (636) → tableau + filtres + modales.
+5. `CalendrierBeneficiairesManager.tsx` (668), `UtilisateursAdmin.tsx` (661), `MemberDetailSheet.tsx` (625), `CotisationsMensuellesExerciceManager.tsx` (615).
 
-### Lot P — Unification devise & realtime
-1. Créer un hook unique `useMoney()` s'appuyant sur `formatCurrencyForAssociation` + `AssociationContext`, et migrer progressivement les 60 fichiers `formatFCFA` (garder `formatFCFA` comme alias déprécié pour les exports PDF hors React).
-2. Auditer les abonnements realtime (`useRealtimeUpdates`, `useSupabaseRealtime`) : un seul canal partagé par table, cleanup systématique.
-3. Mettre à jour `docs/CHANGELOG.md` et `docs/I18N_THEMING.md`.
+### Étape 3 — Lot Q2 : typage strict (en dernier)
+1. Activer `strictNullChecks`, relever la liste d'erreurs via typecheck.
+2. Corriger par vagues : `src/domain/finance/*` → hooks → pages, avec gardes (`?.`, `??`) plutôt que `!`.
+3. Puis `strict: true` sur `tsconfig.app.json` si le volume restant est tenable.
 
-## Ordre recommandé
-B-bis → Q1 → P → Q3 → Q2 (le passage en strict en dernier, une fois les fichiers découpés, pour limiter le volume d'erreurs à traiter).
+### Étape 4 — Clôture
+- Relancer tests Vitest + scan de sécurité.
+- Mettre à jour `docs/AUDIT_CORRECTIONS_2026_07.md` avec la note recalculée et `docs/CHANGELOG.md`.
 
 ## Détails techniques
-- Aucune migration SQL nouvelle n'est nécessaire, sauf éventuellement un `INSERT` de complétion dans `role_permissions` au Lot Q1 (via l'outil de données, pas une migration de schéma).
-- Les changements Q1 sont les seuls à impact fonctionnel visible immédiat : à valider en préview avec un compte administrateur avant publication.
+- Aucune migration SQL nouvelle prévue ; travaux exclusivement frontend/typage/documentation.
+- Le Lot P est le seul à effet visible immédiat (affichage des montants) : à contrôler en préview sur les écrans caisse, prêts et Ma Situation.

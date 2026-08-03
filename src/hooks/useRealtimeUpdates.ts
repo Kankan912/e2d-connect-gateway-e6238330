@@ -1,19 +1,21 @@
 import { useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const POSTGRES_CHANGES: any = 'postgres_changes';
+import { subscribeToTable, type RealtimeEvent } from "@/lib/realtimeChannels";
 
 interface UseRealtimeUpdatesOptions {
   table: string;
   onUpdate: () => void;
   enabled?: boolean;
-  event?: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
+  event?: RealtimeEvent;
 }
 
-export function useRealtimeUpdates({ 
-  table, 
-  onUpdate, 
+/**
+ * S'abonne aux changements d'une table via le registre de canaux partagés
+ * (`src/lib/realtimeChannels.ts`) : un canal unique par couple table/événement,
+ * cleanup automatique au démontage du dernier abonné.
+ */
+export function useRealtimeUpdates({
+  table,
+  onUpdate,
   enabled = true,
   event = '*'
 }: UseRealtimeUpdatesOptions) {
@@ -22,20 +24,6 @@ export function useRealtimeUpdates({
 
   useEffect(() => {
     if (!enabled) return;
-
-    const channelName = `realtime-${table}-${Date.now()}`;
-    
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        POSTGRES_CHANGES,
-        { event, schema: 'public', table },
-        () => callbackRef.current()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeToTable(table, event, () => callbackRef.current());
   }, [table, enabled, event]);
 }
