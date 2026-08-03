@@ -226,7 +226,7 @@ export function CotisationsTypesManager() {
                 <Button type="button" variant="outline" onClick={resetForm}>
                   Annuler
                 </Button>
-                <Button onClick={handleSubmit} disabled={!formData.nom}>
+                <Button type="button" onClick={handleSubmit} disabled={!formData.nom}>
                   {editingType ? "Modifier" : "Créer"}
                 </Button>
               </DialogFooter>
