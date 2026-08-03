@@ -35,6 +35,8 @@ export const resendKeySchema = z
   .min(20, "Clé API Resend trop courte")
   .regex(/^re_/, "La clé doit commencer par 're_'");
 
-export type EmailService = "resend" | "smtp";
+export type EmailProvider = "resend" | "smtp";
+/** Alias conservé pour la lisibilité côté composants. */
+export type EmailService = EmailProvider;
 export type SmtpEncryption = "tls" | "ssl" | "none";
 export type ValidationScope = "common" | "smtp" | "resend-key" | "all";
