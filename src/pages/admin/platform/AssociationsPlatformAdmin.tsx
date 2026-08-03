@@ -37,6 +37,12 @@ import { PaletteEditor } from "@/components/branding/PaletteEditor";
 import { TemplatePicker } from "@/components/branding/TemplatePicker";
 import { DEFAULT_TEMPLATE_ID, SiteTemplateId, getTemplate } from "@/lib/siteTemplates";
 import { DEFAULT_PALETTE } from "@/lib/paletteFromLogo";
+import {
+  ASSOCIATION_STATUTS,
+  AssociationStatusBadge,
+} from "@/components/associations/AssociationStatusBadge";
+import { AssociationStatusActions } from "@/components/associations/AssociationStatusActions";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AssociationRow {
   id: string;
@@ -64,12 +70,16 @@ const SELECT_COLS =
 
 export default function AssociationsPlatformAdmin() {
   const qc = useQueryClient();
+  const { userRole } = useAuth();
+  const isSuperAdmin = userRole === "super_admin";
   const [open, setOpen] = useState(false);
   const [wizard, setWizard] = useState<AssociationWizardValues>(emptyWizardValues);
   const [lastPassword, setLastPassword] = useState<string | null>(null);
   const [editing, setEditing] = useState<AssociationRow | null>(null);
+  const [statutFilter, setStatutFilter] = useState<string>("tous");
+  const [search, setSearch] = useState("");
 
-  const { data: associations = [], isLoading } = useQuery({
+  const { data: associations = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["platform-associations"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -79,6 +89,17 @@ export default function AssociationsPlatformAdmin() {
       if (error) throw error;
       return (data ?? []) as unknown as AssociationRow[];
     },
+  });
+
+  const filtered = associations.filter((a) => {
+    const matchStatut = statutFilter === "tous" || a.statut === statutFilter;
+    const q = search.trim().toLowerCase();
+    const matchSearch =
+      !q ||
+      a.nom.toLowerCase().includes(q) ||
+      a.slug.toLowerCase().includes(q) ||
+      (a.sigle ?? "").toLowerCase().includes(q);
+    return matchStatut && matchSearch;
   });
 
   const provision = useMutation({
@@ -150,7 +171,6 @@ export default function AssociationsPlatformAdmin() {
           ville: row.ville,
           pays: row.pays,
           theme_tokens: row.theme_tokens,
-          statut: row.statut,
         })
         .eq("id", row.id)
         .select("id");
@@ -296,19 +316,13 @@ export default function AssociationsPlatformAdmin() {
                   </div>
                   <div>
                     <Label>Statut</Label>
-                    <Select
-                      value={editing.statut}
-                      onValueChange={(v) => setEditing({ ...editing, statut: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="actif">Actif</SelectItem>
-                        <SelectItem value="suspendu">Suspendu</SelectItem>
-                        <SelectItem value="archive">Archivé</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="pt-2">
+                      <AssociationStatusBadge statut={editing.statut} />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Le statut se modifie depuis le menu d'actions de la liste (opération tracée
+                        dans le journal d'audit).
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div>
