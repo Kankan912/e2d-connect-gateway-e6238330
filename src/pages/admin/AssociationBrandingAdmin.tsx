@@ -62,11 +62,17 @@ export default function AssociationBrandingAdmin() {
   const save = useMutation({
     mutationFn: async () => {
       if (!currentAssociation) throw new Error("Aucune association sélectionnée");
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("associations")
         .update({ theme_tokens: tokens, logo_url: logoUrl || null })
-        .eq("id", currentAssociation.id);
+        .eq("id", currentAssociation.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error(
+          "Aucune modification enregistrée : vous n'avez pas les droits d'administration sur cette association."
+        );
+      }
     },
     onSuccess: () => {
       toast({ title: t("branding.saved") });
