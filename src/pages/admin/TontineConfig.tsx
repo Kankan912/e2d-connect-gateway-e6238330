@@ -151,6 +151,8 @@ export default function TontineConfig() {
     setShowAddDialog(true);
   };
 
+  const { confirm, confirmDialog } = useConfirm();
+
   const handleDelete = async (id: string) => {
     const ok = await confirm({
       title: "Supprimer cette configuration ?",
@@ -388,6 +390,7 @@ export default function TontineConfig() {
           </Card>
         </TabsContent>
       </Tabs>
+      {confirmDialog}
     </div>
   );
 }

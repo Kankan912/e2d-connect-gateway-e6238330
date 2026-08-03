@@ -219,6 +219,8 @@ export default function Epargnes() {
     setShowAddDialog(true);
   };
 
+  const { confirm, confirmDialog } = useConfirm();
+
   const handleDelete = async (epargneId: string) => {
     const ok = await confirm({
       title: "Supprimer cette épargne ?",
@@ -534,6 +536,7 @@ export default function Epargnes() {
           onDelete={handleDelete}
         />
       </div>
+      {confirmDialog}
     </div>
   );
 }

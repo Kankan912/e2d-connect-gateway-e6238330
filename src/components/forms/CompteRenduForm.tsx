@@ -118,6 +118,8 @@ export default function CompteRenduForm({
     form.reset({ numero_ordre: point.numero_ordre, sujet: point.sujet, description: point.description || '', resolution: point.resolution || '', decisions: point.decisions || '' });
   };
 
+  const { confirm, confirmDialog } = useConfirm();
+
   const handleDeletePoint = async (pointId: string) => {
     const ok = await confirm({
       title: "Supprimer ce point ?",
@@ -189,6 +191,7 @@ export default function CompteRenduForm({
         <Button variant="outline" onClick={onCancel}>Fermer</Button>
         <Button onClick={onSuccess} disabled={points.length === 0}>Terminer le Compte-Rendu</Button>
       </div>
+      {confirmDialog}
     </div>
   );
 }

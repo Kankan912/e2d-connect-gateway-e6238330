@@ -57,6 +57,8 @@ export default function ActivitiesAdmin() {
     setOpen(true);
   };
 
+  const { confirm, confirmDialog } = useConfirm();
+
   const handleDelete = async (id: string) => {
     const ok = await confirm({
       title: "Supprimer cette activité ?",
@@ -213,6 +215,7 @@ export default function ActivitiesAdmin() {
           </Table>
         </CardContent>
       </Card>
+      {confirmDialog}
     </div>
   );
 }

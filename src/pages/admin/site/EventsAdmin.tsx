@@ -86,6 +86,8 @@ export default function EventsAdmin() {
     setOpen(true);
   };
 
+  const { confirm, confirmDialog } = useConfirm();
+
   const handleDelete = async (id: string) => {
     const ok = await confirm({
       title: "Supprimer cet événement ?",
@@ -416,6 +418,7 @@ export default function EventsAdmin() {
           </Card>
         </TabsContent>
       </Tabs>
+      {confirmDialog}
     </div>
   );
 }

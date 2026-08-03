@@ -65,6 +65,8 @@ export default function HeroAdmin() {
     }
   };
 
+  const { confirm, confirmDialog } = useConfirm();
+
   const handleDeleteImage = async (id: string) => {
     const ok = await confirm({
       title: "Supprimer cette image ?",
@@ -389,6 +391,7 @@ export default function HeroAdmin() {
           </form>
         </CardContent>
       </Card>
+      {confirmDialog}
     </div>
   );
 }

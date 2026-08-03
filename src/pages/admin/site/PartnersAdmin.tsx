@@ -57,6 +57,8 @@ export default function PartnersAdmin() {
     setOpen(true);
   };
 
+  const { confirm, confirmDialog } = useConfirm();
+
   const handleDelete = async (id: string) => {
     const ok = await confirm({
       title: "Supprimer ce partenaire ?",
@@ -216,6 +218,7 @@ export default function PartnersAdmin() {
           </Table>
         </CardContent>
       </Card>
+      {confirmDialog}
     </div>
   );
 }

@@ -128,6 +128,8 @@ export default function GalleryAdmin() {
     setAlbumOpen(true);
   };
 
+  const { confirm, confirmDialog } = useConfirm();
+
   const handleDelete = async (id: string) => {
     const ok = await confirm({
       title: "Supprimer cet élément ?",
@@ -596,6 +598,7 @@ export default function GalleryAdmin() {
           </div>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </div>
   );
 }
