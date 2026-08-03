@@ -157,12 +157,12 @@ export function useAlertesGlobales() {
       type: "pret_retard",
       niveau: joursRetard >= 30 ? "danger" : "warning",
       titre: `Prêt en retard (${joursRetard}j)`,
-      description: `${pret.membre?.prenom} ${pret.membre?.nom} - Reste ${formatFCFA(resume.resteAPayer)}`,
+      description: `${pret.membre?.prenom} ${pret.membre?.nom} - Reste ${formatFCFA(resteAPayer)}`,
       lien: "/dashboard/admin/finances/prets",
       dateCreation: new Date(pret.echeance),
       membreId: pret.membre?.id,
       membreNom: `${pret.membre?.prenom} ${pret.membre?.nom}`,
-      montant: resume.resteAPayer,
+      montant: resteAPayer,
     });
   });
 
