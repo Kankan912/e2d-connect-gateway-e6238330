@@ -62,7 +62,9 @@ serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
 
-    const { data: isSuper, error: isSuperErr } = await admin.rpc("is_super_admin");
+    const { data: isSuper, error: isSuperErr } = await admin.rpc("is_super_admin", {
+      _user_id: userData.user.id,
+    });
     if (isSuperErr) throw new InternalError("Impossible de vérifier le rôle super_admin", isSuperErr.message);
     if (!isSuper) throw new ForbiddenError("Réservé aux super administrateurs");
 
