@@ -19,6 +19,8 @@ export function useReunionsData() {
   const [selectedMembreId, setSelectedMembreId] = useState<string | null>(null);
   const [selectedMembreNom, setSelectedMembreNom] = useState<string>("");
   const [showHistoriqueMembre, setShowHistoriqueMembre] = useState(false);
+  const [reunionToDelete, setReunionToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { toast } = useToast();
 
   const { members } = useMembers();
@@ -151,6 +153,10 @@ export function useReunionsData() {
     getMemberName,
     handleEdit,
     handleDelete,
+    reunionToDelete,
+    setReunionToDelete,
+    deleting,
+    confirmDelete,
     handleCompteRendu,
     handleViewCompteRendu,
     handleFormSuccess,
