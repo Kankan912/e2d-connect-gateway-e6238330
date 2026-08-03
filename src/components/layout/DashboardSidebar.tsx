@@ -34,6 +34,7 @@ import {
   FileText,
   Smartphone,
   Activity,
+  ListChecks,
 } from "lucide-react";
 import {
   Sidebar,
@@ -89,6 +90,7 @@ const e2dGestionItems = [
   { title: "Utilisateurs", url: "/dashboard/admin/utilisateurs", icon: Users, resource: "roles" },
   { title: "Statistiques", url: "/dashboard/admin/stats", icon: BarChart3, resource: "stats" },
   { title: "Monitoring & Audit", url: "/dashboard/admin/monitoring", icon: Activity, resource: "roles" },
+  { title: "Suivi du programme", url: "/dashboard/admin/suivi-programme", icon: ListChecks, resource: "roles" },
   { title: "Rapports Financiers", url: "/dashboard/admin/rapports", icon: FileText, resource: "stats" },
   { title: "Configuration E2D", url: "/dashboard/admin/e2d-config", icon: Settings, resource: "config" },
 ];
