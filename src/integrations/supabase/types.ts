@@ -428,13 +428,17 @@ export type Database = {
           langue_principale: string
           locale: string
           logo_url: string | null
+          motif_statut: string | null
           nom: string
           pays: string | null
           sigle: string | null
           site_template: string
           slug: string
           statut: string
+          statut_change_le: string | null
+          statut_change_par: string | null
           subdomain: string | null
+          supprime_le: string | null
           telephone: string | null
           theme_tokens: Json
           updated_at: string
@@ -452,13 +456,17 @@ export type Database = {
           langue_principale?: string
           locale?: string
           logo_url?: string | null
+          motif_statut?: string | null
           nom: string
           pays?: string | null
           sigle?: string | null
           site_template?: string
           slug: string
           statut?: string
+          statut_change_le?: string | null
+          statut_change_par?: string | null
           subdomain?: string | null
+          supprime_le?: string | null
           telephone?: string | null
           theme_tokens?: Json
           updated_at?: string
@@ -476,13 +484,17 @@ export type Database = {
           langue_principale?: string
           locale?: string
           logo_url?: string | null
+          motif_statut?: string | null
           nom?: string
           pays?: string | null
           sigle?: string | null
           site_template?: string
           slug?: string
           statut?: string
+          statut_change_le?: string | null
+          statut_change_par?: string | null
           subdomain?: string | null
+          supprime_le?: string | null
           telephone?: string | null
           theme_tokens?: Json
           updated_at?: string
@@ -6885,6 +6897,10 @@ export type Database = {
       }
       cancel_loan_request: { Args: { _request_id: string }; Returns: Json }
       clear_must_change_flag: { Args: never; Returns: boolean }
+      count_association_dependencies: {
+        Args: { _association_id: string }
+        Returns: Json
+      }
       create_loan_request: {
         Args: {
           _avaliste_id: string
@@ -6978,6 +6994,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      hard_delete_association: {
+        Args: { _association_id: string }
+        Returns: Json
+      }
       has_association_access: {
         Args: { _association_id: string; _user_id?: string }
         Returns: boolean
@@ -7000,6 +7020,10 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_admin_of: {
         Args: { _association_id: string; _user_id?: string }
+        Returns: boolean
+      }
+      is_association_active: {
+        Args: { _association_id: string }
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id?: string }; Returns: boolean }
@@ -7095,6 +7119,10 @@ export type Database = {
       reverse_caisse_movement: {
         Args: { _operation_id: string; _reason?: string }
         Returns: string
+      }
+      set_association_statut: {
+        Args: { _association_id: string; _motif?: string; _statut: string }
+        Returns: Json
       }
       set_current_association: {
         Args: { _association_id: string }
