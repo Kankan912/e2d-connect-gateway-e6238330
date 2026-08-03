@@ -174,8 +174,9 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
       isSuperAdmin,
       loading,
       switchAssociation,
+      refreshAssociations: loadAssociations,
     }),
-    [currentAssociation, availableAssociations, isSuperAdmin, loading, switchAssociation]
+    [currentAssociation, availableAssociations, isSuperAdmin, loading, switchAssociation, loadAssociations]
   );
 
   return <AssociationContext.Provider value={value}>{children}</AssociationContext.Provider>;
