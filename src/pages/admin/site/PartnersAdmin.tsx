@@ -13,6 +13,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { partnerSchema, type PartnerFormValues } from "@/lib/validation/site-schemas";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
@@ -56,10 +57,14 @@ export default function PartnersAdmin() {
     setOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce partenaire ?")) {
-      deletePartner.mutate(id);
-    }
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Supprimer ce partenaire ?",
+      description: "Le partenaire ne sera plus affiché sur le site public.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) deletePartner.mutate(id);
   };
 
   if (isLoading) {

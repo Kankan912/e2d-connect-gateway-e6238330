@@ -17,6 +17,7 @@ import { ExercicesCotisationsTypesManager } from "@/components/config/ExercicesC
 import CalendrierBeneficiairesManager from "@/components/config/CalendrierBeneficiairesManager";
 
 import { logger } from "@/lib/logger";
+import { useConfirm } from "@/hooks/useConfirm";
 interface TontineConfig {
   id: string;
   cle: string;
@@ -151,7 +152,13 @@ export default function TontineConfig() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette configuration ?')) return;
+    const ok = await confirm({
+      title: "Supprimer cette configuration ?",
+      description: "La configuration bénéficiaire sera définitivement supprimée.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       const { error } = await supabase

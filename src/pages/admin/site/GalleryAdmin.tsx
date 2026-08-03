@@ -17,6 +17,7 @@ import { uploadFile } from "@/lib/storage-utils";
 import { gallerySchema, galleryAlbumSchema, type GalleryFormValues, type GalleryAlbumFormValues } from "@/lib/validation/site-schemas";
 
 import { logger } from "@/lib/logger";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
@@ -127,16 +128,26 @@ export default function GalleryAdmin() {
     setAlbumOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet élément ?")) {
-      deleteItem.mutate(id);
-    }
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Supprimer cet élément ?",
+      description: "Le média sera retiré de la galerie publique.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) deleteItem.mutate(id);
   };
 
-  const handleDeleteAlbum = (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet album ? Les médias associés ne seront pas supprimés.")) {
+  const handleDeleteAlbum = async (id: string) => {
+    const ok = await confirm({
+      title: "Supprimer cet album ?",
+      description: "Les médias associés ne seront pas supprimés.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) {
       deleteAlbum.mutate(id, {
-        onSuccess: () => toast.success("Album supprimé")
+        onSuccess: () => toast.success("Album supprimé"),
       });
     }
   };

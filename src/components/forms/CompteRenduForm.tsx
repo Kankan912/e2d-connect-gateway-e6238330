@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Trash2, Save } from 'lucide-react';
 
 import { logger } from "@/lib/logger";
+import { useConfirm } from "@/hooks/useConfirm";
 const pointSchema = z.object({
   numero_ordre: z.number().min(1),
   sujet: z.string().min(3, 'Sujet requis (min 3 caractères)'),
@@ -118,7 +119,13 @@ export default function CompteRenduForm({
   };
 
   const handleDeletePoint = async (pointId: string) => {
-    if (!confirm('Supprimer ce point ?')) return;
+    const ok = await confirm({
+      title: "Supprimer ce point ?",
+      description: "Ce point du compte-rendu sera définitivement supprimé.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const { error } = await supabase.from('rapports_seances').delete().eq('id', pointId);
       if (error) throw error;

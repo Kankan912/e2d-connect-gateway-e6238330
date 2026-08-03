@@ -18,6 +18,7 @@ import { fr } from "date-fns/locale";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { toast } from "sonner";
 import { eventSchema, type EventFormValues } from "@/lib/validation/site-schemas";
+import { useConfirm } from "@/hooks/useConfirm";
 
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p className="text-xs text-destructive mt-1">{msg}</p> : null;
@@ -85,10 +86,14 @@ export default function EventsAdmin() {
     setOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet événement ?")) {
-      deleteEvent.mutate(id);
-    }
+  const handleDelete = async (id: string) => {
+    const ok = await confirm({
+      title: "Supprimer cet événement ?",
+      description: "L'événement ne sera plus affiché sur le site public.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (ok) deleteEvent.mutate(id);
   };
 
   const saveCarouselConfig = () => {

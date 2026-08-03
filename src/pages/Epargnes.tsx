@@ -19,6 +19,7 @@ import EpargnesFilters from "./_components/EpargnesFilters";
 import EpargnesList from "./_components/EpargnesList";
 
 import { logger } from "@/lib/logger";
+import { useConfirm } from "@/hooks/useConfirm";
 
 interface Epargne {
   id: string;
@@ -218,8 +219,14 @@ export default function Epargnes() {
     setShowAddDialog(true);
   };
 
-  const handleDelete = (epargneId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette épargne ?')) return;
+  const handleDelete = async (epargneId: string) => {
+    const ok = await confirm({
+      title: "Supprimer cette épargne ?",
+      description: "L'opération d'épargne sera définitivement supprimée.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
     deleteEpargne.mutate(epargneId);
   };
 
