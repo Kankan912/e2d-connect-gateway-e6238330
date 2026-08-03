@@ -177,7 +177,7 @@ export default function HeroAdmin() {
                       />
                     </div>
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-1">
-                      <Button 
+                      <Button type="button" 
                         size="icon" 
                         variant="secondary" 
                         aria-label={`Déplacer l'image ${index + 1} vers le haut`}
@@ -187,7 +187,7 @@ export default function HeroAdmin() {
                       >
                         <ChevronUp className="w-4 h-4" />
                       </Button>
-                      <Button 
+                      <Button type="button" 
                         size="icon" 
                         variant="secondary"
                         aria-label={`Déplacer l'image ${index + 1} vers le bas`}
@@ -197,7 +197,7 @@ export default function HeroAdmin() {
                       >
                         <ChevronDown className="w-4 h-4" />
                       </Button>
-                      <Button 
+                      <Button type="button" 
                         size="icon" 
                         variant="destructive"
                         aria-label={`Supprimer l'image ${index + 1}`}

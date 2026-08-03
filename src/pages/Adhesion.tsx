@@ -143,7 +143,7 @@ const Adhesion = () => {
       {/* Hero Section */}
       <section className="pt-32 pb-20 bg-gradient-to-br from-primary to-secondary text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <Button
+          <Button type="button"
             variant="ghost"
             onClick={() => navigate("/")}
             className="mb-8 text-white hover:bg-white/10"

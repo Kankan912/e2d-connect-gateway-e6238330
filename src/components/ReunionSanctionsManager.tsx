@@ -377,7 +377,7 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
                     <TableCell>
                       <div className="flex gap-1">
                         {sanction.statut === 'active' && sanction.montant_amende > 0 && !isLocked && (
-                          <Button
+                          <Button type="button"
                             size="sm"
                             variant="outline"
                             onClick={() => markAsPaid.mutate(sanction.id)}
@@ -387,7 +387,7 @@ export default function ReunionSanctionsManager({ reunionId }: ReunionSanctionsM
                           </Button>
                         )}
                         {!isLocked && (
-                        <Button
+                        <Button type="button"
                           size="sm"
                           variant="destructive"
                           onClick={() => deleteSanction.mutate(sanction.id)}

@@ -159,8 +159,8 @@ export default function CompteRenduForm({
                       {point.resolution && <p className="text-sm text-muted-foreground line-clamp-2">{point.resolution}</p>}
                     </div>
                     <div className="flex gap-1 ml-2">
-                      <Button size="sm" variant="ghost" onClick={() => handleEditPoint(point)}>Éditer</Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDeletePoint(point.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => handleEditPoint(point)}>Éditer</Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => handleDeletePoint(point.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </div>
                   </div>
                 ))}
@@ -188,8 +188,8 @@ export default function CompteRenduForm({
         </CardContent>
       </Card>
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>Fermer</Button>
-        <Button onClick={onSuccess} disabled={points.length === 0}>Terminer le Compte-Rendu</Button>
+        <Button type="button" variant="outline" onClick={onCancel}>Fermer</Button>
+        <Button type="button" onClick={onSuccess} disabled={points.length === 0}>Terminer le Compte-Rendu</Button>
       </div>
       {confirmDialog}
     </div>

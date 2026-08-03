@@ -88,7 +88,7 @@ export default function PartnersAdmin() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { reset(); setEditingPartner(null); }}>
+            <Button type="button" onClick={() => { reset(); setEditingPartner(null); }}>
               <Plus className="w-4 h-4 mr-2" />
               Nouveau Partenaire
             </Button>
@@ -194,7 +194,7 @@ export default function PartnersAdmin() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button
+                      <Button type="button"
                         size="sm"
                         variant="ghost"
                         aria-label={`Modifier le partenaire ${partner.nom}`}
@@ -202,7 +202,7 @@ export default function PartnersAdmin() {
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button
+                      <Button type="button"
                         size="sm"
                         variant="ghost"
                         aria-label={`Supprimer le partenaire ${partner.nom}`}

@@ -164,7 +164,7 @@ export function CotisationsTypesManager() {
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => resetForm()}>
+              <Button type="button" onClick={() => resetForm()}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nouveau Type
               </Button>
@@ -223,7 +223,7 @@ export function CotisationsTypesManager() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={resetForm}>
+                <Button type="button" variant="outline" onClick={resetForm}>
                   Annuler
                 </Button>
                 <Button onClick={handleSubmit} disabled={!formData.nom}>
@@ -259,7 +259,7 @@ export function CotisationsTypesManager() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right space-x-2">
-                  <Button
+                  <Button type="button"
                     variant="outline"
                     size="icon"
                     onClick={() => handleEdit(type)}

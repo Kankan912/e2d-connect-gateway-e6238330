@@ -259,7 +259,7 @@ export function SanctionsTarifsManager() {
               </div>
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={() => resetForm()}>
+                  <Button type="button" onClick={() => resetForm()}>
                     <Plus className="h-4 w-4 mr-2" />
                     Nouveau Type
                   </Button>
@@ -317,7 +317,7 @@ export function SanctionsTarifsManager() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button variant="outline" onClick={resetForm}>Annuler</Button>
+                    <Button type="button" variant="outline" onClick={resetForm}>Annuler</Button>
                     <Button onClick={handleSubmit} disabled={!formData.nom}>
                       {editingType ? "Modifier" : "Créer"}
                     </Button>
@@ -347,7 +347,7 @@ export function SanctionsTarifsManager() {
                     <TableCell className="max-w-xs truncate">{type.description || "-"}</TableCell>
                     <TableCell>{formatFCFA(type.montant)}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="icon" onClick={() => handleEdit(type)}>
+                      <Button type="button" variant="outline" size="icon" onClick={() => handleEdit(type)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <AlertDialog>
@@ -460,8 +460,8 @@ export function SanctionsTarifsManager() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setTarifDialogOpen(false)}>Annuler</Button>
-                      <Button onClick={() => createTarifMutation.mutate({
+                      <Button type="button" variant="outline" onClick={() => setTarifDialogOpen(false)}>Annuler</Button>
+                      <Button type="button" onClick={() => createTarifMutation.mutate({
                         type_sanction_id: selectedType.id,
                         ...tarifFormData
                       })}>
@@ -488,7 +488,7 @@ export function SanctionsTarifsManager() {
                       <TableCell>{getCategorieMembreLabel(tarif.categorie_membre)}</TableCell>
                       <TableCell>{formatFCFA(tarif.montant)}</TableCell>
                       <TableCell className="text-right">
-                        <Button 
+                        <Button type="button" 
                           variant="outline" 
                           size="icon"
                           onClick={() => deleteTarifMutation.mutate(tarif.id)}

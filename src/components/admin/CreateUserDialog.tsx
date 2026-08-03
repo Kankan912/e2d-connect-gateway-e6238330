@@ -350,7 +350,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                     <span className="text-muted-foreground">Email : </span>
                     <span className="font-mono">{created.email}</span>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => copyToClipboard(created.email, "Email")}>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => copyToClipboard(created.email, "Email")}>
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -359,7 +359,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
                     <span className="text-muted-foreground">Mot de passe : </span>
                     <span className="font-mono">{created.password}</span>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => copyToClipboard(created.password, "Mot de passe")}>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => copyToClipboard(created.password, "Mot de passe")}>
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -370,7 +370,7 @@ export function CreateUserDialog({ open, onOpenChange }: CreateUserDialogProps) 
             </div>
 
             <DialogFooter className="gap-2 sm:gap-2">
-              <Button variant="outline" onClick={handleClose} disabled={isSending}>
+              <Button type="button" variant="outline" onClick={handleClose} disabled={isSending}>
                 Fermer
               </Button>
               <LoadingButton onClick={handleSendCredentials} loading={isSending} loadingText="Envoi...">
