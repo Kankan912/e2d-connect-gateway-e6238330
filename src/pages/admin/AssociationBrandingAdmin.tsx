@@ -68,7 +68,8 @@ export default function AssociationBrandingAdmin() {
     },
     onSuccess: () => {
       toast({ title: t("branding.saved") });
-      refresh();
+      void refreshAssociations();
+      qc.invalidateQueries();
     },
     onError: (e: unknown) => {
       const msg = e instanceof Error ? e.message : String(e);
