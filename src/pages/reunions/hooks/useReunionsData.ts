@@ -62,17 +62,27 @@ export function useReunionsData() {
     setShowForm(true);
   };
 
-  const handleDelete = async (reunionId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette réunion ?')) return;
+  // Suppression en deux temps : la confirmation est portée par un AlertDialog (pas de window.confirm).
+  const handleDelete = (reunionId: string) => {
+    setReunionToDelete(reunionId);
+  };
+
+  const confirmDelete = async () => {
+    if (!reunionToDelete) return;
+    setDeleting(true);
     try {
-      const { error } = await supabase.from('reunions').delete().eq('id', reunionId);
+      const { error } = await supabase.from('reunions').delete().eq('id', reunionToDelete);
       if (error) throw error;
       toast({ title: "Succès", description: "Réunion supprimée avec succès" });
+      setReunionToDelete(null);
       loadReunions();
     } catch (error: unknown) {
       toast({ title: "Erreur", description: "Impossible de supprimer la réunion: " + (error instanceof Error ? error.message : "Erreur"), variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   };
+
 
   const handleCompteRendu = (reunion: Reunion) => {
     setSelectedReunion(reunion);
