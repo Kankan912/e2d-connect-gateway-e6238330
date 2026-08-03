@@ -320,7 +320,11 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
 
             <div>
               <Label>Statut *</Label>
-              <Select value={statut} onValueChange={(val) => setValue("statut", val)}>
+              <Select
+                value={statut}
+                onValueChange={(val) => setValue("statut", val)}
+                disabled={!!initialData}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -331,6 +335,11 @@ export default function AideForm({ open, onClose, onSubmit, initialData }: AideF
                   <SelectItem value="remboursee">Remboursée</SelectItem>
                 </SelectContent>
               </Select>
+              {initialData && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Le statut se modifie via le workflow de validation de l'aide.
+                </p>
+              )}
               {errors.statut && (
                 <p className="text-sm text-destructive mt-1">{errors.statut.message}</p>
               )}
