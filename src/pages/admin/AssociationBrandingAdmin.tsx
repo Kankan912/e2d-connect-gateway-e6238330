@@ -24,11 +24,16 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrencyForAssociation } from "@/lib/formatCurrencyDynamic";
+import { LogoUploader } from "@/components/branding/LogoUploader";
+import { PaletteEditor } from "@/components/branding/PaletteEditor";
+import { TemplatePicker } from "@/components/branding/TemplatePicker";
+import { DEFAULT_PALETTE, paletteFromLogo } from "@/lib/paletteFromLogo";
+import { DEFAULT_TEMPLATE_ID, SiteTemplateId } from "@/lib/siteTemplates";
+import { Loader2, Wand2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 const DEFAULT_TOKENS: Record<string, string> = {
-  primary: "220 90% 56%",
-  secondary: "220 14% 96%",
-  accent: "220 90% 56%",
+  ...DEFAULT_PALETTE,
   radius: "0.5rem",
   currency_code: "FCFA",
   locale: "fr-FR",
@@ -43,13 +48,34 @@ export default function AssociationBrandingAdmin() {
 
   const [tokens, setTokens] = useState<Record<string, string>>(DEFAULT_TOKENS);
   const [logoUrl, setLogoUrl] = useState<string>("");
+  const [template, setTemplate] = useState<SiteTemplateId>(DEFAULT_TEMPLATE_ID);
+  const [extracting, setExtracting] = useState(false);
 
   useEffect(() => {
     if (currentAssociation) {
       setTokens({ ...DEFAULT_TOKENS, ...(currentAssociation.theme_tokens ?? {}) });
       setLogoUrl(currentAssociation.logo_url ?? "");
+      setTemplate((currentAssociation.site_template as SiteTemplateId) ?? DEFAULT_TEMPLATE_ID);
     }
   }, [currentAssociation]);
+
+  const generatePalette = async () => {
+    if (!logoUrl) {
+      toast({ title: "Téléversez d'abord un logo", variant: "destructive" });
+      return;
+    }
+    setExtracting(true);
+    try {
+      const palette = await paletteFromLogo(logoUrl);
+      setTokens((prev) => ({ ...prev, ...palette }));
+      toast({ title: "Charte générée depuis le logo" });
+    } catch (error: unknown) {
+      logger.error("[Branding] extraction palette:", error);
+      toast({ title: "Extraction impossible", description: "Image inaccessible", variant: "destructive" });
+    } finally {
+      setExtracting(false);
+    }
+  };
 
   const save = useMutation({
     mutationFn: async () => {
