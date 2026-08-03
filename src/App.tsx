@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AssociationProvider } from "@/contexts/AssociationContext";
+import { PublicAssociationProvider } from "@/contexts/PublicAssociationContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FullPageFallback } from "@/components/ui/page-loader";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
@@ -49,6 +50,12 @@ const TrackedRoutes = () => {
         <Route path="/change-password" element={<FirstPasswordChange />} />
         <Route path="/evenements/:id" element={<EventDetail />} />
         <Route path="/albums/:albumId" element={<AlbumDetail />} />
+        {/* Site public d'une association ciblée par slug : /s/:slug */}
+        <Route path="/s/:slug" element={<Index />} />
+        <Route path="/s/:slug/don" element={<Don />} />
+        <Route path="/s/:slug/adhesion" element={<Adhesion />} />
+        <Route path="/s/:slug/evenements/:id" element={<EventDetail />} />
+        <Route path="/s/:slug/albums/:albumId" element={<AlbumDetail />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -64,9 +71,11 @@ const App = () => (
         <Sonner />
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
-            <AssociationProvider>
-              <TrackedRoutes />
-            </AssociationProvider>
+            <PublicAssociationProvider>
+              <AssociationProvider>
+                <TrackedRoutes />
+              </AssociationProvider>
+            </PublicAssociationProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

@@ -6963,6 +6963,7 @@ export type Database = {
         Args: { echeance: string; montant_paye: number; montant_total: number }
         Returns: string
       }
+      get_public_association: { Args: { _slug: string }; Returns: Json }
       get_sanction_status: {
         Args: { montant_paye: number; montant_total: number }
         Returns: string

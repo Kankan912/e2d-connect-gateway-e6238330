@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { scopePublic } from "@/lib/tenantScope";
 import { toast } from "@/hooks/use-toast";
 
 import { logger } from "@/lib/logger";
@@ -14,9 +15,8 @@ export const useSiteHero = () => {
     queryFn: async () => {
       // Timeout 10s pour éviter un état "loading" infini si le réseau bloque
       // (extension, proxy, panne réseau intermittente).
-      const queryPromise = supabase
-        .from("site_hero")
-        .select("actif, badge_text, bouton_1_lien, bouton_1_texte, bouton_2_lien, bouton_2_texte, carousel_auto_play, carousel_interval, created_at, id, image_url, media_source, sous_titre, stat_1_label, stat_1_nombre, stat_2_label, stat_2_nombre, stat_3_label, stat_3_nombre, titre, updated_at")
+      const queryPromise = scopePublic(
+        supabase.from("site_hero").select("actif, badge_text, bouton_1_lien, bouton_1_texte, bouton_2_lien, bouton_2_texte, carousel_auto_play, carousel_interval, created_at, id, image_url, media_source, sous_titre, stat_1_label, stat_1_nombre, stat_2_label, stat_2_nombre, stat_3_label, stat_3_nombre, titre, updated_at"))
         .eq("actif", true)
         .maybeSingle();
 
@@ -70,9 +70,8 @@ export const useSiteAbout = () => {
   return useQuery({
     queryKey: ["site-about"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_about")
-        .select("actif, created_at, histoire_contenu, histoire_titre, id, sous_titre, titre, updated_at, valeurs")
+      const { data, error } = await scopePublic(
+        supabase.from("site_about").select("actif, created_at, histoire_contenu, histoire_titre, id, sous_titre, titre, updated_at, valeurs"))
         .eq("actif", true)
         .single();
 
@@ -111,9 +110,8 @@ export const useSiteActivities = () => {
   return useQuery({
     queryKey: ["site-activities"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_activities")
-        .select("actif, created_at, description, features, icon, id, ordre, titre, updated_at")
+      const { data, error } = await scopePublic(
+        supabase.from("site_activities").select("actif, created_at, description, features, icon, id, ordre, titre, updated_at"))
         .eq("actif", true)
         .order("ordre", { ascending: true });
 
@@ -192,9 +190,8 @@ export const useSiteEvents = () => {
   return useQuery({
     queryKey: ["site-events"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_events")
-        .select("actif, album_id, auto_sync, created_at, date, description, heure, id, image_url, lieu, match_id, match_type, media_source, ordre, titre, type, updated_at")
+      const { data, error } = await scopePublic(
+        supabase.from("site_events").select("actif, album_id, auto_sync, created_at, date, description, heure, id, image_url, lieu, match_id, match_type, media_source, ordre, titre, type, updated_at"))
         .eq("actif", true)
         .order("date", { ascending: false });
 
@@ -273,9 +270,8 @@ export const useSiteGallery = () => {
   return useQuery({
     queryKey: ["site-gallery"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_gallery")
-        .select("actif, album_id, categorie, created_at, id, image_url, media_source, ordre, titre, updated_at, video_url")
+      const { data, error } = await scopePublic(
+        supabase.from("site_gallery").select("actif, album_id, categorie, created_at, id, image_url, media_source, ordre, titre, updated_at, video_url"))
         .eq("actif", true)
         .order("ordre", { ascending: true });
 
@@ -354,9 +350,8 @@ export const useSitePartners = () => {
   return useQuery({
     queryKey: ["site-partners"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_partners")
-        .select("actif, created_at, description, id, logo_url, media_source, nom, ordre, site_web, updated_at")
+      const { data, error } = await scopePublic(
+        supabase.from("site_partners").select("actif, created_at, description, id, logo_url, media_source, nom, ordre, site_web, updated_at"))
         .eq("actif", true)
         .order("ordre", { ascending: true });
 
@@ -435,9 +430,8 @@ export const useSiteConfig = () => {
   return useQuery({
     queryKey: ["site-config"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_config")
-        .select("categorie, cle, created_at, description, id, type, updated_at, valeur")
+      const { data, error } = await scopePublic(
+        supabase.from("site_config").select("categorie, cle, created_at, description, id, type, updated_at, valeur"))
         .order("categorie", { ascending: true });
 
       if (error) throw error;
@@ -474,9 +468,8 @@ export const useSiteHeroImages = (heroId?: string) => {
     queryKey: ["site-hero-images", heroId],
     queryFn: async () => {
       if (!heroId) return [];
-      const { data, error } = await supabase
-        .from("site_hero_images")
-        .select("actif, created_at, hero_id, id, image_url, ordre, updated_at")
+      const { data, error } = await scopePublic(
+        supabase.from("site_hero_images").select("actif, created_at, hero_id, id, image_url, ordre, updated_at"))
         .eq("hero_id", heroId)
         .eq("actif", true)
         .order("ordre", { ascending: true });
@@ -558,9 +551,8 @@ export const useSiteGalleryAlbums = () => {
   return useQuery({
     queryKey: ["site-gallery-albums"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_gallery_albums")
-        .select("actif, cover_image_url, created_at, description, id, ordre, titre, updated_at")
+      const { data, error } = await scopePublic(
+        supabase.from("site_gallery_albums").select("actif, cover_image_url, created_at, description, id, ordre, titre, updated_at"))
         .eq("actif", true)
         .order("ordre", { ascending: true });
 
@@ -643,9 +635,8 @@ export const useSiteGalleryByAlbum = (albumId?: string) => {
     queryKey: ["site-gallery", "album", albumId],
     queryFn: async () => {
       if (!albumId) return [];
-      const { data, error } = await supabase
-        .from("site_gallery")
-        .select("actif, album_id, categorie, created_at, id, image_url, media_source, ordre, titre, updated_at, video_url")
+      const { data, error } = await scopePublic(
+        supabase.from("site_gallery").select("actif, album_id, categorie, created_at, id, image_url, media_source, ordre, titre, updated_at, video_url"))
         .eq("album_id", albumId)
         .eq("actif", true)
         .order("ordre", { ascending: true });
@@ -662,9 +653,8 @@ export const useSiteEventsCarouselConfig = () => {
   return useQuery({
     queryKey: ["site-events-carousel-config"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_events_carousel_config")
-        .select("actif, auto_play, created_at, id, interval, show_arrows, show_indicators, updated_at")
+      const { data, error } = await scopePublic(
+        supabase.from("site_events_carousel_config").select("actif, auto_play, created_at, id, interval, show_arrows, show_indicators, updated_at"))
         .eq("actif", true)
         .single();
 
