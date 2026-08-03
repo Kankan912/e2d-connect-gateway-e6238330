@@ -6,6 +6,8 @@ import { associationStore, CurrentAssociation } from '@/stores/associationStore'
 import { logger } from '@/lib/logger';
 import { setActiveCurrency } from '@/lib/utils';
 import { resolveCurrency } from '@/lib/formatCurrencyDynamic';
+import { applyThemeTokens } from '@/lib/applyTheme';
+import i18n, { LANGUAGE_STORAGE_KEY } from '@/i18n';
 
 const STORAGE_KEY = 'lovable_current_association';
 
@@ -16,6 +18,9 @@ interface AssociationRow {
   logo_url: string | null;
   theme_tokens: Record<string, string> | null;
   statut?: string | null;
+  langue_principale?: string | null;
+  site_template?: string | null;
+  sigle?: string | null;
 }
 
 interface AssociationContextType {
@@ -39,7 +44,7 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
 
   const isSuperAdmin = userRole === 'super_admin';
 
-  // Applique les theme_tokens comme variables CSS + devise active
+  // Applique les theme_tokens (charte complète) + devise + langue principale
   const applyTheme = useCallback((assoc: AssociationRow | null) => {
     // Devise active du tenant (utilisée par formatFCFA hors React / PDF)
     const resolved = resolveCurrency(assoc?.theme_tokens ?? null);
@@ -48,19 +53,14 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
       assoc?.theme_tokens?.locale ?? 'fr-FR',
     );
 
-    if (typeof document === 'undefined') return;
-    const root = document.documentElement;
-    // Reset : on nettoie les vars tenant précédentes
-    Array.from(root.style)
-      .filter((prop) => prop.startsWith('--tenant-'))
-      .forEach((prop) => root.style.removeProperty(prop));
+    applyThemeTokens(assoc?.theme_tokens ?? null);
 
-    if (!assoc?.theme_tokens) return;
-    Object.entries(assoc.theme_tokens).forEach(([key, value]) => {
-      if (typeof value === 'string') {
-        root.style.setProperty(`--tenant-${key}`, value);
-      }
-    });
+    // Langue principale de l'association (l'utilisateur peut toujours la changer
+    // manuellement ensuite via le sélecteur de langue).
+    const lang = assoc?.langue_principale;
+    if (lang && !localStorage.getItem(LANGUAGE_STORAGE_KEY)) {
+      void i18n.changeLanguage(lang);
+    }
   }, []);
 
   const loadAssociations = useCallback(async () => {
@@ -80,7 +80,7 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
       if (isSuperAdmin) {
         const { data, error } = await supabase
           .from('associations')
-          .select('id, slug, nom, logo_url, theme_tokens, statut')
+          .select('id, slug, nom, sigle, logo_url, theme_tokens, statut, langue_principale, site_template')
           .eq('statut', 'actif')
           .order('nom');
         if (error) throw error;
@@ -95,7 +95,7 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
         if (ids.length) {
           const { data, error } = await supabase
             .from('associations')
-            .select('id, slug, nom, logo_url, theme_tokens, statut')
+            .select('id, slug, nom, sigle, logo_url, theme_tokens, statut, langue_principale, site_template')
             .in('id', ids)
             .order('nom');
           if (error) throw error;
@@ -107,7 +107,7 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
       if (!assocs.length) {
         const { data } = await supabase
           .from('associations')
-          .select('id, slug, nom, logo_url, theme_tokens, statut')
+          .select('id, slug, nom, sigle, logo_url, theme_tokens, statut, langue_principale, site_template')
           .eq('slug', 'e2d')
           .maybeSingle();
         if (data) assocs = [data as AssociationRow];

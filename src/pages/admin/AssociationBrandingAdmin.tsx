@@ -24,11 +24,16 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrencyForAssociation } from "@/lib/formatCurrencyDynamic";
+import { LogoUploader } from "@/components/branding/LogoUploader";
+import { PaletteEditor } from "@/components/branding/PaletteEditor";
+import { TemplatePicker } from "@/components/branding/TemplatePicker";
+import { DEFAULT_PALETTE, paletteFromLogo } from "@/lib/paletteFromLogo";
+import { DEFAULT_TEMPLATE_ID, SiteTemplateId } from "@/lib/siteTemplates";
+import { Loader2, Wand2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 const DEFAULT_TOKENS: Record<string, string> = {
-  primary: "220 90% 56%",
-  secondary: "220 14% 96%",
-  accent: "220 90% 56%",
+  ...DEFAULT_PALETTE,
   radius: "0.5rem",
   currency_code: "FCFA",
   locale: "fr-FR",
@@ -43,20 +48,41 @@ export default function AssociationBrandingAdmin() {
 
   const [tokens, setTokens] = useState<Record<string, string>>(DEFAULT_TOKENS);
   const [logoUrl, setLogoUrl] = useState<string>("");
+  const [template, setTemplate] = useState<SiteTemplateId>(DEFAULT_TEMPLATE_ID);
+  const [extracting, setExtracting] = useState(false);
 
   useEffect(() => {
     if (currentAssociation) {
       setTokens({ ...DEFAULT_TOKENS, ...(currentAssociation.theme_tokens ?? {}) });
       setLogoUrl(currentAssociation.logo_url ?? "");
+      setTemplate((currentAssociation.site_template as SiteTemplateId) ?? DEFAULT_TEMPLATE_ID);
     }
   }, [currentAssociation]);
+
+  const generatePalette = async () => {
+    if (!logoUrl) {
+      toast({ title: "Téléversez d'abord un logo", variant: "destructive" });
+      return;
+    }
+    setExtracting(true);
+    try {
+      const palette = await paletteFromLogo(logoUrl);
+      setTokens((prev) => ({ ...prev, ...palette }));
+      toast({ title: "Charte générée depuis le logo" });
+    } catch (error: unknown) {
+      logger.error("[Branding] extraction palette:", error);
+      toast({ title: "Extraction impossible", description: "Image inaccessible", variant: "destructive" });
+    } finally {
+      setExtracting(false);
+    }
+  };
 
   const save = useMutation({
     mutationFn: async () => {
       if (!currentAssociation) throw new Error("Aucune association sélectionnée");
       const { data, error } = await supabase
         .from("associations")
-        .update({ theme_tokens: tokens, logo_url: logoUrl || null })
+        .update({ theme_tokens: tokens, logo_url: logoUrl || null, site_template: template })
         .eq("id", currentAssociation.id)
         .select("id");
       if (error) throw error;
@@ -97,43 +123,29 @@ export default function AssociationBrandingAdmin() {
       <Card>
         <CardHeader>
           <CardTitle>{t("branding.logo")}</CardTitle>
-          <CardDescription>URL publique de votre logo (bucket Storage recommandé).</CardDescription>
+          <CardDescription>
+            Téléversez votre logo : la charte graphique peut en être déduite automatiquement.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input
-            placeholder="https://..."
-            value={logoUrl}
-            onChange={(e) => setLogoUrl(e.target.value)}
-          />
-          {logoUrl && (
-            <img src={logoUrl} alt="Logo" className="h-20 w-20 object-contain rounded border" />
-          )}
+          <LogoUploader value={logoUrl || null} onChange={(url) => setLogoUrl(url ?? "")} folder="associations" />
+          <Button type="button" variant="secondary" onClick={generatePalette} disabled={extracting}>
+            {extracting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+            Générer la charte depuis le logo
+          </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>{t("branding.colors")}</CardTitle>
-          <CardDescription>{t("branding.hsl_hint")}</CardDescription>
+          <CardDescription>
+            Ces couleurs s'appliquent au portail d'administration, au site public et à la page de connexion.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          {(["primary", "secondary", "accent"] as const).map((key) => (
-            <div key={key} className="space-y-2">
-              <Label>{t(`branding.${key}`)}</Label>
-              <div className="flex gap-2 items-center">
-                <div
-                  className="h-9 w-9 rounded border shrink-0"
-                  style={{ background: `hsl(${tokens[key] ?? DEFAULT_TOKENS[key]})` }}
-                />
-                <Input
-                  value={tokens[key] ?? ""}
-                  onChange={(e) => setToken(key, e.target.value)}
-                  placeholder={DEFAULT_TOKENS[key]}
-                />
-              </div>
-            </div>
-          ))}
-          <div className="space-y-2">
+        <CardContent className="space-y-4">
+          <PaletteEditor tokens={tokens} onChange={setTokens} />
+          <div className="space-y-2 max-w-xs">
             <Label>{t("branding.radius")}</Label>
             <Input
               value={tokens.radius ?? ""}
@@ -143,6 +155,19 @@ export default function AssociationBrandingAdmin() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Modèle de site public</CardTitle>
+          <CardDescription>
+            Le changement de modèle modifie uniquement la mise en page : aucun contenu n'est supprimé.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TemplatePicker value={template} onChange={setTemplate} />
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader>

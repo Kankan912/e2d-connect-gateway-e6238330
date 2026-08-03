@@ -21,9 +21,18 @@ const SLUG_RE = /^[a-z][a-z0-9-]{1,30}[a-z0-9]$/;
 const BodySchema = z.object({
   slug: z.string().trim().toLowerCase().regex(SLUG_RE, "Slug invalide (a-z, 0-9, -)"),
   nom: z.string().trim().min(2).max(100),
+  sigle: z.string().trim().max(30).optional().nullable(),
   description: z.string().trim().max(500).optional().nullable(),
   logo_url: z.string().url().max(500).optional().nullable(),
   locale: z.string().trim().max(10).default("fr"),
+  langue_principale: z.string().trim().max(5).default("fr"),
+  site_template: z.string().trim().max(40).default("institutionnel"),
+  subdomain: z.string().trim().toLowerCase().max(63).optional().nullable(),
+  email_contact: z.string().trim().toLowerCase().email().max(255).optional().nullable(),
+  telephone: z.string().trim().max(30).optional().nullable(),
+  adresse: z.string().trim().max(255).optional().nullable(),
+  ville: z.string().trim().max(100).optional().nullable(),
+  pays: z.string().trim().max(100).optional().nullable(),
   theme_tokens: z.record(z.string()).optional().default({}),
   feature_flags: z.record(z.any()).optional().default({}),
   admin: z.object({
@@ -88,9 +97,18 @@ serve(async (req) => {
       .insert({
         slug: input.slug,
         nom: input.nom,
+        sigle: input.sigle ?? null,
         description: input.description ?? null,
         logo_url: input.logo_url ?? null,
         locale: input.locale,
+        langue_principale: input.langue_principale,
+        site_template: input.site_template,
+        subdomain: input.subdomain ?? input.slug,
+        email_contact: input.email_contact ?? null,
+        telephone: input.telephone ?? null,
+        adresse: input.adresse ?? null,
+        ville: input.ville ?? null,
+        pays: input.pays ?? null,
         theme_tokens: input.theme_tokens,
         feature_flags: input.feature_flags,
         statut: "actif",
@@ -230,6 +248,50 @@ serve(async (req) => {
     ].map((s) => ({ ...s, association_id: associationId }));
 
     await admin.from("association_settings").insert(defaultSettings);
+
+    // ---- 10. Site public par défaut (portail vitrine du tenant) ----
+    const placeholderImage =
+      input.logo_url ?? "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1600";
+
+    const seed = await Promise.allSettled([
+      admin.from("site_hero").insert({
+        association_id: associationId,
+        titre: input.nom,
+        sous_titre: input.description ?? `Bienvenue sur le site de ${input.nom}`,
+        badge_text: input.sigle ?? input.nom,
+        image_url: placeholderImage,
+        actif: true,
+      }),
+      admin.from("site_about").insert({
+        association_id: associationId,
+        titre: "À propos",
+        sous_titre: `Notre mission — ${input.nom}`,
+        histoire_titre: "Notre histoire",
+        histoire_contenu:
+          input.description ?? `${input.nom} est une association engagée auprès de ses membres.`,
+        actif: true,
+      }),
+      admin.from("site_events_carousel_config").insert({ association_id: associationId, actif: true }),
+      admin.from("site_config").insert(
+        [
+          { cle: "site_nom", valeur: input.nom, categorie: "general", type: "text" },
+          { cle: "site_email", valeur: input.email_contact ?? "", categorie: "contact", type: "text" },
+          { cle: "site_telephone", valeur: input.telephone ?? "", categorie: "contact", type: "text" },
+          { cle: "site_adresse", valeur: input.adresse ?? "", categorie: "contact", type: "text" },
+          { cle: "site_ville", valeur: input.ville ?? "", categorie: "contact", type: "text" },
+          { cle: "site_pays", valeur: input.pays ?? "", categorie: "contact", type: "text" },
+          { cle: "site_template", valeur: input.site_template, categorie: "general", type: "text" },
+        ].map((c) => ({ ...c, association_id: associationId })),
+      ),
+    ]);
+    seed.forEach((r, i) => {
+      if (r.status === "rejected") {
+        console.warn(`[provision-association] Seed site #${i} échoué:`, r.reason);
+      } else if (r.value?.error) {
+        console.warn(`[provision-association] Seed site #${i} erreur:`, r.value.error.message);
+      }
+    });
+
 
     return successResponse(
       {
