@@ -417,49 +417,76 @@ export type Database = {
       }
       associations: {
         Row: {
+          adresse: string | null
           caisse_config: Json
           created_at: string | null
           description: string | null
           email_config: Json
+          email_contact: string | null
           feature_flags: Json
           id: string
+          langue_principale: string
           locale: string
           logo_url: string | null
           nom: string
+          pays: string | null
+          sigle: string | null
+          site_template: string
           slug: string
           statut: string
+          subdomain: string | null
+          telephone: string | null
           theme_tokens: Json
           updated_at: string
+          ville: string | null
         }
         Insert: {
+          adresse?: string | null
           caisse_config?: Json
           created_at?: string | null
           description?: string | null
           email_config?: Json
+          email_contact?: string | null
           feature_flags?: Json
           id?: string
+          langue_principale?: string
           locale?: string
           logo_url?: string | null
           nom: string
+          pays?: string | null
+          sigle?: string | null
+          site_template?: string
           slug: string
           statut?: string
+          subdomain?: string | null
+          telephone?: string | null
           theme_tokens?: Json
           updated_at?: string
+          ville?: string | null
         }
         Update: {
+          adresse?: string | null
           caisse_config?: Json
           created_at?: string | null
           description?: string | null
           email_config?: Json
+          email_contact?: string | null
           feature_flags?: Json
           id?: string
+          langue_principale?: string
           locale?: string
           logo_url?: string | null
           nom?: string
+          pays?: string | null
+          sigle?: string | null
+          site_template?: string
           slug?: string
           statut?: string
+          subdomain?: string | null
+          telephone?: string | null
           theme_tokens?: Json
           updated_at?: string
+          ville?: string | null
         }
         Relationships: []
       }
