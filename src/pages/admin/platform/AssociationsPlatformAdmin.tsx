@@ -447,10 +447,19 @@ export default function AssociationsPlatformAdmin() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)} disabled={update.isPending}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditing(null)}
+              disabled={update.isPending}
+            >
               Annuler
             </Button>
-            <Button onClick={() => editing && update.mutate(editing)} disabled={update.isPending}>
+            <Button
+              type="button"
+              onClick={() => editing && update.mutate(editing)}
+              disabled={update.isPending}
+            >
               {update.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Enregistrer
             </Button>
@@ -462,11 +471,42 @@ export default function AssociationsPlatformAdmin() {
         <CardHeader>
           <CardTitle>Associations existantes</CardTitle>
           <CardDescription>{associations.length} association(s) sur la plateforme.</CardDescription>
+          <div className="flex flex-col sm:flex-row gap-3 pt-3">
+            <Input
+              placeholder="Rechercher (nom, sigle, slug)…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="sm:max-w-xs"
+            />
+            <Select value={statutFilter} onValueChange={setStatutFilter}>
+              <SelectTrigger className="sm:w-56">
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tous">Tous les statuts</SelectItem>
+                {ASSOCIATION_STATUTS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="py-12 flex justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : isError ? (
+            <div className="py-12 text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Impossible de charger les associations :{" "}
+                {error instanceof Error ? error.message : "erreur inconnue"}
+              </p>
+              <Button type="button" variant="outline" onClick={() => void refetch()}>
+                Réessayer
+              </Button>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -482,7 +522,7 @@ export default function AssociationsPlatformAdmin() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {associations.map((a) => (
+                  {filtered.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -503,29 +543,45 @@ export default function AssociationsPlatformAdmin() {
                       <TableCell className="text-xs">{getTemplate(a.site_template).nom}</TableCell>
                       <TableCell className="text-xs">{a.langue_principale ?? a.locale}</TableCell>
                       <TableCell>
-                        <Badge variant={a.statut === "actif" ? "default" : "secondary"}>{a.statut}</Badge>
+                        <AssociationStatusBadge statut={a.statut} />
                       </TableCell>
-                      <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" asChild aria-label="Voir le site public">
-                          <a href={`/s/${a.slug}`} target="_blank" rel="noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Paramétrer"
-                          onClick={() => setEditing(a)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                            aria-label="Voir le site public"
+                          >
+                            <a href={`/s/${a.slug}`} target="_blank" rel="noreferrer">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Paramétrer"
+                            onClick={() => setEditing(a)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <AssociationStatusActions
+                            association={a}
+                            canManage={isSuperAdmin}
+                            canHardDelete={isSuperAdmin}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {!associations.length && (
+                  {!filtered.length && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                        Aucune association.
+                        {associations.length
+                          ? "Aucune association ne correspond aux filtres."
+                          : "Aucune association."}
                       </TableCell>
                     </TableRow>
                   )}
