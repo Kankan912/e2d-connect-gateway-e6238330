@@ -34,6 +34,7 @@ import {
   FileText,
   Smartphone,
   Activity,
+  ListChecks,
 } from "lucide-react";
 import {
   Sidebar,
