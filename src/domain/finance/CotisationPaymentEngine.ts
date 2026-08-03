@@ -57,7 +57,10 @@ export const CotisationPaymentEngine = {
    */
   computeBeneficiaireExpected(totalMensuel: number, nbMoisExercice: number): number {
     const mensuel = Math.max(0, Number(totalMensuel) || 0);
-    const mois = Math.max(1, Math.floor(Number(nbMoisExercice) || 12));
+    const moisBrut = Number(nbMoisExercice);
+    // 0 mois est une valeur explicite : on force 1 mois (et non le défaut de 12).
+    const mois = Number.isFinite(moisBrut) ? Math.max(1, Math.floor(moisBrut)) : 12;
     return mensuel * mois;
   },
 };
+
