@@ -40,6 +40,7 @@ const PaymentConfigAdmin = lazyWithRetry(() => import("./admin/PaymentConfigAdmi
 const StatsAdmin = lazyWithRetry(() => import("./admin/StatsAdmin"));
 const UtilisateursAdmin = lazyWithRetry(() => import("./admin/UtilisateursAdmin"));
 const MonitoringAdmin = lazyWithRetry(() => import("./admin/MonitoringAdmin"));
+const ProgramTrackingAdmin = lazyWithRetry(() => import("./admin/ProgramTrackingAdmin"));
 
 // Admin Pages - Tontine/Finance
 const Epargnes = lazyWithRetry(() => import("./Epargnes"));
