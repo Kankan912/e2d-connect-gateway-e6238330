@@ -24,6 +24,7 @@ interface AssociationContextType {
   isSuperAdmin: boolean;
   loading: boolean;
   switchAssociation: (id: string) => void;
+  refreshAssociations: () => Promise<void>;
 }
 
 const AssociationContext = createContext<AssociationContextType | undefined>(undefined);
