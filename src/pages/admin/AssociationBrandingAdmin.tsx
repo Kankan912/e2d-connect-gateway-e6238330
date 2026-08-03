@@ -34,20 +34,12 @@ const DEFAULT_TOKENS: Record<string, string> = {
   locale: "fr-FR",
 };
 
-function useAssociationRefresh() {
-  const qc = useQueryClient();
-  return () => {
-    qc.invalidateQueries();
-    // Force reload minimal — AssociationContext relira au prochain mount.
-    window.location.reload();
-  };
-}
-
 export default function AssociationBrandingAdmin() {
   const { t } = useTranslation("admin");
-  const { currentAssociation } = useAssociation();
+  const { currentAssociation, refreshAssociations } = useAssociation();
   const { toast } = useToast();
-  const refresh = useAssociationRefresh();
+  const qc = useQueryClient();
+
 
   const [tokens, setTokens] = useState<Record<string, string>>(DEFAULT_TOKENS);
   const [logoUrl, setLogoUrl] = useState<string>("");
