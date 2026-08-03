@@ -34,6 +34,9 @@ export function useAlertesGlobales() {
           echeance,
           montant_paye,
           montant_total_du,
+          taux_interet,
+          interet_initial,
+          reconductions,
           membre:membres!fk_prets_membre(id, nom, prenom)
         `)
         .in('statut', ['en_cours', 'partiel'])
