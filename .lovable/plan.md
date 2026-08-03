@@ -1,29 +1,34 @@
-## Objectif
+# Correction du multi-tenant (Identité & Thème + création d'association)
 
-Ajouter dans l'espace administrateur une page **Suivi du programme** qui affiche, sous forme de tableau, l'état d'exécution de chaque phase (2.4 → 6) et de chaque lot (1→5, A, A-bis, B, B-bis, C, P, Q1, Q2, Q3). Données figées dans le code (aucune base), mises à jour à chaque avancement.
+## Ce que j'ai vérifié
 
-## Contenu affiché
+- La table `associations` a la sécurité par ligne **activée mais sans aucune règle d'accès** (0 policy). Résultat : lecture et écriture bloquées pour tous les comptes connectés → la page « Identité & Thème » ne charge rien et l'enregistrement ne modifie rien (la sauvegarde ne remonte même pas d'erreur car aucun contrôle du résultat n'est fait).
+- **Aucun utilisateur ne possède le rôle `super_admin`** (rôle existant mais non attribué). Le menu « Plateforme → Associations » est donc masqué et la route est refusée, d'où l'impossibilité de créer une association.
+- La fonction serveur `provision-association` vérifie le rôle avec le client d'administration (`is_super_admin()` sans utilisateur) : elle renverra **toujours « Réservé aux super administrateurs »**, même pour un vrai super admin.
 
-**Bandeau de synthèse** — 4 cartes : avancement global (%), éléments terminés, en cours, non démarrés.
+## Plan de correction
 
-**Tableau 1 — Phases plateforme**
-Colonnes : Phase, Objet, Statut, Avancement, Preuve (document ou migration de référence).
+### 1. Règles d'accès sur `associations` (migration SQL)
+- Lecture : membres de l'association concernée + super admin.
+- Modification : administrateurs de l'association + super admin (permet l'écran Identité & Thème).
+- Création / suppression : super admin uniquement.
+- Accès complet pour les traitements serveur.
 
-**Tableau 2 — Lots d'audit et fonctionnels**
-Colonnes : Lot, Périmètre, Statut, Avancement, Reste à faire.
+### 2. Attribution du rôle super administrateur
+- Migration attribuant `super_admin` au compte que vous désignez (indiquez l'email ; par défaut je prends le compte administrateur principal existant).
+- Cela débloque le menu « Plateforme → Associations » et la création d'associations.
 
-**Statuts** : Terminé / En cours / Non démarré, en pastilles colorées (tokens du thème, pas de couleurs en dur).
-**Filtres** : recherche texte + filtre par statut, avec un onglet « Tout / Phases / Lots ».
-**Reste à faire** : section finale listant les items priorisés P1/P2/P3 (typage strict, découpage des gros fichiers, généralisation de la devise) avec criticité et ordre recommandé.
+### 3. Correction de la fonction de création d'association
+- `supabase/functions/provision-association/index.ts` : contrôler le rôle avec l'identité de l'appelant (`is_super_admin(user.id)`) au lieu du client d'administration anonyme.
 
-## Accès
+### 4. Fiabilisation de l'écran Identité & Thème
+- `src/pages/admin/AssociationBrandingAdmin.tsx` : vérifier réellement le résultat de l'enregistrement (retour des lignes modifiées) et afficher une erreur explicite si aucune ligne n'est mise à jour, au lieu d'un faux « enregistré ».
+- Rafraîchir l'association courante via le contexte plutôt que par un rechargement complet de la page.
 
-Route `/dashboard/admin/suivi-programme`, protégée comme les autres écrans d'administration (même contrôle de permission que Monitoring), plus une entrée dans le menu latéral admin.
+### 5. Vérification finale
+- Contrôle des règles d'accès en base, puis test dans l'aperçu : ouverture d'« Identité & Thème », modification d'une couleur/devise, enregistrement, puis création d'une association de test depuis l'écran Plateforme.
 
 ## Détails techniques
-
-- `src/data/programTracking.ts` : source unique de vérité (typée) contenant phases, lots, statuts, avancements et reste à faire — c'est le seul fichier à modifier lors des mises à jour.
-- `src/pages/admin/ProgramTrackingAdmin.tsx` : page composée de petits sous-composants (`StatusPill`, cartes de synthèse, tableaux) pour rester sous le seuil de taille fixé par le Lot Q3.
-- Route ajoutée dans `src/pages/Dashboard.tsx` via `lazyWithRetry` + `PermissionRoute` + `ErrorBoundary`, entrée de menu dans `src/components/layout/DashboardSidebar.tsx`.
-- Composants shadcn existants (Card, Table, Badge, Tabs, Input) ; contenu en français ; padding mobile `p-3 sm:p-6`.
-- Aucune migration SQL, aucun appel réseau.
+- Nouvelle migration : `CREATE POLICY` sur `public.associations` en s'appuyant sur les fonctions existantes `has_association_access()`, `is_admin_of()` et `is_super_admin()` (les droits `GRANT` sont déjà en place).
+- Insertion dans `public.user_roles` du rôle `super_admin` (scope `platform`) pour l'utilisateur désigné.
+- Aucun changement de logique métier financière.
