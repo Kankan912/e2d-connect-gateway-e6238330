@@ -137,13 +137,17 @@ export function useAlertesGlobales() {
       reconductions: pret.reconductions ?? 0,
       montant_paye: Number(pret.montant_paye) || 0,
     });
+    // La colonne montant_total_du fait foi (elle intègre les reconductions déjà enregistrées)
+    const totalDu = Number(pret.montant_total_du) || resume.totalDu;
+    const totalPaye = Number(pret.montant_paye) || 0;
+    const resteAPayer = Math.max(0, totalDu - totalPaye);
     const statut = LoanService.resolveStatus({
-      montant: resume.totalDu,
-      montantPaye: resume.totalPaye,
+      montant: totalDu,
+      montantPaye: totalPaye,
       echeance: pret.echeance,
       reconductions: pret.reconductions ?? 0,
     });
-    if (statut !== "en_retard") return;
+    if (statut !== "en_retard" && resteAPayer <= 0) return;
 
     const joursRetard = Math.floor(
       (Date.now() - new Date(pret.echeance).getTime()) / (1000 * 60 * 60 * 24),
