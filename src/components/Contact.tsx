@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Mail, MapPin, Phone, Facebook, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -328,7 +329,7 @@ const Contact = () => {
                 <Button 
                   variant="outline"
                   className="w-full justify-start hover:translate-x-1 transition-transform"
-                  onClick={() => window.location.href = "/auth"}
+                  asChild
                 >
                   <Mail className="w-4 h-4 mr-2" />
                   Accès Portail Membre E2D Connect
@@ -336,14 +337,14 @@ const Contact = () => {
                 <Button 
                   variant="outline"
                   className="w-full justify-start hover:translate-x-1 transition-transform"
-                  onClick={() => window.location.href = "/adhesion"}
+                  asChild
                 >
                   Formulaire d'Adhésion
                 </Button>
                 <Button 
                   variant="outline"
                   className="w-full justify-start hover:translate-x-1 transition-transform"
-                  onClick={() => window.location.href = "/don"}
+                  asChild
                 >
                   Faire un Don
                 </Button>
