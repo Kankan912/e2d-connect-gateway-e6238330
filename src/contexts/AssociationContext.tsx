@@ -24,6 +24,7 @@ interface AssociationContextType {
   isSuperAdmin: boolean;
   loading: boolean;
   switchAssociation: (id: string) => void;
+  refreshAssociations: () => Promise<void>;
 }
 
 const AssociationContext = createContext<AssociationContextType | undefined>(undefined);
@@ -62,8 +63,7 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
-  useEffect(() => {
-    if (authLoading) return;
+  const loadAssociations = useCallback(async () => {
     if (!user) {
       setAvailableAssociations([]);
       setCurrentAssociation(null);
@@ -73,69 +73,66 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        let assocs: AssociationRow[] = [];
+    setLoading(true);
+    try {
+      let assocs: AssociationRow[] = [];
 
-        if (isSuperAdmin) {
+      if (isSuperAdmin) {
+        const { data, error } = await supabase
+          .from('associations')
+          .select('id, slug, nom, logo_url, theme_tokens, statut')
+          .eq('statut', 'actif')
+          .order('nom');
+        if (error) throw error;
+        assocs = (data ?? []) as AssociationRow[];
+      } else {
+        const { data: membreRows, error: membreErr } = await supabase
+          .from('membres')
+          .select('association_id')
+          .eq('user_id', user.id);
+        if (membreErr) throw membreErr;
+        const ids = Array.from(new Set((membreRows ?? []).map((m) => m.association_id).filter(Boolean)));
+        if (ids.length) {
           const { data, error } = await supabase
             .from('associations')
             .select('id, slug, nom, logo_url, theme_tokens, statut')
-            .eq('statut', 'actif')
+            .in('id', ids)
             .order('nom');
           if (error) throw error;
           assocs = (data ?? []) as AssociationRow[];
-        } else {
-          const { data: membreRows, error: membreErr } = await supabase
-            .from('membres')
-            .select('association_id')
-            .eq('user_id', user.id);
-          if (membreErr) throw membreErr;
-          const ids = Array.from(new Set((membreRows ?? []).map((m) => m.association_id).filter(Boolean)));
-          if (ids.length) {
-            const { data, error } = await supabase
-              .from('associations')
-              .select('id, slug, nom, logo_url, theme_tokens, statut')
-              .in('id', ids)
-              .order('nom');
-            if (error) throw error;
-            assocs = (data ?? []) as AssociationRow[];
-          }
         }
-
-        // Fallback : au moins E2D (via slug) pour éviter un état vide
-        if (!assocs.length) {
-          const { data } = await supabase
-            .from('associations')
-            .select('id, slug, nom, logo_url, theme_tokens, statut')
-            .eq('slug', 'e2d')
-            .maybeSingle();
-          if (data) assocs = [data as AssociationRow];
-        }
-
-        if (cancelled) return;
-
-        // Sélection courante : localStorage → 1ère dispo
-        const savedId = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-        const selected = assocs.find((a) => a.id === savedId) ?? assocs[0] ?? null;
-
-        setAvailableAssociations(assocs);
-        setCurrentAssociation(selected);
-        associationStore.set(selected ? toStoreValue(selected) : null);
-        applyTheme(selected);
-      } catch (error) {
-        logger.error('[AssociationContext] Erreur chargement associations:', error);
-      } finally {
-        if (!cancelled) setLoading(false);
       }
-    })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [user, authLoading, isSuperAdmin, applyTheme]);
+      // Fallback : au moins E2D (via slug) pour éviter un état vide
+      if (!assocs.length) {
+        const { data } = await supabase
+          .from('associations')
+          .select('id, slug, nom, logo_url, theme_tokens, statut')
+          .eq('slug', 'e2d')
+          .maybeSingle();
+        if (data) assocs = [data as AssociationRow];
+      }
+
+      // Sélection courante : localStorage → 1ère dispo
+      const savedId = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+      const selected = assocs.find((a) => a.id === savedId) ?? assocs[0] ?? null;
+
+      setAvailableAssociations(assocs);
+      setCurrentAssociation(selected);
+      associationStore.set(selected ? toStoreValue(selected) : null);
+      applyTheme(selected);
+    } catch (error) {
+      logger.error('[AssociationContext] Erreur chargement associations:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, isSuperAdmin, applyTheme]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    void loadAssociations();
+  }, [authLoading, loadAssociations]);
+
 
   const syncTenantOnDb = useCallback(async (id: string | null) => {
     try {
@@ -177,8 +174,9 @@ export const AssociationProvider = ({ children }: { children: ReactNode }) => {
       isSuperAdmin,
       loading,
       switchAssociation,
+      refreshAssociations: loadAssociations,
     }),
-    [currentAssociation, availableAssociations, isSuperAdmin, loading, switchAssociation]
+    [currentAssociation, availableAssociations, isSuperAdmin, loading, switchAssociation, loadAssociations]
   );
 
   return <AssociationContext.Provider value={value}>{children}</AssociationContext.Provider>;

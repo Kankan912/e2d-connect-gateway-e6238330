@@ -34,20 +34,12 @@ const DEFAULT_TOKENS: Record<string, string> = {
   locale: "fr-FR",
 };
 
-function useAssociationRefresh() {
-  const qc = useQueryClient();
-  return () => {
-    qc.invalidateQueries();
-    // Force reload minimal — AssociationContext relira au prochain mount.
-    window.location.reload();
-  };
-}
-
 export default function AssociationBrandingAdmin() {
   const { t } = useTranslation("admin");
-  const { currentAssociation } = useAssociation();
+  const { currentAssociation, refreshAssociations } = useAssociation();
   const { toast } = useToast();
-  const refresh = useAssociationRefresh();
+  const qc = useQueryClient();
+
 
   const [tokens, setTokens] = useState<Record<string, string>>(DEFAULT_TOKENS);
   const [logoUrl, setLogoUrl] = useState<string>("");
@@ -62,15 +54,22 @@ export default function AssociationBrandingAdmin() {
   const save = useMutation({
     mutationFn: async () => {
       if (!currentAssociation) throw new Error("Aucune association sélectionnée");
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("associations")
         .update({ theme_tokens: tokens, logo_url: logoUrl || null })
-        .eq("id", currentAssociation.id);
+        .eq("id", currentAssociation.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error(
+          "Aucune modification enregistrée : vous n'avez pas les droits d'administration sur cette association."
+        );
+      }
     },
     onSuccess: () => {
       toast({ title: t("branding.saved") });
-      refresh();
+      void refreshAssociations();
+      qc.invalidateQueries();
     },
     onError: (e: unknown) => {
       const msg = e instanceof Error ? e.message : String(e);
