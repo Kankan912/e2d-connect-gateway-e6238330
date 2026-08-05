@@ -1,6 +1,37 @@
+import { useState } from "react";
 import { Handshake } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSitePartners } from "@/hooks/useSiteContent";
+
+/**
+ * Logo de partenaire tolérant aux URL invalides : en cas d'échec de
+ * chargement, bascule sur l'affichage textuel plutôt que de laisser une
+ * image cassée et une requête réseau en erreur visible.
+ */
+const PartnerLogo = ({ nom, logoUrl }: { nom: string; logoUrl?: string | null }) => {
+  const [failed, setFailed] = useState(false);
+
+  if (!logoUrl || failed) {
+    return (
+      <div className="text-center">
+        <Handshake className="w-12 h-12 text-muted-foreground/40 mx-auto mb-2" />
+        <span className="text-sm text-muted-foreground">{nom}</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={logoUrl}
+      alt={nom}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="max-w-full max-h-full object-contain"
+    />
+  );
+};
+
+
 
 const Partners = () => {
   const { data: partners, isLoading } = useSitePartners();
@@ -51,18 +82,8 @@ const Partners = () => {
                 rel={partner.site_web ? "noopener noreferrer" : undefined}
                 className="aspect-square rounded-xl bg-card border border-border flex items-center justify-center p-8 hover:shadow-medium transition-all duration-300 hover:scale-105"
               >
-                {partner.logo_url ? (
-                  <img 
-                    src={partner.logo_url} 
-                    alt={partner.nom}
-                    className="max-w-full max-h-full object-contain"
-                  />
-                ) : (
-                  <div className="text-center">
-                    <Handshake className="w-12 h-12 text-muted-foreground/40 mx-auto mb-2" />
-                    <span className="text-sm text-muted-foreground">{partner.nom}</span>
-                  </div>
-                )}
+                <PartnerLogo nom={partner.nom} logoUrl={partner.logo_url} />
+
               </a>
             ))
           ) : (
