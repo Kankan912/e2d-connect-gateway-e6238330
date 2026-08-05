@@ -23,7 +23,7 @@ export interface MembreSituation {
     email: string | null;
     telephone: string | null;
     statut: string | null;
-    matricule: string | null;
+    fonction: string | null;
   };
   exercice_id: string | null;
   cotisations: Array<Record<string, unknown>>;

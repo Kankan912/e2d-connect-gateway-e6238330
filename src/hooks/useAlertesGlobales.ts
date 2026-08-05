@@ -58,14 +58,14 @@ export function useAlertesGlobales() {
         .from('reunions_sanctions')
         .select(`
           id,
-          montant,
+          montant_amende,
           statut,
           created_at,
-          membre:membres!fk_reunions_sanctions_membre(id, nom, prenom),
-          reunion:reunions!fk_reunions_sanctions_reunion(date_reunion)
+          membre:membres!reunions_sanctions_membre_id_fkey(id, nom, prenom),
+          reunion:reunions!reunions_sanctions_reunion_id_fkey(date_reunion)
         `)
         .neq('statut', 'paye')
-        .gt('montant', 0);
+        .gt('montant_amende', 0);
 
       if (error) throw error;
       return data || [];
@@ -173,12 +173,12 @@ export function useAlertesGlobales() {
       type: 'sanction_impayee',
       niveau: 'warning',
       titre: 'Sanction impayée',
-      description: `${sanction.membre?.prenom} ${sanction.membre?.nom} - ${formatFCFA(Number(sanction.montant))}`,
+      description: `${sanction.membre?.prenom} ${sanction.membre?.nom} - ${formatFCFA(Number(sanction.montant_amende))}`,
       lien: '/dashboard/admin/reunions',
       dateCreation: new Date(sanction.created_at),
       membreId: sanction.membre?.id,
       membreNom: `${sanction.membre?.prenom} ${sanction.membre?.nom}`,
-      montant: Number(sanction.montant),
+      montant: Number(sanction.montant_amende),
     });
   });
 

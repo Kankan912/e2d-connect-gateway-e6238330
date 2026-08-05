@@ -16,7 +16,7 @@ export default function SportDashboardTempsReel() {
         .select('*')
         .order('date_match', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (error && error.code !== 'PGRST116') throw error;
       return data;
@@ -31,7 +31,7 @@ export default function SportDashboardTempsReel() {
         .select('*')
         .order('date_match', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (error && error.code !== 'PGRST116') throw error;
       return data;
@@ -47,7 +47,7 @@ export default function SportDashboardTempsReel() {
         .gte('date_entrainement', new Date().toISOString())
         .order('date_entrainement', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (error && error.code !== 'PGRST116') throw error;
       return data;
