@@ -56,3 +56,7 @@ côté portail ; seul un super administrateur conserve l'accès à la console.
 - Navigateur : rendu du site public sans erreur console ni page blanche.
 - Non vérifié : parcours authentifiés bout en bout (aucune session Supabase
   injectable dans l'environnement de test — projet Supabase externe).
+
+## 6. Suite
+
+Les tests E2E Playwright et le tableau d'états complet de la plateforme se trouvent dans `docs/REVUE_PLATEFORME_2026_08.md`.
