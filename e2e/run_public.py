@@ -62,10 +62,18 @@ async def main() -> None:
         await mark_spa(page)
         submit = page.get_by_role("button", name="Se connecter").first
         if await submit.count():
-            await click_check(
+            c = await click_check(
                 rec, "Authentification", "Connexion", "Soumission identifiants invalides", submit, checks
             )
+            # Le rejet 400 de l'API d'authentification est le comportement attendu :
+            # seule compte la restitution d'un message d'erreur à l'utilisateur.
+            body = (await page.locator("body").inner_text()).lower()
+            shown = any(k in body for k in ("incorrect", "invalide", "erreur", "identifiants"))
+            if shown and not c.reloaded and not c.blank:
+                c.state = "Fonctionnel"
+                c.issue = "Rejet 400 attendu, message d'erreur affiché"
         await shot(page, "auth_identifiants_invalides")
+
 
 
         await browser.close()
