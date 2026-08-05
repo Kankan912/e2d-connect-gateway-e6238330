@@ -73,6 +73,10 @@ class Recorder:
     def _on_request_failed(self, request) -> None:
         if any(f in request.url for f in IGNORED_REQUEST_FRAGMENTS):
             return
+        failure = (request.failure or "") if isinstance(request.failure, str) else ""
+        # Les requêtes annulées par React Query lors d'une navigation ne sont pas des anomalies
+        if "ERR_ABORTED" in failure or "canceled" in failure.lower():
+            return
         self.network.append(f"{request.method} {request.url} (échec réseau)")
 
     def _on_response(self, response) -> None:

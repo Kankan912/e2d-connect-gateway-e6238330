@@ -174,7 +174,7 @@ export function useDefaultLoanRate() {
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("caisse_config")
+        .from("prets_config")
         .select("taux_interet_defaut")
         .limit(1)
         .maybeSingle();
