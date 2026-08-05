@@ -1,0 +1,83 @@
+"""Inventaire des routes de la plateforme, par module."""
+
+PUBLIC_ROUTES = [
+    ("Site public", "Accueil", "/"),
+    ("Site public", "Don", "/don"),
+    ("Site public", "Adhésion", "/adhesion"),
+    ("Site public", "Page inconnue (404)", "/route-inexistante-e2e"),
+    ("Site public", "Site par slug", "/s/e2d"),
+    ("Site public", "Don (slug)", "/s/e2d/don"),
+    ("Site public", "Adhésion (slug)", "/s/e2d/adhesion"),
+    ("Site public", "Association inconnue", "/s/slug-inexistant-e2e"),
+    ("Authentification", "Connexion", "/auth"),
+]
+
+MEMBER_ROUTES = [
+    ("Portail membre", "Tableau de bord", "/dashboard"),
+    ("Portail membre", "Profil", "/dashboard/profile"),
+    ("Portail membre", "Ma situation", "/dashboard/ma-situation"),
+    ("Portail membre", "Mes cotisations", "/dashboard/my-cotisations"),
+    ("Portail membre", "Mes épargnes", "/dashboard/my-epargnes"),
+    ("Portail membre", "Mes prêts", "/dashboard/my-prets"),
+    ("Portail membre", "Mes demandes de prêt", "/dashboard/mes-demandes-pret"),
+    ("Portail membre", "Mes avalisations", "/dashboard/mes-avalisations"),
+    ("Portail membre", "Mes aides", "/dashboard/my-aides"),
+    ("Portail membre", "Mes sanctions", "/dashboard/my-sanctions"),
+    ("Portail membre", "Mes présences", "/dashboard/my-presences"),
+    ("Portail membre", "Mes dons", "/dashboard/my-donations"),
+]
+
+ADMIN_ROUTES = [
+    ("Membres", "Membres", "/dashboard/admin/membres"),
+    ("Membres", "Utilisateurs", "/dashboard/admin/utilisateurs"),
+    ("Membres", "Rôles", "/dashboard/admin/roles"),
+    ("Membres", "Permissions", "/dashboard/admin/permissions"),
+    ("Cotisations", "Cotisations", "/dashboard/admin/cotisations"),
+    ("Cotisations", "Paramètres d'exercice", "/dashboard/admin/cotisations/parametres-exercice"),
+    ("Tontine", "Épargnes", "/dashboard/admin/tontine/epargnes"),
+    ("Tontine", "Bénéficiaires", "/dashboard/admin/tontine/beneficiaires"),
+    ("Tontine", "Configuration tontine", "/dashboard/admin/tontine/config"),
+    ("Finances", "Caisse", "/dashboard/admin/caisse"),
+    ("Finances", "Prêts", "/dashboard/admin/finances/prets"),
+    ("Finances", "Configuration prêts", "/dashboard/admin/finances/prets/config"),
+    ("Finances", "Demandes de prêt", "/dashboard/admin/finances/demandes-pret"),
+    ("Finances", "Workflow de validation", "/dashboard/admin/finances/demandes-pret/workflow"),
+    ("Finances", "Aides", "/dashboard/admin/finances/aides"),
+    ("Finances", "Dons", "/dashboard/admin/donations"),
+    ("Finances", "Mobile Money", "/dashboard/admin/donations/mobile-money"),
+    ("Finances", "Adhésions", "/dashboard/admin/adhesions"),
+    ("Finances", "Configuration paiement", "/dashboard/admin/payment-config"),
+    ("Réunions", "Réunions", "/dashboard/admin/reunions"),
+    ("Réunions", "Présences", "/dashboard/admin/presences"),
+    ("Sport", "Sport", "/dashboard/admin/sport"),
+    ("Sport", "Sport E2D", "/dashboard/admin/sport/e2d"),
+    ("Sport", "Sport Phoenix", "/dashboard/admin/sport/phoenix"),
+    ("Sport", "Équipes", "/dashboard/admin/sport/equipes"),
+    ("Sport", "Entraînements", "/dashboard/admin/sport/entrainements"),
+    ("Sport", "Sanctions sportives", "/dashboard/admin/sport/sanctions"),
+    ("Sport", "Match gala", "/dashboard/admin/sport/match-gala"),
+    ("Communication", "Notifications", "/dashboard/admin/communication/notifications"),
+    ("Communication", "Modèles de notification", "/dashboard/admin/communication/notifications-templates"),
+    ("Pilotage", "Statistiques", "/dashboard/admin/stats"),
+    ("Pilotage", "Rapports", "/dashboard/admin/rapports"),
+    ("Pilotage", "Exports", "/dashboard/admin/config/exports"),
+    ("Pilotage", "Monitoring", "/dashboard/admin/monitoring"),
+    ("Pilotage", "Suivi du programme", "/dashboard/admin/suivi-programme"),
+    ("CMS site", "Hero", "/dashboard/admin/site/hero"),
+    ("CMS site", "Activités", "/dashboard/admin/site/activities"),
+    ("CMS site", "Événements", "/dashboard/admin/site/events"),
+    ("CMS site", "Galerie", "/dashboard/admin/site/gallery"),
+    ("CMS site", "Partenaires", "/dashboard/admin/site/partners"),
+    ("CMS site", "À propos", "/dashboard/admin/site/about"),
+    ("CMS site", "Messages", "/dashboard/admin/site/messages"),
+    ("CMS site", "Images", "/dashboard/admin/site/images"),
+    ("CMS site", "Configuration du site", "/dashboard/admin/site/config"),
+    ("Associations", "Identité & thème", "/dashboard/admin/branding"),
+    ("Associations", "Configuration E2D", "/dashboard/admin/e2d-config"),
+]
+
+PLATFORM_ROUTES = [
+    ("Plateforme", "Associations", "/dashboard/admin/platform/associations"),
+]
+
+ALL_AUTH_ROUTES = MEMBER_ROUTES + ADMIN_ROUTES + PLATFORM_ROUTES
