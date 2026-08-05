@@ -53,14 +53,20 @@ async def main() -> None:
                 await page.wait_for_timeout(800)
                 await mark_spa(page)
 
-        # Écran de connexion : soumission avec identifiants vides / invalides.
+        # Écran de connexion : soumission avec des identifiants invalides
+        # (le formulaire vide est bloqué par la validation native du navigateur).
         await page.goto(f"{BASE_URL}/auth", wait_until="domcontentloaded")
         await page.wait_for_timeout(1200)
+        await page.locator("input[type='email']").first.fill("e2e-inconnu@example.invalid")
+        await page.locator("input[type='password']").first.fill("mot-de-passe-invalide")
         await mark_spa(page)
         submit = page.get_by_role("button", name="Se connecter").first
         if await submit.count():
-            await click_check(rec, "Authentification", "Connexion", "Soumission formulaire vide", submit, checks)
-        await shot(page, "auth_submit_vide")
+            await click_check(
+                rec, "Authentification", "Connexion", "Soumission identifiants invalides", submit, checks
+            )
+        await shot(page, "auth_identifiants_invalides")
+
 
         await browser.close()
 
