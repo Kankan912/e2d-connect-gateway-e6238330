@@ -133,7 +133,7 @@ export default function NotificationCampagneForm({ open, onClose, onSubmit, crea
               placeholder="Bonjour {{nom}}, ceci est un rappel..."
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Variables disponibles: {`{{nom}}, {{prenom}}, {{email}}`}
+              Variables disponibles : {`{nom}, {prenom}, {email}, {date_reunion}, {heure_reunion}, {lieu}, {ordre_du_jour}, {sujet_reunion}`}
             </p>
             {errors.template_contenu && <p className="text-sm text-destructive mt-1">{errors.template_contenu.message}</p>}
           </div>
