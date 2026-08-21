@@ -66,6 +66,21 @@ export default function NotifierReunionModal({
     enabled: open,
   });
 
+  // Tous les membres actifs de l'association (diffusion élargie)
+  const { data: tousMembres } = useQuery({
+    queryKey: ["membres-actifs-notifier"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("membres")
+        .select("id, nom, prenom, email")
+        .eq("statut", "actif")
+        .order("nom");
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
+
   // Calculer les statistiques
   const presents = presences?.filter(p => p.statut_presence === "present") || [];
   const excuses = presences?.filter(p => p.statut_presence === "excuse") || [];
@@ -74,21 +89,27 @@ export default function NotifierReunionModal({
 
   // Calculer les destinataires selon le type sélectionné
   const destinataires = useMemo(() => {
-    if (!presences) return [];
-    
-    let filtered = presences;
-    
-    if (recipientType === "presents") {
-      filtered = presences.filter(p => p.statut_presence === "present");
-    } else if (recipientType === "absents") {
-      filtered = presences.filter(p => 
-        p.statut_presence === "absent_non_excuse" || p.statut_presence === "excuse"
-      );
-    } else if (recipientType === "manuel") {
-      filtered = presences.filter(p => selectedMembers.has(p.membre?.id || ""));
+    if (recipientType === "tous") {
+      return (tousMembres || [])
+        .filter(m => m.email)
+        .map(m => ({ email: m.email!, nom: m.nom, prenom: m.prenom }));
     }
-    // "tous" = pas de filtre
-    
+
+    if (recipientType === "manuel") {
+      return (tousMembres || [])
+        .filter(m => m.email && selectedMembers.has(m.id))
+        .map(m => ({ email: m.email!, nom: m.nom, prenom: m.prenom }));
+    }
+
+    if (!presences) return [];
+
+    const filtered =
+      recipientType === "presents"
+        ? presences.filter(p => p.statut_presence === "present")
+        : presences.filter(
+            p => p.statut_presence === "absent_non_excuse" || p.statut_presence === "excuse",
+          );
+
     return filtered
       .filter(p => p.membre?.email)
       .map(p => ({
@@ -96,10 +117,13 @@ export default function NotifierReunionModal({
         nom: p.membre!.nom,
         prenom: p.membre!.prenom,
       }));
-  }, [presences, recipientType, selectedMembers]);
+  }, [presences, tousMembres, recipientType, selectedMembers]);
 
   // Membres avec email pour sélection manuelle
-  const membresAvecEmail = presences?.filter(p => p.membre?.email) || [];
+  const membresAvecEmail = (tousMembres || [])
+    .filter(m => m.email)
+    .map(m => ({ membre: m }));
+
 
   const tauxPresence = presences && presences.length > 0 
     ? Math.round((presents.length / presences.length) * 100) 
