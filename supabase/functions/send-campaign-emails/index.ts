@@ -245,12 +245,28 @@ serve(async (req) => {
           "{nom}": recipient.nom || "",
           "{email}": recipient.email || "",
           "{app_url}": emailConfig.appUrl,
+          "{{date_reunion}}": reunionCtx.date,
+          "{date_reunion}": reunionCtx.date,
+          "{{heure_reunion}}": reunionCtx.heure,
+          "{heure_reunion}": reunionCtx.heure,
+          "{{lieu}}": reunionCtx.lieu,
+          "{lieu}": reunionCtx.lieu,
+          "{{ordre_du_jour}}": reunionCtx.ordreDuJour,
+          "{ordre_du_jour}": reunionCtx.ordreDuJour,
+          "{{sujet_reunion}}": reunionCtx.sujet,
+          "{sujet_reunion}": reunionCtx.sujet,
         };
 
         for (const [key, value] of Object.entries(variables)) {
           subject = subject.replace(new RegExp(key.replace(/[{}]/g, "\\$&"), "g"), value);
           content = content.replace(new RegExp(key.replace(/[{}]/g, "\\$&"), "g"), value);
         }
+
+        // Nettoyage des variables non résolues restantes
+        const leftover = /\{\{?\s*[a-zA-Z0-9_]+\s*\}?\}/g;
+        subject = subject.replace(leftover, NON_PRECISE);
+        content = content.replace(leftover, NON_PRECISE);
+
 
         const htmlContent = `
           <!DOCTYPE html>
