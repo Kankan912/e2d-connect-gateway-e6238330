@@ -1,19 +1,22 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 
 const campagneSchema = z.object({
   nom: z.string().min(1, "Nom requis"),
   type_campagne: z.string().min(1, "Type requis"),
   template_sujet: z.string().min(1, "Sujet requis"),
   template_contenu: z.string().min(1, "Contenu requis"),
-  description: z.string().optional()
+  description: z.string().optional(),
+  reunion_id: z.string().optional()
 });
 
 type CampagneFormData = z.infer<typeof campagneSchema>;
@@ -31,10 +34,27 @@ export default function NotificationCampagneForm({ open, onClose, onSubmit, crea
   });
 
   const typeCampagne = watch("type_campagne");
+  const reunionId = watch("reunion_id");
+
+  const { data: reunions } = useQuery({
+    queryKey: ["campagne-reunions"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reunions")
+        .select("id, date_reunion, sujet, ordre_du_jour, lieu_description")
+        .order("date_reunion", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const handleFormSubmit = (data: CampagneFormData) => {
+    const { reunion_id, ...rest } = data;
     onSubmit({
-      ...data,
+      ...rest,
+      reunion_id: reunion_id && reunion_id !== "none" ? reunion_id : null,
       created_by: createdBy,
       statut: 'brouillon',
       destinataires: [],
@@ -43,6 +63,7 @@ export default function NotificationCampagneForm({ open, onClose, onSubmit, crea
       nb_erreurs: 0
     });
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
