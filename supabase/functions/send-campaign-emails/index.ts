@@ -104,6 +104,65 @@ serve(async (req) => {
 
     console.log(`✅ Email configuration valid - using ${emailConfig.service}`);
 
+    // === Contexte réunion (pour les variables {date_reunion}, {lieu}, {ordre_du_jour}...) ===
+    const NON_PRECISE = "à préciser";
+    let reunionCtx = {
+      date: NON_PRECISE,
+      heure: NON_PRECISE,
+      lieu: NON_PRECISE,
+      ordreDuJour: NON_PRECISE,
+      sujet: NON_PRECISE,
+    };
+
+    try {
+      let reunion: any = null;
+      const campaignReunionId = (campaign as { reunion_id?: string | null }).reunion_id;
+
+      if (campaignReunionId) {
+        const { data } = await supabaseAdmin
+          .from("reunions")
+          .select("date_reunion, lieu_description, ordre_du_jour, sujet")
+          .eq("id", campaignReunionId)
+          .maybeSingle();
+        reunion = data;
+      }
+
+      if (!reunion) {
+        // Repli : prochaine réunion planifiée de l'association
+        let q = supabaseAdmin
+          .from("reunions")
+          .select("date_reunion, lieu_description, ordre_du_jour, sujet")
+          .eq("statut", "planifie")
+          .gte("date_reunion", new Date().toISOString())
+          .order("date_reunion", { ascending: true })
+          .limit(1);
+        if ((campaign as { association_id?: string | null }).association_id) {
+          q = q.eq("association_id", (campaign as { association_id: string }).association_id);
+        }
+        const { data } = await q.maybeSingle();
+        reunion = data;
+      }
+
+      if (reunion) {
+        const d = new Date(reunion.date_reunion);
+        reunionCtx = {
+          date: d.toLocaleDateString("fr-FR", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+          heure: d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+          lieu: reunion.lieu_description || NON_PRECISE,
+          ordreDuJour: reunion.ordre_du_jour || NON_PRECISE,
+          sujet: reunion.sujet || reunion.ordre_du_jour || NON_PRECISE,
+        };
+      }
+    } catch (e) {
+      console.error("⚠️ Impossible de charger le contexte réunion:", e);
+    }
+
+
     // Get recipients based on campaign destinataires
     let recipients: { id: string; email: string; nom: string; prenom: string }[] = [];
     const destinatairesRaw = campaign.destinataires;
