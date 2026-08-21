@@ -232,19 +232,27 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
         .eq('reunion_id', reunionId)
         .eq('statut_presence', 'present');
 
+      // Le compte-rendu est diffusé à TOUS les membres actifs de l'association
+      const { data: tousMembresData } = await supabase
+        .from('membres')
+        .select('nom, prenom, email')
+        .eq('statut', 'actif')
+        .not('email', 'is', null);
+
       const destinataires =
-        presentsData
-          ?.filter((p: any) => p.membres?.email)
-          .map((p: any) => ({ email: p.membres.email, nom: p.membres.nom, prenom: p.membres.prenom })) || [];
+        tousMembresData
+          ?.filter((m: any) => m.email)
+          .map((m: any) => ({ email: m.email, nom: m.nom, prenom: m.prenom })) || [];
 
       // B1 — Ne pas bloquer la clôture si aucun email valide.
       const hasDestinataires = destinataires.length > 0;
       if (!hasDestinataires) {
         toast({
           title: 'Compte-rendu non envoyé',
-          description: "Aucun email valide pour les membres présents. La clôture se poursuit sans envoi.",
+          description: "Aucun email valide parmi les membres actifs. La clôture se poursuit sans envoi.",
         });
       }
+
 
       // === ÉTAPE 5: compte-rendu par email ===
       const contenuCR =
