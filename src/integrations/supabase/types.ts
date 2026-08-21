@@ -3076,6 +3076,7 @@ export type Database = {
           nb_envoyes: number | null
           nb_erreurs: number | null
           nom: string
+          reunion_id: string | null
           statut: string
           template_contenu: string
           template_sujet: string
@@ -3095,6 +3096,7 @@ export type Database = {
           nb_envoyes?: number | null
           nb_erreurs?: number | null
           nom: string
+          reunion_id?: string | null
           statut?: string
           template_contenu: string
           template_sujet: string
@@ -3114,6 +3116,7 @@ export type Database = {
           nb_envoyes?: number | null
           nb_erreurs?: number | null
           nom?: string
+          reunion_id?: string | null
           statut?: string
           template_contenu?: string
           template_sujet?: string
@@ -3140,6 +3143,13 @@ export type Database = {
             columns: ["association_id"]
             isOneToOne: false
             referencedRelation: "associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_campagnes_reunion_id_fkey"
+            columns: ["reunion_id"]
+            isOneToOne: false
+            referencedRelation: "reunions"
             referencedColumns: ["id"]
           },
         ]
