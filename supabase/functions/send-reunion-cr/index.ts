@@ -56,7 +56,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, presences, financials, isPreview }: SendReunionCRRequest = await req.json();
+    const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, heure, ordreDuJour, presences, financials, isPreview }: SendReunionCRRequest = await req.json();
 
     const previewLabel = isPreview ? "[APERÇU] " : "";
     console.log(`Sending reunion CR for reunion ${reunionId} to ${destinataires.length} recipients via ${emailConfig.service} (preview: ${isPreview})`);
