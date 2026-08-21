@@ -28,6 +28,9 @@ interface SendReunionCRRequest {
   contenu: string;
   dateReunion: string;
   lieu?: string;
+  heure?: string;
+  ordreDuJour?: string;
+
   presences?: PresenceInfo;
   financials?: FinancialSummary;
   isPreview?: boolean;
