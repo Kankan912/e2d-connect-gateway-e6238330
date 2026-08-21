@@ -175,8 +175,11 @@ const handler = async (req: Request): Promise<Response> => {
               
               <div class="info-box">
                 <strong>Date de la réunion :</strong> ${dateReunion}
-                ${lieu ? `<br/><strong>Lieu :</strong> ${lieu}` : ''}
+                ${heure ? `<br/><strong>Heure :</strong> ${heure}` : ''}
+                <br/><strong>Lieu :</strong> ${lieu || 'non précisé'}
+                <br/><strong>Ordre du jour :</strong> ${ordreDuJour || 'non précisé'}
               </div>
+
               
               ${presencesHtml}
               
