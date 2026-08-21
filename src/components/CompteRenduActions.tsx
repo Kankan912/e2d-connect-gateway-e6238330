@@ -84,16 +84,13 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
     enabled: open
   });
 
-  // Pré-sélectionner les membres présents
+  // Pré-sélectionner TOUS les membres actifs disposant d'un email
   useEffect(() => {
-    if (presences && allMembers) {
-      const presentMembersWithEmail = presences.filter(id => {
-        const member = allMembers.find(m => m.id === id);
-        return member?.email;
-      });
-      setSelectedMembers(new Set(presentMembersWithEmail));
+    if (allMembers) {
+      setSelectedMembers(new Set(allMembers.filter(m => m.email).map(m => m.id)));
     }
-  }, [presences, allMembers]);
+  }, [allMembers]);
+
 
   const toggleMember = (memberId: string) => {
     const newSelected = new Set(selectedMembers);
