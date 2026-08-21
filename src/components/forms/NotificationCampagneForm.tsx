@@ -94,9 +94,30 @@ export default function NotificationCampagneForm({ open, onClose, onSubmit, crea
           </div>
 
           <div>
+            <Label>Réunion concernée</Label>
+            <Select value={reunionId ?? "none"} onValueChange={(val) => setValue("reunion_id", val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Aucune (prochaine réunion planifiée)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Aucune (prochaine réunion planifiée)</SelectItem>
+                {reunions?.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {new Date(r.date_reunion).toLocaleDateString("fr-FR")} — {r.sujet || r.ordre_du_jour || "Réunion"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Alimente les variables date, heure, lieu et ordre du jour du message.
+            </p>
+          </div>
+
+          <div>
             <Label>Description</Label>
             <Textarea {...register("description")} rows={2} placeholder="Description de la campagne" />
           </div>
+
 
           <div>
             <Label>Sujet du message *</Label>
