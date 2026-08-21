@@ -329,6 +329,14 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
             : undefined,
       };
 
+      const { data: reunionDetails } = await supabase
+        .from('reunions')
+        .select('lieu_description, ordre_du_jour, date_reunion')
+        .eq('id', reunionId)
+        .maybeSingle();
+
+      const dateObj = new Date(reunionDetails?.date_reunion || reunionData.date_reunion);
+
       let emailSent = false;
       if (hasDestinataires) {
         const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
@@ -337,7 +345,16 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
             destinataires,
             sujet: reunionData.sujet || 'Réunion',
             contenu: contenuCR,
-            dateReunion: reunionData.date_reunion,
+            dateReunion: dateObj.toLocaleDateString('fr-FR', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            }),
+            heure: dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            lieu: reunionDetails?.lieu_description || undefined,
+            ordreDuJour: reunionDetails?.ordre_du_jour || undefined,
+
             presences: {
               presents: presentsNoms,
               excuses: excusesNoms,
