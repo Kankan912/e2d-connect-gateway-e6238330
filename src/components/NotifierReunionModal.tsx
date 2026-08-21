@@ -28,7 +28,7 @@ export default function NotifierReunionModal({
   reunionData,
 }: NotifierReunionModalProps) {
   const [sending, setSending] = useState(false);
-  const [recipientType, setRecipientType] = useState<RecipientType>("presents");
+  const [recipientType, setRecipientType] = useState<RecipientType>("tous");
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
