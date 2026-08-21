@@ -180,8 +180,16 @@ export default function NotifierReunionModal({
           destinataires,
           sujet: `[APERÇU] ${reunionData.ordre_du_jour || "Réunion E2D"}`,
           contenu,
-          dateReunion: new Date(reunionData.date_reunion).toLocaleDateString("fr-FR"),
+          dateReunion: new Date(reunionData.date_reunion).toLocaleDateString("fr-FR", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+          heure: new Date(reunionData.date_reunion).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
           lieu: reunionData.lieu_description,
+          ordreDuJour: reunionData.ordre_du_jour,
+
           presences: presenceInfo,
           isPreview: true,
         },
