@@ -84,16 +84,13 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
     enabled: open
   });
 
-  // Pré-sélectionner les membres présents
+  // Pré-sélectionner TOUS les membres actifs disposant d'un email
   useEffect(() => {
-    if (presences && allMembers) {
-      const presentMembersWithEmail = presences.filter(id => {
-        const member = allMembers.find(m => m.id === id);
-        return member?.email;
-      });
-      setSelectedMembers(new Set(presentMembersWithEmail));
+    if (allMembers) {
+      setSelectedMembers(new Set(allMembers.filter(m => m.email).map(m => m.id)));
     }
-  }, [presences, allMembers]);
+  }, [allMembers]);
+
 
   const toggleMember = (memberId: string) => {
     const newSelected = new Set(selectedMembers);
@@ -150,6 +147,15 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
 
       const fullContent = `PRÉSENTS (${presences?.length || 0}):\n${presentsNames}\n\n---\n\nORDRE DU JOUR:\n\n${contenuCR}`;
 
+      // Détails de la réunion pour l'entête de l'email
+      const { data: reunionDetails } = await supabase
+        .from('reunions')
+        .select('lieu_description, ordre_du_jour, date_reunion')
+        .eq('id', reunion.id)
+        .maybeSingle();
+
+      const dateObj = new Date(reunionDetails?.date_reunion || reunion.date_reunion);
+
       // Appeler l'edge function pour envoyer les emails
       const { data, error } = await supabase.functions.invoke('send-reunion-cr', {
         body: {
@@ -157,9 +163,18 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
           destinataires,
           sujet: reunion.sujet || 'Réunion',
           contenu: fullContent,
-          dateReunion: reunion.date_reunion
+          dateReunion: dateObj.toLocaleDateString('fr-FR', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          }),
+          heure: dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          lieu: reunionDetails?.lieu_description || undefined,
+          ordreDuJour: reunionDetails?.ordre_du_jour || undefined
         }
       });
+
 
       if (error) {
         const errorMessage = data?.error || error.message;

@@ -1,19 +1,22 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 
 const campagneSchema = z.object({
   nom: z.string().min(1, "Nom requis"),
   type_campagne: z.string().min(1, "Type requis"),
   template_sujet: z.string().min(1, "Sujet requis"),
   template_contenu: z.string().min(1, "Contenu requis"),
-  description: z.string().optional()
+  description: z.string().optional(),
+  reunion_id: z.string().optional()
 });
 
 type CampagneFormData = z.infer<typeof campagneSchema>;
@@ -31,10 +34,27 @@ export default function NotificationCampagneForm({ open, onClose, onSubmit, crea
   });
 
   const typeCampagne = watch("type_campagne");
+  const reunionId = watch("reunion_id");
+
+  const { data: reunions } = useQuery({
+    queryKey: ["campagne-reunions"],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("reunions")
+        .select("id, date_reunion, sujet, ordre_du_jour, lieu_description")
+        .order("date_reunion", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const handleFormSubmit = (data: CampagneFormData) => {
+    const { reunion_id, ...rest } = data;
     onSubmit({
-      ...data,
+      ...rest,
+      reunion_id: reunion_id && reunion_id !== "none" ? reunion_id : null,
       created_by: createdBy,
       statut: 'brouillon',
       destinataires: [],
@@ -43,6 +63,7 @@ export default function NotificationCampagneForm({ open, onClose, onSubmit, crea
       nb_erreurs: 0
     });
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -73,9 +94,30 @@ export default function NotificationCampagneForm({ open, onClose, onSubmit, crea
           </div>
 
           <div>
+            <Label>Réunion concernée</Label>
+            <Select value={reunionId ?? "none"} onValueChange={(val) => setValue("reunion_id", val)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Aucune (prochaine réunion planifiée)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Aucune (prochaine réunion planifiée)</SelectItem>
+                {reunions?.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {new Date(r.date_reunion).toLocaleDateString("fr-FR")} — {r.sujet || r.ordre_du_jour || "Réunion"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Alimente les variables date, heure, lieu et ordre du jour du message.
+            </p>
+          </div>
+
+          <div>
             <Label>Description</Label>
             <Textarea {...register("description")} rows={2} placeholder="Description de la campagne" />
           </div>
+
 
           <div>
             <Label>Sujet du message *</Label>
@@ -91,7 +133,7 @@ export default function NotificationCampagneForm({ open, onClose, onSubmit, crea
               placeholder="Bonjour {{nom}}, ceci est un rappel..."
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Variables disponibles: {`{{nom}}, {{prenom}}, {{email}}`}
+              Variables disponibles : {`{nom}, {prenom}, {email}, {date_reunion}, {heure_reunion}, {lieu}, {ordre_du_jour}, {sujet_reunion}`}
             </p>
             {errors.template_contenu && <p className="text-sm text-destructive mt-1">{errors.template_contenu.message}</p>}
           </div>

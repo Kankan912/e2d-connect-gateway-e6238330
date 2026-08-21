@@ -232,19 +232,27 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
         .eq('reunion_id', reunionId)
         .eq('statut_presence', 'present');
 
+      // Le compte-rendu est diffusé à TOUS les membres actifs de l'association
+      const { data: tousMembresData } = await supabase
+        .from('membres')
+        .select('nom, prenom, email')
+        .eq('statut', 'actif')
+        .not('email', 'is', null);
+
       const destinataires =
-        presentsData
-          ?.filter((p: any) => p.membres?.email)
-          .map((p: any) => ({ email: p.membres.email, nom: p.membres.nom, prenom: p.membres.prenom })) || [];
+        tousMembresData
+          ?.filter((m: any) => m.email)
+          .map((m: any) => ({ email: m.email, nom: m.nom, prenom: m.prenom })) || [];
 
       // B1 — Ne pas bloquer la clôture si aucun email valide.
       const hasDestinataires = destinataires.length > 0;
       if (!hasDestinataires) {
         toast({
           title: 'Compte-rendu non envoyé',
-          description: "Aucun email valide pour les membres présents. La clôture se poursuit sans envoi.",
+          description: "Aucun email valide parmi les membres actifs. La clôture se poursuit sans envoi.",
         });
       }
+
 
       // === ÉTAPE 5: compte-rendu par email ===
       const contenuCR =
@@ -321,6 +329,14 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
             : undefined,
       };
 
+      const { data: reunionDetails } = await supabase
+        .from('reunions')
+        .select('lieu_description, ordre_du_jour, date_reunion')
+        .eq('id', reunionId)
+        .maybeSingle();
+
+      const dateObj = new Date(reunionDetails?.date_reunion || reunionData.date_reunion);
+
       let emailSent = false;
       if (hasDestinataires) {
         const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
@@ -329,7 +345,16 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
             destinataires,
             sujet: reunionData.sujet || 'Réunion',
             contenu: contenuCR,
-            dateReunion: reunionData.date_reunion,
+            dateReunion: dateObj.toLocaleDateString('fr-FR', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            }),
+            heure: dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            lieu: reunionDetails?.lieu_description || undefined,
+            ordreDuJour: reunionDetails?.ordre_du_jour || undefined,
+
             presences: {
               presents: presentsNoms,
               excuses: excusesNoms,

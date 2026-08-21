@@ -28,7 +28,7 @@ export default function NotifierReunionModal({
   reunionData,
 }: NotifierReunionModalProps) {
   const [sending, setSending] = useState(false);
-  const [recipientType, setRecipientType] = useState<RecipientType>("presents");
+  const [recipientType, setRecipientType] = useState<RecipientType>("tous");
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
@@ -66,6 +66,21 @@ export default function NotifierReunionModal({
     enabled: open,
   });
 
+  // Tous les membres actifs de l'association (diffusion élargie)
+  const { data: tousMembres } = useQuery({
+    queryKey: ["membres-actifs-notifier"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("membres")
+        .select("id, nom, prenom, email")
+        .eq("statut", "actif")
+        .order("nom");
+      if (error) throw error;
+      return data;
+    },
+    enabled: open,
+  });
+
   // Calculer les statistiques
   const presents = presences?.filter(p => p.statut_presence === "present") || [];
   const excuses = presences?.filter(p => p.statut_presence === "excuse") || [];
@@ -74,21 +89,27 @@ export default function NotifierReunionModal({
 
   // Calculer les destinataires selon le type sélectionné
   const destinataires = useMemo(() => {
-    if (!presences) return [];
-    
-    let filtered = presences;
-    
-    if (recipientType === "presents") {
-      filtered = presences.filter(p => p.statut_presence === "present");
-    } else if (recipientType === "absents") {
-      filtered = presences.filter(p => 
-        p.statut_presence === "absent_non_excuse" || p.statut_presence === "excuse"
-      );
-    } else if (recipientType === "manuel") {
-      filtered = presences.filter(p => selectedMembers.has(p.membre?.id || ""));
+    if (recipientType === "tous") {
+      return (tousMembres || [])
+        .filter(m => m.email)
+        .map(m => ({ email: m.email!, nom: m.nom, prenom: m.prenom }));
     }
-    // "tous" = pas de filtre
-    
+
+    if (recipientType === "manuel") {
+      return (tousMembres || [])
+        .filter(m => m.email && selectedMembers.has(m.id))
+        .map(m => ({ email: m.email!, nom: m.nom, prenom: m.prenom }));
+    }
+
+    if (!presences) return [];
+
+    const filtered =
+      recipientType === "presents"
+        ? presences.filter(p => p.statut_presence === "present")
+        : presences.filter(
+            p => p.statut_presence === "absent_non_excuse" || p.statut_presence === "excuse",
+          );
+
     return filtered
       .filter(p => p.membre?.email)
       .map(p => ({
@@ -96,10 +117,13 @@ export default function NotifierReunionModal({
         nom: p.membre!.nom,
         prenom: p.membre!.prenom,
       }));
-  }, [presences, recipientType, selectedMembers]);
+  }, [presences, tousMembres, recipientType, selectedMembers]);
 
   // Membres avec email pour sélection manuelle
-  const membresAvecEmail = presences?.filter(p => p.membre?.email) || [];
+  const membresAvecEmail = (tousMembres || [])
+    .filter(m => m.email)
+    .map(m => ({ membre: m }));
+
 
   const tauxPresence = presences && presences.length > 0 
     ? Math.round((presents.length / presences.length) * 100) 
@@ -156,8 +180,16 @@ export default function NotifierReunionModal({
           destinataires,
           sujet: `[APERÇU] ${reunionData.ordre_du_jour || "Réunion E2D"}`,
           contenu,
-          dateReunion: new Date(reunionData.date_reunion).toLocaleDateString("fr-FR"),
+          dateReunion: new Date(reunionData.date_reunion).toLocaleDateString("fr-FR", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+          heure: new Date(reunionData.date_reunion).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
           lieu: reunionData.lieu_description,
+          ordreDuJour: reunionData.ordre_du_jour,
+
           presences: presenceInfo,
           isPreview: true,
         },
@@ -287,22 +319,31 @@ export default function NotifierReunionModal({
                 </Button>
               </div>
               <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1">
-                {membresAvecEmail.map((p) => (
-                  <div key={p.id} className="flex items-center space-x-2 hover:bg-muted/50 rounded p-1">
-                    <Checkbox 
-                      id={p.id}
-                      checked={selectedMembers.has(p.membre?.id || "")}
-                      onCheckedChange={() => handleToggleMember(p.membre?.id || "")}
-                    />
-                    <Label htmlFor={p.id} className="font-normal text-sm cursor-pointer flex-1">
-                      {p.membre?.prenom} {p.membre?.nom}
-                      <span className="text-xs text-muted-foreground ml-2">
-                        ({p.statut_presence === "present" ? "présent" : 
-                          p.statut_presence === "excuse" ? "excusé" : "absent"})
-                      </span>
-                    </Label>
-                  </div>
-                ))}
+                {membresAvecEmail.map(({ membre }) => {
+                  const presence = presences?.find((p) => p.membre?.id === membre.id);
+                  return (
+                    <div key={membre.id} className="flex items-center space-x-2 hover:bg-muted/50 rounded p-1">
+                      <Checkbox
+                        id={membre.id}
+                        checked={selectedMembers.has(membre.id)}
+                        onCheckedChange={() => handleToggleMember(membre.id)}
+                      />
+                      <Label htmlFor={membre.id} className="font-normal text-sm cursor-pointer flex-1">
+                        {membre.prenom} {membre.nom}
+                        <span className="text-xs text-muted-foreground ml-2">
+                          ({presence?.statut_presence === "present"
+                            ? "présent"
+                            : presence?.statut_presence === "excuse"
+                              ? "excusé"
+                              : presence
+                                ? "absent"
+                                : "non renseigné"})
+                        </span>
+                      </Label>
+                    </div>
+                  );
+                })}
+
               </div>
             </div>
           )}

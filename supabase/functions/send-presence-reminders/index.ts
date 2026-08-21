@@ -144,6 +144,10 @@ serve(async (req) => {
                 
                 <div class="details">
                   <div class="detail-row">
+                    <span class="detail-label">📝 Objet :</span>
+                    <span>${reunion.sujet || reunion.ordre_du_jour || "Réunion ordinaire"}</span>
+                  </div>
+                  <div class="detail-row">
                     <span class="detail-label">📆 Date :</span>
                     <span>${dateFormatted}</span>
                   </div>
@@ -151,18 +155,15 @@ serve(async (req) => {
                     <span class="detail-label">🕐 Heure :</span>
                     <span>${heureFormatted}</span>
                   </div>
-                  ${reunion.lieu_description ? `
                   <div class="detail-row">
                     <span class="detail-label">📍 Lieu :</span>
-                    <span>${reunion.lieu_description}</span>
+                    <span>${reunion.lieu_description || "non précisé"}</span>
                   </div>
-                  ` : ""}
-                  ${reunion.ordre_du_jour ? `
                   <div class="detail-row">
                     <span class="detail-label">📋 Ordre du jour :</span>
-                    <span>${reunion.ordre_du_jour}</span>
+                    <span>${reunion.ordre_du_jour || "non précisé"}</span>
                   </div>
-                  ` : ""}
+
                 </div>
                 
                 <p>Votre présence est importante pour le bon fonctionnement de l'association.</p>

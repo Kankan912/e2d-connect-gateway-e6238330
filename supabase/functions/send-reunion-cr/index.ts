@@ -28,6 +28,9 @@ interface SendReunionCRRequest {
   contenu: string;
   dateReunion: string;
   lieu?: string;
+  heure?: string;
+  ordreDuJour?: string;
+
   presences?: PresenceInfo;
   financials?: FinancialSummary;
   isPreview?: boolean;
@@ -53,7 +56,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, presences, financials, isPreview }: SendReunionCRRequest = await req.json();
+    const { reunionId, destinataires, sujet, contenu, dateReunion, lieu, heure, ordreDuJour, presences, financials, isPreview }: SendReunionCRRequest = await req.json();
 
     const previewLabel = isPreview ? "[APERÇU] " : "";
     console.log(`Sending reunion CR for reunion ${reunionId} to ${destinataires.length} recipients via ${emailConfig.service} (preview: ${isPreview})`);
@@ -172,8 +175,11 @@ const handler = async (req: Request): Promise<Response> => {
               
               <div class="info-box">
                 <strong>Date de la réunion :</strong> ${dateReunion}
-                ${lieu ? `<br/><strong>Lieu :</strong> ${lieu}` : ''}
+                ${heure ? `<br/><strong>Heure :</strong> ${heure}` : ''}
+                <br/><strong>Lieu :</strong> ${lieu || 'non précisé'}
+                <br/><strong>Ordre du jour :</strong> ${ordreDuJour || 'non précisé'}
               </div>
+
               
               ${presencesHtml}
               
