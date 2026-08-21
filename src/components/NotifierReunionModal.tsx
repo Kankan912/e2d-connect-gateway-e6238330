@@ -311,22 +311,31 @@ export default function NotifierReunionModal({
                 </Button>
               </div>
               <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1">
-                {membresAvecEmail.map((p) => (
-                  <div key={p.id} className="flex items-center space-x-2 hover:bg-muted/50 rounded p-1">
-                    <Checkbox 
-                      id={p.id}
-                      checked={selectedMembers.has(p.membre?.id || "")}
-                      onCheckedChange={() => handleToggleMember(p.membre?.id || "")}
-                    />
-                    <Label htmlFor={p.id} className="font-normal text-sm cursor-pointer flex-1">
-                      {p.membre?.prenom} {p.membre?.nom}
-                      <span className="text-xs text-muted-foreground ml-2">
-                        ({p.statut_presence === "present" ? "présent" : 
-                          p.statut_presence === "excuse" ? "excusé" : "absent"})
-                      </span>
-                    </Label>
-                  </div>
-                ))}
+                {membresAvecEmail.map(({ membre }) => {
+                  const presence = presences?.find((p) => p.membre?.id === membre.id);
+                  return (
+                    <div key={membre.id} className="flex items-center space-x-2 hover:bg-muted/50 rounded p-1">
+                      <Checkbox
+                        id={membre.id}
+                        checked={selectedMembers.has(membre.id)}
+                        onCheckedChange={() => handleToggleMember(membre.id)}
+                      />
+                      <Label htmlFor={membre.id} className="font-normal text-sm cursor-pointer flex-1">
+                        {membre.prenom} {membre.nom}
+                        <span className="text-xs text-muted-foreground ml-2">
+                          ({presence?.statut_presence === "present"
+                            ? "présent"
+                            : presence?.statut_presence === "excuse"
+                              ? "excusé"
+                              : presence
+                                ? "absent"
+                                : "non renseigné"})
+                        </span>
+                      </Label>
+                    </div>
+                  );
+                })}
+
               </div>
             </div>
           )}
