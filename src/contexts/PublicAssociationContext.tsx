@@ -58,10 +58,20 @@ const PublicAssociationContext = createContext<Ctx>({
 export const PublicAssociationProvider = ({ children }: { children: ReactNode }) => {
   const [association, setAssociation] = useState<PublicAssociation | null>(null);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const queryClient = useQueryClient();
+
+  // Le slug est recalculé à chaque changement d'URL : passer de /s/asso-a à
+  // /s/asso-b doit réellement changer de tenant (contenu, logo, couleurs, langue).
+  const slug = resolvePublicSlug({
+    host: typeof window !== "undefined" ? window.location.host : "",
+    pathname: location.pathname,
+    search: location.search,
+  });
 
   useEffect(() => {
     let cancelled = false;
-    const slug = resolvePublicSlug();
+    setLoading(true);
 
     (async () => {
       try {
@@ -69,10 +79,16 @@ export const PublicAssociationProvider = ({ children }: { children: ReactNode })
         if (error) throw error;
         if (cancelled) return;
         const assoc = (data as unknown as PublicAssociation | null) ?? null;
+        setAssociation(assoc);
+        const active = !!assoc && assoc.statut === "actif";
+        const previousId = publicAssociationStore.get();
+        const nextId = active ? assoc!.id : null;
+        publicAssociationStore.set(nextId);
+        if (previousId !== nextId) {
+          // Le contenu public déjà en cache appartient à l'association précédente.
+          void queryClient.invalidateQueries();
+        }
         if (assoc) {
-          setAssociation(assoc);
-          const active = assoc.statut === "actif";
-          publicAssociationStore.set(active ? assoc.id : null);
           applyThemeTokens(assoc.theme_tokens);
           if (assoc.langue_principale) {
             void i18n.changeLanguage(assoc.langue_principale);
@@ -91,7 +107,7 @@ export const PublicAssociationProvider = ({ children }: { children: ReactNode })
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [slug, queryClient]);
 
   const unavailable = !!association && association.statut !== "actif";
 
@@ -104,15 +120,10 @@ export const PublicAssociationProvider = ({ children }: { children: ReactNode })
         unavailable,
       }}
     >
-      {/* On attend la résolution du tenant avant de monter l'application :
-          les requêtes de contenu public doivent être filtrées dès le 1er appel. */}
-      {loading ? (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        </div>
-      ) : (
-        children
-      )}
+      {/* Aucun écran d'attente global : seules les pages publiques attendent la
+          résolution du tenant (voir PublicSiteGuard). Connexion et espace
+          membre restent accessibles même si la résolution échoue ou traîne. */}
+      {children}
     </PublicAssociationContext.Provider>
   );
 };
