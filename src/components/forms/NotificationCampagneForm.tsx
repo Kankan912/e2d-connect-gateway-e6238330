@@ -85,9 +85,10 @@ export default function NotificationCampagneForm({ open, onClose, onSubmit, crea
                 <SelectValue placeholder="Sélectionner un type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="email">Email</SelectItem>
-                <SelectItem value="sms">SMS</SelectItem>
-                <SelectItem value="email_sms">Email + SMS</SelectItem>
+                <SelectItem value="reunion">Réunion</SelectItem>
+                <SelectItem value="rappel_cotisation">Rappel de cotisation</SelectItem>
+                <SelectItem value="echeance_pret">Échéance de prêt</SelectItem>
+                <SelectItem value="custom">Personnalisé</SelectItem>
               </SelectContent>
             </Select>
             {errors.type_campagne && <p className="text-sm text-destructive mt-1">{errors.type_campagne.message}</p>}
