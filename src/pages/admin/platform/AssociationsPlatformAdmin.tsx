@@ -410,6 +410,7 @@ export default function AssociationsPlatformAdmin() {
                       <SelectContent>
                         <SelectItem value="fr">Français</SelectItem>
                         <SelectItem value="en">English</SelectItem>
+                        <SelectItem value="es">Español</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

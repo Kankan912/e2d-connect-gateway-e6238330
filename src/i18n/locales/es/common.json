@@ -1,0 +1,33 @@
+{
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Modificar",
+    "confirm": "Confirmar",
+    "close": "Cerrar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "loading": "Cargando...",
+    "search": "Buscar"
+  },
+  "status": {
+    "success": "Éxito",
+    "error": "Error",
+    "warning": "Atención",
+    "info": "Información"
+  },
+  "language": {
+    "label": "Idioma",
+    "fr": "Français",
+    "en": "English",
+    "es": "Español"
+  },
+  "nav": {
+    "home": "Inicio",
+    "dashboard": "Panel",
+    "profile": "Perfil",
+    "logout": "Cerrar sesión",
+    "login": "Iniciar sesión"
+  }
+}

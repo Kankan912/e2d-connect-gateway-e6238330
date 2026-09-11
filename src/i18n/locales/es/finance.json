@@ -1,0 +1,31 @@
+{
+  "loan": {
+    "status": {
+      "en_cours": "En curso",
+      "rembourse": "Reembolsado",
+      "partiel": "Parcial",
+      "en_retard": "Atrasado",
+      "reconduit": "Renovado",
+      "annule": "Anulado"
+    },
+    "amount": "Importe",
+    "interest": "Intereses",
+    "due": "Vencimiento",
+    "remaining": "Saldo pendiente"
+  },
+  "aide": {
+    "status": {
+      "demandee": "Solicitada",
+      "validee": "Validada",
+      "allouee": "Asignada",
+      "payee": "Pagada",
+      "rejetee": "Rechazada"
+    }
+  },
+  "caisse": {
+    "balance": "Saldo de caja",
+    "loanable": "Saldo prestable",
+    "income": "Entradas",
+    "expense": "Salidas"
+  }
+}
