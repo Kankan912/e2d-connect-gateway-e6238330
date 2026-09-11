@@ -7,6 +7,8 @@
  * contenu (`useSiteContent`) soient filtrées sur la bonne association.
  */
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import i18n from "@/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { applyThemeTokens } from "@/lib/applyTheme";
