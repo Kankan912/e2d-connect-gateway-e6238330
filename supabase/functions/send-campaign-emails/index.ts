@@ -330,6 +330,10 @@ serve(async (req) => {
       })
       .eq("id", campaignId);
 
+    if (finalizeError) {
+      console.error("❌ Impossible de mettre à jour le statut de la campagne:", finalizeError);
+    }
+
     console.log(`📊 Campaign completed via ${emailConfig.service}: ${sentCount} sent, ${errorCount} errors`);
 
     return new Response(
