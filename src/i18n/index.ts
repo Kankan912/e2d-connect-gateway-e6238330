@@ -1,5 +1,5 @@
 /**
- * Phase 6 — Infrastructure i18n (FR/EN).
+ * Phase 6 — Infrastructure i18n (FR/EN/ES).
  *
  * Détection langue : localStorage > navigateur > fallback FR.
  * Namespaces : common, finance, admin, site.
@@ -17,8 +17,12 @@ import enCommon from "./locales/en/common.json";
 import enFinance from "./locales/en/finance.json";
 import enAdmin from "./locales/en/admin.json";
 import enSite from "./locales/en/site.json";
+import esCommon from "./locales/es/common.json";
+import esFinance from "./locales/es/finance.json";
+import esAdmin from "./locales/es/admin.json";
+import esSite from "./locales/es/site.json";
 
-export const SUPPORTED_LANGS = ["fr", "en"] as const;
+export const SUPPORTED_LANGS = ["fr", "en", "es"] as const;
 export type SupportedLang = (typeof SUPPORTED_LANGS)[number];
 
 export const LANGUAGE_STORAGE_KEY = "lovable_language";
@@ -30,6 +34,7 @@ void i18n
     resources: {
       fr: { common: frCommon, finance: frFinance, admin: frAdmin, site: frSite },
       en: { common: enCommon, finance: enFinance, admin: enAdmin, site: enSite },
+      es: { common: esCommon, finance: esFinance, admin: esAdmin, site: esSite },
     },
     fallbackLng: "fr",
     supportedLngs: SUPPORTED_LANGS as unknown as string[],

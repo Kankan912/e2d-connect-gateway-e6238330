@@ -258,6 +258,7 @@ export const AssociationWizard = ({ values, onChange, onSubmit, submitting, onCa
               <SelectContent>
                 <SelectItem value="fr">Français</SelectItem>
                 <SelectItem value="en">English</SelectItem>
+                <SelectItem value="es">Español</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -272,6 +273,7 @@ export const AssociationWizard = ({ values, onChange, onSubmit, submitting, onCa
                 <SelectItem value="fr-CM">fr-CM</SelectItem>
                 <SelectItem value="en-US">en-US</SelectItem>
                 <SelectItem value="en-GB">en-GB</SelectItem>
+                <SelectItem value="es-ES">es-ES</SelectItem>
               </SelectContent>
             </Select>
           </div>
