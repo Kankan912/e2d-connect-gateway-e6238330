@@ -42,7 +42,14 @@ const queryClient = new QueryClient({
  * page interne, y compris via une URL saisie directement.
  */
 const PublicSiteGuard = ({ children }: { children: ReactNode }) => {
-  const { association, unavailable } = usePublicAssociation();
+  const { association, unavailable, loading } = usePublicAssociation();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
   if (unavailable) {
     return (
       <AssociationIndisponible
