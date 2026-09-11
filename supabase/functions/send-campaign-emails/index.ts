@@ -215,13 +215,10 @@ serve(async (req) => {
       );
     }
 
-    // Update campaign status to "en_cours"
+    // Mémoriser le nombre de destinataires (le statut reste valide jusqu'à la fin)
     await supabaseAdmin
       .from("notifications_campagnes")
-      .update({ 
-        statut: "en_cours",
-        nb_destinataires: recipients.length 
-      })
+      .update({ nb_destinataires: recipients.length })
       .eq("id", campaignId);
 
     let sentCount = 0;
@@ -323,10 +320,10 @@ serve(async (req) => {
     }
 
     // Update campaign with final stats
-    await supabaseAdmin
+    const { error: finalizeError } = await supabaseAdmin
       .from("notifications_campagnes")
       .update({
-        statut: "envoyee",
+        statut: "envoye",
         nb_envoyes: sentCount,
         nb_erreurs: errorCount,
         date_envoi_reelle: new Date().toISOString(),
