@@ -1,0 +1,20 @@
+{
+  "branding": {
+    "title": "Identidad de la asociación",
+    "subtitle": "Personalice el logotipo, los colores y la tipografía mostrados a los miembros y visitantes.",
+    "logo": "Logotipo",
+    "logo_upload": "Subir un logotipo",
+    "colors": "Colores",
+    "primary": "Color primario",
+    "secondary": "Color secundario",
+    "accent": "Color de acento",
+    "hsl_hint": "Formato HSL esperado (ej.: 220 90% 56%)",
+    "typography": "Tipografía",
+    "font_heading": "Fuente de los títulos",
+    "font_body": "Fuente del cuerpo",
+    "radius": "Redondeo de los componentes",
+    "preview": "Vista previa",
+    "saved": "Identidad guardada",
+    "reset": "Restablecer los valores por defecto"
+  }
+}

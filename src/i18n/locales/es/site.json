@@ -1,0 +1,9 @@
+{
+  "hero": {
+    "cta_join": "Unirse a la asociación",
+    "cta_donate": "Hacer una donación"
+  },
+  "footer": {
+    "rights": "Todos los derechos reservados"
+  }
+}
