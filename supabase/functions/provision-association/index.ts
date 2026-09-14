@@ -168,7 +168,7 @@ serve(async (req) => {
             granted: p.granted,
           };
         })
-        .filter(Boolean);
+        .filter((row): row is NonNullable<typeof row> => row !== null);
 
       if (permsToInsert.length) {
         const { error: permsErr } = await admin.from("role_permissions").insert(permsToInsert);
