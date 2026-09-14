@@ -39,3 +39,10 @@ Date : 11 septembre 2026. Vérifié directement en base et dans le code.
 3. **Contenu du site de Phoenix** : générer les enregistrements par défaut manquants pour que son site public ne soit plus vide. (court)
 4. **Sous-domaines réels** : à activer une fois le domaine générique configuré chez l'hébergeur (dépend d'une action hors application).
 5. **Vérification finale** : rejouer le parcours complet sur les 5 écrans encore non validés lors des tests.
+
+## 4. Mise à jour du 11 septembre (soir)
+
+- **Espagnol** : ajouté (traductions complètes, sélecteur de langue, création et édition d'association). Fait.
+- **Site de Phoenix** : contenus par défaut créés (configuration, bandeau d'accueil, présentation, 3 activités). Au passage, un défaut a été corrigé : une clé de configuration de site ne pouvait exister que pour une seule association.
+- **Espace de stockage dédié aux logos** : bloqué — la création d'espaces publics est interdite par la politique de l'espace de travail (Paramètres → Confidentialité & sécurité). Les logos restent dans l'espace public existant et fonctionnent normalement.
+- **Sous-domaines réels** : toujours dépendant de la configuration du domaine chez l'hébergeur.
