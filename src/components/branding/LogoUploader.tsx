@@ -9,18 +9,25 @@ import { logger } from "@/lib/logger";
 interface LogoUploaderProps {
   value: string | null;
   onChange: (url: string | null) => void;
-  /** Dossier de destination dans le bucket `site-images`. */
-  folder?: string;
+  /**
+   * Identifiant de l'association propriétaire du logo.
+   * Le fichier est rangé dans `logos/<association>/…`, dossier réservé :
+   * lecture publique, écriture limitée aux administrateurs (RLS storage).
+   */
+  associationId?: string | null;
   label?: string;
 }
 
 const MAX_SIZE = 3 * 1024 * 1024;
 
-/** Envoi d'un logo dans le bucket `site-images` et restitution de son URL publique. */
+/** Préfixe réservé (politiques RLS `site_images_logos_*`). */
+export const LOGO_FOLDER = "logos";
+
+/** Envoi d'un logo dans le dossier réservé `logos/` et restitution de son URL publique. */
 export const LogoUploader = ({
   value,
   onChange,
-  folder = "logos",
+  associationId,
   label = "Logo de l'association",
 }: LogoUploaderProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
