@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { Loader2, PlusCircle, Building2, Copy, Pencil, ExternalLink } from "lucide-react";
 import { logger } from "@/lib/logger";
 import { normalizeSubdomain, subdomainPreview, validateSubdomain } from "@/lib/subdomain";
+import { SubdomainHelpDialog } from "./_components/SubdomainHelpDialog";
 import {
   AssociationWizard,
   AssociationWizardValues,
