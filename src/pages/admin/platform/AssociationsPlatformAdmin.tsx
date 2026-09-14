@@ -217,16 +217,19 @@ export default function AssociationsPlatformAdmin() {
           </p>
         </div>
 
-        <Button
-          onClick={() => {
-            setWizard(emptyWizardValues);
-            setLastPassword(null);
-            setOpen(true);
-          }}
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Nouvelle association
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <SubdomainHelpDialog />
+          <Button
+            onClick={() => {
+              setWizard(emptyWizardValues);
+              setLastPassword(null);
+              setOpen(true);
+            }}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nouvelle association
+          </Button>
+        </div>
       </div>
 
       {/* ---------- Assistant de création ---------- */}
