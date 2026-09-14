@@ -27,6 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Loader2, PlusCircle, Building2, Copy, Pencil, ExternalLink } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { normalizeSubdomain, subdomainPreview, validateSubdomain } from "@/lib/subdomain";
 import {
   AssociationWizard,
   AssociationWizardValues,
