@@ -323,7 +323,7 @@ serve(async (req) => {
     const { error: finalizeError } = await supabaseAdmin
       .from("notifications_campagnes")
       .update({
-        statut: "envoye",
+        statut: "envoyee",
         nb_envoyes: sentCount,
         nb_erreurs: errorCount,
         date_envoi_reelle: new Date().toISOString(),
