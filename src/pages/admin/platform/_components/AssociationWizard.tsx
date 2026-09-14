@@ -19,6 +19,7 @@ import { TemplatePicker } from "@/components/branding/TemplatePicker";
 import { DEFAULT_PALETTE, paletteFromLogo } from "@/lib/paletteFromLogo";
 import { DEFAULT_TEMPLATE_ID, SiteTemplateId, getTemplate } from "@/lib/siteTemplates";
 import { logger } from "@/lib/logger";
+import { normalizeSubdomain, subdomainPreview, validateSubdomain } from "@/lib/subdomain";
 
 export interface AssociationWizardValues {
   slug: string;
