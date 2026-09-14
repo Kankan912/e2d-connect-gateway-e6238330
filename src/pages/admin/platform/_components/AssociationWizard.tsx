@@ -93,20 +93,38 @@ interface Props {
   onSubmit: () => void;
   submitting: boolean;
   onCancel: () => void;
+  /** Sous-domaines déjà attribués (détection de doublon). */
+  existingSubdomains?: string[];
 }
 
 /** Assistant de création d'association en 7 étapes. */
-export const AssociationWizard = ({ values, onChange, onSubmit, submitting, onCancel }: Props) => {
+export const AssociationWizard = ({
+  values,
+  onChange,
+  onSubmit,
+  submitting,
+  onCancel,
+  existingSubdomains = [],
+}: Props) => {
   const [step, setStep] = useState(0);
   const [extracting, setExtracting] = useState(false);
 
   const set = <K extends keyof AssociationWizardValues>(key: K, value: AssociationWizardValues[K]) =>
     onChange({ ...values, [key]: value });
 
+  const subdomainCheck = useMemo(
+    () => validateSubdomain(values.subdomain, { existing: existingSubdomains }),
+    [values.subdomain, existingSubdomains],
+  );
+
   const stepValid = useMemo(() => {
     switch (step) {
       case 0:
-        return values.nom.trim().length >= 2 && /^[a-z][a-z0-9-]{1,30}[a-z0-9]$/.test(values.slug);
+        return (
+          values.nom.trim().length >= 2 &&
+          /^[a-z][a-z0-9-]{1,30}[a-z0-9]$/.test(values.slug) &&
+          subdomainCheck.valid
+        );
       case 5:
         return (
           values.admin_prenom.trim() !== "" &&
