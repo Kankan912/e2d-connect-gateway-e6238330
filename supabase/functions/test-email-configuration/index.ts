@@ -15,11 +15,12 @@ interface Body {
   enableFallback?: boolean;
 }
 
-function json(status: number, payload: Record<string, unknown>) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+function jsonWith(corsHeaders: Record<string, string>) {
+  return (status: number, payload: Record<string, unknown>) =>
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 }
 
 function buildHtml(provider: string, to: string) {
@@ -40,6 +41,7 @@ serve(async (req) => {
   const corsHeaders = buildCorsHeaders(req);
   const preflight = handleCorsPreflight(req);
   if (preflight) return preflight;
+  const json = jsonWith(corsHeaders);
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
