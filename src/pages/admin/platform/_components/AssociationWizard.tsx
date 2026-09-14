@@ -201,8 +201,16 @@ export const AssociationWizard = ({
               <Input
                 id="w-subdomain"
                 value={values.subdomain}
-                onChange={(e) => set("subdomain", slugify(e.target.value))}
+                onChange={(e) => set("subdomain", normalizeSubdomain(e.target.value))}
+                aria-invalid={!subdomainCheck.valid}
               />
+              {subdomainCheck.error ? (
+                <p className="text-xs text-destructive mt-1">{subdomainCheck.error}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Adresse : {subdomainPreview(values.subdomain, values.slug) || "—"}
+                </p>
+              )}
             </div>
           </div>
           <div>
