@@ -480,7 +480,7 @@ export default function AssociationsPlatformAdmin() {
             <Button
               type="button"
               onClick={() => editing && update.mutate(editing)}
-              disabled={update.isPending}
+              disabled={update.isPending || !editingSubdomainCheck.valid}
             >
               {update.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Enregistrer
