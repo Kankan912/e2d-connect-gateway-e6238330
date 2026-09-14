@@ -92,6 +92,13 @@ export default function AssociationsPlatformAdmin() {
     },
   });
 
+  const editingSubdomainCheck = validateSubdomain(editing?.subdomain ?? "", {
+    existing: associations
+      .filter((a) => a.id !== editing?.id)
+      .map((a) => a.subdomain ?? "")
+      .filter((s) => s.length > 0),
+  });
+
   const filtered = associations.filter((a) => {
     const matchStatut = statutFilter === "tous" || a.statut === statutFilter;
     const q = search.trim().toLowerCase();
