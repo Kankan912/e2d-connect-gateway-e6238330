@@ -95,12 +95,6 @@ export default function NotifierReunionModal({
         .map(m => ({ email: m.email!, nom: m.nom, prenom: m.prenom }));
     }
 
-    if (recipientType === "manuel") {
-      return (tousMembres || [])
-        .filter(m => m.email && selectedMembers.has(m.id))
-        .map(m => ({ email: m.email!, nom: m.nom, prenom: m.prenom }));
-    }
-
     if (!presences) return [];
 
     const filtered =
@@ -117,7 +111,7 @@ export default function NotifierReunionModal({
         nom: p.membre!.nom,
         prenom: p.membre!.prenom,
       }));
-  }, [presences, tousMembres, recipientType, selectedMembers]);
+  }, [presences, tousMembres, recipientType]);
 
   // Membres avec email pour sélection manuelle
   const membresAvecEmail = (tousMembres || [])
@@ -128,25 +122,6 @@ export default function NotifierReunionModal({
   const tauxPresence = presences && presences.length > 0 
     ? Math.round((presents.length / presences.length) * 100) 
     : 0;
-
-  const handleToggleMember = (membreId: string) => {
-    const newSet = new Set(selectedMembers);
-    if (newSet.has(membreId)) {
-      newSet.delete(membreId);
-    } else {
-      newSet.add(membreId);
-    }
-    setSelectedMembers(newSet);
-  };
-
-  const handleSelectAll = () => {
-    const allIds = membresAvecEmail.map(p => p.membre?.id || "").filter(Boolean);
-    setSelectedMembers(new Set(allIds));
-  };
-
-  const handleDeselectAll = () => {
-    setSelectedMembers(new Set());
-  };
 
   const handleSendNotification = async () => {
     if (destinataires.length === 0) {
@@ -177,7 +152,7 @@ export default function NotifierReunionModal({
       const { data, error } = await supabase.functions.invoke("send-reunion-cr", {
         body: {
           reunionId,
-          destinataires,
+          cible: recipientType,
           sujet: `[APERÇU] ${reunionData.ordre_du_jour || "Réunion E2D"}`,
           contenu,
           dateReunion: new Date(reunionData.date_reunion).toLocaleDateString("fr-FR", {
@@ -298,61 +273,14 @@ export default function NotifierReunionModal({
                   Absents/Excusés ({[...excuses, ...absents].filter(p => p.membre?.email).length})
                 </Label>
               </div>
-              <div className="flex items-center space-x-2 border rounded-lg p-2">
-                <RadioGroupItem value="manuel" id="manuel" />
-                <Label htmlFor="manuel" className="font-normal text-sm cursor-pointer">
-                  Sélection manuelle
-                </Label>
-              </div>
             </RadioGroup>
           </div>
-
-          {/* Sélection manuelle */}
-          {recipientType === "manuel" && (
-            <div className="space-y-2">
-              <div className="flex gap-2 justify-end">
-                <Button variant="ghost" size="sm" onClick={handleSelectAll}>
-                  Tout sélectionner
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleDeselectAll}>
-                  Tout désélectionner
-                </Button>
-              </div>
-              <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1">
-                {membresAvecEmail.map(({ membre }) => {
-                  const presence = presences?.find((p) => p.membre?.id === membre.id);
-                  return (
-                    <div key={membre.id} className="flex items-center space-x-2 hover:bg-muted/50 rounded p-1">
-                      <Checkbox
-                        id={membre.id}
-                        checked={selectedMembers.has(membre.id)}
-                        onCheckedChange={() => handleToggleMember(membre.id)}
-                      />
-                      <Label htmlFor={membre.id} className="font-normal text-sm cursor-pointer flex-1">
-                        {membre.prenom} {membre.nom}
-                        <span className="text-xs text-muted-foreground ml-2">
-                          ({presence?.statut_presence === "present"
-                            ? "présent"
-                            : presence?.statut_presence === "excuse"
-                              ? "excusé"
-                              : presence
-                                ? "absent"
-                                : "non renseigné"})
-                        </span>
-                      </Label>
-                    </div>
-                  );
-                })}
-
-              </div>
-            </div>
-          )}
 
           {/* Affichage des destinataires */}
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Users className="h-4 w-4" />
-              <span>Destinataires sélectionnés ({destinataires.length})</span>
+              <span>Destinataires ({destinataires.length}) — liste calculée côté serveur</span>
             </div>
             {destinataires.length > 0 ? (
               <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">

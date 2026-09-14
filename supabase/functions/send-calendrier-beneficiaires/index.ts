@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
-import { requirePrivilegedUser } from "../_shared/auth-check.ts";
+import { getCaller, getCallerAssociations } from "../_shared/auth-check.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,8 +37,16 @@ serve(async (req) => {
   }
 
   try {
-    const authError = await requirePrivilegedUser(req, corsHeaders);
-    if (authError) return authError;
+    const authResult = await getCaller(req, corsHeaders);
+    if ("response" in authResult) return authResult.response;
+    const associationIds = await getCallerAssociations(authResult.caller);
+    if (associationIds.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Aucune association accessible" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -62,6 +70,7 @@ serve(async (req) => {
     const { data: membres, error: membresError } = await supabase
       .from("membres")
       .select("id, nom, prenom, email")
+      .in("association_id", associationIds)
       .eq("statut", "actif")
       .eq("est_membre_e2d", true)
       .not("email", "is", null);

@@ -3,38 +3,60 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
 import { requirePrivilegedUser } from "../_shared/auth-check.ts";
 import { notifyInApp } from "../_shared/in-app-notify.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
+import { escapeHtml } from "../_shared/html.ts";
 
 interface SanctionNotificationRequest {
+  /** Identifiant de la sanction : le membre et l'association en sont déduits côté serveur. */
   sanctionId: string;
-  membreId: string;
-  motif: string;
-  montant: number;
-  dateSanction?: string;
   testMode?: boolean;
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsHeaders = buildCorsHeaders(req);
+  const preflight = handleCorsPreflight(req);
+  if (preflight) return preflight;
 
   try {
-    const authError = await requirePrivilegedUser(req, corsHeaders);
-    if (authError) return authError;
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const body: SanctionNotificationRequest = await req.json();
+    const { sanctionId, testMode = false } = body;
+
+    if (!sanctionId) {
+      return new Response(
+        JSON.stringify({ error: "Paramètres manquants", message: "sanctionId est requis" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // La sanction est la source de vérité : membre, motif, montant et association
+    const { data: sanction, error: sanctionError } = await supabase
+      .from("sanctions")
+      .select("id, membre_id, motif, montant, date_sanction, association_id")
+      .eq("id", sanctionId)
+      .maybeSingle();
+
+    if (sanctionError || !sanction) {
+      return new Response(
+        JSON.stringify({ error: "Sanction introuvable" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Autorisation : rôle privilégié DANS l'association de la sanction
+    const authError = await requirePrivilegedUser(req, corsHeaders, sanction.association_id);
+    if (authError) return authError;
+
+    const membreId = sanction.membre_id;
+    const motif = sanction.motif ?? "Sanction";
+    const montant = Number(sanction.montant ?? 0);
+    const dateSanction = sanction.date_sanction;
+
     // Charger la configuration email complète
     const emailConfig = await getFullEmailConfig();
-    
-    // Valider la configuration
     const validation = validateFullEmailConfig(emailConfig);
     if (!validation.valid) {
       console.error("Configuration email invalide:", validation.error);
@@ -43,18 +65,6 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const body: SanctionNotificationRequest = await req.json();
-    const { sanctionId, membreId, motif, montant, dateSanction, testMode = false } = body;
-
-    if (!membreId || !motif) {
-      return new Response(
-        JSON.stringify({ error: "Paramètres manquants", message: "membreId et motif sont requis" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log(`Envoi de notification de sanction pour membre ${membreId} via ${emailConfig.service}. Mode test: ${testMode}`);
 
     // Vérifier si les notifications sont activées
     const { data: config } = await supabase
@@ -121,7 +131,7 @@ serve(async (req) => {
             <h1>⚠️ Notification de Sanction</h1>
           </div>
           <div class="content">
-            <p>Bonjour ${membre.prenom} ${membre.nom},</p>
+            <p>Bonjour ${escapeHtml(membre.prenom)} ${escapeHtml(membre.nom)},</p>
             
             <div class="alert">
               <strong>Nous vous informons qu'une sanction a été enregistrée à votre encontre.</strong>
@@ -130,7 +140,7 @@ serve(async (req) => {
             <div class="details">
               <div class="detail-row">
                 <span><strong>📋 Motif :</strong></span>
-                <span>${motif}</span>
+                <span>${escapeHtml(motif)}</span>
               </div>
               <div class="detail-row">
                 <span><strong>📅 Date :</strong></span>
