@@ -264,6 +264,9 @@ export default function AssociationsPlatformAdmin() {
               onSubmit={() => provision.mutate()}
               submitting={provision.isPending}
               onCancel={() => setOpen(false)}
+              existingSubdomains={associations
+                .map((a) => a.subdomain ?? "")
+                .filter((s): s is string => s.length > 0)}
             />
           )}
         </DialogContent>
@@ -311,8 +314,18 @@ export default function AssociationsPlatformAdmin() {
                     <Input
                       id="e-sub"
                       value={editing.subdomain ?? ""}
-                      onChange={(e) => setEditing({ ...editing, subdomain: e.target.value.toLowerCase() })}
+                      onChange={(e) =>
+                        setEditing({ ...editing, subdomain: normalizeSubdomain(e.target.value) })
+                      }
+                      aria-invalid={!editingSubdomainCheck.valid}
                     />
+                    {editingSubdomainCheck.error ? (
+                      <p className="text-xs text-destructive mt-1">{editingSubdomainCheck.error}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Adresse : {subdomainPreview(editing.subdomain ?? "", editing.slug) || "—"}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label>Statut</Label>
