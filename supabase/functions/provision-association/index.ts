@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import {
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
   ConflictError,
   ForbiddenError,
   InternalError,
@@ -11,10 +12,6 @@ import {
   successResponse,
 } from "../_shared/errors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 const SLUG_RE = /^[a-z][a-z0-9-]{1,30}[a-z0-9]$/;
 

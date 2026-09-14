@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
 import {
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
   AppError,
   ExternalServiceError,
   InternalError,
@@ -11,10 +12,6 @@ import {
   successResponse,
 } from "../_shared/errors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 interface EmailRequest {
   to: string;
