@@ -87,9 +87,14 @@ export async function requirePrivilegedUser(
     .select("roles(name)")
     .eq("user_id", caller.userId);
 
-  const hasPrivilege = (roles ?? []).some((r: { roles?: { name?: string } | null }) =>
-    PRIVILEGED_ROLES.includes((r?.roles?.name ?? "").toLowerCase())
-  );
+  const rows = (roles ?? []) as unknown as Array<{
+    roles?: { name?: string } | { name?: string }[] | null;
+  }>;
+  const hasPrivilege = rows.some((r) => {
+    const rel = r?.roles;
+    const names = Array.isArray(rel) ? rel.map((x) => x?.name) : [rel?.name];
+    return names.some((n) => PRIVILEGED_ROLES.includes((n ?? "").toLowerCase()));
+  });
 
   if (!hasPrivilege) {
     return jsonResponse({ error: "Insufficient permissions" }, 403, corsHeaders);

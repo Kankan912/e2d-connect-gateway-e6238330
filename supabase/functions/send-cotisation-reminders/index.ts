@@ -122,10 +122,17 @@ serve(async (req) => {
 
       const totalDu = cotisations.reduce((sum, c) => sum + (c.montant || 0), 0);
       
-      const cotisationsHtml = cotisations.map((c: { reunions?: { date_reunion?: string }; cotisations_types?: { nom?: string }; montant?: number; statut?: string }) => {
-        const dateReunion = new Date(c.reunions.date_reunion).toLocaleDateString("fr-FR");
+      const cotisationsHtml = (cotisations as unknown as Array<{
+        reunions?: { date_reunion?: string } | null;
+        cotisations_types?: { nom?: string } | null;
+        montant?: number | null;
+        statut?: string | null;
+      }>).map((c) => {
+        const rawDate = c.reunions?.date_reunion;
+        const dateReunion = rawDate ? new Date(rawDate).toLocaleDateString("fr-FR") : "date non précisée";
         const typeName = c.cotisations_types?.nom || "Cotisation";
-        return `<li>${typeName} - Réunion du ${dateReunion} : ${c.montant.toLocaleString("fr-FR")} FCFA (${c.statut})</li>`;
+        const montant = (c.montant ?? 0).toLocaleString("fr-FR");
+        return `<li>${typeName} - Réunion du ${dateReunion} : ${montant} FCFA (${c.statut ?? ""})</li>`;
       }).join("");
 
       const emailHtml = `
