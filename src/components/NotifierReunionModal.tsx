@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Mail, Loader2, Users, FileText, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +18,7 @@ interface NotifierReunionModalProps {
   reunionData: { sujet?: string; date_reunion: string; ordre_du_jour?: string; lieu_description?: string };
 }
 
-type RecipientType = "tous" | "presents" | "absents" | "manuel";
+type RecipientType = "tous" | "presents" | "absents";
 
 export default function NotifierReunionModal({
   open,
@@ -29,7 +28,6 @@ export default function NotifierReunionModal({
 }: NotifierReunionModalProps) {
   const [sending, setSending] = useState(false);
   const [recipientType, setRecipientType] = useState<RecipientType>("tous");
-  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   // Récupérer les membres présents
