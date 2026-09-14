@@ -45,7 +45,8 @@ export const LogoUploader = ({
     setUploading(true);
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "png";
-      const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+      const scope = associationId ?? "nouvelles";
+      const path = `${LOGO_FOLDER}/${scope}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from("site-images").upload(path, file, {
         cacheControl: "3600",
         upsert: false,
@@ -56,7 +57,16 @@ export const LogoUploader = ({
       toast.success("Logo envoyé");
     } catch (error: unknown) {
       logger.error("[LogoUploader] échec upload:", error);
-      toast.error(error instanceof Error ? error.message : "Échec de l'envoi du logo");
+      const message = error instanceof Error ? error.message : "";
+      const denied =
+        /row-level security|Unauthorized|not authorized|permission/i.test(message) ||
+        (typeof error === "object" && error !== null && "statusCode" in error &&
+          ["403", "401"].includes(String((error as { statusCode?: unknown }).statusCode)));
+      toast.error(
+        denied
+          ? "Droits insuffisants : seuls les administrateurs peuvent modifier le logo de l'association."
+          : message || "Échec de l'envoi du logo",
+      );
     } finally {
       setUploading(false);
     }
