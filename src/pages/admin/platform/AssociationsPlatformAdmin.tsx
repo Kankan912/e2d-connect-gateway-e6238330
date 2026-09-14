@@ -384,7 +384,7 @@ export default function AssociationsPlatformAdmin() {
                 <LogoUploader
                   value={editing.logo_url}
                   onChange={(url) => setEditing({ ...editing, logo_url: url })}
-                  folder="associations"
+                  associationId={editing.id}
                 />
                 <PaletteEditor
                   tokens={editing.theme_tokens ?? { ...DEFAULT_PALETTE }}

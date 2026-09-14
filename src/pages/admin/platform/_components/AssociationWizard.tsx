@@ -233,7 +233,7 @@ export const AssociationWizard = ({ values, onChange, onSubmit, submitting, onCa
           <LogoUploader
             value={values.logo_url || null}
             onChange={(url) => set("logo_url", url ?? "")}
-            folder="associations"
+            associationId={null}
           />
           <Button type="button" variant="secondary" onClick={generatePalette} disabled={extracting}>
             {extracting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
