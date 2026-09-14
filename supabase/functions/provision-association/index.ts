@@ -49,7 +49,9 @@ function generatePassword(): string {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const corsHeaders = buildCorsHeaders(req);
+  const preflight = handleCorsPreflight(req);
+  if (preflight) return preflight;
 
   try {
     // ---- 1. Auth : super_admin uniquement ----

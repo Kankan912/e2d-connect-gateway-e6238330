@@ -29,7 +29,9 @@ interface Body {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const corsHeaders = buildCorsHeaders(req);
+  const preflight = handleCorsPreflight(req);
+  if (preflight) return preflight;
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
