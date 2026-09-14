@@ -1,8 +1,6 @@
 project_id = "piyvinbuxpnquwzyugdj"
 
-[functions.create-user-account]
-verify_jwt = false
-
+# --- Fonctions publiques (site vitrine, aucun accès aux données sensibles) ---
 [functions.donations-stats]
 verify_jwt = false
 
@@ -12,48 +10,54 @@ verify_jwt = false
 [functions.process-adhesion]
 verify_jwt = false
 
-[functions.send-email]
-verify_jwt = false
-
 [functions.send-contact-notification]
 verify_jwt = false
 
+# --- Fonctions sensibles : JWT obligatoire + contrôle de rôle et d'association ---
+[functions.create-user-account]
+verify_jwt = true
+
+[functions.send-email]
+verify_jwt = true
+
 [functions.send-presence-reminders]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-reunion-cr]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-campaign-emails]
 verify_jwt = true
 
 [functions.send-cotisation-reminders]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-pret-echeance-reminders]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-sanction-notification]
-verify_jwt = false
+verify_jwt = true
 
 [functions.sync-user-emails]
-verify_jwt = false
+verify_jwt = true
 
 [functions.update-email-config]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-calendrier-beneficiaires]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-loan-notification]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-user-credentials]
-verify_jwt = false
+verify_jwt = true
 
 [functions.test-email-configuration]
-verify_jwt = false
-
+verify_jwt = true
 
 [functions.provision-association]
+verify_jwt = true
+
+[functions.seed-test-users]
 verify_jwt = true

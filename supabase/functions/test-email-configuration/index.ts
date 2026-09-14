@@ -1,3 +1,4 @@
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
@@ -7,10 +8,6 @@ import {
   type FullEmailConfig,
 } from "../_shared/email-utils.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 interface Body {
   to: string;
@@ -18,11 +15,12 @@ interface Body {
   enableFallback?: boolean;
 }
 
-function json(status: number, payload: Record<string, unknown>) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+function jsonWith(corsHeaders: Record<string, string>) {
+  return (status: number, payload: Record<string, unknown>) =>
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 }
 
 function buildHtml(provider: string, to: string) {
@@ -40,7 +38,10 @@ function buildHtml(provider: string, to: string) {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const corsHeaders = buildCorsHeaders(req);
+  const preflight = handleCorsPreflight(req);
+  if (preflight) return preflight;
+  const json = jsonWith(corsHeaders);
 
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;

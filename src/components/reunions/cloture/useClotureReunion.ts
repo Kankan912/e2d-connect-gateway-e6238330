@@ -239,13 +239,12 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
         .eq('statut', 'actif')
         .not('email', 'is', null);
 
-      const destinataires =
-        tousMembresData
-          ?.filter((m: any) => m.email)
-          .map((m: any) => ({ email: m.email, nom: m.nom, prenom: m.prenom })) || [];
+      // Les destinataires réels sont calculés côté serveur (membres actifs de
+      // l'association de la réunion). Ce décompte sert uniquement à l'affichage.
+      const nbDestinatairesEstime = (tousMembresData || []).filter((m: any) => m.email).length;
 
       // B1 — Ne pas bloquer la clôture si aucun email valide.
-      const hasDestinataires = destinataires.length > 0;
+      const hasDestinataires = nbDestinatairesEstime > 0;
       if (!hasDestinataires) {
         toast({
           title: 'Compte-rendu non envoyé',
@@ -342,7 +341,6 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
         const { error: emailError } = await supabase.functions.invoke('send-reunion-cr', {
           body: {
             reunionId,
-            destinataires,
             sujet: reunionData.sujet || 'Réunion',
             contenu: contenuCR,
             dateReunion: dateObj.toLocaleDateString('fr-FR', {
@@ -398,7 +396,7 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
       const totalSanctions = nbSanctionsAbsence + nbSanctionsHuileSavon;
 
       const emailMsg = emailSent
-        ? `CR envoyé à ${destinataires.length} membre(s).`
+        ? `CR envoyé à ${nbDestinatairesEstime} membre(s).`
         : hasDestinataires
           ? `Envoi du CR échoué — clôture maintenue.`
           : `CR non envoyé (aucun email).`;

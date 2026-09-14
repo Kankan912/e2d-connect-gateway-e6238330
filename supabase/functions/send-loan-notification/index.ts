@@ -2,12 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendEmailAuto } from "../_shared/email-utils.ts";
 import { notifyInApp, notifyManyInApp } from "../_shared/in-app-notify.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
+import { getCaller } from "../_shared/auth-check.ts";
 
 type EventType =
   | "created"
@@ -44,9 +40,15 @@ function htmlShell(title: string, body: string) {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const corsHeaders = buildCorsHeaders(req);
+  const preflight = handleCorsPreflight(req);
+  if (preflight) return preflight;
 
   try {
+    const callerResult = await getCaller(req, corsHeaders);
+    if ("response" in callerResult) return callerResult.response;
+    const caller = callerResult.caller;
+
     const payload: Payload = await req.json();
     if (!payload?.request_id || !payload?.event) {
       return new Response(JSON.stringify({ error: "Payload invalide" }), {
@@ -64,7 +66,7 @@ serve(async (req) => {
     const { data: request, error: errReq } = await supabase
       .from("loan_requests")
       .select(
-        "id, montant, description, urgence, duree_mois, statut, motif_rejet, membre_id, avaliste_id, avaliste_self, avaliste_motif_refus, membres!loan_requests_membre_id_fkey(nom, prenom, user_id), avaliste:membres!loan_requests_avaliste_id_fkey(nom, prenom, user_id, email)",
+        "id, association_id, montant, description, urgence, duree_mois, statut, motif_rejet, membre_id, avaliste_id, avaliste_self, avaliste_motif_refus, membres!loan_requests_membre_id_fkey(nom, prenom, user_id), avaliste:membres!loan_requests_avaliste_id_fkey(nom, prenom, user_id, email)",
       )
       .eq("id", payload.request_id)
       .single();
@@ -75,6 +77,19 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // L'appelant doit appartenir à l'association de la demande (contrôle serveur)
+    const { data: allowed } = await caller.client.rpc("has_association_access", {
+      _association_id: (request as { association_id: string }).association_id,
+      _user_id: caller.userId,
+    });
+    if (allowed !== true) {
+      return new Response(JSON.stringify({ error: "Demande introuvable" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
 
     const m = (request as any).membres ?? {};
     const membreNom = `${m.prenom ?? ""} ${m.nom ?? ""}`.trim() || "Membre";

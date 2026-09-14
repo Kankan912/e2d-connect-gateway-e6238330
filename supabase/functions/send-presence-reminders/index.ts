@@ -1,12 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
-import { requirePrivilegedUser } from "../_shared/auth-check.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCaller, getCallerAssociations } from "../_shared/auth-check.ts";
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
+import { escapeHtml } from "../_shared/html.ts";
 
 interface ReminderRequest {
   joursAvant?: number;
@@ -14,14 +11,23 @@ interface ReminderRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsHeaders = buildCorsHeaders(req);
+  const preflight = handleCorsPreflight(req);
+  if (preflight) return preflight;
 
   try {
-    const authError = await requirePrivilegedUser(req, corsHeaders);
-    if (authError) return authError;
+    const callerResult = await getCaller(req, corsHeaders);
+    if ("response" in callerResult) return callerResult.response;
+    const caller = callerResult.caller;
+
+    // Périmètre : uniquement les associations de l'appelant
+    const associationIds = await getCallerAssociations(caller);
+    if (associationIds.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Insufficient permissions" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -51,7 +57,8 @@ serve(async (req) => {
 
     const { data: reunions, error: reunionsError } = await supabase
       .from("reunions")
-      .select("id, date_reunion, ordre_du_jour, lieu_description, sujet")
+      .select("id, association_id, date_reunion, ordre_du_jour, lieu_description, sujet")
+      .in("association_id", associationIds)
       .eq("statut", "planifie")
       .gte("date_reunion", targetDateStr)
       .lt("date_reunion", targetDateStr + "T23:59:59");
@@ -73,10 +80,11 @@ serve(async (req) => {
       );
     }
 
-    // Récupérer les membres actifs avec leur email
+    // Récupérer les membres actifs avec leur email, limités aux associations autorisées
     const { data: membres, error: membresError } = await supabase
       .from("membres")
-      .select("id, nom, prenom, email")
+      .select("id, nom, prenom, email, association_id")
+      .in("association_id", associationIds)
       .eq("statut", "actif")
       .not("email", "is", null);
 
@@ -114,8 +122,14 @@ serve(async (req) => {
         minute: "2-digit",
       });
 
-      for (const membre of membres) {
+      // Ne notifier que les membres de l'association de CETTE réunion
+      const membresReunion = membres.filter(
+        (m) => m.association_id === reunion.association_id,
+      );
+
+      for (const membre of membresReunion) {
         if (!membre.email) continue;
+
 
         const emailHtml = `
           <!DOCTYPE html>
@@ -139,13 +153,13 @@ serve(async (req) => {
                 <h1>📅 Rappel de Réunion E2D</h1>
               </div>
               <div class="content">
-                <p>Bonjour ${membre.prenom} ${membre.nom},</p>
-                <p>Nous vous rappelons que vous êtes attendu(e) à la prochaine réunion de l'association E2D :</p>
+                <p>Bonjour ${escapeHtml(membre.prenom)} ${escapeHtml(membre.nom)},</p>
+                <p>Nous vous rappelons que vous êtes attendu(e) à la prochaine réunion de l'association :</p>
                 
                 <div class="details">
                   <div class="detail-row">
                     <span class="detail-label">📝 Objet :</span>
-                    <span>${reunion.sujet || reunion.ordre_du_jour || "Réunion ordinaire"}</span>
+                    <span>${escapeHtml(reunion.sujet || reunion.ordre_du_jour || "Réunion ordinaire")}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">📆 Date :</span>
@@ -157,11 +171,11 @@ serve(async (req) => {
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">📍 Lieu :</span>
-                    <span>${reunion.lieu_description || "non précisé"}</span>
+                    <span>${escapeHtml(reunion.lieu_description || "non précisé")}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">📋 Ordre du jour :</span>
-                    <span>${reunion.ordre_du_jour || "non précisé"}</span>
+                    <span>${escapeHtml(reunion.ordre_du_jour || "non précisé")}</span>
                   </div>
 
                 </div>

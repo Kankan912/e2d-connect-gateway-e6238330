@@ -7024,6 +7024,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_privileged_role_in: {
+        Args: { _association_id: string; _user_id?: string }
+        Returns: boolean
+      }
       has_role:
         | { Args: { _role: string; _user_id: string }; Returns: boolean }
         | { Args: { role_name: string }; Returns: boolean }
@@ -7057,6 +7061,7 @@ export type Database = {
         Returns: string
       }
       mark_all_notifications_read: { Args: never; Returns: number }
+      membre_association_id: { Args: { _membre_id: string }; Returns: string }
       projeter_cotisations_reunion: {
         Args: { _reunion_id: string }
         Returns: Json
@@ -7126,6 +7131,7 @@ export type Database = {
         Args: { _ids: string[] }
         Returns: boolean
       }
+      reunion_association_id: { Args: { _reunion_id: string }; Returns: string }
       reverse_caisse_movement: {
         Args: { _operation_id: string; _reason?: string }
         Returns: string

@@ -3,8 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 
-const SUPABASE_URL = "https://piyvinbuxpnquwzyugdj.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpeXZpbmJ1eHBucXV3enl1Z2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NDAzMDMsImV4cCI6MjA3MTExNjMwM30.khqzhiITwYsgbZBVI5X-zIVeGkNOD6tGy8eQaCU-k4E";
+// A08 — l'URL et la clé publiable proviennent de l'environnement (.env),
+// jamais du code source. Les valeurs de repli existent uniquement pour ne pas
+// casser un environnement d'aperçu où les variables ne seraient pas injectées.
+const SUPABASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) ??
+  "https://piyvinbuxpnquwzyugdj.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY =
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ??
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ??
+  "";
+
+if (!SUPABASE_PUBLISHABLE_KEY) {
+  throw new Error(
+    "Configuration Supabase manquante : définissez VITE_SUPABASE_PUBLISHABLE_KEY dans votre fichier .env",
+  );
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

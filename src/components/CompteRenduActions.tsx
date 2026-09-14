@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Send, FileText, CheckCircle, Users, UserPlus, UserMinus } from 'lucide-react';
+import { Send, FileText, CheckCircle, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
@@ -33,7 +32,6 @@ interface Membre {
 export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduActionsProps) {
   const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
-  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   // Récupérer tous les membres
@@ -84,53 +82,14 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
     enabled: open
   });
 
-  // Pré-sélectionner TOUS les membres actifs disposant d'un email
-  useEffect(() => {
-    if (allMembers) {
-      setSelectedMembers(new Set(allMembers.filter(m => m.email).map(m => m.id)));
-    }
-  }, [allMembers]);
 
 
-  const toggleMember = (memberId: string) => {
-    const newSelected = new Set(selectedMembers);
-    if (newSelected.has(memberId)) {
-      newSelected.delete(memberId);
-    } else {
-      newSelected.add(memberId);
-    }
-    setSelectedMembers(newSelected);
-  };
-
-  const selectAllWithEmail = () => {
-    const membersWithEmail = allMembers?.filter(m => m.email).map(m => m.id) || [];
-    setSelectedMembers(new Set(membersWithEmail));
-  };
-
-  const deselectAll = () => {
-    setSelectedMembers(new Set());
-  };
 
   const handleConfirmerEtNotifier = async () => {
     setSending(true);
     try {
-      // Récupérer les destinataires avec leurs infos complètes pour l'edge function
-      const destinataires = allMembers
-        ?.filter(m => selectedMembers.has(m.id) && m.email)
-        .map(m => ({
-          email: m.email!,
-          nom: m.nom,
-          prenom: m.prenom
-        })) || [];
-
-      if (destinataires.length === 0) {
-        toast({
-          title: "Erreur",
-          description: "Aucun membre sélectionné avec email valide",
-          variant: "destructive",
-        });
-        return;
-      }
+      // Les destinataires sont déterminés côté serveur : tous les membres actifs
+      // de l'association de la réunion. Le client n'envoie aucune liste d'emails.
 
       // Préparer la liste des présents
       const presentsNames = allMembers
@@ -160,7 +119,6 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
       const { data, error } = await supabase.functions.invoke('send-reunion-cr', {
         body: {
           reunionId: reunion.id,
-          destinataires,
           sujet: reunion.sujet || 'Réunion',
           contenu: fullContent,
           dateReunion: dateObj.toLocaleDateString('fr-FR', {
@@ -190,7 +148,7 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
 
       toast({
         title: "Succès",
-        description: `Compte-rendu envoyé à ${destinataires.length} membre(s)`,
+        description: `Compte-rendu envoyé à ${data?.sentCount ?? 0} membre(s)`,
       });
 
       setOpen(false);
@@ -209,7 +167,6 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
 
   const totalMembers = allMembers?.length || 0;
   const membersWithEmail = allMembers?.filter(m => m.email).length || 0;
-  const selectedCount = selectedMembers.size;
   const pointsCRCount = comptesRendus?.length || 0;
   const presentsCount = presences?.length || 0;
 
@@ -266,21 +223,12 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
               <CardTitle className="text-base flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  Destinataires ({selectedCount}/{membersWithEmail} avec email)
+                  Destinataires ({membersWithEmail} membre(s) avec email)
                 </span>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={selectAllWithEmail}>
-                    <UserPlus className="h-3 w-3 mr-1" />
-                    Tous
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={deselectAll}>
-                    <UserMinus className="h-3 w-3 mr-1" />
-                    Aucun
-                  </Button>
-                </div>
               </CardTitle>
               <CardDescription>
-                Cochez les membres qui recevront le compte-rendu
+                Le compte-rendu est envoyé à tous les membres actifs de l'association
+                disposant d'une adresse e-mail. Cette liste est donnée à titre indicatif.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -294,17 +242,12 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
                       <div
                         key={member.id}
                         className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
-                          selectedMembers.has(member.id) 
-                            ? 'bg-primary/10 border border-primary/20' 
-                            : 'bg-muted'
-                        } ${!hasEmail ? 'opacity-50' : ''}`}
+                          hasEmail
+                            ? 'bg-primary/10 border border-primary/20'
+                            : 'bg-muted opacity-50'
+                        }`}
                       >
                         <div className="flex items-center gap-3">
-                          <Checkbox
-                            checked={selectedMembers.has(member.id)}
-                            onCheckedChange={() => hasEmail && toggleMember(member.id)}
-                            disabled={!hasEmail}
-                          />
                           <div>
                             <span className="text-sm font-medium">
                               {member.prenom} {member.nom}
@@ -367,11 +310,11 @@ export default function CompteRenduActions({ reunion, onSuccess }: CompteRenduAc
             </Button>
             <Button
               onClick={handleConfirmerEtNotifier}
-              disabled={sending || selectedCount === 0 || pointsCRCount === 0}
+              disabled={sending || membersWithEmail === 0 || pointsCRCount === 0}
               className="bg-gradient-to-r from-primary to-secondary"
             >
               <CheckCircle className="w-4 h-4 mr-2" />
-              {sending ? "Envoi en cours..." : `Envoyer à ${selectedCount} membre(s)`}
+              {sending ? "Envoi en cours..." : `Envoyer à ${membersWithEmail} membre(s)`}
             </Button>
           </div>
         </div>

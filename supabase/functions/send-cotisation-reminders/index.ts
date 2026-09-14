@@ -1,25 +1,31 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getFullEmailConfig, sendEmail, validateFullEmailConfig } from "../_shared/email-utils.ts";
-import { requirePrivilegedUser } from "../_shared/auth-check.ts";
+import { getCaller, getCallerAssociations } from "../_shared/auth-check.ts";
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 interface ReminderRequest {
   testMode?: boolean;
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const corsHeaders = buildCorsHeaders(req);
+  const preflight = handleCorsPreflight(req);
+  if (preflight) return preflight;
+
 
   try {
-    const authError = await requirePrivilegedUser(req, corsHeaders);
-    if (authError) return authError;
+    const authResult = await getCaller(req, corsHeaders);
+    if ("response" in authResult) return authResult.response;
+    const associationIds = await getCallerAssociations(authResult.caller);
+    if (associationIds.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Aucune association accessible" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -76,6 +82,7 @@ serve(async (req) => {
         reunions!inner(id, date_reunion),
         cotisations_types(id, nom)
       `)
+      .in("association_id", associationIds)
       .in("statut", ["impaye", "partiel"])
       .lt("reunions.date_reunion", dateLimitStr)
       .eq("membres.statut", "actif")
@@ -115,10 +122,17 @@ serve(async (req) => {
 
       const totalDu = cotisations.reduce((sum, c) => sum + (c.montant || 0), 0);
       
-      const cotisationsHtml = cotisations.map((c: { reunions?: { date_reunion?: string }; cotisations_types?: { nom?: string }; montant?: number; statut?: string }) => {
-        const dateReunion = new Date(c.reunions.date_reunion).toLocaleDateString("fr-FR");
+      const cotisationsHtml = (cotisations as unknown as Array<{
+        reunions?: { date_reunion?: string } | null;
+        cotisations_types?: { nom?: string } | null;
+        montant?: number | null;
+        statut?: string | null;
+      }>).map((c) => {
+        const rawDate = c.reunions?.date_reunion;
+        const dateReunion = rawDate ? new Date(rawDate).toLocaleDateString("fr-FR") : "date non précisée";
         const typeName = c.cotisations_types?.nom || "Cotisation";
-        return `<li>${typeName} - Réunion du ${dateReunion} : ${c.montant.toLocaleString("fr-FR")} FCFA (${c.statut})</li>`;
+        const montant = (c.montant ?? 0).toLocaleString("fr-FR");
+        return `<li>${typeName} - Réunion du ${dateReunion} : ${montant} FCFA (${c.statut ?? ""})</li>`;
       }).join("");
 
       const emailHtml = `
