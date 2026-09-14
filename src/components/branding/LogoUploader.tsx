@@ -9,18 +9,25 @@ import { logger } from "@/lib/logger";
 interface LogoUploaderProps {
   value: string | null;
   onChange: (url: string | null) => void;
-  /** Dossier de destination dans le bucket `site-images`. */
-  folder?: string;
+  /**
+   * Identifiant de l'association propriétaire du logo.
+   * Le fichier est rangé dans `logos/<association>/…`, dossier réservé :
+   * lecture publique, écriture limitée aux administrateurs (RLS storage).
+   */
+  associationId?: string | null;
   label?: string;
 }
 
 const MAX_SIZE = 3 * 1024 * 1024;
 
-/** Envoi d'un logo dans le bucket `site-images` et restitution de son URL publique. */
+/** Préfixe réservé (politiques RLS `site_images_logos_*`). */
+export const LOGO_FOLDER = "logos";
+
+/** Envoi d'un logo dans le dossier réservé `logos/` et restitution de son URL publique. */
 export const LogoUploader = ({
   value,
   onChange,
-  folder = "logos",
+  associationId,
   label = "Logo de l'association",
 }: LogoUploaderProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,7 +45,8 @@ export const LogoUploader = ({
     setUploading(true);
     try {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "png";
-      const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+      const scope = associationId ?? "nouvelles";
+      const path = `${LOGO_FOLDER}/${scope}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from("site-images").upload(path, file, {
         cacheControl: "3600",
         upsert: false,
@@ -49,7 +57,16 @@ export const LogoUploader = ({
       toast.success("Logo envoyé");
     } catch (error: unknown) {
       logger.error("[LogoUploader] échec upload:", error);
-      toast.error(error instanceof Error ? error.message : "Échec de l'envoi du logo");
+      const message = error instanceof Error ? error.message : "";
+      const denied =
+        /row-level security|Unauthorized|not authorized|permission/i.test(message) ||
+        (typeof error === "object" && error !== null && "statusCode" in error &&
+          ["403", "401"].includes(String((error as { statusCode?: unknown }).statusCode)));
+      toast.error(
+        denied
+          ? "Droits insuffisants : seuls les administrateurs peuvent modifier le logo de l'association."
+          : message || "Échec de l'envoi du logo",
+      );
     } finally {
       setUploading(false);
     }

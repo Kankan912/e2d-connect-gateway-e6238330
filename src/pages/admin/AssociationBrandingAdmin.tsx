@@ -128,7 +128,11 @@ export default function AssociationBrandingAdmin() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <LogoUploader value={logoUrl || null} onChange={(url) => setLogoUrl(url ?? "")} folder="associations" />
+          <LogoUploader
+            value={logoUrl || null}
+            onChange={(url) => setLogoUrl(url ?? "")}
+            associationId={currentAssociation?.id}
+          />
           <Button type="button" variant="secondary" onClick={generatePalette} disabled={extracting}>
             {extracting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
             Générer la charte depuis le logo

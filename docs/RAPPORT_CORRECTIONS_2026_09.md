@@ -46,3 +46,16 @@ Date : 11 septembre 2026. Vérifié directement en base et dans le code.
 - **Site de Phoenix** : contenus par défaut créés (configuration, bandeau d'accueil, présentation, 3 activités). Au passage, un défaut a été corrigé : une clé de configuration de site ne pouvait exister que pour une seule association.
 - **Espace de stockage dédié aux logos** : bloqué — la création d'espaces publics est interdite par la politique de l'espace de travail (Paramètres → Confidentialité & sécurité). Les logos restent dans l'espace public existant et fonctionnent normalement.
 - **Sous-domaines réels** : toujours dépendant de la configuration du domaine chez l'hébergeur.
+
+## 5. Mise à jour du 14 septembre — clôture des deux points restants
+
+- **Logos** : un dossier réservé « logos » a été créé dans l'espace de stockage public existant.
+  Lecture immédiate pour tout le monde (aucun lien qui expire), écriture réservée aux
+  administrateurs ; un message clair « Droits insuffisants » s'affiche en cas de refus. Les
+  fichiers sont rangés par association (`logos/<association>/…`). Point clos.
+- **Sous-domaines** : la reconnaissance de l'association depuis l'adresse est vérifiée par des
+  tests automatiques (`src/lib/tenantScope.test.ts`, 10 tests). Le champ « Sous-domaine » est
+  désormais contrôlé (format, préfixes réservés, doublons) avec aperçu de l'adresse finale, à la
+  création comme à l'édition. Un écran d'aide « Aide sous-domaines » dans la console Associations
+  détaille les réglages à faire chez l'hébergeur, et la documentation est dans
+  `docs/SOUS_DOMAINES.md`. Il ne reste que l'action externe chez l'hébergeur du domaine.

@@ -19,6 +19,7 @@ import { TemplatePicker } from "@/components/branding/TemplatePicker";
 import { DEFAULT_PALETTE, paletteFromLogo } from "@/lib/paletteFromLogo";
 import { DEFAULT_TEMPLATE_ID, SiteTemplateId, getTemplate } from "@/lib/siteTemplates";
 import { logger } from "@/lib/logger";
+import { normalizeSubdomain, subdomainPreview, validateSubdomain } from "@/lib/subdomain";
 
 export interface AssociationWizardValues {
   slug: string;
@@ -93,20 +94,38 @@ interface Props {
   onSubmit: () => void;
   submitting: boolean;
   onCancel: () => void;
+  /** Sous-domaines déjà attribués (détection de doublon). */
+  existingSubdomains?: string[];
 }
 
 /** Assistant de création d'association en 7 étapes. */
-export const AssociationWizard = ({ values, onChange, onSubmit, submitting, onCancel }: Props) => {
+export const AssociationWizard = ({
+  values,
+  onChange,
+  onSubmit,
+  submitting,
+  onCancel,
+  existingSubdomains = [],
+}: Props) => {
   const [step, setStep] = useState(0);
   const [extracting, setExtracting] = useState(false);
 
   const set = <K extends keyof AssociationWizardValues>(key: K, value: AssociationWizardValues[K]) =>
     onChange({ ...values, [key]: value });
 
+  const subdomainCheck = useMemo(
+    () => validateSubdomain(values.subdomain, { existing: existingSubdomains }),
+    [values.subdomain, existingSubdomains],
+  );
+
   const stepValid = useMemo(() => {
     switch (step) {
       case 0:
-        return values.nom.trim().length >= 2 && /^[a-z][a-z0-9-]{1,30}[a-z0-9]$/.test(values.slug);
+        return (
+          values.nom.trim().length >= 2 &&
+          /^[a-z][a-z0-9-]{1,30}[a-z0-9]$/.test(values.slug) &&
+          subdomainCheck.valid
+        );
       case 5:
         return (
           values.admin_prenom.trim() !== "" &&
@@ -182,8 +201,16 @@ export const AssociationWizard = ({ values, onChange, onSubmit, submitting, onCa
               <Input
                 id="w-subdomain"
                 value={values.subdomain}
-                onChange={(e) => set("subdomain", slugify(e.target.value))}
+                onChange={(e) => set("subdomain", normalizeSubdomain(e.target.value))}
+                aria-invalid={!subdomainCheck.valid}
               />
+              {subdomainCheck.error ? (
+                <p className="text-xs text-destructive mt-1">{subdomainCheck.error}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Adresse : {subdomainPreview(values.subdomain, values.slug) || "—"}
+                </p>
+              )}
             </div>
           </div>
           <div>
@@ -233,7 +260,7 @@ export const AssociationWizard = ({ values, onChange, onSubmit, submitting, onCa
           <LogoUploader
             value={values.logo_url || null}
             onChange={(url) => set("logo_url", url ?? "")}
-            folder="associations"
+            associationId={null}
           />
           <Button type="button" variant="secondary" onClick={generatePalette} disabled={extracting}>
             {extracting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}

@@ -27,6 +27,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Loader2, PlusCircle, Building2, Copy, Pencil, ExternalLink } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { normalizeSubdomain, subdomainPreview, validateSubdomain } from "@/lib/subdomain";
+import { SubdomainHelpDialog } from "./_components/SubdomainHelpDialog";
 import {
   AssociationWizard,
   AssociationWizardValues,
@@ -89,6 +91,13 @@ export default function AssociationsPlatformAdmin() {
       if (error) throw error;
       return (data ?? []) as unknown as AssociationRow[];
     },
+  });
+
+  const editingSubdomainCheck = validateSubdomain(editing?.subdomain ?? "", {
+    existing: associations
+      .filter((a) => a.id !== editing?.id)
+      .map((a) => a.subdomain ?? "")
+      .filter((s) => s.length > 0),
   });
 
   const filtered = associations.filter((a) => {
@@ -209,16 +218,19 @@ export default function AssociationsPlatformAdmin() {
           </p>
         </div>
 
-        <Button
-          onClick={() => {
-            setWizard(emptyWizardValues);
-            setLastPassword(null);
-            setOpen(true);
-          }}
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Nouvelle association
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <SubdomainHelpDialog />
+          <Button
+            onClick={() => {
+              setWizard(emptyWizardValues);
+              setLastPassword(null);
+              setOpen(true);
+            }}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nouvelle association
+          </Button>
+        </div>
       </div>
 
       {/* ---------- Assistant de création ---------- */}
@@ -264,6 +276,9 @@ export default function AssociationsPlatformAdmin() {
               onSubmit={() => provision.mutate()}
               submitting={provision.isPending}
               onCancel={() => setOpen(false)}
+              existingSubdomains={associations
+                .map((a) => a.subdomain ?? "")
+                .filter((s): s is string => s.length > 0)}
             />
           )}
         </DialogContent>
@@ -311,8 +326,18 @@ export default function AssociationsPlatformAdmin() {
                     <Input
                       id="e-sub"
                       value={editing.subdomain ?? ""}
-                      onChange={(e) => setEditing({ ...editing, subdomain: e.target.value.toLowerCase() })}
+                      onChange={(e) =>
+                        setEditing({ ...editing, subdomain: normalizeSubdomain(e.target.value) })
+                      }
+                      aria-invalid={!editingSubdomainCheck.valid}
                     />
+                    {editingSubdomainCheck.error ? (
+                      <p className="text-xs text-destructive mt-1">{editingSubdomainCheck.error}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Adresse : {subdomainPreview(editing.subdomain ?? "", editing.slug) || "—"}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label>Statut</Label>
@@ -384,7 +409,7 @@ export default function AssociationsPlatformAdmin() {
                 <LogoUploader
                   value={editing.logo_url}
                   onChange={(url) => setEditing({ ...editing, logo_url: url })}
-                  folder="associations"
+                  associationId={editing.id}
                 />
                 <PaletteEditor
                   tokens={editing.theme_tokens ?? { ...DEFAULT_PALETTE }}
@@ -459,7 +484,7 @@ export default function AssociationsPlatformAdmin() {
             <Button
               type="button"
               onClick={() => editing && update.mutate(editing)}
-              disabled={update.isPending}
+              disabled={update.isPending || !editingSubdomainCheck.valid}
             >
               {update.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Enregistrer
