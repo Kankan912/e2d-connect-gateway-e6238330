@@ -1,8 +1,8 @@
+import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import {
-import { buildCorsHeaders, handleCorsPreflight } from "../_shared/cors.ts";
   ConflictError,
   ForbiddenError,
   InternalError,
