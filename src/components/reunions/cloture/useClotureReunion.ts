@@ -337,18 +337,6 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
         }
       }
 
-      // === ÉTAPE 6: taux de présence + statut ===
-      const totalMembresE2D = membresE2D?.length || 0;
-      const tauxPresenceCalcule =
-        totalMembresE2D > 0 ? Math.round((presentsCount / totalMembresE2D) * 100 * 10) / 10 : 0;
-
-      const { error: updateError } = await supabase
-        .from('reunions')
-        .update({ statut: 'terminee', taux_presence: tauxPresenceCalcule })
-        .eq('id', reunionId);
-
-      if (updateError) throw updateError;
-
       queryClient.invalidateQueries({ queryKey: ['reunion-presences'] });
       queryClient.invalidateQueries({ queryKey: ['reunion-presences-cloture'] });
       queryClient.invalidateQueries({ queryKey: ['presences-all'] });
@@ -356,8 +344,8 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
       queryClient.invalidateQueries({ queryKey: ['reunions-cloturees'] });
       queryClient.invalidateQueries({ queryKey: ['reunions-sanctions'] });
 
-      const nbSanctionsAbsence = tousAbsentsNonExcuses?.length || 0;
-      const nbSanctionsHuileSavon = membresSansHuileSavon.length;
+      const nbSanctionsAbsence = resume.sanctions_absence ?? 0;
+      const nbSanctionsHuileSavon = resume.sanctions_huile_savon ?? 0;
       const totalSanctions = nbSanctionsAbsence + nbSanctionsHuileSavon;
 
       const emailMsg = emailSent
@@ -366,7 +354,7 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
           ? `Envoi du CR échoué — clôture maintenue.`
           : `CR non envoyé (aucun email).`;
       toast({
-        title: 'Réunion clôturée avec succès',
+        title: resume.deja_cloturee ? 'Réunion déjà clôturée' : 'Réunion clôturée avec succès',
         description: `${emailMsg} ${
           totalSanctions > 0
             ? `${totalSanctions} sanction(s) créée(s) (${nbSanctionsAbsence} absence${
@@ -375,6 +363,7 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
             : ''
         }`,
       });
+
 
       onOpenChange(false);
       onSuccess?.();
