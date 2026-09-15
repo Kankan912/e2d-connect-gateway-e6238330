@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function PresencesRecapAnnuel() {
   const { toast } = useToast();
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedExerciceId, setSelectedExerciceId] = useState<string>("");
 
   // Charger les exercices disponibles
   const { data: exercices } = useQuery({
@@ -26,6 +26,15 @@ export default function PresencesRecapAnnuel() {
       return data;
     },
   });
+
+  // Exercice actif par défaut, sinon le plus récent
+  const exerciceCourant = useMemo(() => {
+    if (!exercices?.length) return undefined;
+    if (selectedExerciceId) return exercices.find((e) => e.id === selectedExerciceId);
+    return exercices.find((e) => e.statut === 'actif') ?? exercices[0];
+  }, [exercices, selectedExerciceId]);
+
+  const libelleExercice = exerciceCourant?.nom ?? 'Aucun exercice';
 
   // Charger les membres actifs
   const { data: membres } = useQuery({
@@ -41,24 +50,26 @@ export default function PresencesRecapAnnuel() {
     },
   });
 
-  // Charger toutes les réunions de l'année
+  // Charger toutes les réunions comprises dans l'exercice sélectionné
   const { data: reunions } = useQuery({
-    queryKey: ['reunions-annee', selectedYear],
+    queryKey: ['reunions-exercice', exerciceCourant?.id],
     queryFn: async () => {
+      if (!exerciceCourant) return [];
       const { data, error } = await supabase
         .from('reunions')
         .select('id, date_reunion')
-        .gte('date_reunion', `${selectedYear}-01-01`)
-        .lte('date_reunion', `${selectedYear}-12-31`)
+        .gte('date_reunion', exerciceCourant.date_debut)
+        .lte('date_reunion', `${exerciceCourant.date_fin}T23:59:59`)
         .order('date_reunion');
       if (error) throw error;
       return data;
     },
+    enabled: !!exerciceCourant,
   });
 
-  // Charger toutes les présences de l'année
+  // Charger toutes les présences de l'exercice
   const { data: presences } = useQuery({
-    queryKey: ['presences-annee', selectedYear],
+    queryKey: ['presences-exercice', exerciceCourant?.id, reunions?.length],
     queryFn: async () => {
       if (!reunions?.length) return [];
       const reunionIds = reunions.map(r => r.id);
@@ -71,6 +82,7 @@ export default function PresencesRecapAnnuel() {
     },
     enabled: !!reunions?.length,
   });
+
 
   // Calculer le bilan annuel
   const bilanData = useMemo(() => {
