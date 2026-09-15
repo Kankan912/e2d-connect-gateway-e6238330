@@ -30,7 +30,7 @@ export default function ReouvrirReunionModal({
   const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  
 
   const handleReouvrir = async () => {
     setProcessing(true);
