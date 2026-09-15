@@ -170,61 +170,26 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
 
     setProcessing(true);
     try {
-      // === ÉTAPE 1: membres non marqués => absents non excusés ===
-      if (membresNonMarques.length > 0) {
-        const absencesACreer = membresNonMarques.map((m) => ({
-          reunion_id: reunionId,
-          membre_id: m.id,
-          statut_presence: 'absent_non_excuse',
-          present: false,
-        }));
+      // === ÉTAPE 1: clôture transactionnelle côté base ===
+      // Absences, sanctions (absence + huile & savon), taux de présence et statut
+      // sont appliqués d'un bloc et de façon idempotente par la RPC.
+      const { data: clotureResult, error: clotureError } = await supabase.rpc('cloturer_reunion', {
+        _reunion_id: reunionId,
+      });
+      if (clotureError) throw clotureError;
 
-        const { error: insertError } = await supabase.from('reunions_presences').insert(absencesACreer);
-        if (insertError) throw insertError;
-      }
+      const resume = (clotureResult ?? {}) as {
+        sanctions_absence?: number;
+        sanctions_huile_savon?: number;
+        deja_cloturee?: boolean;
+      };
 
-      // === ÉTAPE 2: absents non excusés ===
       const { data: tousAbsentsNonExcuses } = await supabase
         .from('reunions_presences')
         .select('membre_id')
         .eq('reunion_id', reunionId)
         .eq('statut_presence', 'absent_non_excuse');
 
-      // === ÉTAPE 3: sanctions absence ===
-      if (tousAbsentsNonExcuses && tousAbsentsNonExcuses.length > 0 && sanctionConfig) {
-        const sanctionsACreer = tousAbsentsNonExcuses.map((abs) => ({
-          reunion_id: reunionId,
-          membre_id: abs.membre_id,
-          type_sanction: 'absence',
-          montant_amende: sanctionConfig.montant || 500,
-          motif: 'Absence non excusée à la réunion',
-          statut: 'impaye',
-        }));
-
-        const { error: sanctionError } = await supabase.from('reunions_sanctions').insert(sanctionsACreer);
-        if (sanctionError) {
-          logger.error('Erreur création sanctions:', sanctionError);
-        }
-      }
-
-      // === ÉTAPE 3bis: sanctions Huile & Savon ===
-      if (membresSansHuileSavon.length > 0 && sanctionHuileSavonConfig) {
-        const sanctionsHuileSavon = membresSansHuileSavon.map((m) => ({
-          reunion_id: reunionId,
-          membre_id: m.id,
-          type_sanction: 'huile_savon',
-          montant_amende: sanctionHuileSavonConfig.montant || 2000,
-          motif: 'Huile & Savon non apporté',
-          statut: 'impaye',
-        }));
-
-        const { error: sanctionHSError } = await supabase
-          .from('reunions_sanctions')
-          .insert(sanctionsHuileSavon);
-        if (sanctionHSError) {
-          logger.error('Erreur création sanctions Huile & Savon:', sanctionHSError);
-        }
-      }
 
       const { data: presentsData } = await supabase
         .from('reunions_presences')
