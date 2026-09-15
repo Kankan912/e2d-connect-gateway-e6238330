@@ -118,7 +118,7 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - run: bun audit --audit-level=high || true
+      - run: bun audit --audit-level=high
 
   ci-status:
     name: CI status
