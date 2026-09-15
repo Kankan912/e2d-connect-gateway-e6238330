@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/contexts/AuthContext";
+
 
 import { logger } from "@/lib/logger";
 interface ReouvrirReunionModalProps {
@@ -30,83 +30,23 @@ export default function ReouvrirReunionModal({
   const [processing, setProcessing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  
 
   const handleReouvrir = async () => {
     setProcessing(true);
     try {
-      // 1. Mettre à jour le statut de la réunion
-      const { error: updateError } = await supabase
-        .from("reunions")
-        .update({ 
-          statut: "en_cours",
-          taux_presence: null // Reset du taux
-        })
-        .eq("id", reunionId);
-
-      if (updateError) throw updateError;
-
-      // 2. Déverrouiller les cotisations liées à cette réunion
-      await supabase
-        .from("cotisations")
-        .update({ verrouille: false } as Record<string, unknown>)
-        .eq("reunion_id", reunionId);
-
-      // 3. Annuler les opérations caisse liées à cette réunion via contre-opération (P0 audit item #3).
-      //    Aucune suppression directe : on préserve l'audit trail.
-      const { data: operationsALister, error: listError } = await supabase
-        .from("fond_caisse_operations")
-        .select("id")
-        .eq("reunion_id", reunionId);
-
-      if (listError) {
-        logger.warn("Erreur listing opérations caisse:", listError);
-      } else if (operationsALister && operationsALister.length > 0) {
-        const { CaisseService } = await import("@/domain/finance");
-        for (const op of operationsALister) {
-          try {
-            await CaisseService.reverseMovement(
-              op.id,
-              `Réouverture réunion ${new Date(reunionData.date_reunion).toLocaleDateString('fr-FR')}`,
-            );
-          } catch (err) {
-            logger.warn(`Échec annulation opération caisse ${op.id}:`, err);
-          }
-        }
-      }
-
-
-      // 3. Logger l'action dans audit_logs
-      await supabase.from("audit_logs").insert({
-        action: "REUNION_REOUVERTURE",
-        table_name: "reunions",
-        record_id: reunionId,
-        user_id: user?.id || null,
-        old_data: { statut: "terminee" },
-        new_data: { 
-          statut: "en_cours", 
-          sanctions_supprimees: supprimerSanctions,
-          date_reunion: reunionData.date_reunion,
-          sujet: reunionData.sujet
-        }
+      // Réouverture transactionnelle côté base : statut, déverrouillage des
+      // cotisations, annulation des écritures de caisse, retrait éventuel des
+      // sanctions automatiques et journal d'audit sont appliqués d'un bloc.
+      const { data, error } = await supabase.rpc("rouvrir_reunion", {
+        _reunion_id: reunionId,
+        _supprimer_sanctions: supprimerSanctions,
+        _motif: `Réouverture réunion ${new Date(reunionData.date_reunion).toLocaleDateString("fr-FR")}`,
       });
 
-      // 4. Supprimer les sanctions auto-générées (absence + huile_savon) si demandé
-      // B2 — On filtre par type_sanction (valeurs stables) plutôt que par motif texte
-      // qui pouvait diverger entre cloture ("Absence non excusée à la réunion") et
-      // la suppression (anciens libellés). On préserve les sanctions déjà payées.
-      if (supprimerSanctions) {
-        const { error: sanctionsError } = await supabase
-          .from("reunions_sanctions")
-          .delete()
-          .eq("reunion_id", reunionId)
-          .in("type_sanction", ["absence", "huile_savon"])
-          .eq("statut", "impaye");
+      if (error) throw error;
+      const resume = (data ?? {}) as { deja_ouverte?: boolean; sanctions_supprimees?: number };
 
-        if (sanctionsError) {
-          logger.error("Erreur suppression sanctions:", sanctionsError);
-        }
-      }
 
       // 5. Invalider TOUS les caches liés à cette réunion (FIX CRITIQUE)
       queryClient.invalidateQueries({ queryKey: ["reunions"] });
@@ -123,9 +63,12 @@ export default function ReouvrirReunionModal({
       queryClient.invalidateQueries({ queryKey: ["epargnes"] });
 
       toast({
-        title: "Réunion rouverte",
-        description: `La réunion du ${new Date(reunionData.date_reunion).toLocaleDateString('fr-FR')} est maintenant modifiable.`,
+        title: resume.deja_ouverte ? "Réunion déjà ouverte" : "Réunion rouverte",
+        description: `La réunion du ${new Date(reunionData.date_reunion).toLocaleDateString('fr-FR')} est maintenant modifiable.${
+          resume.sanctions_supprimees ? ` ${resume.sanctions_supprimees} sanction(s) supprimée(s).` : ""
+        }`,
       });
+
 
       onOpenChange(false);
       onSuccess?.();

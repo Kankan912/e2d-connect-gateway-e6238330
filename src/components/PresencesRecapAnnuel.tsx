@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function PresencesRecapAnnuel() {
   const { toast } = useToast();
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedExerciceId, setSelectedExerciceId] = useState<string>("");
 
   // Charger les exercices disponibles
   const { data: exercices } = useQuery({
@@ -26,6 +26,15 @@ export default function PresencesRecapAnnuel() {
       return data;
     },
   });
+
+  // Exercice actif par défaut, sinon le plus récent
+  const exerciceCourant = useMemo(() => {
+    if (!exercices?.length) return undefined;
+    if (selectedExerciceId) return exercices.find((e) => e.id === selectedExerciceId);
+    return exercices.find((e) => e.statut === 'actif') ?? exercices[0];
+  }, [exercices, selectedExerciceId]);
+
+  const libelleExercice = exerciceCourant?.nom ?? 'Aucun exercice';
 
   // Charger les membres actifs
   const { data: membres } = useQuery({
@@ -41,24 +50,26 @@ export default function PresencesRecapAnnuel() {
     },
   });
 
-  // Charger toutes les réunions de l'année
+  // Charger toutes les réunions comprises dans l'exercice sélectionné
   const { data: reunions } = useQuery({
-    queryKey: ['reunions-annee', selectedYear],
+    queryKey: ['reunions-exercice', exerciceCourant?.id],
     queryFn: async () => {
+      if (!exerciceCourant) return [];
       const { data, error } = await supabase
         .from('reunions')
         .select('id, date_reunion')
-        .gte('date_reunion', `${selectedYear}-01-01`)
-        .lte('date_reunion', `${selectedYear}-12-31`)
+        .gte('date_reunion', exerciceCourant.date_debut)
+        .lte('date_reunion', `${exerciceCourant.date_fin}T23:59:59`)
         .order('date_reunion');
       if (error) throw error;
       return data;
     },
+    enabled: !!exerciceCourant,
   });
 
-  // Charger toutes les présences de l'année
+  // Charger toutes les présences de l'exercice
   const { data: presences } = useQuery({
-    queryKey: ['presences-annee', selectedYear],
+    queryKey: ['presences-exercice', exerciceCourant?.id, reunions?.length],
     queryFn: async () => {
       if (!reunions?.length) return [];
       const reunionIds = reunions.map(r => r.id);
@@ -71,6 +82,7 @@ export default function PresencesRecapAnnuel() {
     },
     enabled: !!reunions?.length,
   });
+
 
   // Calculer le bilan annuel
   const bilanData = useMemo(() => {
@@ -125,7 +137,7 @@ export default function PresencesRecapAnnuel() {
       await ExportService.export({
         type: 'presences_annuel',
         format,
-        nom: `bilan_annuel_${selectedYear}`,
+        nom: `bilan_${libelleExercice.replace(/\s+/g, '_').toLowerCase()}`,
       });
       toast({
         title: "Export réussi",
@@ -152,32 +164,33 @@ export default function PresencesRecapAnnuel() {
 
   return (
     <div className="space-y-6">
-      {/* En-tête avec sélection d'année */}
+      {/* En-tête avec sélection de l'exercice */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5" />
-              Bilan Annuel - {selectedYear}
+              Bilan de l'exercice — {libelleExercice}
             </CardTitle>
             <div className="flex gap-2">
-              <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
+              <Select
+                value={exerciceCourant?.id ?? ''}
+                onValueChange={(v) => setSelectedExerciceId(v)}
+                disabled={!exercices?.length}
+              >
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Exercice" />
                 </SelectTrigger>
                 <SelectContent>
-                  {exercices?.map(ex => {
-                    const year = new Date(ex.date_debut).getFullYear();
-                    return <SelectItem key={ex.id} value={year.toString()}>{year}</SelectItem>;
-                  })}
-                  {!exercices?.length && (
-                    <>
-                      <SelectItem value={new Date().getFullYear().toString()}>{new Date().getFullYear()}</SelectItem>
-                      <SelectItem value={(new Date().getFullYear() - 1).toString()}>{new Date().getFullYear() - 1}</SelectItem>
-                    </>
-                  )}
+                  {exercices?.map(ex => (
+                    <SelectItem key={ex.id} value={ex.id}>
+                      {ex.nom}
+                      {ex.statut === 'actif' ? ' (actif)' : ''}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+
               <Button variant="outline" size="sm" onClick={() => handleExport('excel')}>
                 <FileDown className="w-4 h-4 mr-2" />
                 Excel
@@ -285,7 +298,7 @@ export default function PresencesRecapAnnuel() {
 
           {bilanData.length === 0 && (
             <p className="text-center text-muted-foreground py-8">
-              Aucune donnée disponible pour cette année
+              Aucune donnée disponible pour cet exercice
             </p>
           )}
         </CardContent>

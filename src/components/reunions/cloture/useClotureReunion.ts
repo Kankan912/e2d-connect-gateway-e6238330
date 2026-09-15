@@ -8,7 +8,22 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/** Formes minimales utilisées pour les jointures et les agrégats (A21). */
+type MembreLite = { nom?: string | null; prenom?: string | null; email?: string | null };
+type PresenceJointe = { membre_id?: string; membres?: MembreLite | null };
+type BeneficiaireRow = {
+  statut?: string | null;
+  montant_final?: number | null;
+  membres?: MembreLite | null;
+};
+type PointCR = { sujet?: string | null; resolution?: string | null };
+
+const nomComplet = (m?: MembreLite | null) =>
+  `${m?.prenom ?? ''} ${m?.nom ?? ''}`.trim();
+
+const nomsDepuisPresences = (rows: unknown): string[] =>
+  ((rows as PresenceJointe[] | null) ?? []).map((p) => nomComplet(p.membres)).filter(Boolean);
+
 
 interface Params {
   open: boolean;
@@ -147,17 +162,21 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
   const totalCotisations = cotisationsReunion?.reduce((sum, c) => sum + c.montant, 0) || 0;
   const nbCotisations = cotisationsReunion?.length || 0;
 
-  const beneficiairesImpayes = beneficiairesReunion?.filter((b: any) => b.statut !== 'paye') || [];
+  const beneficiairesImpayes = ((beneficiairesReunion as BeneficiaireRow[] | null) ?? []).filter(
+    (b) => b.statut !== 'paye',
+  );
   const totalBeneficiairesImpayes = beneficiairesImpayes.reduce(
-    (sum: number, b: any) => sum + (b.montant_final || 0),
+    (sum, b) => sum + (b.montant_final || 0),
     0,
   );
 
   const membresAvecCotisation = new Set(cotisationsReunion?.map((c) => c.membre_id) || []);
-  const membresPresentsSansCotisation =
-    presences
-      ?.filter((p) => p.statut_presence === 'present' && !membresAvecCotisation.has(p.membre_id))
-      .map((p: any) => ({ id: p.membre_id, nom: p.membres?.nom, prenom: p.membres?.prenom })) || [];
+  const membresPresentsSansCotisation = ((presences as (PresenceJointe & {
+    statut_presence?: string | null;
+  })[] | null) ?? [])
+    .filter((p) => p.statut_presence === 'present' && !membresAvecCotisation.has(p.membre_id!))
+    .map((p) => ({ id: p.membre_id, nom: p.membres?.nom, prenom: p.membres?.prenom }));
+
 
   const membresNonMarques =
     membresE2D?.filter((m) => !presences?.some((p) => p.membre_id === m.id)) || [];
@@ -170,61 +189,26 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
 
     setProcessing(true);
     try {
-      // === ÉTAPE 1: membres non marqués => absents non excusés ===
-      if (membresNonMarques.length > 0) {
-        const absencesACreer = membresNonMarques.map((m) => ({
-          reunion_id: reunionId,
-          membre_id: m.id,
-          statut_presence: 'absent_non_excuse',
-          present: false,
-        }));
+      // === ÉTAPE 1: clôture transactionnelle côté base ===
+      // Absences, sanctions (absence + huile & savon), taux de présence et statut
+      // sont appliqués d'un bloc et de façon idempotente par la RPC.
+      const { data: clotureResult, error: clotureError } = await supabase.rpc('cloturer_reunion', {
+        _reunion_id: reunionId,
+      });
+      if (clotureError) throw clotureError;
 
-        const { error: insertError } = await supabase.from('reunions_presences').insert(absencesACreer);
-        if (insertError) throw insertError;
-      }
+      const resume = (clotureResult ?? {}) as {
+        sanctions_absence?: number;
+        sanctions_huile_savon?: number;
+        deja_cloturee?: boolean;
+      };
 
-      // === ÉTAPE 2: absents non excusés ===
       const { data: tousAbsentsNonExcuses } = await supabase
         .from('reunions_presences')
         .select('membre_id')
         .eq('reunion_id', reunionId)
         .eq('statut_presence', 'absent_non_excuse');
 
-      // === ÉTAPE 3: sanctions absence ===
-      if (tousAbsentsNonExcuses && tousAbsentsNonExcuses.length > 0 && sanctionConfig) {
-        const sanctionsACreer = tousAbsentsNonExcuses.map((abs) => ({
-          reunion_id: reunionId,
-          membre_id: abs.membre_id,
-          type_sanction: 'absence',
-          montant_amende: sanctionConfig.montant || 500,
-          motif: 'Absence non excusée à la réunion',
-          statut: 'impaye',
-        }));
-
-        const { error: sanctionError } = await supabase.from('reunions_sanctions').insert(sanctionsACreer);
-        if (sanctionError) {
-          logger.error('Erreur création sanctions:', sanctionError);
-        }
-      }
-
-      // === ÉTAPE 3bis: sanctions Huile & Savon ===
-      if (membresSansHuileSavon.length > 0 && sanctionHuileSavonConfig) {
-        const sanctionsHuileSavon = membresSansHuileSavon.map((m) => ({
-          reunion_id: reunionId,
-          membre_id: m.id,
-          type_sanction: 'huile_savon',
-          montant_amende: sanctionHuileSavonConfig.montant || 2000,
-          motif: 'Huile & Savon non apporté',
-          statut: 'impaye',
-        }));
-
-        const { error: sanctionHSError } = await supabase
-          .from('reunions_sanctions')
-          .insert(sanctionsHuileSavon);
-        if (sanctionHSError) {
-          logger.error('Erreur création sanctions Huile & Savon:', sanctionHSError);
-        }
-      }
 
       const { data: presentsData } = await supabase
         .from('reunions_presences')
@@ -241,7 +225,10 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
 
       // Les destinataires réels sont calculés côté serveur (membres actifs de
       // l'association de la réunion). Ce décompte sert uniquement à l'affichage.
-      const nbDestinatairesEstime = (tousMembresData || []).filter((m: any) => m.email).length;
+      const nbDestinatairesEstime = ((tousMembresData as MembreLite[] | null) ?? []).filter(
+        (m) => !!m.email,
+      ).length;
+
 
       // B1 — Ne pas bloquer la clôture si aucun email valide.
       const hasDestinataires = nbDestinatairesEstime > 0;
@@ -255,20 +242,21 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
 
       // === ÉTAPE 5: compte-rendu par email ===
       const contenuCR =
-        comptesRendus
-          ?.map((cr: any, index: number) => `${index + 1}. ${cr.sujet}\n   ${cr.resolution || 'Aucune résolution'}`)
+        ((comptesRendus as PointCR[] | null) ?? [])
+
+          .map((cr, index) => `${index + 1}. ${cr.sujet}\n   ${cr.resolution || 'Aucune résolution'}`)
           .join('\n\n') || "Aucun point à l'ordre du jour";
 
-      const presentsNoms =
-        presentsData?.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).filter(Boolean) || [];
+      const presentsNoms = nomsDepuisPresences(presentsData);
+
 
       const { data: excusesData } = await supabase
         .from('reunions_presences')
         .select('membres:membre_id (nom, prenom)')
         .eq('reunion_id', reunionId)
         .eq('statut_presence', 'absent_excuse');
-      const excusesNoms =
-        excusesData?.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).filter(Boolean) || [];
+      const excusesNoms = nomsDepuisPresences(excusesData);
+
 
       const absentsNonExcusesNoms = tousAbsentsNonExcuses?.length
         ? membresE2D
@@ -282,8 +270,8 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
         .eq('reunion_id', reunionId)
         .eq('statut_presence', 'present')
         .not('heure_arrivee', 'is', null);
-      const retardsNoms =
-        retardsData?.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).filter(Boolean) || [];
+      const retardsNoms = nomsDepuisPresences(retardsData);
+
 
       const totalMembresCalcul = presentsNoms.length + excusesNoms.length + absentsNonExcusesNoms.length;
       const tauxPresenceEmail =
@@ -318,10 +306,14 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
           beneficiairesData && beneficiairesData.length > 0
             ? {
                 count: beneficiairesData.length,
-                total: beneficiairesData.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0),
-                details: beneficiairesData.map((b: any) => ({
-                  nom: `${b.membres?.prenom} ${b.membres?.nom}`,
+                total: (beneficiairesData as BeneficiaireRow[]).reduce(
+                  (sum, b) => sum + (b.montant_final || 0),
+                  0,
+                ),
+                details: (beneficiairesData as BeneficiaireRow[]).map((b) => ({
+                  nom: nomComplet(b.membres),
                   montant: b.montant_final || 0,
+
                   statut: b.statut,
                 })),
               }
@@ -372,18 +364,6 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
         }
       }
 
-      // === ÉTAPE 6: taux de présence + statut ===
-      const totalMembresE2D = membresE2D?.length || 0;
-      const tauxPresenceCalcule =
-        totalMembresE2D > 0 ? Math.round((presentsCount / totalMembresE2D) * 100 * 10) / 10 : 0;
-
-      const { error: updateError } = await supabase
-        .from('reunions')
-        .update({ statut: 'terminee', taux_presence: tauxPresenceCalcule })
-        .eq('id', reunionId);
-
-      if (updateError) throw updateError;
-
       queryClient.invalidateQueries({ queryKey: ['reunion-presences'] });
       queryClient.invalidateQueries({ queryKey: ['reunion-presences-cloture'] });
       queryClient.invalidateQueries({ queryKey: ['presences-all'] });
@@ -391,8 +371,8 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
       queryClient.invalidateQueries({ queryKey: ['reunions-cloturees'] });
       queryClient.invalidateQueries({ queryKey: ['reunions-sanctions'] });
 
-      const nbSanctionsAbsence = tousAbsentsNonExcuses?.length || 0;
-      const nbSanctionsHuileSavon = membresSansHuileSavon.length;
+      const nbSanctionsAbsence = resume.sanctions_absence ?? 0;
+      const nbSanctionsHuileSavon = resume.sanctions_huile_savon ?? 0;
       const totalSanctions = nbSanctionsAbsence + nbSanctionsHuileSavon;
 
       const emailMsg = emailSent
@@ -401,7 +381,7 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
           ? `Envoi du CR échoué — clôture maintenue.`
           : `CR non envoyé (aucun email).`;
       toast({
-        title: 'Réunion clôturée avec succès',
+        title: resume.deja_cloturee ? 'Réunion déjà clôturée' : 'Réunion clôturée avec succès',
         description: `${emailMsg} ${
           totalSanctions > 0
             ? `${totalSanctions} sanction(s) créée(s) (${nbSanctionsAbsence} absence${
@@ -410,6 +390,7 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
             : ''
         }`,
       });
+
 
       onOpenChange(false);
       onSuccess?.();
