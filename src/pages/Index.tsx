@@ -1,17 +1,19 @@
-import { lazy, Suspense } from "react";
+import { ReactNode, Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
 import SEOHead from "@/components/SEOHead";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
 // Lazy load des sections below-the-fold pour accélérer le FCP
-const About = lazy(() => import("@/components/About"));
-const Activities = lazy(() => import("@/components/Activities"));
-const Events = lazy(() => import("@/components/Events"));
-const Gallery = lazy(() => import("@/components/Gallery"));
-const Partners = lazy(() => import("@/components/Partners"));
-const Contact = lazy(() => import("@/components/Contact"));
+const About = lazyWithRetry(() => import("@/components/About"));
+const Activities = lazyWithRetry(() => import("@/components/Activities"));
+const Events = lazyWithRetry(() => import("@/components/Events"));
+const Gallery = lazyWithRetry(() => import("@/components/Gallery"));
+const Partners = lazyWithRetry(() => import("@/components/Partners"));
+const Contact = lazyWithRetry(() => import("@/components/Contact"));
 
 // Skeleton pour les sections en chargement
 const SectionSkeleton = () => (
@@ -28,6 +30,16 @@ const SectionSkeleton = () => (
   </div>
 );
 
+/**
+ * Chaque section est isolée : si un morceau de code n'arrive pas à se charger,
+ * seule cette section affiche un message, le reste de la page reste utilisable.
+ */
+const Section = ({ titre, children }: { titre: string; children: ReactNode }) => (
+  <ErrorBoundary insideRouter={false} fallbackTitle={`Section « ${titre} » indisponible`}>
+    <Suspense fallback={<SectionSkeleton />}>{children}</Suspense>
+  </ErrorBoundary>
+);
+
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
@@ -38,24 +50,24 @@ const Index = () => {
       />
       <Navbar />
       <Hero />
-      <Suspense fallback={<SectionSkeleton />}>
+      <Section titre="À propos">
         <About />
-      </Suspense>
-      <Suspense fallback={<SectionSkeleton />}>
+      </Section>
+      <Section titre="Activités">
         <Activities />
-      </Suspense>
-      <Suspense fallback={<SectionSkeleton />}>
+      </Section>
+      <Section titre="Événements">
         <Events />
-      </Suspense>
-      <Suspense fallback={<SectionSkeleton />}>
+      </Section>
+      <Section titre="Galerie">
         <Gallery />
-      </Suspense>
-      <Suspense fallback={<SectionSkeleton />}>
+      </Section>
+      <Section titre="Partenaires">
         <Partners />
-      </Suspense>
-      <Suspense fallback={<SectionSkeleton />}>
+      </Section>
+      <Section titre="Contact">
         <Contact />
-      </Suspense>
+      </Section>
       <Footer />
     </div>
   );
