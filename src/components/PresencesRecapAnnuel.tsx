@@ -137,7 +137,7 @@ export default function PresencesRecapAnnuel() {
       await ExportService.export({
         type: 'presences_annuel',
         format,
-        nom: `bilan_annuel_${selectedYear}`,
+        nom: `bilan_${libelleExercice.replace(/\s+/g, '_').toLowerCase()}`,
       });
       toast({
         title: "Export réussi",
