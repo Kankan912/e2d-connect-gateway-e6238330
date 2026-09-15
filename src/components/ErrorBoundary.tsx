@@ -77,14 +77,7 @@ export class ErrorBoundary extends React.Component<
                     Tableau de bord
                   </Link>
                 </Button>
-              ) : (
-                <Button type="button" size="sm" asChild>
-                  <a href="/dashboard">
-                    <Home className="h-4 w-4 mr-2" />
-                    Tableau de bord
-                  </a>
-                </Button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
