@@ -30,6 +30,16 @@ const SectionSkeleton = () => (
   </div>
 );
 
+/**
+ * Chaque section est isolée : si un morceau de code n'arrive pas à se charger,
+ * seule cette section affiche un message, le reste de la page reste utilisable.
+ */
+const Section = ({ titre, children }: { titre: string; children: ReactNode }) => (
+  <ErrorBoundary insideRouter={false} fallbackTitle={`Section « ${titre} » indisponible`}>
+    <Suspense fallback={<SectionSkeleton />}>{children}</Suspense>
+  </ErrorBoundary>
+);
+
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
