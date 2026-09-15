@@ -150,7 +150,7 @@ export default function NotifierReunionModal({
       const { data, error } = await supabase.functions.invoke("send-reunion-cr", {
         body: {
           reunionId,
-          cible: recipientType,
+          sujet: `[APERÇU] ${reunionData.ordre_du_jour || "Réunion E2D"}`,
           sujet: `[APERÇU] ${reunionData.ordre_du_jour || "Réunion E2D"}`,
           contenu,
           dateReunion: new Date(reunionData.date_reunion).toLocaleDateString("fr-FR", {
