@@ -306,10 +306,14 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
           beneficiairesData && beneficiairesData.length > 0
             ? {
                 count: beneficiairesData.length,
-                total: beneficiairesData.reduce((sum: number, b: any) => sum + (b.montant_final || 0), 0),
-                details: beneficiairesData.map((b: any) => ({
-                  nom: `${b.membres?.prenom} ${b.membres?.nom}`,
+                total: (beneficiairesData as BeneficiaireRow[]).reduce(
+                  (sum, b) => sum + (b.montant_final || 0),
+                  0,
+                ),
+                details: (beneficiairesData as BeneficiaireRow[]).map((b) => ({
+                  nom: nomComplet(b.membres),
                   montant: b.montant_final || 0,
+
                   statut: b.statut,
                 })),
               }
