@@ -245,34 +245,15 @@ export default function NotifierReunionModal({
             <span>{comptesRendus?.length || 0} point(s) de compte-rendu</span>
           </div>
 
-          {/* Sélection type de destinataires */}
-          <div className="space-y-3">
+          {/* Destinataires : toujours tous les membres actifs */}
+          <div className="space-y-2">
             <Label className="text-sm font-medium">Destinataires</Label>
-            <RadioGroup 
-              value={recipientType} 
-              onValueChange={(v) => setRecipientType(v as RecipientType)}
-              className="grid grid-cols-2 gap-2"
-            >
-              <div className="flex items-center space-x-2 border rounded-lg p-2">
-                <RadioGroupItem value="tous" id="tous" />
-                <Label htmlFor="tous" className="font-normal text-sm cursor-pointer">
-                  Tous ({membresAvecEmail.length})
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 border rounded-lg p-2">
-                <RadioGroupItem value="presents" id="presents" />
-                <Label htmlFor="presents" className="font-normal text-sm cursor-pointer">
-                  Présents ({presents.filter(p => p.membre?.email).length})
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 border rounded-lg p-2">
-                <RadioGroupItem value="absents" id="absents" />
-                <Label htmlFor="absents" className="font-normal text-sm cursor-pointer">
-                  Absents/Excusés ({[...excuses, ...absents].filter(p => p.membre?.email).length})
-                </Label>
-              </div>
-            </RadioGroup>
+            <p className="text-sm text-muted-foreground">
+              Le compte-rendu est envoyé à tous les membres actifs de l'association
+              disposant d'une adresse e-mail ({membresAvecEmail.length}).
+            </p>
           </div>
+
 
           {/* Affichage des destinataires */}
           <div className="space-y-2">
