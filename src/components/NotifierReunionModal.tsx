@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 import { Label } from "@/components/ui/label";
 import { Mail, Loader2, Users, FileText, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,8 +18,6 @@ interface NotifierReunionModalProps {
   reunionData: { sujet?: string; date_reunion: string; ordre_du_jour?: string; lieu_description?: string };
 }
 
-type RecipientType = "tous" | "presents" | "absents";
-
 export default function NotifierReunionModal({
   open,
   onOpenChange,
@@ -27,8 +25,8 @@ export default function NotifierReunionModal({
   reunionData,
 }: NotifierReunionModalProps) {
   const [sending, setSending] = useState(false);
-  const [recipientType, setRecipientType] = useState<RecipientType>("tous");
   const { toast } = useToast();
+
 
   // Récupérer les membres présents
   const { data: presences } = useQuery({
@@ -85,31 +83,16 @@ export default function NotifierReunionModal({
   const absents = presences?.filter(p => p.statut_presence === "absent_non_excuse") || [];
   const retards = presences?.filter(p => p.heure_arrivee) || [];
 
-  // Calculer les destinataires selon le type sélectionné
-  const destinataires = useMemo(() => {
-    if (recipientType === "tous") {
-      return (tousMembres || [])
+  // Destinataires : toujours tous les membres actifs avec email (liste indicative,
+  // recalculée côté serveur lors de l'envoi)
+  const destinataires = useMemo(
+    () =>
+      (tousMembres || [])
         .filter(m => m.email)
-        .map(m => ({ email: m.email!, nom: m.nom, prenom: m.prenom }));
-    }
+        .map(m => ({ email: m.email!, nom: m.nom, prenom: m.prenom })),
+    [tousMembres],
+  );
 
-    if (!presences) return [];
-
-    const filtered =
-      recipientType === "presents"
-        ? presences.filter(p => p.statut_presence === "present")
-        : presences.filter(
-            p => p.statut_presence === "absent_non_excuse" || p.statut_presence === "excuse",
-          );
-
-    return filtered
-      .filter(p => p.membre?.email)
-      .map(p => ({
-        email: p.membre!.email!,
-        nom: p.membre!.nom,
-        prenom: p.membre!.prenom,
-      }));
-  }, [presences, tousMembres, recipientType]);
 
   // Membres avec email pour sélection manuelle
   const membresAvecEmail = (tousMembres || [])
@@ -150,8 +133,8 @@ export default function NotifierReunionModal({
       const { data, error } = await supabase.functions.invoke("send-reunion-cr", {
         body: {
           reunionId,
-          cible: recipientType,
           sujet: `[APERÇU] ${reunionData.ordre_du_jour || "Réunion E2D"}`,
+
           contenu,
           dateReunion: new Date(reunionData.date_reunion).toLocaleDateString("fr-FR", {
             weekday: "long",
@@ -245,34 +228,15 @@ export default function NotifierReunionModal({
             <span>{comptesRendus?.length || 0} point(s) de compte-rendu</span>
           </div>
 
-          {/* Sélection type de destinataires */}
-          <div className="space-y-3">
+          {/* Destinataires : toujours tous les membres actifs */}
+          <div className="space-y-2">
             <Label className="text-sm font-medium">Destinataires</Label>
-            <RadioGroup 
-              value={recipientType} 
-              onValueChange={(v) => setRecipientType(v as RecipientType)}
-              className="grid grid-cols-2 gap-2"
-            >
-              <div className="flex items-center space-x-2 border rounded-lg p-2">
-                <RadioGroupItem value="tous" id="tous" />
-                <Label htmlFor="tous" className="font-normal text-sm cursor-pointer">
-                  Tous ({membresAvecEmail.length})
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 border rounded-lg p-2">
-                <RadioGroupItem value="presents" id="presents" />
-                <Label htmlFor="presents" className="font-normal text-sm cursor-pointer">
-                  Présents ({presents.filter(p => p.membre?.email).length})
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2 border rounded-lg p-2">
-                <RadioGroupItem value="absents" id="absents" />
-                <Label htmlFor="absents" className="font-normal text-sm cursor-pointer">
-                  Absents/Excusés ({[...excuses, ...absents].filter(p => p.membre?.email).length})
-                </Label>
-              </div>
-            </RadioGroup>
+            <p className="text-sm text-muted-foreground">
+              Le compte-rendu est envoyé à tous les membres actifs de l'association
+              disposant d'une adresse e-mail ({membresAvecEmail.length}).
+            </p>
           </div>
+
 
           {/* Affichage des destinataires */}
           <div className="space-y-2">

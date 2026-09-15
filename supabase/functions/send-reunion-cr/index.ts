@@ -35,12 +35,8 @@ interface SendReunionCRRequest {
   presences?: PresenceInfo;
   financials?: FinancialSummary;
   isPreview?: boolean;
-  /**
-   * Périmètre des destinataires, résolu côté serveur :
-   * `tous` (défaut), `presents` ou `absents` — jamais une liste d'adresses.
-   */
-  cible?: "tous" | "presents" | "absents";
 }
+
 
 const fmt = (n: number) => Math.floor(Number(n) || 0).toLocaleString("fr-FR");
 
@@ -101,24 +97,9 @@ serve(async (req: Request): Promise<Response> => {
 
     if (membresError) throw membresError;
 
-    let destinataires = (membres ?? []).filter((m) => !!m.email);
+    // Aucun filtrage par présence : le compte-rendu est diffusé à tous les membres actifs
+    const destinataires = (membres ?? []).filter((m) => !!m.email);
 
-    // Périmètre optionnel : présents / absents, calculé depuis les présences en base
-    const cible = body.cible === "presents" || body.cible === "absents" ? body.cible : "tous";
-    if (cible !== "tous") {
-      const { data: presencesRows } = await admin
-        .from("reunions_presences")
-        .select("membre_id, statut_presence")
-        .eq("reunion_id", reunion.id);
-      const presentIds = new Set(
-        (presencesRows ?? [])
-          .filter((p) => p.statut_presence === "present")
-          .map((p) => p.membre_id),
-      );
-      destinataires = destinataires.filter((m) =>
-        cible === "presents" ? presentIds.has(m.id) : !presentIds.has(m.id)
-      );
-    }
 
     if (destinataires.length === 0) {
       return new Response(
