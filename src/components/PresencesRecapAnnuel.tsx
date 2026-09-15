@@ -164,32 +164,33 @@ export default function PresencesRecapAnnuel() {
 
   return (
     <div className="space-y-6">
-      {/* En-tête avec sélection d'année */}
+      {/* En-tête avec sélection de l'exercice */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5" />
-              Bilan Annuel - {selectedYear}
+              Bilan de l'exercice — {libelleExercice}
             </CardTitle>
             <div className="flex gap-2">
-              <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
+              <Select
+                value={exerciceCourant?.id ?? ''}
+                onValueChange={(v) => setSelectedExerciceId(v)}
+                disabled={!exercices?.length}
+              >
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Exercice" />
                 </SelectTrigger>
                 <SelectContent>
-                  {exercices?.map(ex => {
-                    const year = new Date(ex.date_debut).getFullYear();
-                    return <SelectItem key={ex.id} value={year.toString()}>{year}</SelectItem>;
-                  })}
-                  {!exercices?.length && (
-                    <>
-                      <SelectItem value={new Date().getFullYear().toString()}>{new Date().getFullYear()}</SelectItem>
-                      <SelectItem value={(new Date().getFullYear() - 1).toString()}>{new Date().getFullYear() - 1}</SelectItem>
-                    </>
-                  )}
+                  {exercices?.map(ex => (
+                    <SelectItem key={ex.id} value={ex.id}>
+                      {ex.nom}
+                      {ex.statut === 'actif' ? ' (actif)' : ''}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+
               <Button variant="outline" size="sm" onClick={() => handleExport('excel')}>
                 <FileDown className="w-4 h-4 mr-2" />
                 Excel
