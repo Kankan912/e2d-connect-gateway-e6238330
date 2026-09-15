@@ -63,9 +63,12 @@ export default function ReouvrirReunionModal({
       queryClient.invalidateQueries({ queryKey: ["epargnes"] });
 
       toast({
-        title: "Réunion rouverte",
-        description: `La réunion du ${new Date(reunionData.date_reunion).toLocaleDateString('fr-FR')} est maintenant modifiable.`,
+        title: resume.deja_ouverte ? "Réunion déjà ouverte" : "Réunion rouverte",
+        description: `La réunion du ${new Date(reunionData.date_reunion).toLocaleDateString('fr-FR')} est maintenant modifiable.${
+          resume.sanctions_supprimees ? ` ${resume.sanctions_supprimees} sanction(s) supprimée(s).` : ""
+        }`,
       });
+
 
       onOpenChange(false);
       onSuccess?.();
