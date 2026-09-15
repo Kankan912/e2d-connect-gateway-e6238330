@@ -85,31 +85,16 @@ export default function NotifierReunionModal({
   const absents = presences?.filter(p => p.statut_presence === "absent_non_excuse") || [];
   const retards = presences?.filter(p => p.heure_arrivee) || [];
 
-  // Calculer les destinataires selon le type sélectionné
-  const destinataires = useMemo(() => {
-    if (recipientType === "tous") {
-      return (tousMembres || [])
+  // Destinataires : toujours tous les membres actifs avec email (liste indicative,
+  // recalculée côté serveur lors de l'envoi)
+  const destinataires = useMemo(
+    () =>
+      (tousMembres || [])
         .filter(m => m.email)
-        .map(m => ({ email: m.email!, nom: m.nom, prenom: m.prenom }));
-    }
+        .map(m => ({ email: m.email!, nom: m.nom, prenom: m.prenom })),
+    [tousMembres],
+  );
 
-    if (!presences) return [];
-
-    const filtered =
-      recipientType === "presents"
-        ? presences.filter(p => p.statut_presence === "present")
-        : presences.filter(
-            p => p.statut_presence === "absent_non_excuse" || p.statut_presence === "excuse",
-          );
-
-    return filtered
-      .filter(p => p.membre?.email)
-      .map(p => ({
-        email: p.membre!.email!,
-        nom: p.membre!.nom,
-        prenom: p.membre!.prenom,
-      }));
-  }, [presences, tousMembres, recipientType]);
 
   // Membres avec email pour sélection manuelle
   const membresAvecEmail = (tousMembres || [])
