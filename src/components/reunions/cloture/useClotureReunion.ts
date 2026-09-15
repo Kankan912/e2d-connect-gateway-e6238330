@@ -162,17 +162,21 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
   const totalCotisations = cotisationsReunion?.reduce((sum, c) => sum + c.montant, 0) || 0;
   const nbCotisations = cotisationsReunion?.length || 0;
 
-  const beneficiairesImpayes = beneficiairesReunion?.filter((b: any) => b.statut !== 'paye') || [];
+  const beneficiairesImpayes = ((beneficiairesReunion as BeneficiaireRow[] | null) ?? []).filter(
+    (b) => b.statut !== 'paye',
+  );
   const totalBeneficiairesImpayes = beneficiairesImpayes.reduce(
-    (sum: number, b: any) => sum + (b.montant_final || 0),
+    (sum, b) => sum + (b.montant_final || 0),
     0,
   );
 
   const membresAvecCotisation = new Set(cotisationsReunion?.map((c) => c.membre_id) || []);
-  const membresPresentsSansCotisation =
-    presences
-      ?.filter((p) => p.statut_presence === 'present' && !membresAvecCotisation.has(p.membre_id))
-      .map((p: any) => ({ id: p.membre_id, nom: p.membres?.nom, prenom: p.membres?.prenom })) || [];
+  const membresPresentsSansCotisation = ((presences as (PresenceJointe & {
+    statut_presence?: string | null;
+  })[] | null) ?? [])
+    .filter((p) => p.statut_presence === 'present' && !membresAvecCotisation.has(p.membre_id!))
+    .map((p) => ({ id: p.membre_id, nom: p.membres?.nom, prenom: p.membres?.prenom }));
+
 
   const membresNonMarques =
     membresE2D?.filter((m) => !presences?.some((p) => p.membre_id === m.id)) || [];
