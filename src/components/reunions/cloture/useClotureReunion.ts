@@ -242,8 +242,8 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
 
       // === ÉTAPE 5: compte-rendu par email ===
       const contenuCR =
-        comptesRendus
         ((comptesRendus as PointCR[] | null) ?? [])
+
           .map((cr, index) => `${index + 1}. ${cr.sujet}\n   ${cr.resolution || 'Aucune résolution'}`)
           .join('\n\n') || "Aucun point à l'ordre du jour";
 
@@ -270,8 +270,8 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
         .eq('reunion_id', reunionId)
         .eq('statut_presence', 'present')
         .not('heure_arrivee', 'is', null);
-      const retardsNoms =
-        retardsData?.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).filter(Boolean) || [];
+      const retardsNoms = nomsDepuisPresences(retardsData);
+
 
       const totalMembresCalcul = presentsNoms.length + excusesNoms.length + absentsNonExcusesNoms.length;
       const tauxPresenceEmail =
