@@ -151,7 +151,7 @@ export default function NotifierReunionModal({
         body: {
           reunionId,
           sujet: `[APERÇU] ${reunionData.ordre_du_jour || "Réunion E2D"}`,
-          sujet: `[APERÇU] ${reunionData.ordre_du_jour || "Réunion E2D"}`,
+
           contenu,
           dateReunion: new Date(reunionData.date_reunion).toLocaleDateString("fr-FR", {
             weekday: "long",
