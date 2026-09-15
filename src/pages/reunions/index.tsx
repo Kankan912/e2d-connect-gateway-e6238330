@@ -21,14 +21,14 @@ import PresencesHistoriqueMembre from "@/components/PresencesHistoriqueMembre";
 import ReunionStatCards from "./components/ReunionStatCards";
 import { useReunionsData } from "./hooks/useReunionsData";
 
-const ReunionsListTab = lazy(() => import("./components/ReunionsListTab"));
-const CotisationsTab = lazy(() => import("./components/CotisationsTab"));
-const PresencesTab = lazy(() => import("./components/PresencesTab"));
-const SanctionsTab = lazy(() => import("./components/SanctionsTab"));
-const BeneficiairesTab = lazy(() => import("./components/BeneficiairesTab"));
-const RappelsTab = lazy(() => import("./components/RappelsTab"));
-const RecapitulatifsTab = lazy(() => import("./components/RecapitulatifsTab"));
-const HistoriqueTab = lazy(() => import("./components/HistoriqueTab"));
+const ReunionsListTab = lazyWithRetry(() => import("./components/ReunionsListTab"));
+const CotisationsTab = lazyWithRetry(() => import("./components/CotisationsTab"));
+const PresencesTab = lazyWithRetry(() => import("./components/PresencesTab"));
+const SanctionsTab = lazyWithRetry(() => import("./components/SanctionsTab"));
+const BeneficiairesTab = lazyWithRetry(() => import("./components/BeneficiairesTab"));
+const RappelsTab = lazyWithRetry(() => import("./components/RappelsTab"));
+const RecapitulatifsTab = lazyWithRetry(() => import("./components/RecapitulatifsTab"));
+const HistoriqueTab = lazyWithRetry(() => import("./components/HistoriqueTab"));
 
 const TabFallback = () => <Card><CardContent className="py-8 text-center text-muted-foreground">Chargement...</CardContent></Card>;
 
