@@ -1,17 +1,19 @@
-import { lazy, Suspense } from "react";
+import { ReactNode, Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
 import SEOHead from "@/components/SEOHead";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 
 // Lazy load des sections below-the-fold pour accélérer le FCP
-const About = lazy(() => import("@/components/About"));
-const Activities = lazy(() => import("@/components/Activities"));
-const Events = lazy(() => import("@/components/Events"));
-const Gallery = lazy(() => import("@/components/Gallery"));
-const Partners = lazy(() => import("@/components/Partners"));
-const Contact = lazy(() => import("@/components/Contact"));
+const About = lazyWithRetry(() => import("@/components/About"));
+const Activities = lazyWithRetry(() => import("@/components/Activities"));
+const Events = lazyWithRetry(() => import("@/components/Events"));
+const Gallery = lazyWithRetry(() => import("@/components/Gallery"));
+const Partners = lazyWithRetry(() => import("@/components/Partners"));
+const Contact = lazyWithRetry(() => import("@/components/Contact"));
 
 // Skeleton pour les sections en chargement
 const SectionSkeleton = () => (
