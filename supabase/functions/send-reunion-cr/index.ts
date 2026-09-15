@@ -35,12 +35,8 @@ interface SendReunionCRRequest {
   presences?: PresenceInfo;
   financials?: FinancialSummary;
   isPreview?: boolean;
-  /**
-   * Périmètre des destinataires, résolu côté serveur :
-   * `tous` (défaut), `presents` ou `absents` — jamais une liste d'adresses.
-   */
-  cible?: "tous" | "presents" | "absents";
 }
+
 
 const fmt = (n: number) => Math.floor(Number(n) || 0).toLocaleString("fr-FR");
 
