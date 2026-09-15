@@ -18,8 +18,6 @@ interface NotifierReunionModalProps {
   reunionData: { sujet?: string; date_reunion: string; ordre_du_jour?: string; lieu_description?: string };
 }
 
-type RecipientType = "tous" | "presents" | "absents";
-
 export default function NotifierReunionModal({
   open,
   onOpenChange,
@@ -27,8 +25,8 @@ export default function NotifierReunionModal({
   reunionData,
 }: NotifierReunionModalProps) {
   const [sending, setSending] = useState(false);
-  const [recipientType, setRecipientType] = useState<RecipientType>("tous");
   const { toast } = useToast();
+
 
   // Récupérer les membres présents
   const { data: presences } = useQuery({
