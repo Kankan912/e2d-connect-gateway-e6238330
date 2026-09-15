@@ -6907,6 +6907,7 @@ export type Database = {
       }
       cancel_loan_request: { Args: { _request_id: string }; Returns: Json }
       clear_must_change_flag: { Args: never; Returns: boolean }
+      cloturer_reunion: { Args: { _reunion_id: string }; Returns: Json }
       count_association_dependencies: {
         Args: { _association_id: string }
         Returns: Json
@@ -7135,6 +7136,14 @@ export type Database = {
       reverse_caisse_movement: {
         Args: { _operation_id: string; _reason?: string }
         Returns: string
+      }
+      rouvrir_reunion: {
+        Args: {
+          _motif?: string
+          _reunion_id: string
+          _supprimer_sanctions?: boolean
+        }
+        Returns: Json
       }
       set_association_statut: {
         Args: { _association_id: string; _motif?: string; _statut: string }
