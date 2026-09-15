@@ -225,7 +225,10 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
 
       // Les destinataires réels sont calculés côté serveur (membres actifs de
       // l'association de la réunion). Ce décompte sert uniquement à l'affichage.
-      const nbDestinatairesEstime = (tousMembresData || []).filter((m: any) => m.email).length;
+      const nbDestinatairesEstime = ((tousMembresData as MembreLite[] | null) ?? []).filter(
+        (m) => !!m.email,
+      ).length;
+
 
       // B1 — Ne pas bloquer la clôture si aucun email valide.
       const hasDestinataires = nbDestinatairesEstime > 0;
@@ -240,19 +243,20 @@ export function useClotureReunion({ open, reunionId, reunionData, onOpenChange, 
       // === ÉTAPE 5: compte-rendu par email ===
       const contenuCR =
         comptesRendus
-          ?.map((cr: any, index: number) => `${index + 1}. ${cr.sujet}\n   ${cr.resolution || 'Aucune résolution'}`)
+        ((comptesRendus as PointCR[] | null) ?? [])
+          .map((cr, index) => `${index + 1}. ${cr.sujet}\n   ${cr.resolution || 'Aucune résolution'}`)
           .join('\n\n') || "Aucun point à l'ordre du jour";
 
-      const presentsNoms =
-        presentsData?.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).filter(Boolean) || [];
+      const presentsNoms = nomsDepuisPresences(presentsData);
+
 
       const { data: excusesData } = await supabase
         .from('reunions_presences')
         .select('membres:membre_id (nom, prenom)')
         .eq('reunion_id', reunionId)
         .eq('statut_presence', 'absent_excuse');
-      const excusesNoms =
-        excusesData?.map((p: any) => `${p.membres?.prenom} ${p.membres?.nom}`).filter(Boolean) || [];
+      const excusesNoms = nomsDepuisPresences(excusesData);
+
 
       const absentsNonExcusesNoms = tousAbsentsNonExcuses?.length
         ? membresE2D
