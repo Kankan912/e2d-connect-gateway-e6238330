@@ -8,7 +8,22 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { logger } from '@/lib/logger';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/** Formes minimales utilisées pour les jointures et les agrégats (A21). */
+type MembreLite = { nom?: string | null; prenom?: string | null; email?: string | null };
+type PresenceJointe = { membre_id?: string; membres?: MembreLite | null };
+type BeneficiaireRow = {
+  statut?: string | null;
+  montant_final?: number | null;
+  membres?: MembreLite | null;
+};
+type PointCR = { sujet?: string | null; resolution?: string | null };
+
+const nomComplet = (m?: MembreLite | null) =>
+  `${m?.prenom ?? ''} ${m?.nom ?? ''}`.trim();
+
+const nomsDepuisPresences = (rows: unknown): string[] =>
+  ((rows as PresenceJointe[] | null) ?? []).map((p) => nomComplet(p.membres)).filter(Boolean);
+
 
 interface Params {
   open: boolean;
