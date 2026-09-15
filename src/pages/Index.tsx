@@ -50,24 +50,24 @@ const Index = () => {
       />
       <Navbar />
       <Hero />
-      <Suspense fallback={<SectionSkeleton />}>
+      <Section titre="À propos">
         <About />
-      </Suspense>
-      <Suspense fallback={<SectionSkeleton />}>
+      </Section>
+      <Section titre="Activités">
         <Activities />
-      </Suspense>
-      <Suspense fallback={<SectionSkeleton />}>
+      </Section>
+      <Section titre="Événements">
         <Events />
-      </Suspense>
-      <Suspense fallback={<SectionSkeleton />}>
+      </Section>
+      <Section titre="Galerie">
         <Gallery />
-      </Suspense>
-      <Suspense fallback={<SectionSkeleton />}>
+      </Section>
+      <Section titre="Partenaires">
         <Partners />
-      </Suspense>
-      <Suspense fallback={<SectionSkeleton />}>
+      </Section>
+      <Section titre="Contact">
         <Contact />
-      </Suspense>
+      </Section>
       <Footer />
     </div>
   );
