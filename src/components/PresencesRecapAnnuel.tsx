@@ -298,7 +298,7 @@ export default function PresencesRecapAnnuel() {
 
           {bilanData.length === 0 && (
             <p className="text-center text-muted-foreground py-8">
-              Aucune donnée disponible pour cette année
+              Aucune donnée disponible pour cet exercice
             </p>
           )}
         </CardContent>
